@@ -16,37 +16,19 @@
 # Cr,Ci: s2,s3
 # 128: s11
 
-clear:  mv s2,ra
-        OLED2 0x15,0x00,0x7f         # column address
-	OLED2 0x75,0x00,0x7f         # row address
-	OLED0 0x5c                   # write RAM
-	li t0,0
-	li s11,128
-	li s1,0
-cloop_y:li s0,0
-cloop_x:sw t0,IO_OLED_DATA(gp)
-	call oled_wait 
-	sw t0,IO_OLED_DATA(gp)
-	call oled_wait 
-	add s0,s0,1
-	bne s0,s11,cloop_x
-	add s1,s1,1
-	bne s1,s11,cloop_y
-	mv ra,s2
-	ret
-
 _start:
 	call oled_init
 
 	li t0, 15
 	sw t0, IO_LEDS(gp)
 
-        call clear
+        call oled_clear
 
 	li s11,128	
 	li s9,0
 
-anim:	OLED2 0x15,0x00,0x7f         # column address
+anim:	
+        OLED2 0x15,0x00,0x7f         # column address
 	OLED2 0x75,0x00,0x7f         # row address
 	OLED0 0x5c                   # write RAM
 	li s1,0
