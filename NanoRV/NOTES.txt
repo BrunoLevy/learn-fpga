@@ -1,0 +1,72 @@
+  
+ 
+  DebugLog:  - register write back was writing stuff in some registers
+               when Id was zero ! Added a test. 
+  
+             - ALU output is no longer latched, so that it is immediatly
+               available in EXECUTE state (and I no longer need to activate
+               it in the DECODE stage, which was WRONG because register outputs
+               were not ready). On the other end, longer critical path (maybe 
+               doing so is BAD...)
+  
+             - CALL/RET was not working: it is because when writing-back PC+4,
+               PC already had PC_next value. Now write backs that need to occur
+               during WAIT state (that is, shifts) have now their own state
+               (WAIT_INSTR_AND_ALU). All other write backs occur during EXECUTE
+               state (then followed by WAIT_INSTR state).
+  
+             - verilator --lint-only detected a couple of width mismatch 
+                in the RAM controller that explained load/store address mismatch  
+  
+             - there were several bugs in my RAM array *test program* (register clashes,
+                and forgot to save ra when calling func from func).
+  
+             - OLed: I had forgotten to program the shifter
+                     I was doing stupid things for generating the write clock
+                     (it is simply the negated clock !)
+ 
+             - addi reg,-5 was adding 5
+                    opqual was wrong ! bit 30 is also used by imms, 
+                    thus it was changing ops
+                    (in particular for negative numbers !)
+                    Found out with icarus
+  
+             - li sp,0xff8 generates an invalid opcode ? 
+                     (maybe extended instructions ?)
+  
+  TODO / IDEAS:
+        DESIGN
+             - Tests RISC-V (c.f. PICORV32), dans simulateur et 'on device' si possible
+             - Check all recommendations from MIT course:
+                   http://web.mit.edu/6.111/www/f2016/handouts/L11_4.pdf
+                   - beware of clock skew, don't gate the clock
+                   - always assume that combinatorial logic glitches
+                   - Never drive a critical asynchronous control signal 
+                     (register clock, write enable) from the output of 
+                      combinational logic.  
+                   - Ensure a stable combinational output before it is sampled by CLK
+                   - When needed, create glitch-free signals by registering outputs.
+                   - Synchronize all asynchronous signals, Use two back-to-back registers  
+                         http://web.mit.edu/6.111/www/f2016/handouts/L09_4.pdf
+                   - Do I have ill-formed pipelines ? (slide 14)
+             - Need to find a way of latching ALU output, in order to break
+               critical path (maxfreq is now 37 MHz, we can probably do 50 MHz)
+               Critical path is way too long, need to insert registers in IO controller
+               and maybe in other places (but I'm really running out of LUTs)
+             - Gain some LUTs by reducing address bus width in RAM and mapped IO 
+                and latched addresses (and this will also reduce the critical path since
+                the adder is plugged on it !)
+             - Maybe gain some LUTs by not storing the two LSBs of the PC counter, and do
+               PC+1 instead of PC+4
+             - Try increasing freq to 60 MHz and decreasing OLED controller freq (slower clock, 
+               affect (&) both OLED clock signal and shifter)
+ 
+         TOOLS
+             - Modular compilation and linking ? (+ automatic elimination of unused symbols)
+             - Find a way of interfacing gcc (nearly there ...)
+  
+         FIRMWARE / DEMOS
+             - Mandelbrot set demo (will it be fast ? not very fast...)
+  
+         MAPPED IO / PERIPHERALS
+             - Interface for led matrix display
