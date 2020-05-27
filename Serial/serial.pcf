@@ -1,0 +1,9 @@
+set_io resetq 3
+set_io pclk 21
+set_io led1 99
+set_io led2 98
+set_io led3 97
+set_io led4 96
+set_io led5 95
+set_io TXD 8
+set_io RXD 9

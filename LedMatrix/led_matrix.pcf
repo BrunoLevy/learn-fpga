@@ -1,0 +1,11 @@
+set_io pclk      21
+
+set_io leds_din  60
+set_io leds_cs   56
+set_io leds_clk  48
+
+set_io D1    99
+set_io D2    98
+set_io D3    97
+set_io D4    96
+set_io D5    95

@@ -1,0 +1,161 @@
+Je sais toujours pas faire une espece de "sequenceur", il me faut le bon
+"design pattern", permettant d'avoir
+
+   - une unité (ALU, UART ou autre) qui fait des trucs suivant un
+     opcode, et qui dit quand elle est "busy"
+
+   - un truc avec un compteur de programme, qui envoie les instructions
+     à l'unité, et qui incrémente le compteur de programme quand
+     l'unité n'est plus busy.
+
+
+==============================
+
+SSD1351
+=======
+
+FrameBuffer, 265K and 65k gray scale  (666 / 565)
+128x128x18 bits SRAM
+
+RESET: active low
+CS:    passe de 1 à 0 pour envoyer une commande ou des données
+D/C:   Data(1) or command(0) 
+           (for command, data length is 1 byte)
+SCLK:  Front montant au milieu des bits de données ?
+SDIN:  Données, bit de poids fort en premier
+
+
+Power-on sequence:
+    Set RES low (2us) then high
+    Power ON CVV
+    Send command AFh (display ON), wait 200ms
+    Wait 300ms before sending command
+    
+Power-off:
+    Send command AEh
+    Power off ...
+    
+Commandes: page 32
+
+=============================
+
+
+ RST <-- 78    1    7   87  --> DC
+         79    2    8   88  --> CS
+         80    3    9   90  --> CLK
+         81    4    10  91  --> DIN
+         GND   5    11  GND
+         +3.5V 6    12  +3.5V
+
+
+
+=============================
+
+Sequence d'initialisation:
+
+CS  <= 0
+RST <= 0
+Wait(500 ms)
+RST <= 1
+Wait(500 ms)
+fd 12 // Unlock OLED driver
+fd b1 // Unlock commands
+ae // display off
+a4 // display mode off
+15 00 7f // Set column address: start 0 end 127
+75 00 7f // Set row address: start 0 end 127 
+b3 f1 // Set front clock divider ---> Voir section 8.5
+ca 7f // Set multiplex ratio (pins)
+a0 74 // set re-map and data format, horizontal address increment
+a1 00 // display start line 0
+a2 00 // display offset
+ab 01 // Set function selection (VDD regulator ON)
+b4 a0 b5 55 // Undocumented ?? (segment voltage reference pin ???)
+c1 c8 80 c0 // Set contrast current for colors A,B,C
+c7 0f // Set master contrast current      
+b1 32 // Length of phase 1 and 2 of segment waveform      
+b2 a4 00 00 // Display enhancement
+bb 17 // first pre-charge voltage phase 2
+b6 01 // Set second pre-charge period (see table 9-1)
+be 05 // Set Vcomh voltage
+a6 // normal display
+---> clear_screen
+af // Screen on
+
+================================================================
+
+RESET:
+   Display -> OFF
+   128 MUX display mode
+   Normal segment and display data column and row
+       SEG0 = 00h,  COM0 = 00h
+   Display start line 0
+   Normal scan direction at COM output
+   Commands A2,B1,B3,BE,BB locked by command FD
+   
+
+================================================================
+
+clear_screen:
+   ---> ram_address
+   5C // Write RAM
+   for i = 1 to 128x128
+      byte1 byte2 (as data)
+
+================================================================
+
+ram_address:
+   15 00 7f // Set column address (start stop) and reset ptr
+   75 00 7f // Set row address (start stop) and reset ptr
+   
+================================================================
+
+Clock: 40 ns  -> 25 MHz
+
+
+15 start@ end@ : set column address
+75 start@ end@ : set row address
+5C data data ... data : write RAM
+5D : read RAM (Question: protocol is bidirectional ?)
+A0 A[remap & dual com line mode]
+     a[0] 0: horizontal address increment / 1: vertical address increment
+     a[1] 0: no flip left-right / 1: flip left-right
+     a[2] 0: no color remap / 1: color remap
+     a[4] 0: no flip top-bot / 1: flip top-bot
+     a[5] odd/even split of COMP pins ?
+A1 startline: set display start line
+A2 offset: set diplay offset
+A4 .. A7: set display mode
+   A4: all OFF
+   A5: all ON
+   A6: normal or entire display off ?
+   A7: inverse display
+AB A: set function selection
+    a[7:6] MCU bus interface selection
+    a[0]: VDD regulator (0: disable internal VDD regulator for power save, 1: enable)
+AE: sleep mode ON
+AF: sleep mode OFF
+B1 A: set phase length
+   a[3:0] phase 1 / a[7:4] phase 2
+B2 A1 A2 A3: display enhancement ???
+B3 A: set front clock divider/ oscillator frequency
+      a[3:0] front clock divide ratio (from 1 to 16), default = 16
+      a[7:4] oscillator frequency
+B5 A: Set GPIO
+B6 A: set second pre-charge period
+B8 ... : set grayscale LUT
+B9: use builtin LUT
+BB A: set pre-charge voltage
+BE A: set VCOMH voltage
+C1 A: set contrast
+C7 A: set master contrast
+CA A: set multiplex ratio
+FD 16: lock
+FD 12: unlock
+
+
+
+
+
+================================================================
+

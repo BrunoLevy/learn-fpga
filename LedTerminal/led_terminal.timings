@@ -1,0 +1,107 @@
+
+icetime topological timing analysis report
+==========================================
+
+Report for critical path:
+-------------------------
+
+        lc40_6_4_2 (LogicCell40) [clk] -> lcout: 0.640 ns
+     0.640 ns net_10638 (scroller.char_index_and_offset[0])
+        t2313 (LocalMux) I -> O: 0.330 ns
+        inmux_7_4_14905_14929 (InMux) I -> O: 0.260 ns
+        lc40_7_4_0 (LogicCell40) in1 -> carryout: 0.260 ns
+     1.489 ns net_14927 ($auto$alumacc.cc:474:replace_alu$521.C[1])
+        lc40_7_4_1 (LogicCell40) carryin -> carryout: 0.126 ns
+     1.615 ns net_14933 ($auto$alumacc.cc:474:replace_alu$521.C[2])
+        lc40_7_4_2 (LogicCell40) carryin -> carryout: 0.126 ns
+     1.741 ns net_14939 ($auto$alumacc.cc:474:replace_alu$521.C[3])
+        inmux_7_4_14939_14949 (InMux) I -> O: 0.260 ns
+        lc40_7_4_3 (LogicCell40) in3 -> lcout: 0.316 ns
+     2.316 ns net_12748 (scroller.ecolumn[3])
+        t2750 (LocalMux) I -> O: 0.330 ns
+        inmux_6_5_12920_12978 (InMux) I -> O: 0.260 ns
+        lc40_6_5_6 (LogicCell40) in0 -> lcout: 0.449 ns
+     3.354 ns net_10765 ($abc$8200$auto$alumacc.cc:474:replace_alu$497.BB[3])
+        t2339 (LocalMux) I -> O: 0.330 ns
+        inmux_7_5_15032_15071 (InMux) I -> O: 0.260 ns
+        t368 (CascadeMux) I -> O: 0.000 ns
+        lc40_7_5_3 (LogicCell40) in2 -> carryout: 0.231 ns
+     4.175 ns net_15068 ($nextpnr_ICESTORM_LC_1$I3)
+        inmux_7_5_15068_15078 (InMux) I -> O: 0.260 ns
+        lc40_7_5_4 (LogicCell40) in3 -> lcout: 0.316 ns
+     4.750 ns net_12872 ($auto$alumacc.cc:474:replace_alu$497.C[4])
+        odrv_7_5_12872_15001 (Odrv4) I -> O: 0.372 ns
+        t2861 (Span4Mux_h3) I -> O: 0.231 ns
+        t2860 (LocalMux) I -> O: 0.330 ns
+        inmux_5_7_11058_11080 (InMux) I -> O: 0.260 ns
+        lc40_5_7_0 (LogicCell40) in1 -> lcout: 0.400 ns
+     6.342 ns net_8897 ($abc$8200$buffer.address[0]_new_inv_)
+        odrv_5_7_8897_8930 (Odrv4) I -> O: 0.372 ns
+        t2007 (Span4Mux_h4) I -> O: 0.316 ns
+        t2006 (LocalMux) I -> O: 0.330 ns
+        inmux_1_5_2567_2634 (InMux) I -> O: 0.260 ns
+        t12 (CascadeMux) I -> O: 0.000 ns
+        lc40_1_5_7 (LogicCell40) in2 -> lcout: 0.379 ns
+     7.997 ns net_412 ($abc$8200$new_n715_)
+        t623 (LocalMux) I -> O: 0.330 ns
+        inmux_1_6_2707_2768 (InMux) I -> O: 0.260 ns
+        lc40_1_6_7 (LogicCell40) in1 -> lcout: 0.400 ns
+     8.986 ns net_526 ($abc$8200$new_n714_)
+        t626 (LocalMux) I -> O: 0.330 ns
+        inmux_1_7_2834_2861 (InMux) I -> O: 0.260 ns
+        lc40_1_7_0 (LogicCell40) in1 -> lcout: 0.400 ns
+     9.975 ns net_633 ($abc$8200$new_n713_)
+        odrv_1_7_633_2684 (Odrv4) I -> O: 0.372 ns
+        t635 (Span4Mux_h4) I -> O: 0.316 ns
+        t634 (Span4Mux_v3) I -> O: 0.337 ns
+        t633 (LocalMux) I -> O: 0.330 ns
+        inmux_5_12_11665_11718 (InMux) I -> O: 0.260 ns
+        lc40_5_12_4 (LogicCell40) in0 -> lcout: 0.449 ns
+    12.037 ns net_9516 ($abc$8200$scroller.data[7]_new_inv_)
+        odrv_5_12_9516_11644 (Odrv4) I -> O: 0.372 ns
+        t2079 (Span4Mux_v4) I -> O: 0.372 ns
+        t2078 (Span4Mux_h1) I -> O: 0.175 ns
+        t2077 (LocalMux) I -> O: 0.330 ns
+        inmux_7_6_15156_15200 (InMux) I -> O: 0.260 ns
+        t374 (CascadeMux) I -> O: 0.000 ns
+        lc40_7_6_4 (LogicCell40) in2 -> lcout: 0.379 ns
+    13.924 ns net_12995 ($abc$8200$techmap\scroller.font_rom.$eq$../Libs/font_rom.v:121$83_Y)
+        t2950 (LocalMux) I -> O: 0.330 ns
+        inmux_8_5_17155_17175 (InMux) I -> O: 0.260 ns
+        lc40_8_5_2 (LogicCell40) in3 -> lcout: 0.316 ns
+    14.828 ns net_14979 ($abc$8200$new_n670_)
+        odrv_8_5_14979_16996 (Odrv4) I -> O: 0.372 ns
+        t3237 (LocalMux) I -> O: 0.330 ns
+        inmux_8_6_17266_17302 (InMux) I -> O: 0.260 ns
+        lc40_8_6_3 (LogicCell40) in1 -> lcout: 0.400 ns
+    16.189 ns net_15103 (scroller.do_reset)
+        odrv_8_6_15103_17359 (Odrv4) I -> O: 0.372 ns
+        t3256 (Span4Mux_h4) I -> O: 0.316 ns
+        t3255 (LocalMux) I -> O: 0.330 ns
+        t3254 (IoInMux) I -> O: 0.260 ns
+        t3253 (ICE_GB) USERSIGNALTOGLOBALBUFFER -> GLOBALBUFFEROUTPUT: 0.617 ns
+        t3252 (gio2CtrlBuf) I -> O: 0.000 ns
+        t3251 (GlobalMux) I -> O: 0.154 ns
+    18.237 ns seg_6_3_glb_netwk_2_3
+
+Resolvable net names on path:
+     0.640 ns ..  1.229 ns scroller.char_index_and_offset[0]
+     1.489 ns ..  1.489 ns $auto$alumacc.cc:474:replace_alu$521.C[1]
+     1.615 ns ..  1.615 ns $auto$alumacc.cc:474:replace_alu$521.C[2]
+     1.741 ns ..  2.001 ns $auto$alumacc.cc:474:replace_alu$521.C[3]
+     2.316 ns ..  2.905 ns scroller.ecolumn[3]
+     3.354 ns ..  3.943 ns $abc$8200$auto$alumacc.cc:474:replace_alu$497.BB[3]
+     4.175 ns ..  4.434 ns $nextpnr_ICESTORM_LC_1$I3
+     4.750 ns ..  5.942 ns $auto$alumacc.cc:474:replace_alu$497.C[4]
+     6.342 ns ..  7.618 ns $abc$8200$buffer.address[0]_new_inv_
+     7.997 ns ..  8.586 ns $abc$8200$new_n715_
+     8.986 ns ..  9.575 ns $abc$8200$new_n714_
+     9.975 ns .. 11.588 ns $abc$8200$new_n713_
+    12.037 ns .. 13.545 ns $abc$8200$scroller.data[7]_new_inv_
+    13.924 ns .. 14.513 ns $abc$8200$techmap\scroller.font_rom.$eq$../Libs/font_rom.v:121$83_Y
+    14.828 ns .. 15.789 ns $abc$8200$new_n670_
+    16.189 ns .. 16.561 ns scroller.do_reset
+
+Total number of logic levels: 16
+Total path delay: 18.24 ns (54.83 MHz)
+

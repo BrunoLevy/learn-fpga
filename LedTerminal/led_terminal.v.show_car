@@ -1,0 +1,144 @@
+// Reads a character on the virtual RX pin of the USB, and
+// displays it on the MAX2719 led matrix.
+
+  /**********************************************/
+
+module led_terminal(
+   input  wire pclk,
+   output wire leds_din,
+   output wire leds_cs,
+   output wire leds_clk,
+   output wire D1, D2, D3, D4, D5,
+   input  wire RXD,
+   output wire TXD
+);
+
+  /**********************************************/
+   // Divide freq by two -> 6 MHz
+   reg[1:0] cnt;
+   always @(posedge pclk) begin
+      cnt <= cnt + 1;
+   end
+   wire clk = cnt[1]; 
+  /**********************************************/
+
+   reg[7:0] character;
+
+   reg  uart0_wr;
+   wire uart0_busy;
+   buart uart0 (
+     .clk(pclk),
+     .resetq(1'b1),
+     .rx(RXD),
+     .tx(TXD),
+     .rd(1'b1),
+     .wr(uart0_wr),
+     .valid(uart0_valid),
+     .busy(uart0_busy),
+     .tx_data(character),
+     .rx_data(uart0_data)
+   );
+
+   always @(posedge pclk) begin
+      if(uart0_valid) begin
+         character <= uart0_data;
+  	 uart0_wr <= 1;
+      end else begin
+         uart0_wr <= 0; 
+      end 
+   end
+ 
+   /*******************************************/
+
+   wire wr;
+   wire busy;
+   wire [15:0] address_data;
+
+   MAX7219 max7219(
+      .clk(clk),
+      .address_data(address_data),
+      .wr(wr),
+      .d_out(leds_din),
+      .cs_out(leds_cs),
+      .clk_out(leds_clk),
+      .busy(busy),
+      .reset(1'b0)
+   );
+
+
+   // The 'program counter'
+   reg [2:0] PC;
+   assign wr = !busy;
+   always @(posedge clk)
+   begin
+      if(!busy) begin
+          PC <= PC + 1;
+      end
+   end
+
+   // Visual debugging with the IceStick leds
+     
+   reg [32:0] frame;
+   always @(posedge PC[2])
+   begin
+      frame <= frame + 1;
+   end
+
+   // Initialization mechanism, to be better understood...
+
+   reg [15:0] nb_init;
+   wire try_init = (~|frame[7:0] /* && nb_init < 32 */ );
+   always @(posedge try_init)
+   begin
+      nb_init <= nb_init + 1;
+   end
+   // wire init = (try_init && nb_init == 31);
+   wire init = try_init; // Do it every NNN frames, we got errors sometimes...
+
+
+   // The 'handle' of the clock
+   wire [1:0] hndl = { frame[12], frame[11] };
+
+   assign {D1,D2,D3,D4} = {
+       (hndl == 2'b00),
+       (hndl == 2'b01),
+       (hndl == 2'b10),
+       (hndl == 2'b11)
+    };
+
+  /**********************************************/
+
+
+   wire [15:0] init_program = 
+       (PC == 4'd0)  ? {8'h09, 8'h00} : // decode mode
+       (PC == 4'd1)  ? {8'h0a, 8'h0f} : // intensity
+       (PC == 4'd2)  ? {8'h0b, 8'h07} : // scan limit
+       (PC == 4'd3)  ? {8'h0c, 8'h01} : // shutdown 
+       (PC == 4'd4)  ? {8'h0f, 8'h00} : // display test
+       {8'h00, 8'b00000000} ;
+       
+   parameter init_program_length = 5;
+
+   wire[10:0] font_address = {character,PC};
+
+// wire [10:0] font_address = ((frame >> 10) + PC);
+// wire [10:0] font_address = {frame[21:14],PC};
+   wire [7:0]  font_rom_data;
+
+   FontROM font_rom(
+      .address(font_address),
+      .data(font_rom_data),
+      .clk(clk)
+   );
+
+   wire [15:0] display_program = { PC+1, font_rom_data};
+ 
+   parameter display_program_length = 8;
+   assign address_data = init ? init_program : display_program;
+
+   wire uart0_valid;
+   wire[7:0] uart0_data;
+
+
+
+endmodule

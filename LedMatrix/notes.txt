@@ -1,0 +1,25 @@
+envoyer un octet:
+  Pour chaque bit de 7 à 0
+     clock <- 0
+     data  <- bit
+     clock <- 1
+
+envoyer une commande:
+   cs  <- 0
+   envoyer l'adresse (1 octet)
+   envoyer la donnée
+   cs  <- 1
+   clk <- 0
+
+sequence d'initialisation:
+   0x09, 0x00  -> Decode-Mode: 00 = no decode
+   0x0a, 0x01  -> Intensity:  (00 .. 0f)
+   0x0b, 0x07  -> Scan limit: 0x07 = show all lines
+   0x0c, 0x01  -> Shut down:  0x01 = normal operation
+   0x0f, 0x00  -> Display Test: 0x00 = normal operation
+   
+allumer une rangée de leds:
+   envoyer row (in 1..8), data
+
+clock: 10 MHz
+
