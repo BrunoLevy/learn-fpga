@@ -21,20 +21,7 @@
 
 _start:
 	call oled_init
-
-
         call oled_clear
-	call wait
-	call wait
-	call wait	
-	li t0, 5
-	sw t0, IO_LEDS(gp)
-	call wait
-	li t0, 10
-	sw t0, IO_LEDS(gp)
-	call wait
-	li t0, 15
-	sw t0, IO_LEDS(gp)
 
 	li s11,128	
 	li s9,0
@@ -51,7 +38,7 @@ loop_y:	li s0,0
 loop_x: mv s4,s2    # Z <- C
         mv s5,s3
 	
-	li s10,10
+	li s10,15
 loop_Z: mv a0,s4    # Zrr <- (Zr*Zr) >> mandel_shift
         mv a1,s4
 	call __muldi3
@@ -81,14 +68,16 @@ exit_Z:
         srli t1,s10,5
 	mv   t0,t1
 	sll  t0,t0,3
+	
 	sw   t0,IO_OLED_DATA(gp)
-#	call oled_wait # not necessary here (8 cycles before next)
+	call oled_wait 	
 
         srli t1,s10,1
 	mv   t0,t1
 	andi t0,t0,31
+	
 	sw   t0, IO_OLED_DATA(gp)
-#	call oled_wait # not necessary here (8 cycles before next)
+	call oled_wait 	
 	
 	add s0,s0,1
 	add s2,s2,dx
@@ -98,7 +87,8 @@ exit_Z:
 	add s3,s3,dy
 	bne s1,s11,loop_y
 	
-	sw s9, IO_LEDS(gp)
+	li  t0, 15
+	sw  t0, IO_LEDS(gp)
 	
 	add s9,s9,1
 	j anim

@@ -18,7 +18,7 @@ loop_x:	add s0,s0,1
 
 	# compute pixel color: RRRRR GGGGG 0 BBBBB
 	#  RRRRR = X+frame
-	#  GGGGG = 0 <-- TODO replace with X >> 3
+	#  GGGGG = X >> 3
 	#  BBBBB = Y+frame
 
 	add t0,s0,s3
@@ -28,15 +28,17 @@ loop_x:	add s0,s0,1
 	and t1,t1,7
 	or  t0,t0,t1
 	sw t0, IO_OLED_DATA(gp)
-#	call oled_wait  # not really needed, just need 8 cycles between them
-
+#	call oled_wait  
+#         oled_wait not needed here:
+#         we just need 8 cycles (or 16 if overclocked at 60 MHz) 
+#         before next st xx, IO_OLED_DATA(gp)	
 	add t0,s1,s3
 	andi t0,t0,31
 	sll t1,s0,3
 	and t1,t1,192
 	or  t0,t0,t1
 	sw t0, IO_OLED_DATA(gp)
-#	call oled_wait  # not really needed, just need 8 cycles between them
+#	call oled_wait  # not needed here.
 	
 	bne s0,s2,loop_x
 	add s1,s1,1

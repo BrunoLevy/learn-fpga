@@ -31,7 +31,7 @@
 
 // Used by the UART, needs to match frequency defined in the PLL, 
 // at the end of the file
-`define CLKFREQ   30000000
+`define CLKFREQ   60000000
 `include "uart.v"
 
 
@@ -907,7 +907,7 @@ module NrvIO(
    
    /********************** SSD1351 **************************/
 
-`ifdef NRV_IO_SSD1351   
+`ifdef NRV_IO_SSD1351
    initial begin
       SSD1351_DC  = 1'b0;
       SSD1351_RST = 1'b0;
@@ -916,13 +916,14 @@ module NrvIO(
    
    // Currently send bit, 1-based
    // (0000 config. corresponds to idle)
+   reg      slow_clk; // clk=60MHz, slow_clk=30MHz
    reg[3:0] SSD1351_bitcount = 4'b0000;
    reg[7:0] SSD1351_shifter = 0;
    wire     SSD1351_sending = (SSD1351_bitcount != 0);
-   reg      SSD1351_special;
+   reg      SSD1351_special; // pseudo-instruction, direct control of RST and DC.
 
    assign SSD1351_DIN = SSD1351_shifter[7];
-   assign SSD1351_CLK = SSD1351_sending && !clk;
+   assign SSD1351_CLK = SSD1351_sending && !slow_clk;
    assign SSD1351_CS  = SSD1351_special ? 1'b0 : !SSD1351_sending;
 `endif 
    
@@ -972,7 +973,7 @@ module NrvIO(
 
 `endif   
    
-   /********************* Multiplexer for IO read *********************/
+   /********************* Decoder for IO read **************************/
    
    always @(*) begin
       (* parallel_case, full_case *)
@@ -999,6 +1000,7 @@ module NrvIO(
    /********************* Multiplexer for IO write *********************/
 
    always @(posedge clk) begin
+      slow_clk <= ~slow_clk;
       if(wr) begin
 	 case(address)
 `ifdef NRV_IO_LEDS	   
@@ -1030,7 +1032,7 @@ module NrvIO(
 	 endcase 
       end else begin // if (wr)
 `ifdef NRV_IO_SSD1351	   	 
-	 if(SSD1351_sending) begin
+	 if(SSD1351_sending && !slow_clk) begin
             SSD1351_bitcount <= SSD1351_bitcount - 4'd1;
             SSD1351_shifter <= {SSD1351_shifter[6:0], 1'b0};
 	 end
@@ -1144,14 +1146,14 @@ module nanorv(
  `ifdef BENCH
    assign clk = pclk;
  `else   
-   // 60 MHz / 40 MHz clock
    SB_PLL40_CORE #(
       .FEEDBACK_PATH("SIMPLE"),
       .PLLOUT_SELECT("GENCLK"),
       .DIVR(4'b0000),
-      //.DIVF(7'b1001111), .DIVQ(3'b100), // 60 MHz
+      //.DIVF(7'b0110001), .DIVQ(3'b011), // 75 MHz
+      .DIVF(7'b1001111), .DIVQ(3'b100), // 60 MHz
       //.DIVF(7'b0110100), .DIVQ(3'b100), // 40 MHz
-      .DIVF(7'b1001111), .DIVQ(3'b101), // 30 MHz
+      //.DIVF(7'b1001111), .DIVQ(3'b101), // 30 MHz
       .FILTER_RANGE(3'b001),
    ) pll (
       .REFERENCECLK(pclk),

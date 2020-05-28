@@ -1,4 +1,4 @@
 iceprog ../Blinker/blink.bin
-sleep 2c 
+sleep 2
 iceprog nanorv.bin 
 
