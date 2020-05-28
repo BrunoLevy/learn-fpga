@@ -23,23 +23,28 @@ _start:
 	call oled_init
         call oled_clear
 
-	li s11,128	
-	li s9,0
 
-anim:	
         OLED2 0x15,0x00,0x7f         # column address
 	OLED2 0x75,0x00,0x7f         # row address
 	OLED0 0x5c                   # write RAM
+
+	call wait
+	li   t0, 0
+	sw   t0, IO_LEDS(gp)
+
 	li s1,0
 	li s3,xmin
-	
+	li s11,128	
+
 loop_y:	li s0,0
         li s2,ymin
+	
 loop_x: mv s4,s2    # Z <- C
         mv s5,s3
 	
-	li s10,15
-loop_Z: mv a0,s4    # Zrr <- (Zr*Zr) >> mandel_shift
+	li s10,15   # iter <- 15
+	
+loop_Z: mv a0,s4    # Zrr  <- (Zr*Zr) >> mandel_shift
         mv a1,s4
 	call __muldi3
 	srli s6,a0,mandel_shift
@@ -55,27 +60,19 @@ loop_Z: mv a0,s4    # Zrr <- (Zr*Zr) >> mandel_shift
 	add s4,s4,s2
         add s5,s7,s3 # Zi <- 2Zri + Cr
 
-        add s9,s6,s8
+        add s6,s6,s8     # if norm > norm max, exit loop
         li  s7,norm_max
-	bgt s9,s7,exit_Z
+	bgt s6,s7,exit_Z
 
-        add s10,s10,-1
+        add s10,s10,-1   # iter--, loop if non-zero
 	bnez s10, loop_Z
 exit_Z:
 
-        slli s10,s10,5
-
-        srli t1,s10,5
-	mv   t0,t1
-	sll  t0,t0,3
-	
+	sll  t0,s10,3
 	sw   t0,IO_OLED_DATA(gp)
 	call oled_wait 	
 
-        srli t1,s10,1
-	mv   t0,t1
-	andi t0,t0,31
-	
+        sll  t0,s10,2
 	sw   t0, IO_OLED_DATA(gp)
 	call oled_wait 	
 	
@@ -87,10 +84,8 @@ exit_Z:
 	add s3,s3,dy
 	bne s1,s11,loop_y
 	
-	li  t0, 15
-	sw  t0, IO_LEDS(gp)
+	li   t0, 15
+	sw   t0, IO_LEDS(gp)
 	
-	add s9,s9,1
-	j anim
 
 
