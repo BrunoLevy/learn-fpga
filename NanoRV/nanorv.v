@@ -662,7 +662,7 @@ endmodule
 
 module NrvRAM(
   input 	    clk,
-  input [31:0] 	    address, 
+  input [12:0] 	    address, 
   input 	    wr,
   input 	    rd,
   input [31:0] 	    in,
@@ -1096,11 +1096,10 @@ fe219ce3
 */
 
 // ROM has 512 32-bit words, it is implemented using four (inferred) SB_RAM40_4K BRAMS. 
-// TODO: see whether rewriting with SB_RAM_4K primitive saves LUTs...
 
 module NrvROM(
      input 	       clk,
-     input [31:0]      address, 
+     input [8:0]       address, 
      output reg [31:0] data 	      
 );
    reg [31:0] rom[511:0];
@@ -1110,7 +1109,7 @@ module NrvROM(
    end
    
    always @(posedge clk) begin
-      data <= rom[address[10:2]];
+      data <= rom[address];
    end
 endmodule
 
@@ -1171,7 +1170,7 @@ module nanorv(
    
   NrvROM ROM(
     .clk(clk),
-    .address(instrAddress), 
+    .address(instrAddress[10:2]), 
     .data(instrData)
   );
 
@@ -1205,7 +1204,7 @@ module nanorv(
   wire [2:0]  dataType;
   NrvRAM RAM(
     .clk(clk),
-    .address(dataAddress),
+    .address(dataAddress[12:0]),
     .in(dataOut),
     .out(dataIn),
     .rd(dataRd),

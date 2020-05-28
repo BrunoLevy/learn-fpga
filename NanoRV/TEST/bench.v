@@ -1,4 +1,5 @@
 `define BENCH
+// `define VERBOSE // Uncomment to have detailed log traces of all states
 `include "../nanorv.v"
 
 module NanoRV_bench();
