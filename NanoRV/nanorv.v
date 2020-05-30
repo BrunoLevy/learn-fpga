@@ -32,18 +32,18 @@
                           // If you do so, take care to update initial address
                           // and stack address in your programs accordinly.
 
-`define NRV_RAM_PAGE_1    // Each page has 256 32-bit words.
-`define NRV_RAM_PAGE_2
-`define NRV_RAM_PAGE_3
-`define NRV_RAM_PAGE_4
+`define NRV_RAM_PAGE_1    // Each page has 256 32-bit words. Undefine them to
+`define NRV_RAM_PAGE_2    // free some BRAM space, for instance if a ROM larger
+`define NRV_RAM_PAGE_3    // than 512 words is needed, or if BRAM is needed by
+`define NRV_RAM_PAGE_4    // other functions on the IceStick.
 
 /*************************************************************************************/
 
+// Width of instruction address bus, derived from ROM size.
+// (Having shorter PC and instr addr buffer saves a couple of LUTs. 
+// With 1280 only, each of them counts !)
 `define NRV_INST_ADDR_WIDTH $clog2(`NRV_ROM_SIZE)
-`define INSTRW `NRV_INST_ADDR_WIDTH+1:0 // Instruction addresses are 11 bits (can be changed)
-                                        // (having shorter PC and instr addr buffer 
-                                        //  saves a couple of LUTs. With 1280 only, each of
-                                        //  them counts !)
+`define INSTRW `NRV_INST_ADDR_WIDTH+1:0 
 
 /*************************************************************************************/
 `default_nettype none
