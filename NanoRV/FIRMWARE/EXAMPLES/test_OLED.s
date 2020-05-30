@@ -17,6 +17,7 @@ loop_y:	li s0,0
 loop_x:	add s0,s0,1
 
 	# compute pixel color: RRRRR GGGGG 0 BBBBB
+	# (or an additional G LSB instead of 0)
 	#  RRRRR = X+frame
 	#  GGGGG = X >> 3
 	#  BBBBB = Y+frame

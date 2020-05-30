@@ -16,7 +16,6 @@
 
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
-// Needs to be deactivated if using UART (else it does not fit)
 // (inspired by PICORV32)
 `define NRV_TWOSTAGE_SHIFTER
 
@@ -26,15 +25,25 @@
 //`define NRV_IO_UART_TX // Mapped IO, virtual UART transmetter (USB)
 `define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
 
-`define NRV_ROM_SIZE 512 // Number of 32-bit words in ROM (rem: Harvard architecture,
-                         // program ROM is separated from data RAM).
+// Rem: NRV has a Harvard architecture, program ROM is separated from data RAM.
+
+`define NRV_ROM_SIZE 512  // Number of 32-bit words in ROM. If greater than 512,
+                          // You will need to deactivate some RAM pages.
+                          // If you do so, take care to update initial address
+                          // and stack address in your programs accordinly.
+
+`define NRV_RAM_PAGE_1    // Each page has 256 32-bit words.
+`define NRV_RAM_PAGE_2
+`define NRV_RAM_PAGE_3
+`define NRV_RAM_PAGE_4
 
 /*************************************************************************************/
 
-`define INSTRW $clog2(`NRV_ROM_SIZE)+1:0 // Instruction addresses are 11 bits (can be changed)
-                                         // (having shorter PC and instr addr buffer 
-                                         //  saves a couple of LUTs. With 1280 only, each of
-                                         //  them counts !)
+`define NRV_INST_ADDR_WIDTH $clog2(`NRV_ROM_SIZE)
+`define INSTRW `NRV_INST_ADDR_WIDTH+1:0 // Instruction addresses are 11 bits (can be changed)
+                                        // (having shorter PC and instr addr buffer 
+                                        //  saves a couple of LUTs. With 1280 only, each of
+                                        //  them counts !)
 
 /*************************************************************************************/
 `default_nettype none
@@ -138,7 +147,7 @@ module NrvALU(
 		 (wr && ( op == 3'b001 || op == 3'b101));
    
    reg [31:0] shifter;
-
+   
    always @(*) begin
       (* parallel_case, full_case *)
       case(op)
@@ -426,7 +435,7 @@ module NrvProcessor(
    
    reg [`INSTRW] 	     PC = 0;
    initial instrAddress = 0;
-   reg [31:0] 	 instr  = 32'h00000013; // latched instruction. Initial = NOP
+   reg [31:0] 		     instr = 32'h00000013; // latched instruction. Initial = NOP
 
    
    // Next program counter in normal operation: advance one word
@@ -475,7 +484,7 @@ module NrvProcessor(
    wire [31:0] aluOut;
    wire        aluBusy;
 
-   // The register page. At each cycle, it can read two
+   // The register file. At each cycle, it can read two
    // registers (available at next cycle) and write one.
    reg  [31:0] writeBackData;
    wire [31:0] regOut1;
@@ -501,7 +510,7 @@ module NrvProcessor(
 
    assign dataAddress = aluOut;
    assign dataOut = regOut2;
-   assign dataRd = ((state == EXECUTE && isLoad)  || state == LOAD);
+   assign dataRd = ((state == EXECUTE && isLoad)  || state == LOAD); // active during two cycles
    assign dataWr = (state == EXECUTE && isStore);
    assign dataRdType = aluOp;
 
@@ -803,7 +812,8 @@ module NrvRAM(
    wire [31:0] rdata_W_page2;
    wire [31:0] rdata_W_page3;
    wire [31:0] rdata_W_page4;      
-   
+
+`ifdef NRV_RAM_PAGE_1   
    SB_RAM40_4K page1_low(
        .RADDR(addr_internal), .RDATA(rdata_W_page1[15:0]),
        .WADDR(addr_internal), .WDATA(wdata_internal[15:0]),
@@ -817,8 +827,9 @@ module NrvRAM(
        .WE(wr && page == 3'b000), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(rd && page == 3'b000), .RCLKE(1'b1), .RCLK(clk)			
    );
+`endif
 
-
+`ifdef NRV_RAM_PAGE_2   
    SB_RAM40_4K page2_low(
        .RADDR(addr_internal), .RDATA(rdata_W_page2[15:0]),
        .WADDR(addr_internal), .WDATA(wdata_internal[15:0]),
@@ -832,7 +843,9 @@ module NrvRAM(
        .WE(wr && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(rd && page == 3'b001), .RCLKE(1'b1), .RCLK(clk)			
    );
+`endif 
 
+`ifdef NRV_RAM_PAGE_3   
    SB_RAM40_4K page3_low(
        .RADDR(addr_internal), .RDATA(rdata_W_page3[15:0]),
        .WADDR(addr_internal), .WDATA(wdata_internal[15:0]),
@@ -846,7 +859,9 @@ module NrvRAM(
        .WE(wr && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(rd && page == 3'b010), .RCLKE(1'b1), .RCLK(clk)			
    );
+`endif 
 
+`ifdef NRV_RAM_PAGE_4   
    SB_RAM40_4K page4_low(
        .RADDR(addr_internal), .RDATA(rdata_W_page4[15:0]),
        .WADDR(addr_internal), .WDATA(wdata_internal[15:0]),
@@ -860,14 +875,23 @@ module NrvRAM(
        .WE(wr && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(rd && page == 3'b011), .RCLKE(1'b1), .RCLK(clk)			
    );
-
+`endif 
+   
    always @(*) begin
       (* parallel_case, full_case*)
       case(page)
+`ifdef NRV_RAM_PAGE_1	
 	3'b000:  rdata_W = rdata_W_page1;
+`endif
+`ifdef NRV_RAM_PAGE_2		
 	3'b001:  rdata_W = rdata_W_page2;
+`endif
+`ifdef NRV_RAM_PAGE_3	
 	3'b010:  rdata_W = rdata_W_page3;
+`endif
+`ifdef NRV_RAM_PAGE_4	
 	3'b011:  rdata_W = rdata_W_page4;
+`endif	
 	3'b100:  rdata_W = IOin;
 	default: rdata_W = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
       endcase
@@ -926,7 +950,7 @@ module NrvIO(
       LEDs        = 4'b0000;
    end
    
-   // Currently send bit, 1-based
+   // Currently sent bit, 1-based index
    // (0000 config. corresponds to idle)
    reg      slow_clk; // clk=60MHz, slow_clk=30MHz
    reg[3:0] SSD1351_bitcount = 4'b0000;
@@ -1110,11 +1134,11 @@ fe219ce3
 // ROM has 512 32-bit words, it is implemented using four (inferred) SB_RAM40_4K BRAMS. 
 
 module NrvROM(
-     input 	       clk,
-     input [8:0]       address, 
-     output reg [31:0] data 	      
+     input 	                      clk,
+     input [`NRV_INST_ADDR_WIDTH-1:0] address, 
+     output reg [31:0]                data 	      
 );
-   reg [31:0] rom[511:0];
+   reg [31:0] rom[`NRV_ROM_SIZE-1:0];
    
    initial begin
       $readmemh("FIRMWARE/firmware.hex", rom);
