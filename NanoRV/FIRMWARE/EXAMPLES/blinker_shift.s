@@ -1,3 +1,5 @@
+# Blinker example, using the shift instruction
+
 .section .text
 .globl _start
 .equ IO_BASE,      0x1000   # Base address of memory-mapped IO

@@ -20,10 +20,11 @@
 `define NRV_TWOSTAGE_SHIFTER
 
 // Optional mapped IO devices
-`define NRV_IO_LEDS    // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+`define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART_RX // Mapped IO, virtual UART receiver    (USB)
 //`define NRV_IO_UART_TX // Mapped IO, virtual UART transmetter (USB)
-`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
+`define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
+`define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
 
 // Rem: NRV has a Harvard architecture, program ROM is separated from data RAM.
 
@@ -919,27 +920,35 @@ module NrvIO(
     output reg [3:0]  LEDs,
 
     // Oled display
-    output wire       SSD1351_DIN, 
-    output wire       SSD1351_CLK, 
+    output            SSD1351_DIN, 
+    output            SSD1351_CLK, 
     output 	      SSD1351_CS, 
     output reg 	      SSD1351_DC, 
     output reg 	      SSD1351_RST,
     
     // Serial
-    input wire 	      RXD,
-    output wire       TXD
+    input  	      RXD,
+    output            TXD,
+
+    // Led matrix
+    output            MAX2719_DIN, 
+    output            MAX2719_CS, 
+    output            MAX2719_CLK 
 );
 
    /***** Memory-mapped ports, all 32 bits, address/4 *******/
    
-   localparam LEDs_address         = 0; // LEDs (4 LSBs)
-   localparam SSD1351_CNTL_address = 1; // Oled display control
-   localparam SSD1351_CMD_address  = 2; // Oled display commands
-   localparam SSD1351_DAT_address  = 3; // Oled display data
+   localparam LEDs_address         = 0; // (write) LEDs (4 LSBs)
+   localparam SSD1351_CNTL_address = 1; // (read/write) Oled display control
+   localparam SSD1351_CMD_address  = 2; // (write) Oled display commands
+   localparam SSD1351_DAT_address  = 3; // (write) Oled display data
    localparam UART_RX_CNTL_address = 4; // (read) LSB: data ready
    localparam UART_RX_DAT_address  = 5; // (read) received data
    localparam UART_TX_CNTL_address = 6; // (read) LSB: busy
    localparam UART_TX_DAT_address  = 7; // (write) data to be sent
+   localparam MAX2719_CNTL_address = 8; // (read) LSB: busy
+   localparam MAX2719_DAT_address  = 9; // (write) data to be sent  
+    
    
    /********************** SSD1351 **************************/
 
@@ -952,14 +961,14 @@ module NrvIO(
    
    // Currently sent bit, 1-based index
    // (0000 config. corresponds to idle)
-   reg      slow_clk; // clk=60MHz, slow_clk=30MHz
+   reg      SSD1351_slow_clk; // clk=60MHz, slow_clk=30MHz
    reg[3:0] SSD1351_bitcount = 4'b0000;
    reg[7:0] SSD1351_shifter = 0;
    wire     SSD1351_sending = (SSD1351_bitcount != 0);
    reg      SSD1351_special; // pseudo-instruction, direct control of RST and DC.
 
    assign SSD1351_DIN = SSD1351_shifter[7];
-   assign SSD1351_CLK = SSD1351_sending && !slow_clk;
+   assign SSD1351_CLK = SSD1351_sending && !SSD1351_slow_clk;
    assign SSD1351_CS  = SSD1351_special ? 1'b0 : !SSD1351_sending;
 `endif 
    
@@ -1008,6 +1017,24 @@ module NrvIO(
    );
 
 `endif   
+
+   /********************** MAX2719 led matrix driver *******************/
+   
+`ifdef NRV_IO_MAX2719
+   reg [2:0]  MAX2719_divider;
+   always @(posedge clk) begin
+      MAX2719_divider <= MAX2719_divider + 1;
+   end
+   // clk=60MHz, slow_clk=60/8 MHz (max = 10 MHz)
+   wire       MAX2719_slow_clk = (MAX2719_divider == 3'b000);
+   reg[4:0]   MAX2719_bitcount; // 0 means idle
+   reg[15:0]  MAX2719_shifter;
+
+   assign MAX2719_DIN  = MAX2719_shifter[15];
+   wire MAX2719_sending = |MAX2719_bitcount;
+   assign MAX2719_CS  = !MAX2719_sending;
+   assign MAX2719_CLK = MAX2719_sending && MAX2719_slow_clk;
+`endif   
    
    /********************* Decoder for IO read **************************/
    
@@ -1026,6 +1053,9 @@ module NrvIO(
 `endif
 `ifdef NRV_IO_UART_TX
 	UART_TX_CNTL_address: out = {31'b0, serial_tx_busy}; 	
+`endif
+`ifdef NRV_IO_MAX2719
+	MAX2719_CNTL_address: out = {31'b0, MAX2719_sending};
 `endif	
 	default: out = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ;
       endcase
@@ -1035,7 +1065,7 @@ module NrvIO(
 
    always @(posedge clk) begin
 `ifdef NRV_IO_SSD1351
-      slow_clk <= ~slow_clk;
+      SSD1351_slow_clk <= ~SSD1351_slow_clk;
 `endif      
       if(wr) begin
 	 case(address)
@@ -1064,15 +1094,27 @@ module NrvIO(
 	      SSD1351_shifter <= in[7:0];
 	      SSD1351_bitcount <= 8;
 	   end
-`endif
+`endif 
+`ifdef NRV_IO_MAX2719
+	   MAX2719_DAT_address: begin
+	      MAX2719_shifter <= in[15:0];
+	      MAX2719_bitcount <= 16;
+	   end
+`endif	   
 	 endcase 
       end else begin // if (wr)
 `ifdef NRV_IO_SSD1351	   	 
-	 if(SSD1351_sending && !slow_clk) begin
+	 if(SSD1351_sending && !SSD1351_slow_clk) begin
             SSD1351_bitcount <= SSD1351_bitcount - 4'd1;
             SSD1351_shifter <= {SSD1351_shifter[6:0], 1'b0};
 	 end
-`endif	 
+`endif
+`ifdef NRV_IO_MAX2719
+	 if(MAX2719_sending &&  MAX2719_slow_clk) begin
+            MAX2719_bitcount <= MAX2719_bitcount - 5'd1;
+            MAX2719_shifter <= {MAX2719_shifter[14:0], 1'b0};
+	 end
+`endif	   	 	 
       end 
    end
 
@@ -1153,10 +1195,22 @@ endmodule
 /********************* Nrv main *******************************/
 
 module nanorv(
-   input pclk,
+`ifdef NRV_IO_LEDS	      
    output D1,D2,D3,D4,D5,
+`endif	      
+`ifdef NRV_IO_SSD1351	      
    output oled_DIN, oled_CLK, oled_CS, oled_DC, oled_RST,
-   input RXD, output TXD
+`endif
+`ifdef NRV_IO_UART_RX	      
+   input  RXD,
+`endif
+`ifdef NRV_IO_UART_TX	      	      
+   output TXD,
+`endif	      
+`ifdef NRV_IO_MAX2719	   
+   output ledmtx_DIN, ledmtx_CS, ledmtx_CLK,
+`endif
+   input  pclk
 );
 
    wire   clk;
@@ -1217,19 +1271,33 @@ module nanorv(
   wire        IOwr;
   wire [7:0]  IOaddress;
   NrvIO IO(
-     .clk(clk),
      .in(IOin),
      .out(IOout),
      .rd(IOrd),
      .wr(IOwr),
      .address(IOaddress),
+`ifdef NRV_IO_LEDS	   
      .LEDs({D4,D3,D2,D1}),
+`endif
+`ifdef NRV_IO_SSD1351	   
      .SSD1351_DIN(oled_DIN),
      .SSD1351_CLK(oled_CLK),
      .SSD1351_CS(oled_CS),
      .SSD1351_DC(oled_DC),
      .SSD1351_RST(oled_RST),
-     .RXD(RXD), .TXD(TXD)
+`endif
+`ifdef NRV_IO_UART_RX	   
+     .RXD(RXD),
+`endif
+`ifdef NRV_IO_UART_TX	   
+     .TXD(TXD),
+`endif	   
+`ifdef NRV_IO_MAX2719	   
+     .MAX2719_DIN(ledmtx_DIN),
+     .MAX2719_CS(ledmtx_CS),
+     .MAX2719_CLK(ledmtx_CLK),
+`endif
+     .clk(clk)
   );
    
   wire [31:0] dataAddress;

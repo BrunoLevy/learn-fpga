@@ -1,3 +1,5 @@
+# Computes and displays the Mandelbrot set on the OLED display.
+
 .section .text
 .globl _start
 .include "nanorv.s"

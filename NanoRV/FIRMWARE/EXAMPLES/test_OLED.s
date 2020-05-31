@@ -1,3 +1,6 @@
+# Testing the OLED screen, displaying an animated pattern with
+# all the 65K colors.
+
 .section .text
 .globl _start
 .include "nanorv.s"

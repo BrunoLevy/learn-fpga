@@ -31,7 +31,7 @@ module MAX7219 (
            shifter <= address_data;
            bitcount <= 16;
         end else if(sending) begin
-           bitcount <= bitcount - 4'd1;
+           bitcount <= bitcount - 5'd1;
            shifter <= { shifter[14:0], 1'b0 };
         end
      end

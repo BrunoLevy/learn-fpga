@@ -1,91 +1,69 @@
+# Testing the serial interface. Echoes typed characters,
+# and displays 4 LSBs using the LEDs.
+
 .section .text
 .globl _start
 .include "nanorv.s"
 
-.equ mandel_shift, 10
-.equ mandel_mul,(1 << mandel_shift)	
-.equ xmin, -2*mandel_mul
-.equ xmax,  2*mandel_mul
-.equ ymin, -2*mandel_mul
-.equ ymax,  2*mandel_mul	
-.equ dx, (xmax-xmin)/128
-.equ dy, (ymax-ymin)/128
-.equ norm_max,(4 << mandel_shift)
-
-# X,Y         : s0,s1
-# Cr,Ci       : s2,s3
-# Zr,Zi       : s4,s5
-# Zrr,2Zri,Zii: s6,s7,s8
-# cnt: s10
-# 128: s11
-
+MAX2719:sw a0,IO_LEDMTX_DATA(gp)
+waitMAX:lw t0,IO_LEDMTX_CNTL(gp)
+	bnez t0,waitMAX
+	ret
+	
 _start:
-	call oled_init
-        call oled_clear
+        li a0,0x0900  # decode mode
+	call MAX2719
+	li a0,0x0a0f  # intensity
+	call MAX2719
+	li a0,0x0b07  # scan limit
+	call MAX2719
+	li a0,0x0c01  # shutdown
+	call MAX2719
+	li a0,0x0f00  # display test
+	call MAX2719
 
+animate:
 
-        OLED2 0x15,0x00,0x7f         # column address
-	OLED2 0x75,0x00,0x7f         # row address
-	OLED0 0x5c                   # write RAM
+	li a0,0x0100  
+	call MAX2719	
+	li a0,0x02ff  
+	call MAX2719	
+	li a0,0x0300  
+	call MAX2719	
+	li a0,0x04ff  
+	call MAX2719	
+	li a0,0x0500  
+	call MAX2719	
+	li a0,0x06ff  
+	call MAX2719	
+	li a0,0x0700  
+	call MAX2719
+	li a0,0x08ff
+	call MAX2719	
+	
+	call wait
+	call wait
+
+	li a0,0x01ff  
+	call MAX2719	
+	li a0,0x0200  
+	call MAX2719	
+	li a0,0x03ff  
+	call MAX2719	
+	li a0,0x0400  
+	call MAX2719	
+	li a0,0x05ff  
+	call MAX2719	
+	li a0,0x0600  
+	call MAX2719	
+	li a0,0x07ff  
+	call MAX2719
+	li a0,0x0800
+	call MAX2719	
 
 	call wait
-	li   t0, 0
-	sw   t0, IO_LEDS(gp)
+	call wait
 
-	li s1,0
-	li s3,xmin
-	li s11,128	
-
-loop_y:	li s0,0
-        li s2,ymin
-	
-loop_x: mv s4,s2    # Z <- C
-        mv s5,s3
-	
-	li s10,15   # iter <- 15
-	
-loop_Z: mv a0,s4    # Zrr  <- (Zr*Zr) >> mandel_shift
-        mv a1,s4
-	call __muldi3
-	srli s6,a0,mandel_shift
-	mv a0,s4    # Zri <- (Zr*Zi) >> (mandel_shift-1)
-	mv a1,s5
-	call __muldi3
-	srai s7,a0,mandel_shift-1
-	mv a0,s5    # Zii <- (Zi*Zi) >> (mandel_shift)
-	mv a1,s5
-	call __muldi3
-	srli s8,a0,mandel_shift
-	sub s4,s6,s8 # Zr <- Zrr - Zii + Cr  
-	add s4,s4,s2
-        add s5,s7,s3 # Zi <- 2Zri + Cr
-
-        add s6,s6,s8     # if norm > norm max, exit loop
-        li  s7,norm_max
-	bgt s6,s7,exit_Z
-
-        add s10,s10,-1   # iter--, loop if non-zero
-	bnez s10, loop_Z
-exit_Z:
-
-	sll  t0,s10,3
-	sw   t0,IO_OLED_DATA(gp)
-	call oled_wait 	
-
-        sll  t0,s10,2
-	sw   t0, IO_OLED_DATA(gp)
-	call oled_wait 	
-	
-	add s0,s0,1
-	add s2,s2,dx
-	bne s0,s11,loop_x
-	
-	add s1,s1,1
-	add s3,s3,dy
-	bne s1,s11,loop_y
-	
-	li   t0, 15
-	sw   t0, IO_LEDS(gp)
-	
+j animate
 
 

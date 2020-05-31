@@ -13,7 +13,9 @@
 .equ IO_UART_RX_DATA, 20    # USB UART RX data (read)
 .equ IO_UART_TX_CNTL, 24    # USB UART TX control. read: LSB bit 1 if busy
 .equ IO_UART_TX_DATA, 28    # USB UART TX data (write)
-
+.equ IO_LEDMTX_CNTL,  32    # LED matrix control. read: LSB bit 1 if busy
+.equ IO_LEDMTX_DATA,  36    # LED matrix data (write)	
+	
 #################################################################################
 
 # Macros to send commands to the OLED driver (wrappers around OLEDx functions)

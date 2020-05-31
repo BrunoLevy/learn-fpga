@@ -1,10 +1,12 @@
+# Testing the serial interface. Echoes typed characters,
+# and displays 4 LSBs using the LEDs.
+
 .section .text
 .globl _start
 .include "nanorv.s"
 
 # Needs both NRV_IO_UART_RX and NRV_IO_UART_TX to be
-# enabled. Requires NRV_TWOSTAGE_SHIFTER to be deactivated
-# (else it will not fit on the Ice40).
+# enabled. 
 #
 # To access it, use:
 #   miniterm.py --dtr=0 /dev/ttyUSB1 115200
