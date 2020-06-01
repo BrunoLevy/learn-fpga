@@ -18,3 +18,5 @@ set_io RXD 9
 set_io ledmtx_DIN  60
 set_io ledmtx_CS   56
 set_io ledmtx_CLK  48
+
+set_io RESET       47

@@ -1,6 +1,6 @@
 // Bruno Levy, May 2020, learning Verilog,
 //
-// Trying to fit a minimalistic RV32E core on an IceStick,
+// Trying to fit a minimalistic RV32I core on an IceStick,
 // and trying to organize the source in such a way I can understand
 // what I have written a while after...
 
@@ -9,7 +9,7 @@
  *              if I test whether instr is zero, it always says yes...
  *              (unless I lower frequency), there is probably something
  *              I do wrong... Plus sometimes it does not start and stays
- *              stuck, either in error mode (D5 lit).
+ *              stuck in error mode (D5 lit).
  *
  * See also NOTES.txt
  */
@@ -18,6 +18,8 @@
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32)
 `define NRV_TWOSTAGE_SHIFTER
+
+//`define NRV_RESET        // Reset button
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
@@ -102,7 +104,8 @@ module NrvRegisterFile(
 
       // Test bench does not seem to understand that
       // oob access in reg array is supposed to return 0.
-      // TODO: test whether it is really required.
+      // TODO: test whether it is also required by the
+      // IceStick version (does not seem to be the case).
 `ifdef BENCH	 
       out1 <= (outRegId1 == 0) ? 0 : page1[~outRegId1];
       out2 <= (outRegId2 == 0) ? 0 : page2[~outRegId2];
@@ -411,16 +414,19 @@ endmodule
 /********************* Nrv processor *******************************/
 
 module NrvProcessor(
-   input 	     clk,
+   input 		clk,
    output reg [`INSTRW] instrAddress,
-   input [31:0]      instrData,
-   output [31:0]     dataAddress,
-   output 	     dataRd,
-   output [2:0]      dataRdType,
-   input [31:0]      dataIn,
-   output 	     dataWr,
-   output [31:0]     dataOut,
-   output wire 	     error		    
+   input [31:0] 	instrData,
+   output [31:0] 	dataAddress,
+   output 		dataRd,
+   output [2:0] 	dataRdType,
+   input [31:0] 	dataIn,
+   output 		dataWr,
+   output [31:0] 	dataOut,
+`ifdef NRV_RESET		    
+   input wire 		reset,
+`endif		    
+   output wire 		error		    
 );
 
    localparam INIT       = 0;
@@ -560,8 +566,19 @@ module NrvProcessor(
    //                before getting the value.
    //
 
-   always @(posedge clk) begin
+   always @(posedge clk
+`ifdef NRV_RESET	    
+       ,negedge reset
+`endif	    
+   ) begin
       `verbose($display("state = %h",state));
+`ifdef NRV_RESET      
+      if(!reset) begin
+	 state <= INIT;
+	 instrAddress <= 32'b0;
+	 PC <= 32'b0;
+      end else
+`endif	
       case(state)
 	INIT: begin
 	   // this state to give enough time to fetch the first
@@ -1211,6 +1228,9 @@ module nanorv(
 `ifdef NRV_IO_MAX2719	   
    output ledmtx_DIN, ledmtx_CS, ledmtx_CLK,
 `endif
+`ifdef NRV_RESET	      
+   input  RESET,
+`endif	      
    input  pclk
 );
 
@@ -1331,7 +1351,10 @@ module nanorv(
     .dataOut(dataOut),
     .dataRd(dataRd),
     .dataWr(dataWr),
-    .dataRdType(dataType),			 
+    .dataRdType(dataType),
+`ifdef NRV_RESET			 
+    .reset(RESET),
+`endif			 
     .error(error)			 
   );
   
