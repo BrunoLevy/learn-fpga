@@ -21,8 +21,8 @@
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART_RX // Mapped IO, virtual UART receiver    (USB)
-//`define NRV_IO_UART_TX // Mapped IO, virtual UART transmetter (USB)
+`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
+`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
 `define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
 `define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
 
@@ -940,14 +940,14 @@ module NrvIO(
    
    localparam LEDs_address         = 0; // (write) LEDs (4 LSBs)
    localparam SSD1351_CNTL_address = 1; // (read/write) Oled display control
-   localparam SSD1351_CMD_address  = 2; // (write) Oled display commands
-   localparam SSD1351_DAT_address  = 3; // (write) Oled display data
+   localparam SSD1351_CMD_address  = 2; // (write) Oled display commands (8 bits)
+   localparam SSD1351_DAT_address  = 3; // (write) Oled display data (8 bits)
    localparam UART_RX_CNTL_address = 4; // (read) LSB: data ready
-   localparam UART_RX_DAT_address  = 5; // (read) received data
+   localparam UART_RX_DAT_address  = 5; // (read) received data (8 bits)
    localparam UART_TX_CNTL_address = 6; // (read) LSB: busy
-   localparam UART_TX_DAT_address  = 7; // (write) data to be sent
-   localparam MAX2719_CNTL_address = 8; // (read) LSB: busy
-   localparam MAX2719_DAT_address  = 9; // (write) data to be sent  
+   localparam UART_TX_DAT_address  = 7; // (write) data to be sent (8 bits)
+   localparam MAX2719_CNTL_address = 8; // (read) led matrix LSB: busy
+   localparam MAX2719_DAT_address  = 9; // (write)led matrix data (16 bits)
     
    
    /********************** SSD1351 **************************/
@@ -970,6 +970,10 @@ module NrvIO(
    assign SSD1351_DIN = SSD1351_shifter[7];
    assign SSD1351_CLK = SSD1351_sending && !SSD1351_slow_clk;
    assign SSD1351_CS  = SSD1351_special ? 1'b0 : !SSD1351_sending;
+
+   always @(posedge clk) begin
+      SSD1351_slow_clk <= ~SSD1351_slow_clk;
+   end
 `endif 
    
    /********************** UART receiver **************************/
@@ -1064,9 +1068,6 @@ module NrvIO(
    /********************* Multiplexer for IO write *********************/
 
    always @(posedge clk) begin
-`ifdef NRV_IO_SSD1351
-      SSD1351_slow_clk <= ~SSD1351_slow_clk;
-`endif      
       if(wr) begin
 	 case(address)
 `ifdef NRV_IO_LEDS	   

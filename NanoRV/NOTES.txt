@@ -33,7 +33,13 @@
   
              - li sp,0xff8 generates an invalid opcode ? 
                      (maybe extended instructions ?)
-  
+
+             - experienced wrong opcode in the LEDs demo program,
+	         by specifying linker options -m elf32lriscv_ilp32 -b elf32-littleriscv
+		 it fixed the problem (but I do not know exactly what
+                 it means, maybe it was using some 64-bits specific instructions or someting...)
+           
+
   TODO / IDEAS:
         DESIGN
              - Tests RISC-V (c.f. PICORV32), dans simulateur et 'on device' si possible
