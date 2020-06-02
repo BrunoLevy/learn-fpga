@@ -19,12 +19,12 @@
 // (inspired by PICORV32)
 `define NRV_TWOSTAGE_SHIFTER
 
-//`define NRV_RESET        // Reset button
+`define NRV_RESET        // Reset button
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
-`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
+//`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
+//`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
 `define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
 `define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
 
@@ -90,15 +90,15 @@ module NrvRegisterFile(
    // It is a bit stupid, it wastes four (inferred) SB_RAM40_4K BRAMs, where a single
    // one would suffice, but it makes things simpler (and the CPU faster).
    
-   reg [31:0]  page1 [30:0];
-   reg [31:0]  page2 [30:0];
+   reg [31:0]  bank1 [30:0];
+   reg [31:0]  bank2 [30:0];
 
    always @(posedge clk) begin
       if (inEn) begin
 	 // This test seems to be needed ! (else J followed by LI results in wrong result)
 	 if(inRegId != 0) begin 
-	    page1[~inRegId] <= in;
-	    page2[~inRegId] <= in;
+	    bank1[~inRegId] <= in;
+	    bank2[~inRegId] <= in;
 	 end	  
       end 
 
@@ -107,11 +107,11 @@ module NrvRegisterFile(
       // TODO: test whether it is also required by the
       // IceStick version (does not seem to be the case).
 `ifdef BENCH	 
-      out1 <= (outRegId1 == 0) ? 0 : page1[~outRegId1];
-      out2 <= (outRegId2 == 0) ? 0 : page2[~outRegId2];
+      out1 <= (outRegId1 == 0) ? 0 : bank1[~outRegId1];
+      out2 <= (outRegId2 == 0) ? 0 : bank2[~outRegId2];
 `else
-      out1 <= page1[~outRegId1];
-      out2 <= page2[~outRegId2];
+      out1 <= bank1[~outRegId1];
+      out2 <= bank2[~outRegId2];
 `endif      
    end
 
@@ -119,8 +119,8 @@ module NrvRegisterFile(
    integer i;
    initial begin
       for (i = 0; i < 31; i = i+1) begin
-	 page1[i] = 32'b0;
-	 page2[i] = 32'b0;
+	 bank1[i] = 32'b0;
+	 bank2[i] = 32'b0;
       end
    end
    */
@@ -536,7 +536,7 @@ module NrvProcessor(
     .busy(aluBusy)	      
    );
 
-   // The value written back to the register page.
+   // The value written back to the register file.
    always @(*) begin
       (* parallel_case, full_case *)
       case(writeBackSel)
@@ -622,8 +622,6 @@ module NrvProcessor(
 	end
 	EXECUTE: begin
 	   `verbose($display("EXECUTE"));
-	   `verbose($display("   PC             = %h",PC));
-	   `verbose($display("   PC+4           = %h",PCplus4));	   
 	   `verbose($display("   regOut1        = %h", regOut1));
 	   `verbose($display("   regOut2        = %h", regOut2));
 	   `verbose($display("   aluIn1         = %h", aluIn1));
@@ -1144,54 +1142,9 @@ endmodule
 
 /********************* Nrv ROM *******************************/
 
-/*
- 
- ******************************************************************
- * Shell script to generate hex file from RISC-V assembly source  *
- * using GNU tools.                                               *
- ******************************************************************
- 
-PROGNAME=`basename $1 .s`
-riscv64-linux-gnu-as -o $PROGNAME.o $PROGNAME.s 
-riscv64-linux-gnu-ld -Ttext 0 -o $PROGNAME.elf $PROGNAME.o
-riscv64-linux-gnu-objcopy -O binary $PROGNAME.elf $PROGNAME.bin
-riscv64-linux-gnu-objdump -D -b binary -m riscv $PROGNAME.bin
-riscv64-linux-gnu-objdump -D -b binary -m riscv $PROGNAME.bin | awk '{
-   if($1 == "0000000000000000") {
-      state=1;
-   } else {
-      if(state) {
-         print $2;
-      }
-   }
-}' > $PROGNAME.hex
-echo 00000000 >> $PROGNAME.hex
+// ROM has 512 32-bit words, it is implemented using 
+//   four (inferred) SB_RAM40_4K BRAMS. 
 
- *****************************************************************
- * Example blink.s RISC-V asm program                            *
- ***************************************************************** 
- 
-.section .text
-.globl _start
-_start:
-main:	li   x2,0x800000    
-	li   x3,0
-loop:	addi x3,x3,1
-	srli x1,x3,19
-        bne  x3,x2,loop		
-
- *****************************************************************
- * Example blink.hex ROM generated from the program above        *
- ***************************************************************** 
-00800137
-00000193
-00118193
-0131d093
-fe219ce3
-00000000
-*/
-
-// ROM has 512 32-bit words, it is implemented using four (inferred) SB_RAM40_4K BRAMS. 
 
 module NrvROM(
      input 	                      clk,
@@ -1201,6 +1154,8 @@ module NrvROM(
    reg [31:0] rom[`NRV_ROM_SIZE-1:0];
    
    initial begin
+      // To generate ROM from assembly using GNU toolchain, 
+      // see scripts in FIRMWARE/ subdir       
       $readmemh("FIRMWARE/firmware.hex", rom);
    end
    
@@ -1235,23 +1190,6 @@ module nanorv(
 );
 
    wire   clk;
-   
-
-// `define SLOW
-   
-`ifdef SLOW
-  // A super-slow clock for observing the
-  // processor at work.
-
-  // parameter nbits = 20;
-  parameter nbits = 4;
-  reg [nbits-1:0] cnt;
-  always @(posedge pclk) begin
-    cnt <= cnt + 1;			  
-  end
-  assign clk = (cnt == 0);
-
-`else
 
  `ifdef BENCH
    assign clk = pclk;
@@ -1272,8 +1210,6 @@ module nanorv(
       .BYPASS(1'b0)
    );
  `endif
-
-`endif
 
   wire [`INSTRW] instrAddress;
   wire [31:0] instrData;
