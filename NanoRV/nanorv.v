@@ -17,14 +17,14 @@
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32)
-`define NRV_TWOSTAGE_SHIFTER
+// `define NRV_TWOSTAGE_SHIFTER
 
 `define NRV_RESET        // Reset button
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
-//`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
+`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
+`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
 `define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
 `define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
 
@@ -140,17 +140,17 @@ module NrvALU(
   input 	    wr      // Raise to compute and store ALU result
 );
 
-   reg [4:0] shamt; // current shift amount
+   reg [4:0] sR1; // current shift amount
    initial begin
-      shamt = 5'b00000;
+      sR1 = 5'b00000;
    end
    
    // ALU is busy if shift amount is non-zero, or if, at execute
    // state, operation is a shift (wr active)
-   assign busy = (shamt != 0) || 
+   assign busy = (sR1 != 0) || 
 		 (wr && ( op == 3'b001 || op == 3'b101));
    
-   reg [31:0] shifter;
+   reg [31:0] sR0;
    
    always @(*) begin
       (* parallel_case, full_case *)
@@ -161,8 +161,8 @@ module NrvALU(
         3'b100: out = in1 ^ in2;                                      // XOR
         3'b110: out = in1 | in2;                                      // OR
         3'b111: out = in1 & in2;                                      // AND
-        3'b001: out = shifter;                                        // SLL	   
-        3'b101: out = shifter;                                        // SRL/SRA
+        3'b001: out = sR0;                                            // SLL	   
+        3'b101: out = sR0;                                            // SRL/SRA
       endcase 
    end
 
@@ -173,28 +173,28 @@ module NrvALU(
       
       if(wr) begin
 	 case(op)
-           3'b001: begin shifter <= in1; shamt <= in2[4:0]; end // SLL	   
-           3'b101: begin shifter <= in1; shamt <= in2[4:0]; end // SRL/SRA
+           3'b001: begin sR0 <= in1; sR1 <= in2[4:0]; end // SLL	   
+           3'b101: begin sR0 <= in1; sR1 <= in2[4:0]; end // SRL/SRA
 	 endcase 
       end else begin
 
 `ifdef NRV_TWOSTAGE_SHIFTER
-	 if (shamt > 4) begin
-	    shamt <= shamt - 4;
+	 if (sR1 > 4) begin
+	    sR1 <= sR1 - 4;
 	    case(op)
-              3'b001: shifter <= shifter << 4;                                // SLL
-	      3'b101: shifter <= opqual ? {{4{shifter[31]}}, shifter[31:4]} : // SRL/SRA 
-                                          { 4'b0000,         shifter[31:4]} ; 
+              3'b001: sR0 <= sR0 << 4;                            // SLL
+	      3'b101: sR0 <= opqual ? {{4{sR0[31]}}, sR0[31:4]} : // SRL/SRA 
+                                      { 4'b0000,     sR0[31:4]} ; 
 	    endcase 
 	 end else  
 `endif
 
-	 if (shamt != 0) begin
-	    shamt <= shamt - 1;
+	 if (sR1 != 0) begin
+	    sR1 <= sR1 - 1;
 	    case(op)
-              3'b001: shifter <= shifter << 1;                           // SLL
-	      3'b101: shifter <= opqual ? {shifter[31], shifter[31:1]} : // SRL/SRA 
-                                          {1'b0,        shifter[31:1]} ; 
+              3'b001: sR0 <= sR0 << 1;                       // SLL
+	      3'b101: sR0 <= opqual ? {sR0[31], sR0[31:1]} : // SRL/SRA 
+                                      {1'b0,    sR0[31:1]} ; 
 	    endcase 
 	 end
 
