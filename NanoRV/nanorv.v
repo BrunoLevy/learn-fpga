@@ -15,7 +15,7 @@
  */
 
 // WIP: from Harvard to Von Neumann
-//   - one unique address bus (+ lookahead register management)
+//   - one unique address bus (+ instr prefetch register management)
 //   NEXT:
 //     1) fusion ROM and RAM in single component
 //        (use same memory map for now, replace first page of RAM
@@ -49,6 +49,14 @@
 
 `define ADDR_WIDTH 14 // Internal number of bits for PC and address register.
                       // 6kb needs 13 bits, + 1 page for IO -> 14 bits
+
+`define NRV_RAM_PAGE_1    // Each page has 256 32-bit words. Undefine them to
+`define NRV_RAM_PAGE_2    // free some BRAM space, for instance if a ROM larger
+`define NRV_RAM_PAGE_3    // than 512 words is needed, or if BRAM is needed by
+`define NRV_RAM_PAGE_4    // other functions on the IceStick.
+//`define NRV_RAM_PAGE_5    
+//`define NRV_RAM_PAGE_6    
+
 
 /*************************************************************************************/
 `default_nettype none
@@ -430,7 +438,7 @@ module NrvProcessor(
 
    localparam WAIT_INSTR         = 0;
    localparam FETCH              = 1;
-   localparam USE_LOOKAHEAD      = 2;
+   localparam USE_PREFETCHED      = 2;
    localparam DECODE             = 3;
    localparam EXECUTE            = 4;
    localparam WAIT_ALU_OR_DATA   = 5;
@@ -538,7 +546,7 @@ module NrvProcessor(
    );
 
 
-   // Decode data in based on type and address
+   // LOAD: decode data in based on type and address
    
    reg [31:0] decodedDataIn;   
    reg [15:0]  dataIn_H;
@@ -559,7 +567,6 @@ module NrvProcessor(
 	2'b11: dataIn_B = dataIn[31:24];
       endcase 
 
-      // For LD:
       // aluop[1:0] contains data size (00: byte, 01: half word, 10: word)
       // aluop[2] sign expansion toggle     
       (* parallel_case, full_case *)      
@@ -570,7 +577,7 @@ module NrvProcessor(
       endcase
    end
 
-   // For ST
+   // STORE: assemble write mask and data based on type and address
 
    always @(*) begin
       (* parallel_case, full_case *)      
@@ -643,7 +650,7 @@ module NrvProcessor(
    // Now I think I better understand what's going on,
    //  by thinking about it like that:
    //   Rule 1: x <= y:   x is ready right at the beginning
-   //                    of the next state.
+   //                     of the *next* state.
    //   Rule 2: whenever registers or memory are involved,
    //                one needs an additional cycle right
    //                after register Id or mem address changed
@@ -685,8 +692,8 @@ module NrvProcessor(
 	   addressReg <= PCplus4; 
 	   state <= DECODE;
 	end
-	USE_LOOKAHEAD: begin
-	   `verbose($display("USE_LOOKAHEAD"));	   
+	USE_PREFETCHED: begin
+	   `verbose($display("USE_PREFETCHED"));	   
 	   instr <= nextInstr;
 	   // update instr address so that next instr is fetched during
 	   // decode (and ready if there was no jump or branch)
@@ -747,7 +754,7 @@ module NrvProcessor(
 	      case(nextPCSel)
 		2'b00: begin // normal operation
 		   PC <= PCplus4;
-		   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_LOOKAHEAD;
+		   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
 		end		   
 		2'b01: begin // unconditional jump (JAL, JALR)
 		   PC <= aluOut;
@@ -761,7 +768,7 @@ module NrvProcessor(
 		      state <= WAIT_INSTR;
 		   end else begin
 		      PC <= PCplus4;
-		      state <= USE_LOOKAHEAD;
+		      state <= USE_PREFETCHED;
 		   end
 		end
 	      endcase 
@@ -778,13 +785,13 @@ module NrvProcessor(
 	   `verbose($display("STORE"));
 	   // data address was just updated
 	   // data ready to be written now
-	   state <= USE_LOOKAHEAD;
+	   state <= USE_PREFETCHED;
 	end
 	WAIT_ALU_OR_DATA: begin
 	   `verbose($display("WAIT_INSTR_AND_ALU"));	   
 	   // - If ALU is still busy, continue to wait.
 	   // - register writeback is active
-	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_LOOKAHEAD;
+	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
 	end
 	ERROR: begin
 	   `bench($display("ERROR"));	   	   
@@ -861,10 +868,27 @@ module NrvMemoryInterface(
 
 // wire [31:0] out_page1;
    reg  [31:0] out_page1; // replaced by ROM
-   wire [31:0] out_page2;
-   wire [31:0] out_page3;
-   wire [31:0] out_page4;      
 
+`ifdef NRV_RAM_PAGE_2   
+   wire [31:0] out_page2;
+`endif
+
+`ifdef NRV_RAM_PAGE_3   
+   wire [31:0] out_page3;
+`endif
+
+`ifdef NRV_RAM_PAGE_4      
+   wire [31:0] out_page4;
+`endif
+
+`ifdef NRV_RAM_PAGE_5         
+   wire [31:0] out_page5;
+`endif
+
+`ifdef NRV_RAM_PAGE_6            
+   wire [31:0] out_page6;         
+`endif
+   
 /*   
    SB_RAM40_4K page1_low(
        .RADDR(addr_internal), .RDATA(out_page1[15:0]),
@@ -892,6 +916,7 @@ module NrvMemoryInterface(
       out_page1 <= rom[addr_internal];
    end
 
+`ifdef NRV_RAM_PAGE_2               
    SB_RAM40_4K page2_low(
        .RADDR(addr_internal), .RDATA(out_page2[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
@@ -905,8 +930,9 @@ module NrvMemoryInterface(
        .WE(wr && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(rd && page == 3'b001), .RCLKE(1'b1), .RCLK(clk)			
    );
+`endif
 
-
+`ifdef NRV_RAM_PAGE_3               
    SB_RAM40_4K page3_low(
        .RADDR(addr_internal), .RDATA(out_page3[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
@@ -920,8 +946,9 @@ module NrvMemoryInterface(
        .WE(wr && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(rd && page == 3'b010), .RCLKE(1'b1), .RCLK(clk)			
    );
+`endif 
 
-
+`ifdef NRV_RAM_PAGE_4
    SB_RAM40_4K page4_low(
        .RADDR(addr_internal), .RDATA(out_page4[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
@@ -935,6 +962,39 @@ module NrvMemoryInterface(
        .WE(wr && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(rd && page == 3'b011), .RCLKE(1'b1), .RCLK(clk)			
    );
+`endif 
+
+`ifdef NRV_RAM_PAGE_5
+   SB_RAM40_4K page5_low(
+       .RADDR(addr_internal), .RDATA(out_page5[15:0]),
+       .WADDR(addr_internal), .WDATA(in[15:0]),
+       .WE(wr && page == 3'b100), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
+       .RE(rd && page == 3'b100), .RCLKE(1'b1), .RCLK(clk)			
+   );
+
+   SB_RAM40_4K page5_hi(
+       .RADDR(addr_internal), .RDATA(out_page5[31:16]),
+       .WADDR(addr_internal), .WDATA(in[31:16]),
+       .WE(wr && page == 3'b100), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
+       .RE(rd && page == 3'b100), .RCLKE(1'b1), .RCLK(clk)			
+   );
+`endif 
+
+`ifdef NRV_RAM_PAGE_6   
+   SB_RAM40_4K page6_low(
+       .RADDR(addr_internal), .RDATA(out_page6[15:0]),
+       .WADDR(addr_internal), .WDATA(in[15:0]),
+       .WE(wr && page == 3'b101), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
+       .RE(rd && page == 3'b101), .RCLKE(1'b1), .RCLK(clk)			
+   );
+
+   SB_RAM40_4K page6_hi(
+       .RADDR(addr_internal), .RDATA(out_page6[31:16]),
+       .WADDR(addr_internal), .WDATA(in[31:16]),
+       .WE(wr && page == 3'b101), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
+       .RE(rd && page == 3'b101), .RCLKE(1'b1), .RCLK(clk)			
+   );
+`endif
    
    always @(*) begin
       if(isIO) begin
@@ -943,9 +1003,21 @@ module NrvMemoryInterface(
 	 (* parallel_case, full_case*)
 	 case(page)
 	   3'b000:  out = out_page1;
+`ifdef NRV_RAM_PAGE_2	   
 	   3'b001:  out = out_page2;
+`endif
+`ifdef NRV_RAM_PAGE_3	   
 	   3'b010:  out = out_page3;
+`endif	   
+`ifdef NRV_RAM_PAGE_4	   
 	   3'b011:  out = out_page4;
+`endif	   
+`ifdef NRV_RAM_PAGE_5	   
+	   3'b100:  out = out_page5;
+`endif	   
+`ifdef NRV_RAM_PAGE_6   	   
+	   3'b101:  out = out_page6;
+`endif	   
 	   default: out = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
 	 endcase // case (page)
       end
