@@ -14,39 +14,41 @@
  * See also NOTES.txt
  */
 
+// WIP: from Harvard to Von Neumann
+//   - one unique address bus (+ lookahead register management)
+//   NEXT:
+//     1) fusion ROM and RAM in single component
+//        (use same memory map for now, replace first page of RAM
+//         with ROM, mandelbrot demo fits (232 words !!)
+//         --> DONE
+//     2) fusion data bus
+//         --> DONE
+//     3) use smthg similar to Claire's interface for memory, 
+//            move read sign expansion into processor --> DONE 
+//            keep write mask in memory (but adapted) --> DONE
+//     4) cleaner scripts to generate initial RAM content & no longer
+//        distingish ROM/RAM
+//     5) simulation backend --> DONE
+//     6) resize address bus to save LUTs --> DONE
+//     7) investigate error flag behavior
+//     8) investigate critical path that seems to connect things that
+//        should not be connected.
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32)
-// `define NRV_TWOSTAGE_SHIFTER
+`define NRV_TWOSTAGE_SHIFTER
 
 `define NRV_RESET        // Reset button
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
-`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
+//`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
+//`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
 `define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
-`define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
+//`define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
 
-// Rem: NRV has a Harvard architecture, program ROM is separated from data RAM.
-
-`define NRV_ROM_SIZE 512  // Number of 32-bit words in ROM. If greater than 512,
-                          // You will need to deactivate some RAM pages.
-                          // If you do so, take care to update initial address
-                          // and stack address in your programs accordinly.
-
-`define NRV_RAM_PAGE_1    // Each page has 256 32-bit words. Undefine them to
-`define NRV_RAM_PAGE_2    // free some BRAM space, for instance if a ROM larger
-`define NRV_RAM_PAGE_3    // than 512 words is needed, or if BRAM is needed by
-`define NRV_RAM_PAGE_4    // other functions on the IceStick.
-
-/*************************************************************************************/
-
-// Width of instruction address bus, derived from ROM size.
-// (Having shorter PC and instr addr buffer saves a couple of LUTs. 
-// With 1280 only, each of them counts !)
-`define NRV_INST_ADDR_WIDTH $clog2(`NRV_ROM_SIZE)
-`define INSTRW `NRV_INST_ADDR_WIDTH+1:0 
+`define ADDR_WIDTH 14 // Internal number of bits for PC and address register.
+                      // 6kb needs 13 bits, + 1 page for IO -> 14 bits
 
 /*************************************************************************************/
 `default_nettype none
@@ -414,40 +416,40 @@ endmodule
 /********************* Nrv processor *******************************/
 
 module NrvProcessor(
-   input 		clk,
-   output reg [`INSTRW] instrAddress,
-   input [31:0] 	instrData,
-   output [31:0] 	dataAddress,
-   output 		dataRd,
-   output [2:0] 	dataRdType,
-   input [31:0] 	dataIn,
-   output 		dataWr,
-   output [31:0] 	dataOut,
+   input 	     clk,
+   output [31:0]     address,
+   output 	     dataRd,
+   input [31:0]      dataIn,
+   output [3:0]      dataWrByteMask, // write mask for individual bytes
+   output reg [31:0] dataOut,
 `ifdef NRV_RESET		    
-   input wire 		reset,
+   input wire 	     reset,
 `endif		    
-   output wire 		error		    
+   output wire 	     error		    
 );
 
-   localparam INIT       = 0;
-   localparam FETCH      = 1;
-   localparam DECODE     = 2;
-   localparam EXECUTE    = 3;
-   localparam WAIT_INSTR = 4;
-   localparam WAIT_INSTR_AND_ALU = 5;
-   localparam LOAD       = 6;
-   localparam ERROR      = 7;
+   localparam WAIT_INSTR         = 0;
+   localparam FETCH              = 1;
+   localparam USE_LOOKAHEAD      = 2;
+   localparam DECODE             = 3;
+   localparam EXECUTE            = 4;
+   localparam WAIT_ALU_OR_DATA   = 5;
+   localparam LOAD               = 6;
+   localparam STORE              = 7;   
+   localparam ERROR              = 8;
+   reg [3:0] state = WAIT_INSTR;
    
-   reg [2:0] 	 state = INIT;
+   assign address = addressReg;
    
-   reg [`INSTRW] 	     PC = 0;
-   initial instrAddress = 0;
-   reg [31:0] 		     instr = 32'h00000013; // latched instruction. Initial = NOP
 
-   
+   reg [`ADDR_WIDTH-1:0] addressReg = 0;
+   reg [`ADDR_WIDTH-1:0] PC = 0;
+   reg [31:0]    instr = 32'h00000013; // latched instruction. Initial = NOP
+   reg [31:0]    nextInstr;            // Lookahead instr.
+
    // Next program counter in normal operation: advance one word
    // I do not use the ALU, I create an additional adder for that.
-   wire [`INSTRW] 	 PCplus4 = PC + 4;
+   wire [`ADDR_WIDTH-1:0] PCplus4 = PC + 4;
 
    // Internal signals, all generated by the decoder from the current instruction.
    wire [4:0] 	 writeBackRegId; // The register to be written back
@@ -505,8 +507,7 @@ module NrvProcessor(
 	  //   - in that case, was already written back during EXECUTE
 	  //   - at that time, PCplus4 is already incremented (and JAL needs 
 	  //     the current one)
-	  (state == EXECUTE || state == WAIT_INSTR_AND_ALU) && 
-	  !aluBusy 
+	  (state == EXECUTE || state == WAIT_ALU_OR_DATA) && !aluBusy 
     ),
     .inRegId(writeBackRegId),		       
     .outRegId1(regId1),
@@ -515,12 +516,12 @@ module NrvProcessor(
     .out2(regOut2) 
    );
 
-   assign dataAddress = aluOut;
-   assign dataOut = regOut2;
    assign dataRd = ((state == EXECUTE && isLoad)  || state == LOAD); // active during two cycles
-   assign dataWr = (state == EXECUTE && isStore);
-   assign dataRdType = aluOp;
+   wire   dataWr = (state == STORE);
 
+   reg[3:0] wmask;
+   assign dataWrByteMask = {4{dataWr}} & wmask;
+   
    // The ALU, partly combinatorial, partly state (for shifts).
    wire [31:0] aluIn1 = aluInSel1 ? PC  : regOut1;
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
@@ -536,13 +537,96 @@ module NrvProcessor(
     .busy(aluBusy)	      
    );
 
+
+   // Decode data in based on type and address
+   
+   reg [31:0] decodedDataIn;   
+   reg [15:0]  dataIn_H;
+   reg [7:0]   dataIn_B;
+
+   always @(*) begin
+      (* parallel_case, full_case *)            
+      case(address[1])
+	1'b0: dataIn_H = dataIn[15:0];
+	1'b1: dataIn_H = dataIn[31:16];
+      endcase 
+      
+      (* parallel_case, full_case *)            
+      case(address[1:0])
+	2'b00: dataIn_B = dataIn[7:0];
+	2'b01: dataIn_B = dataIn[15:8];
+	2'b10: dataIn_B = dataIn[23:16];
+	2'b11: dataIn_B = dataIn[31:24];
+      endcase 
+
+      // For LD:
+      // aluop[1:0] contains data size (00: byte, 01: half word, 10: word)
+      // aluop[2] sign expansion toggle     
+      (* parallel_case, full_case *)      
+      case(aluOp[1:0])
+	2'b00: decodedDataIn = {{24{aluOp[2]?dataIn_B[7]:1'b0}},dataIn_B};
+	2'b01: decodedDataIn = {{16{aluOp[2]?dataIn_H[15]:1'b0}},dataIn_H};
+	default: decodedDataIn = dataIn;
+      endcase
+   end
+
+   // For ST
+
+   always @(*) begin
+      (* parallel_case, full_case *)      
+      case(aluOp[1:0])
+	2'b00: begin
+	   (* parallel_case, full_case *)
+	   case(address[1:0])
+	     2'b00: begin
+		wmask   = 4'b0001;
+		dataOut = {24'bxxxxxxxxxxxxxxxxxxxxxxxx,regOut2[7:0]};
+	     end
+	     2'b01: begin
+		wmask   = 4'b0010;
+		dataOut = {16'bxxxxxxxxxxxxxxxx,regOut2[7:0],8'bxxxxxxxx};
+	     end
+	     2'b10: begin
+		wmask   = 4'b0100;
+		dataOut = {8'bxxxxxxxx,regOut2[7:0],16'bxxxxxxxxxxxxxxxx};
+	     end
+	     2'b11: begin
+		wmask   = 4'b1000;
+		dataOut = {regOut2[7:0],24'bxxxxxxxxxxxxxxxxxxxxxxxx};
+	     end
+	   endcase
+	end
+	2'b01: begin
+	   (* parallel_case, full_case *)
+	   case(address[1])
+	     1'b0: begin
+		wmask   = 4'b0011;
+		dataOut = {16'bxxxxxxxxxxxxxxxx,regOut2[15:0]};
+	     end
+	     1'b1: begin
+		wmask   = 4'b1100;
+		dataOut = {regOut2[15:0],16'bxxxxxxxxxxxxxxxx};
+	     end
+	   endcase
+	end
+	2'b10: begin
+	   wmask = 4'b1111;
+	   dataOut = regOut2;
+	end
+	default: begin
+	   wmask   = 4'bxxxx;
+	   dataOut = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
+	end
+      endcase
+   end
+
    // The value written back to the register file.
    always @(*) begin
       (* parallel_case, full_case *)
       case(writeBackSel)
 	2'b00: writeBackData = aluOut;	
-	2'b01: writeBackData = {{21{1'b0}},PCplus4};
-	2'b10: writeBackData = dataIn; 
+	2'b01: writeBackData = PCplus4;
+	2'b10: writeBackData = decodedDataIn; 
 	default: writeBackData = {32{1'bx}};
       endcase 
    end
@@ -565,6 +649,11 @@ module NrvProcessor(
    //                after register Id or mem address changed
    //                before getting the value.
    //
+   // Important:
+   //    Carefully chose the states and their names !
+   //    Keep in mind what's ready (and not) at the beginning of each state,
+   //     especially when memory is involved (as well as registers since they
+   //     are in BRAM here).
 
    always @(posedge clk
 `ifdef NRV_RESET	    
@@ -574,33 +663,42 @@ module NrvProcessor(
       `verbose($display("state = %h",state));
 `ifdef NRV_RESET      
       if(!reset) begin
-	 state <= INIT;
-	 instrAddress <= 32'b0;
-	 PC <= 32'b0;
+	 state <= WAIT_INSTR;
+	 addressReg <= 0;
+	 PC <= 0;
       end else
 `endif	
       case(state)
-	INIT: begin
+	WAIT_INSTR: begin
 	   // this state to give enough time to fetch the first
 	   // instruction (else we are in the error state)
 	   // (in fact does not work, seems that we start in the error state,
 	   //  to be debugged, see comments in the DECODE state)
-	   `verbose($display("INIT"));
+	   `verbose($display("WAIT_INSTR"));
 	   state <= FETCH;
 	end
 	FETCH: begin
 	   `verbose($display("FETCH"));	   
-	   instr <= instrData;
+	   instr <= dataIn;
 	   // update instr address so that next instr is fetched during
 	   // decode (and ready if there was no jump or branch)
-	   instrAddress <= PCplus4; 
+	   addressReg <= PCplus4; 
+	   state <= DECODE;
+	end
+	USE_LOOKAHEAD: begin
+	   `verbose($display("USE_LOOKAHEAD"));	   
+	   instr <= nextInstr;
+	   // update instr address so that next instr is fetched during
+	   // decode (and ready if there was no jump or branch)
+	   addressReg <= PCplus4; 
 	   state <= DECODE;
 	end
 	DECODE: begin
 	   // instr was just updated -> input register ids also
 	   // input registers available at next cycle 
-	   // state <= error ? ERROR : EXECUTE; // <- this does not work, why ??
-	   // state <= (instr == 32'b0) ? ERROR : EXECUTE; // <- does not work either ??
+	   
+	   // state <= error ? ERROR : EXECUTE;  // Not okay, but okay after reset, why ?
+	   state <= EXECUTE; // So for now I do that ... (to be investigated)
 
 	   `verbose($display("DECODE"));
 	   `verbose($display("   PC             = %h",PC));	   
@@ -618,7 +716,7 @@ module NrvProcessor(
 	   `verbose($display("   isLoad,isStore = %b,%b", isLoad, isStore));
 	   `verbose($display("   nextPCSel      = %b", nextPCSel));
 	   `verbose($display("   error          = %b", error));
-	   state <= EXECUTE;
+
 	end
 	EXECUTE: begin
 	   `verbose($display("EXECUTE"));
@@ -633,26 +731,38 @@ module NrvProcessor(
 	   `verbose($display("   error          = %b", error));
 	   `verbose($display("   writeBackData  = %h", writeBackData));	   	   
 	   // input registers are read, aluOut is up to date
+
+	   // Lookahead instr.
+	   nextInstr <= dataIn;
+	   
 	   if(isLoad) begin
 	      state <= LOAD;
 	      PC <= PCplus4;
+	      addressReg <= aluOut;
+	   end else if(isStore) begin
+	      state <= STORE;
+	      PC <= PCplus4;
+	      addressReg <= aluOut;
 	   end else begin
 	      case(nextPCSel)
 		2'b00: begin // normal operation
 		   PC <= PCplus4;
-		   state <= aluBusy ? WAIT_INSTR_AND_ALU : FETCH;
+		   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_LOOKAHEAD;
 		end		   
 		2'b01: begin // unconditional jump (JAL, JALR)
-		   PC <= aluOut[`INSTRW];
-		   instrAddress <= aluOut[`INSTRW];
+		   PC <= aluOut;
+		   addressReg <= aluOut;
 		   state <= WAIT_INSTR;
 		end
 		2'b10: begin // branch
-		   PC <= (predOut ? aluOut[`INSTRW] : PCplus4);
 		   if(predOut) begin
-		      instrAddress <= aluOut[`INSTRW];
+		      PC <= aluOut;
+		      addressReg <= aluOut;
+		      state <= WAIT_INSTR;
+		   end else begin
+		      PC <= PCplus4;
+		      state <= USE_LOOKAHEAD;
 		   end
-		   state <= (predOut ? WAIT_INSTR : FETCH);
 		end
 	      endcase 
 	   end 
@@ -661,22 +771,20 @@ module NrvProcessor(
 	   `verbose($display("LOAD"));
 	   // data address (aluOut) was just updated
 	   // data ready at next cycle
-	   // we go to WAIT_INSTR_AND_ALU to write back read data
-	   state <= WAIT_INSTR_AND_ALU;
+	   // we go to WAIT_ALU_OR_DATA to write back read data
+	   state <= WAIT_ALU_OR_DATA;
 	end
-	WAIT_INSTR: begin
-	   `verbose($display("WAIT_INSTR"));
-	   // - instrAddress was just updated, instr will be available at next cycle
-	   //    (we are waiting for the in-flight instr).
-	   // - register writeback was already done at EXECUTE state.
-	   state <= FETCH;
+	STORE: begin
+	   `verbose($display("STORE"));
+	   // data address was just updated
+	   // data ready to be written now
+	   state <= USE_LOOKAHEAD;
 	end
-	WAIT_INSTR_AND_ALU: begin
+	WAIT_ALU_OR_DATA: begin
 	   `verbose($display("WAIT_INSTR_AND_ALU"));	   
-	   // - instrAddress was just updated, instr will be available at next cycle
-	   //    (we are waiting for the in-flight instr).
 	   // - If ALU is still busy, continue to wait.
-	   state <= aluBusy ? WAIT_INSTR_AND_ALU : FETCH;
+	   // - register writeback is active
+	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_LOOKAHEAD;
 	end
 	ERROR: begin
 	   `bench($display("ERROR"));	   	   
@@ -697,14 +805,13 @@ endmodule
 // Page 3'b100 is used for memory-mapped IO's, that redirects the
 // signals to IOaddress, IOwr, IOrd, IOin, IOout.
 
-module NrvRAM(
+module NrvMemoryInterface(
   input 	    clk,
-  input [12:0] 	    address, 
-  input 	    wr,
+  input [13:0] 	    address, 
+  input [3:0] 	    wrByteMask,
   input 	    rd,
   input [31:0] 	    in,
   output reg [31:0] out,
-  input [2:0] 	    dataType, // {sign_expand, 00: B, 01: H, 10: W}
 
   output [7:0] 	    IOaddress, // = address[9:2]
   output 	    IOwr,
@@ -713,210 +820,141 @@ module NrvRAM(
   output [31:0]     IOout
 );
 
-   wire [1:0] 	    width = dataType[1:0];
-   wire 	    sign_expand = dataType[2];
-
+   wire             isIO   = address[13];
    wire [2:0] 	    page   = address[12:10];
    wire [7:0] 	    offset = address[9:2];
    wire [10:0] 	    addr_internal = {3'b000,offset};
 
-   // Encoding data to be written and mask depending on width and alignment
-   // Note: non-aligned writes are not implemented !
-   reg [31:0] wmask_internal; // Note: bit set in mask = do not write bit !
-   reg [31:0] wdata_internal;
-   always @(*) begin
-      (* parallel_case, full_case *)      
-      case(width)
-	2'b00: begin
-	   (* parallel_case, full_case *)
-	   case(address[1:0])
-	     2'b00: begin
-		wmask_internal = 32'hffffff00;
-		wdata_internal = {24'bxxxxxxxxxxxxxxxxxxxxxxxx,in[7:0]};
-	     end
-	     2'b01: begin
-		wmask_internal = 32'hffff00ff;
-		wdata_internal = {16'bxxxxxxxxxxxxxxxx,in[7:0],8'bxxxxxxxx};
-	     end
-	     2'b10: begin
-		wmask_internal = 32'hff00ffff;
-		wdata_internal = {8'bxxxxxxxx,in[7:0],16'bxxxxxxxxxxxxxxxx};
-	     end
-	     2'b11: begin
-		wmask_internal = 32'h00ffffff;
-		wdata_internal = {in[7:0],24'bxxxxxxxxxxxxxxxxxxxxxxxx};
-	     end
-	   endcase
-	end
-	2'b01: begin
-	   (* parallel_case, full_case *)
-	   case(address[1])
-	     1'b0: begin
-		wmask_internal = 32'hffff0000;
-		wdata_internal = {16'bxxxxxxxxxxxxxxxx,in[15:0]};
-	     end
-	     1'b1: begin
-		wmask_internal = 32'h0000ffff;
-		wdata_internal = {in[15:0],16'bxxxxxxxxxxxxxxxx};
-	     end
-	   endcase
-	end
-	2'b10: begin
-	   wmask_internal = 32'h00000000;
-	   wdata_internal = in;
-	end
-	default: begin
-	  wmask_internal = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;	  
-	  wdata_internal = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
-	end
-      endcase
-   end
-
-   // Decoding read data
-   
-   reg [31:0] rdata_W;
-   reg [15:0] rdata_H;
-   reg [7:0]  rdata_B;
-   
-   always @(*) begin
-      case(address[1])
-	1'b0: rdata_H = rdata_W[15:0];
-	1'b1: rdata_H = rdata_W[31:16];
-      endcase 
-   end
-   
-   always @(*) begin   
-      case(address[1:0])
-	2'b00: rdata_B = rdata_W[7:0];
-	2'b01: rdata_B = rdata_W[15:8];
-	2'b10: rdata_B = rdata_W[23:16];
-	2'b11: rdata_B = rdata_W[31:24];
-      endcase
-   end
-
-   always @(*) begin
-      (* parallel_case, full_case *)      
-      case(width)
-	2'b00: out = {{24{sign_expand?rdata_B[7]:1'b0}},rdata_B};
-	2'b01: out = {{16{sign_expand?rdata_H[15]:1'b0}},rdata_H};
-	2'b10: out = rdata_W;
-	default: out = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
-      endcase
-   end
+   wire 	    wr = (wrByteMask != 0);
+   wire [31:0] 	    wmask_internal = {{8{~wrByteMask[3]}},{8{~wrByteMask[2]}},{8{~wrByteMask[1]}},{8{~wrByteMask[0]}}};
 
 `ifdef BENCH
    reg [31:0] RAM[1023:0];
-   reg [31:0] rdata_W_RAM;
+   reg [31:0] out_RAM;
 
+   initial begin
+      $readmemh("FIRMWARE/firmware.hex",RAM);
+   end
+   
    always @(posedge clk) begin
-      if(page < 3'b100) begin
+      if(!isIO) begin
 	 if(wr) begin
-	    RAM[addr_internal[9:0]] <= (RAM[addr_internal[9:0]] & wmask_internal) | (wdata_internal &~wmask_internal);
+	    RAM[addr_internal[9:0]] <= (RAM[addr_internal[9:0]] & wmask_internal) | (in &~wmask_internal);
 	 end else begin
-	    rdata_W_RAM <= RAM[addr_internal[9:0]];
+	    out_RAM <= RAM[addr_internal[9:0]];
 	 end
+      end
+
+      if(wr) begin
+	 `verbose($display(" WR page    = %b",page));
+	 `verbose($display(" WR data    = %h",in));
+	 `verbose($display(" WR address = %b",address));	 	 
       end
    end
 
    always @(*) begin
-      rdata_W = (page < 3'b100) ? rdata_W_RAM : IOin;
+      out = isIO ? IOin : out_RAM;
    end   
-     
+
+   
 `else
 
-   wire [31:0] rdata_W_page1;
-   wire [31:0] rdata_W_page2;
-   wire [31:0] rdata_W_page3;
-   wire [31:0] rdata_W_page4;      
+// wire [31:0] out_page1;
+   reg  [31:0] out_page1; // replaced by ROM
+   wire [31:0] out_page2;
+   wire [31:0] out_page3;
+   wire [31:0] out_page4;      
 
-`ifdef NRV_RAM_PAGE_1   
+/*   
    SB_RAM40_4K page1_low(
-       .RADDR(addr_internal), .RDATA(rdata_W_page1[15:0]),
+       .RADDR(addr_internal), .RDATA(out_page1[15:0]),
        .WADDR(addr_internal), .WDATA(wdata_internal[15:0]),
        .WE(wr && page == 3'b000), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
        .RE(rd && page == 3'b000), .RCLKE(1'b1), .RCLK(clk)			
    );
 
    SB_RAM40_4K page1_hi(
-       .RADDR(addr_internal), .RDATA(rdata_W_page1[31:16]),
+       .RADDR(addr_internal), .RDATA(out_page1[31:16]),
        .WADDR(addr_internal), .WDATA(wdata_internal[31:16]),
        .WE(wr && page == 3'b000), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(rd && page == 3'b000), .RCLKE(1'b1), .RCLK(clk)			
    );
-`endif
+*/
 
-`ifdef NRV_RAM_PAGE_2   
+   // Page 1 replaced with ROM
+   reg [31:0]  rom[255:0];
+   initial begin
+      // To generate ROM from assembly using GNU toolchain, 
+      // see scripts in FIRMWARE/ subdir       
+      $readmemh("FIRMWARE/firmware.hex", rom);
+   end
+   always @(posedge clk) begin
+      out_page1 <= rom[addr_internal];
+   end
+
    SB_RAM40_4K page2_low(
-       .RADDR(addr_internal), .RDATA(rdata_W_page2[15:0]),
-       .WADDR(addr_internal), .WDATA(wdata_internal[15:0]),
+       .RADDR(addr_internal), .RDATA(out_page2[15:0]),
+       .WADDR(addr_internal), .WDATA(in[15:0]),
        .WE(wr && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
        .RE(rd && page == 3'b001), .RCLKE(1'b1), .RCLK(clk)			
    );
 
    SB_RAM40_4K page2_hi(
-       .RADDR(addr_internal), .RDATA(rdata_W_page2[31:16]),
-       .WADDR(addr_internal), .WDATA(wdata_internal[31:16]),
+       .RADDR(addr_internal), .RDATA(out_page2[31:16]),
+       .WADDR(addr_internal), .WDATA(in[31:16]),
        .WE(wr && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(rd && page == 3'b001), .RCLKE(1'b1), .RCLK(clk)			
    );
-`endif 
 
-`ifdef NRV_RAM_PAGE_3   
+
    SB_RAM40_4K page3_low(
-       .RADDR(addr_internal), .RDATA(rdata_W_page3[15:0]),
-       .WADDR(addr_internal), .WDATA(wdata_internal[15:0]),
+       .RADDR(addr_internal), .RDATA(out_page3[15:0]),
+       .WADDR(addr_internal), .WDATA(in[15:0]),
        .WE(wr && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
        .RE(rd && page == 3'b010), .RCLKE(1'b1), .RCLK(clk)			
    );
 
    SB_RAM40_4K page3_hi(
-       .RADDR(addr_internal), .RDATA(rdata_W_page3[31:16]),
-       .WADDR(addr_internal), .WDATA(wdata_internal[31:16]),
+       .RADDR(addr_internal), .RDATA(out_page3[31:16]),
+       .WADDR(addr_internal), .WDATA(in[31:16]),
        .WE(wr && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(rd && page == 3'b010), .RCLKE(1'b1), .RCLK(clk)			
    );
-`endif 
 
-`ifdef NRV_RAM_PAGE_4   
+
    SB_RAM40_4K page4_low(
-       .RADDR(addr_internal), .RDATA(rdata_W_page4[15:0]),
-       .WADDR(addr_internal), .WDATA(wdata_internal[15:0]),
+       .RADDR(addr_internal), .RDATA(out_page4[15:0]),
+       .WADDR(addr_internal), .WDATA(in[15:0]),
        .WE(wr && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
        .RE(rd && page == 3'b011), .RCLKE(1'b1), .RCLK(clk)			
    );
 
    SB_RAM40_4K page4_hi(
-       .RADDR(addr_internal), .RDATA(rdata_W_page4[31:16]),
-       .WADDR(addr_internal), .WDATA(wdata_internal[31:16]),
+       .RADDR(addr_internal), .RDATA(out_page4[31:16]),
+       .WADDR(addr_internal), .WDATA(in[31:16]),
        .WE(wr && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(rd && page == 3'b011), .RCLKE(1'b1), .RCLK(clk)			
    );
-`endif 
    
    always @(*) begin
-      (* parallel_case, full_case*)
-      case(page)
-`ifdef NRV_RAM_PAGE_1	
-	3'b000:  rdata_W = rdata_W_page1;
-`endif
-`ifdef NRV_RAM_PAGE_2		
-	3'b001:  rdata_W = rdata_W_page2;
-`endif
-`ifdef NRV_RAM_PAGE_3	
-	3'b010:  rdata_W = rdata_W_page3;
-`endif
-`ifdef NRV_RAM_PAGE_4	
-	3'b011:  rdata_W = rdata_W_page4;
-`endif	
-	3'b100:  rdata_W = IOin;
-	default: rdata_W = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
-      endcase
+      if(isIO) begin
+	 out = IOin;
+      end else begin
+	 (* parallel_case, full_case*)
+	 case(page)
+	   3'b000:  out = out_page1;
+	   3'b001:  out = out_page2;
+	   3'b010:  out = out_page3;
+	   3'b011:  out = out_page4;
+	   default: out = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
+	 endcase // case (page)
+      end
    end
 `endif 
    
    assign IOout     = in;
-   assign IOwr      = (wr && page == 3'b100);
-   assign IOrd      = (rd && page == 3'b100);
+   assign IOwr      = (wr && isIO);
+   assign IOrd      = (rd && isIO);
    assign IOaddress = offset;
    
 endmodule
@@ -1140,30 +1178,6 @@ module NrvIO(
    
 endmodule
 
-/********************* Nrv ROM *******************************/
-
-// ROM has 512 32-bit words, it is implemented using 
-//   four (inferred) SB_RAM40_4K BRAMS. 
-
-
-module NrvROM(
-     input 	                      clk,
-     input [`NRV_INST_ADDR_WIDTH-1:0] address, 
-     output reg [31:0]                data 	      
-);
-   reg [31:0] rom[`NRV_ROM_SIZE-1:0];
-   
-   initial begin
-      // To generate ROM from assembly using GNU toolchain, 
-      // see scripts in FIRMWARE/ subdir       
-      $readmemh("FIRMWARE/firmware.hex", rom);
-   end
-   
-   always @(posedge clk) begin
-      data <= rom[address];
-   end
-endmodule
-
 
 /********************* Nrv main *******************************/
 
@@ -1198,6 +1212,7 @@ module nanorv(
       .FEEDBACK_PATH("SIMPLE"),
       .PLLOUT_SELECT("GENCLK"),
       .DIVR(4'b0000),
+      //.DIVF(7'b0110100), .DIVQ(3'b011), // 80 MHz
       //.DIVF(7'b0110001), .DIVQ(3'b011), // 75 MHz
       .DIVF(7'b1001111), .DIVQ(3'b100), // 60 MHz
       //.DIVF(7'b0110100), .DIVQ(3'b100), // 40 MHz
@@ -1211,16 +1226,9 @@ module nanorv(
    );
  `endif
 
-  wire [`INSTRW] instrAddress;
-  wire [31:0] instrData;
+  wire [31:0] address;
   wire        error;
-   
-  NrvROM ROM(
-    .clk(clk),
-    .address(instrAddress[10:2]), 
-    .data(instrData)
-  );
-
+  
   // Memory-mapped IOs 
   wire [31:0] IOin;
   wire [31:0] IOout;
@@ -1257,20 +1265,18 @@ module nanorv(
      .clk(clk)
   );
    
-  wire [31:0] dataAddress;
   wire [31:0] dataIn;
   wire [31:0] dataOut;
   wire        dataRd;
-  wire        dataWr;
-  wire [2:0]  dataType;
-  NrvRAM RAM(
+  wire [3:0]  dataWrByteMask;
+   
+  NrvMemoryInterface Memory(
     .clk(clk),
-    .address(dataAddress[12:0]),
+    .address(address[13:0]),
     .in(dataOut),
     .out(dataIn),
     .rd(dataRd),
-    .wr(dataWr),
-    .dataType(dataType),
+    .wrByteMask(dataWrByteMask),
     .IOin(IOout),
     .IOout(IOin),
     .IOrd(IOrd),
@@ -1280,14 +1286,11 @@ module nanorv(
   
   NrvProcessor processor(
     .clk(clk),			
-    .instrAddress(instrAddress),
-    .instrData(instrData),
-    .dataAddress(dataAddress),
+    .address(address),
     .dataIn(dataIn),
     .dataOut(dataOut),
     .dataRd(dataRd),
-    .dataWr(dataWr),
-    .dataRdType(dataType),
+    .dataWrByteMask(dataWrByteMask),
 `ifdef NRV_RESET			 
     .reset(RESET),
 `endif			 

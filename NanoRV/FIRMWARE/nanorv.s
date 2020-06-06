@@ -1,8 +1,8 @@
 #################################################################################
 
 # Mapped IO constants
-	
-.equ IO_BASE,      0x1000   # Base address of memory-mapped IO
+
+.equ IO_BASE,      0x2000  # Base address of memory-mapped IO
 .equ IO_LEDS,      0        # 4 LSBs mapped to D1,D2,D3,D4
 .equ IO_OLED_CNTL, 4        # OLED display control.
                             #  wr: 01: reset low 11: reset high 00: normal operation
@@ -48,8 +48,8 @@
 
 #################################################################################
 
-        li gp,0x1000 # base address of memory-mapped IO
-	li sp,0x1000 # initial stack pointer, stack goes downwards
+        li gp,IO_BASE # base address of memory-mapped IO
+	li sp,0x1000  # initial stack pointer, stack goes downwards
 	j _start
 
 #################################################################################

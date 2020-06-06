@@ -2,11 +2,11 @@
 
 .section .text
 .globl _start
-.equ IO_BASE,      0x1000   # Base address of memory-mapped IO
+.equ IO_BASE,      0x2000   # Base address of memory-mapped IO
 .equ IO_LEDS,      0        # 4 LSBs mapped to D1,D2,D3,D4
 	
 _start:
-        li   gp,0x1000
+        li   gp,IO_BASE
 	li   t1,0
 	li   t2,15       
 loop:	addi t1,t1,1
