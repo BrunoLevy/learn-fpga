@@ -54,8 +54,8 @@
 `define NRV_RAM_PAGE_2    // free some BRAM space, for instance if a ROM larger
 `define NRV_RAM_PAGE_3    // than 512 words is needed, or if BRAM is needed by
 `define NRV_RAM_PAGE_4    // other functions on the IceStick.
-//`define NRV_RAM_PAGE_5    
-//`define NRV_RAM_PAGE_6    
+`define NRV_RAM_PAGE_5    
+`define NRV_RAM_PAGE_6    
 
 
 /*************************************************************************************/
@@ -446,20 +446,25 @@ module NrvProcessor(
    localparam LOAD               = 9'b001000000;
    localparam STORE              = 9'b010000000;   
    localparam ERROR              = 9'b100000000;
-   reg [8:0] state = WAIT_INSTR;
+   reg [8:0] state;
  
    assign address = addressReg;
    
+   reg [`ADDR_WIDTH-1:0] addressReg;
+   reg [`ADDR_WIDTH-1:0] PC;
+   reg [31:0]  	         instr;     // Latched instruction. Initial = NOP
+   reg [31:0]            nextInstr; // Prefetced instruction.
+
+
    initial begin
       dataRd = 1'b0;
       dataWrByteMask = 4'b0000;
+      state = WAIT_INSTR;
+      addressReg = 0;
+      PC = 0;
    end
-   
-   reg [`ADDR_WIDTH-1:0] addressReg = 0;
-   reg [`ADDR_WIDTH-1:0] PC = 0;
-   reg [31:0]    instr = 32'h00000013; // latched instruction. Initial = NOP
-   reg [31:0]    nextInstr;            // Lookahead instr.
 
+   
    // Next program counter in normal operation: advance one word
    // I do not use the ALU, I create an additional adder for that.
    wire [`ADDR_WIDTH-1:0] PCplus4 = PC + 4;
@@ -798,6 +803,7 @@ module NrvProcessor(
 	   `bench($display("ERROR"));	   	   
 	end
 	default: begin
+	   `bench($display("UNKNOWN STATE"));	   	   	   
 	   state <= ERROR;
 	end
       endcase
@@ -836,7 +842,9 @@ module NrvMemoryInterface(
    wire [7:0] 	    offset = address[9:2];
    wire [10:0] 	    addr_internal = {3'b000,offset};
 
-   wire 	    wr = (wrByteMask != 0);
+   wire 	    wr    = (wrByteMask != 0);
+   wire             wrRAM = wr && !isIO;
+   wire             rdRAM = rd && !isIO; 
    wire [31:0] 	    wmask_internal = {{8{~wrByteMask[3]}},{8{~wrByteMask[2]}},{8{~wrByteMask[1]}},{8{~wrByteMask[0]}}};
 
 `ifdef BENCH
@@ -905,7 +913,7 @@ module NrvMemoryInterface(
    ) page1_lo (
        .RADDR(addr_internal), .RDATA(out_page1[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(1'b0), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
+       .WE(wrRAM && page == 3'b000), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
        .RE(1'b1), .RCLKE(1'b1), .RCLK(clk)			
    );
 
@@ -914,7 +922,7 @@ module NrvMemoryInterface(
    ) page1_hi(
        .RADDR(addr_internal), .RDATA(out_page1[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(1'b0), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
+       .WE(wrRAM && page == 3'b000), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
        .RE(1'b1), .RCLKE(1'b1), .RCLK(clk)			
    );
 `endif
@@ -925,8 +933,8 @@ module NrvMemoryInterface(
    ) page2_lo(
        .RADDR(addr_internal), .RDATA(out_page2[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(wr && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rd && page == 3'b001), .RCLKE(1'b1), .RCLK(clk)			
+       .WE(wrRAM && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 
    SB_RAM40_4K #(
@@ -934,8 +942,8 @@ module NrvMemoryInterface(
    ) page2_hi(
        .RADDR(addr_internal), .RDATA(out_page2[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(wr && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rd && page == 3'b001), .RCLKE(1'b1), .RCLK(clk)			
+       .WE(wrRAM && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 `endif
 
@@ -945,8 +953,8 @@ module NrvMemoryInterface(
    ) page3_lo(
        .RADDR(addr_internal), .RDATA(out_page3[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(wr && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rd && page == 3'b010), .RCLKE(1'b1), .RCLK(clk)			
+       .WE(wrRAM && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 
    SB_RAM40_4K #(
@@ -954,8 +962,8 @@ module NrvMemoryInterface(
    ) page3_hi(
        .RADDR(addr_internal), .RDATA(out_page3[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(wr && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rd && page == 3'b010), .RCLKE(1'b1), .RCLK(clk)			
+       .WE(wrRAM && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 `endif 
 
@@ -965,8 +973,8 @@ module NrvMemoryInterface(
    ) page4_lo(
        .RADDR(addr_internal), .RDATA(out_page4[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(wr && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rd && page == 3'b011), .RCLKE(1'b1), .RCLK(clk)			
+       .WE(wrRAM && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 
    SB_RAM40_4K #(
@@ -974,8 +982,8 @@ module NrvMemoryInterface(
    ) page4_hi(
        .RADDR(addr_internal), .RDATA(out_page4[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(wr && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rd && page == 3'b011), .RCLKE(1'b1), .RCLK(clk)			
+       .WE(wrRAM && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 `endif 
 
@@ -985,8 +993,8 @@ module NrvMemoryInterface(
    ) page5_lo(
        .RADDR(addr_internal), .RDATA(out_page5[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(wr && page == 3'b100), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rd && page == 3'b100), .RCLKE(1'b1), .RCLK(clk)			
+       .WE(wrRAM && page == 3'b100), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 
    SB_RAM40_4K #(
@@ -994,8 +1002,8 @@ module NrvMemoryInterface(
    ) page5_hi(
        .RADDR(addr_internal), .RDATA(out_page5[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(wr && page == 3'b100), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rd && page == 3'b100), .RCLKE(1'b1), .RCLK(clk)			
+       .WE(wrRAM && page == 3'b100), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 `endif 
 
@@ -1005,8 +1013,8 @@ module NrvMemoryInterface(
    ) page6_lo(
        .RADDR(addr_internal), .RDATA(out_page6[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(wr && page == 3'b101), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rd && page == 3'b101), .RCLKE(1'b1), .RCLK(clk)			
+       .WE(wrRAM && page == 3'b101), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 
    SB_RAM40_4K #(
@@ -1014,8 +1022,8 @@ module NrvMemoryInterface(
    ) page6_hi(
        .RADDR(addr_internal), .RDATA(out_page6[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(wr && page == 3'b101), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rd && page == 3'b101), .RCLKE(1'b1), .RCLK(clk)			
+       .WE(wrRAM && page == 3'b101), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 `endif
    
