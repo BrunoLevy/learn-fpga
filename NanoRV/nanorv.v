@@ -54,8 +54,8 @@
 `define NRV_RAM_PAGE_2    // free some BRAM space, for instance if a ROM larger
 `define NRV_RAM_PAGE_3    // than 512 words is needed, or if BRAM is needed by
 `define NRV_RAM_PAGE_4    // other functions on the IceStick.
-`define NRV_RAM_PAGE_5    
-`define NRV_RAM_PAGE_6    
+//`define NRV_RAM_PAGE_5    
+//`define NRV_RAM_PAGE_6    
 
 
 /*************************************************************************************/
@@ -150,14 +150,11 @@ module NrvALU(
   input 	    wr      // Raise to compute and store ALU result
 );
 
-   reg [4:0] sR1; // current shift amount
-   initial begin
-      sR1 = 5'b00000;
-   end
+   reg [4:0] shamt; // current shift amount
    
    // ALU is busy if shift amount is non-zero, or if, at execute
    // state, operation is a shift (wr active)
-   assign busy = (sR1 != 0) || 
+   assign busy = (shamt != 0) || 
 		 (wr && ( op == 3'b001 || op == 3'b101));
    
    reg [31:0] sR0;
@@ -183,14 +180,14 @@ module NrvALU(
       
       if(wr) begin
 	 case(op)
-           3'b001: begin sR0 <= in1; sR1 <= in2[4:0]; end // SLL	   
-           3'b101: begin sR0 <= in1; sR1 <= in2[4:0]; end // SRL/SRA
+           3'b001: begin sR0 <= in1; shamt <= in2[4:0]; end // SLL	   
+           3'b101: begin sR0 <= in1; shamt <= in2[4:0]; end // SRL/SRA
 	 endcase 
       end else begin
 
 `ifdef NRV_TWOSTAGE_SHIFTER
-	 if (sR1 > 4) begin
-	    sR1 <= sR1 - 4;
+	 if (shamt > 4) begin
+	    shamt <= shamt - 4;
 	    case(op)
               3'b001: sR0 <= sR0 << 4;                            // SLL
 	      3'b101: sR0 <= opqual ? {{4{sR0[31]}}, sR0[31:4]} : // SRL/SRA 
@@ -199,8 +196,8 @@ module NrvALU(
 	 end else  
 `endif
 
-	 if (sR1 != 0) begin
-	    sR1 <= sR1 - 1;
+	 if (shamt != 0) begin
+	    shamt <= shamt - 1;
 	    case(op)
               3'b001: sR0 <= sR0 << 1;                       // SLL
 	      3'b101: sR0 <= opqual ? {sR0[31], sR0[31:1]} : // SRL/SRA 
@@ -433,7 +430,8 @@ module NrvProcessor(
 `ifdef NRV_RESET		    
    input wire 	     reset,
 `endif		    
-   output wire 	     error		    
+   output wire 	     error,
+   output wire[3:0]  stateDebug
 );
 
    
@@ -447,12 +445,14 @@ module NrvProcessor(
    localparam STORE              = 9'b010000000;   
    localparam ERROR              = 9'b100000000;
    reg [8:0] state;
- 
+
+   assign stateDebug = state[3:0];
+   
    assign address = addressReg;
    
    reg [`ADDR_WIDTH-1:0] addressReg;
    reg [`ADDR_WIDTH-1:0] PC;
-   reg [31:0]  	         instr;     // Latched instruction. Initial = NOP
+   reg [31:0]  	         instr;     // Latched instruction. 
    reg [31:0]            nextInstr; // Prefetced instruction.
 
 
@@ -633,7 +633,6 @@ module NrvProcessor(
 	 dataRd <= 1'b1;
 	 dataWrByteMask <= 4'b0000;
 	 instr <= 32'h00000013;
-	 nextInstr <= 32'h00000013;
       end else
 `endif	
       case(state)
@@ -666,8 +665,8 @@ module NrvProcessor(
 	   // instr was just updated -> input register ids also
 	   // input registers available at next cycle 
 	   
-	   // state <= error ? ERROR : EXECUTE;  // Not okay, but okay after reset, why ?
-	   state <= EXECUTE; // So for now I do that ... (to be investigated)
+	   state <= error ? ERROR : EXECUTE;  // Not okay, but okay after reset, why ?
+	   // state <= EXECUTE; // So for now I do that ... (to be investigated)
 
 	   `verbose($display("DECODE"));
 	   `verbose($display("   PC             = %h",PC));	   
@@ -754,19 +753,19 @@ module NrvProcessor(
 	     2'b00: begin
 		case(address[1:0])
 		  2'b00: begin
-		     dataWrByteMask   = 4'b0001;
+		     dataWrByteMask   <= 4'b0001;
 		     dataOut <= {24'bxxxxxxxxxxxxxxxxxxxxxxxx,regOut2[7:0]};
 		  end
 		  2'b01: begin
-		     dataWrByteMask   = 4'b0010;
+		     dataWrByteMask   <= 4'b0010;
 		     dataOut <= {16'bxxxxxxxxxxxxxxxx,regOut2[7:0],8'bxxxxxxxx};
 		  end
 		  2'b10: begin
-		     dataWrByteMask   = 4'b0100;
+		     dataWrByteMask   <= 4'b0100;
 		     dataOut <= {8'bxxxxxxxx,regOut2[7:0],16'bxxxxxxxxxxxxxxxx};
 		  end
 		  2'b11: begin
-		     dataWrByteMask   = 4'b1000;
+		     dataWrByteMask   <= 4'b1000;
 		     dataOut <= {regOut2[7:0],24'bxxxxxxxxxxxxxxxxxxxxxxxx};
 		  end
 		endcase
@@ -774,21 +773,21 @@ module NrvProcessor(
 	     2'b01: begin
 		case(address[1])
 		  1'b0: begin
-		     dataWrByteMask   = 4'b0011;
+		     dataWrByteMask   <= 4'b0011;
 		     dataOut <= {16'bxxxxxxxxxxxxxxxx,regOut2[15:0]};
 		  end
 		  1'b1: begin
-		     dataWrByteMask   = 4'b1100;
+		     dataWrByteMask   <= 4'b1100;
 		     dataOut <= {regOut2[15:0],16'bxxxxxxxxxxxxxxxx};
 		  end
 		endcase
 	     end
 	     2'b10: begin
-		dataWrByteMask = 4'b1111;
+		dataWrByteMask <= 4'b1111;
 		dataOut <= regOut2;
 	     end
 	     default: begin
-		dataWrByteMask   = 4'bxxxx;
+		dataWrByteMask   <= 4'bxxxx;
 		dataOut <= 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
 	     end
 	   endcase 
@@ -800,7 +799,8 @@ module NrvProcessor(
 	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
 	end
 	ERROR: begin
-	   `bench($display("ERROR"));	   	   
+	   `bench($display("ERROR"));
+           state <= ERROR;
 	end
 	default: begin
 	   `bench($display("UNKNOWN STATE"));	   	   	   
@@ -844,7 +844,7 @@ module NrvMemoryInterface(
 
    wire 	    wr    = (wrByteMask != 0);
    wire             wrRAM = wr && !isIO;
-   wire             rdRAM = rd && !isIO; 
+   wire             rdRAM = 1'b1; // !isIO;  // && rd
    wire [31:0] 	    wmask_internal = {{8{~wrByteMask[3]}},{8{~wrByteMask[2]}},{8{~wrByteMask[1]}},{8{~wrByteMask[0]}}};
 
 `ifdef BENCH
@@ -914,7 +914,7 @@ module NrvMemoryInterface(
        .RADDR(addr_internal), .RDATA(out_page1[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
        .WE(wrRAM && page == 3'b000), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(1'b1), .RCLKE(1'b1), .RCLK(clk)			
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 
    SB_RAM40_4K #(
@@ -923,7 +923,7 @@ module NrvMemoryInterface(
        .RADDR(addr_internal), .RDATA(out_page1[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
        .WE(wrRAM && page == 3'b000), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(1'b1), .RCLKE(1'b1), .RCLK(clk)			
+       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
    );
 `endif
 
@@ -1287,9 +1287,9 @@ endmodule
 /********************* Nrv main *******************************/
 
 module nanorv(
-`ifdef NRV_IO_LEDS	      
+// `ifdef NRV_IO_LEDS	      
    output D1,D2,D3,D4,D5,
-`endif	      
+//`endif	      
 `ifdef NRV_IO_SSD1351	      
    output oled_DIN, oled_CLK, oled_CS, oled_DC, oled_RST,
 `endif
@@ -1309,7 +1309,7 @@ module nanorv(
 );
 
    wire   clk;
-
+   
  `ifdef BENCH
    assign clk = pclk;
  `else   
@@ -1319,8 +1319,8 @@ module nanorv(
       .DIVR(4'b0000),
       //.DIVF(7'b0110100), .DIVQ(3'b011), // 80 MHz
       //.DIVF(7'b0110001), .DIVQ(3'b011), // 75 MHz
-      .DIVF(7'b1001111), .DIVQ(3'b100), // 60 MHz
-      //.DIVF(7'b0110100), .DIVQ(3'b100), // 40 MHz
+      //.DIVF(7'b1001111), .DIVQ(3'b100), // 60 MHz
+      .DIVF(7'b0110100), .DIVQ(3'b100), // 40 MHz
       //.DIVF(7'b1001111), .DIVQ(3'b101), // 30 MHz
       .FILTER_RANGE(3'b001),
    ) pll (
@@ -1330,7 +1330,7 @@ module nanorv(
       .BYPASS(1'b0)
    );
  `endif
-
+   
   wire [31:0] address;
   wire        error;
   
@@ -1398,13 +1398,14 @@ module nanorv(
     .dataWrByteMask(dataWrByteMask),
 `ifdef NRV_RESET			 
     .reset(RESET),
-`endif			 
-    .error(error)			 
+`endif
+    .error(D5)			 
   );
 
 `ifdef NRV_IO_LEDS  
    assign D5 = error;
 `endif
+
 endmodule
 
 
