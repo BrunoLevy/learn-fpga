@@ -36,7 +36,7 @@
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32)
-`define NRV_TWOSTAGE_SHIFTER
+// `define NRV_TWOSTAGE_SHIFTER
 
 `define NRV_RESET        // Reset button
 
@@ -842,13 +842,15 @@ module NrvMemoryInterface(
    initial begin
       $readmemh("FIRMWARE/firmware.hex",RAM);
    end
+
+   wire [10:0] word_addr = {page,offset};
    
    always @(posedge clk) begin
       if(!isIO) begin
 	 if(wr) begin
-	    RAM[addr_internal[9:0]] <= (RAM[addr_internal[9:0]] & wmask_internal) | (in &~wmask_internal);
+	    RAM[word_addr] <= (RAM[word_addr] & wmask_internal) | (in &~wmask_internal);
 	 end else begin
-	    out_RAM <= RAM[addr_internal[9:0]];
+	    out_RAM <= RAM[word_addr];
 	 end
       end
 
@@ -866,9 +868,10 @@ module NrvMemoryInterface(
    
 `else
 
-// wire [31:0] out_page1;
-   reg  [31:0] out_page1; // replaced by ROM
-
+`ifdef NRV_RAM_PAGE_1
+   wire [31:0] out_page1;
+`endif
+   
 `ifdef NRV_RAM_PAGE_2   
    wire [31:0] out_page2;
 `endif
@@ -889,42 +892,42 @@ module NrvMemoryInterface(
    wire [31:0] out_page6;         
 `endif
    
-/*   
-   SB_RAM40_4K page1_low(
+// TODO: work on read enable / write enable signals,
+// they are not correct (for now force page 1 considered
+// to be the ROM)
+`ifdef NRV_RAM_PAGE_1               
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_1_lo.hex")		 
+   ) page1_lo (
        .RADDR(addr_internal), .RDATA(out_page1[15:0]),
-       .WADDR(addr_internal), .WDATA(wdata_internal[15:0]),
-       .WE(wr && page == 3'b000), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rd && page == 3'b000), .RCLKE(1'b1), .RCLK(clk)			
+       .WADDR(addr_internal), .WDATA(in[15:0]),
+       .WE(1'b0), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
+       .RE(1'b1), .RCLKE(1'b1), .RCLK(clk)			
    );
 
-   SB_RAM40_4K page1_hi(
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_1_hi.hex")		 
+   ) page1_hi(
        .RADDR(addr_internal), .RDATA(out_page1[31:16]),
-       .WADDR(addr_internal), .WDATA(wdata_internal[31:16]),
-       .WE(wr && page == 3'b000), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rd && page == 3'b000), .RCLKE(1'b1), .RCLK(clk)			
+       .WADDR(addr_internal), .WDATA(in[31:16]),
+       .WE(1'b0), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
+       .RE(1'b1), .RCLKE(1'b1), .RCLK(clk)			
    );
-*/
-
-   // Page 1 replaced with ROM
-   reg [31:0]  rom[255:0];
-   initial begin
-      // To generate ROM from assembly using GNU toolchain, 
-      // see scripts in FIRMWARE/ subdir       
-      $readmemh("FIRMWARE/firmware.hex", rom);
-   end
-   always @(posedge clk) begin
-      out_page1 <= rom[addr_internal];
-   end
+`endif
 
 `ifdef NRV_RAM_PAGE_2               
-   SB_RAM40_4K page2_low(
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_2_lo.hex")		 
+   ) page2_lo(
        .RADDR(addr_internal), .RDATA(out_page2[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
        .WE(wr && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
        .RE(rd && page == 3'b001), .RCLKE(1'b1), .RCLK(clk)			
    );
 
-   SB_RAM40_4K page2_hi(
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_2_hi.hex")		 
+   ) page2_hi(
        .RADDR(addr_internal), .RDATA(out_page2[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
        .WE(wr && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
@@ -933,14 +936,18 @@ module NrvMemoryInterface(
 `endif
 
 `ifdef NRV_RAM_PAGE_3               
-   SB_RAM40_4K page3_low(
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_3_lo.hex")		 
+   ) page3_lo(
        .RADDR(addr_internal), .RDATA(out_page3[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
        .WE(wr && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
        .RE(rd && page == 3'b010), .RCLKE(1'b1), .RCLK(clk)			
    );
 
-   SB_RAM40_4K page3_hi(
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_3_hi.hex")		 
+   ) page3_hi(
        .RADDR(addr_internal), .RDATA(out_page3[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
        .WE(wr && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
@@ -949,14 +956,18 @@ module NrvMemoryInterface(
 `endif 
 
 `ifdef NRV_RAM_PAGE_4
-   SB_RAM40_4K page4_low(
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_4_lo.hex")		 
+   ) page4_lo(
        .RADDR(addr_internal), .RDATA(out_page4[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
        .WE(wr && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
        .RE(rd && page == 3'b011), .RCLKE(1'b1), .RCLK(clk)			
    );
 
-   SB_RAM40_4K page4_hi(
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_4_hi.hex")		 
+   ) page4_hi(
        .RADDR(addr_internal), .RDATA(out_page4[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
        .WE(wr && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
@@ -965,14 +976,18 @@ module NrvMemoryInterface(
 `endif 
 
 `ifdef NRV_RAM_PAGE_5
-   SB_RAM40_4K page5_low(
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_5_lo.hex")		 
+   ) page5_lo(
        .RADDR(addr_internal), .RDATA(out_page5[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
        .WE(wr && page == 3'b100), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
        .RE(rd && page == 3'b100), .RCLKE(1'b1), .RCLK(clk)			
    );
 
-   SB_RAM40_4K page5_hi(
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_5_hi.hex")		 
+   ) page5_hi(
        .RADDR(addr_internal), .RDATA(out_page5[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
        .WE(wr && page == 3'b100), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
@@ -981,14 +996,18 @@ module NrvMemoryInterface(
 `endif 
 
 `ifdef NRV_RAM_PAGE_6   
-   SB_RAM40_4K page6_low(
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_6_lo.hex")		 
+   ) page6_lo(
        .RADDR(addr_internal), .RDATA(out_page6[15:0]),
        .WADDR(addr_internal), .WDATA(in[15:0]),
        .WE(wr && page == 3'b101), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
        .RE(rd && page == 3'b101), .RCLKE(1'b1), .RCLK(clk)			
    );
 
-   SB_RAM40_4K page6_hi(
+   SB_RAM40_4K #(
+       .INIT_FILE("FIRMWARE/page_6_hi.hex")		 
+   ) page6_hi(
        .RADDR(addr_internal), .RDATA(out_page6[31:16]),
        .WADDR(addr_internal), .WDATA(in[31:16]),
        .WE(wr && page == 3'b101), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
@@ -1002,7 +1021,9 @@ module NrvMemoryInterface(
       end else begin
 	 (* parallel_case, full_case*)
 	 case(page)
+`ifdef NRV_RAM_PAGE_1	   	   
 	   3'b000:  out = out_page1;
+`endif	   
 `ifdef NRV_RAM_PAGE_2	   
 	   3'b001:  out = out_page2;
 `endif
@@ -1368,9 +1389,10 @@ module nanorv(
 `endif			 
     .error(error)			 
   );
-  
-   assign D5 = error;
 
+`ifdef NRV_IO_LEDS  
+   assign D5 = error;
+`endif
 endmodule
 
 

@@ -20,6 +20,6 @@ echo 00000000 >> $PROGNAME.hex
 #echo '***** generated ROM content ****'
 #echo
 echo ROM size: `cat $PROGNAME.hex | wc -l` words
-
+./firmware_split
 
 

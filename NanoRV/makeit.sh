@@ -4,7 +4,7 @@
 PROJECTNAME=nanorv
 VERILOGS="$PROJECTNAME.v"
 echo ======== Yosys
-yosys -q -p "synth_ice40 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
+yosys -q -p "ice40_braminit" -p "synth_ice40 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS -p "write_verilog test_$PROJECTNAME.v" || exit
 echo ======== NextPNR
 nextpnr-ice40 --force --json $PROJECTNAME.json --pcf $PROJECTNAME.pcf --asc $PROJECTNAME.asc --freq 12 --hx1k --package tq144 $1 || exit
 echo ======== IceTime
