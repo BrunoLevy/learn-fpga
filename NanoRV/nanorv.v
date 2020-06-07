@@ -50,14 +50,6 @@
 `define ADDR_WIDTH 14 // Internal number of bits for PC and address register.
                       // 6kb needs 13 bits, + 1 page for IO -> 14 bits
 
-`define NRV_RAM_PAGE_1    // Each page has 256 32-bit words. Undefine them to
-`define NRV_RAM_PAGE_2    // free some BRAM space, for instance if a ROM larger
-`define NRV_RAM_PAGE_3    // than 512 words is needed, or if BRAM is needed by
-`define NRV_RAM_PAGE_4    // other functions on the IceStick.
-`define NRV_RAM_PAGE_5    
-`define NRV_RAM_PAGE_6    
-
-
 /*************************************************************************************/
 `default_nettype none
 
@@ -435,7 +427,8 @@ module NrvProcessor(
    output wire[`ADDR_WIDTH-1:0] pcDebug		    
 );
 
-   
+
+   localparam INITIAL            = 9'b000000000;   
    localparam WAIT_INSTR         = 9'b000000001;
    localparam FETCH              = 9'b000000010;
    localparam USE_PREFETCHED     = 9'b000000100;
@@ -463,7 +456,7 @@ module NrvProcessor(
    initial begin
       dataRd = 1'b0;
       dataWrByteMask = 4'b0000;
-      state = WAIT_INSTR;
+      state = INITIAL;
       addressReg = 0;
       PC = 0;
    end
@@ -631,15 +624,19 @@ module NrvProcessor(
       `verbose($display("state = %h",state));
 `ifdef NRV_RESET      
       if(!reset) begin
-	 state <= WAIT_INSTR;
-	 addressReg <= 0;
-	 PC <= 0;
-	 dataRd <= 1'b1;
-	 dataWrByteMask <= 4'b0000;
-	 instr <= 32'h00000013;
+	 state <= INITIAL;
       end else
 `endif	
       case(state)
+	INITIAL: begin
+	   `verbose($display("INITIAL"));
+	   state <= WAIT_INSTR;
+	   addressReg <= 0;
+	   PC <= 0;
+	   dataRd <= 1'b0;
+	   dataWrByteMask <= 4'b0000;
+	   instr <= 32'h00000013;
+	end
 	WAIT_INSTR: begin
 	   // this state to give enough time to fetch the first
 	   // instruction (else we are in the error state)
@@ -848,10 +845,9 @@ module NrvMemoryInterface(
 
    wire 	    wr    = (wrByteMask != 0);
    wire             wrRAM = wr && !isIO;
-   wire             rdRAM = 1'b1; // !isIO;  // && rd
+   wire             rdRAM = 1'b1; // rd && !isIO; (but in fact if we always read, it does not harm..., and I'm missing read signal for instr)
    wire [31:0] 	    wmask_internal = {{8{~wrByteMask[3]}},{8{~wrByteMask[2]}},{8{~wrByteMask[1]}},{8{~wrByteMask[0]}}};
 
-`ifdef BENCH
    reg [31:0] RAM[1023:0];
    reg [31:0] out_RAM;
 
@@ -860,206 +856,21 @@ module NrvMemoryInterface(
    end
 
    wire [10:0] word_addr = {page,offset};
-   
+   integer     i;
    always @(posedge clk) begin
-      if(!isIO) begin
-	 if(wr) begin
-	    RAM[word_addr] <= (RAM[word_addr] & wmask_internal) | (in &~wmask_internal);
-	 end else begin
-	    out_RAM <= RAM[word_addr];
-	 end
-      end
-
-      if(wr) begin
-	 `verbose($display(" WR page    = %b",page));
-	 `verbose($display(" WR data    = %h",in));
-	 `verbose($display(" WR address = %b",address));	 	 
+      if(wrRAM) begin
+	 for(i=0; i<32; i++)
+	   if(!wmask_internal[i]) 
+	     RAM[word_addr][i] <= in[i];
+      end 
+      if(rdRAM) begin
+	 out_RAM <= RAM[word_addr];
       end
    end
 
    always @(*) begin
       out = isIO ? IOin : out_RAM;
    end   
-
-   
-`else
-
-`ifdef NRV_RAM_PAGE_1
-   wire [31:0] out_page1;
-`endif
-   
-`ifdef NRV_RAM_PAGE_2   
-   wire [31:0] out_page2;
-`endif
-
-`ifdef NRV_RAM_PAGE_3   
-   wire [31:0] out_page3;
-`endif
-
-`ifdef NRV_RAM_PAGE_4      
-   wire [31:0] out_page4;
-`endif
-
-`ifdef NRV_RAM_PAGE_5         
-   wire [31:0] out_page5;
-`endif
-
-`ifdef NRV_RAM_PAGE_6            
-   wire [31:0] out_page6;         
-`endif
-   
-// TODO: work on read enable / write enable signals,
-// they are not correct (for now force page 1 considered
-// to be the ROM)
-`ifdef NRV_RAM_PAGE_1               
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_1_lo.hex")		 
-   ) page1_lo (
-       .RADDR(addr_internal), .RDATA(out_page1[15:0]),
-       .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(wrRAM && page == 3'b000), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_1_hi.hex")		 
-   ) page1_hi(
-       .RADDR(addr_internal), .RDATA(out_page1[31:16]),
-       .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(wrRAM && page == 3'b000), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-`endif
-
-`ifdef NRV_RAM_PAGE_2               
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_2_lo.hex")		 
-   ) page2_lo(
-       .RADDR(addr_internal), .RDATA(out_page2[15:0]),
-       .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(wrRAM && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_2_hi.hex")		 
-   ) page2_hi(
-       .RADDR(addr_internal), .RDATA(out_page2[31:16]),
-       .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(wrRAM && page == 3'b001), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-`endif
-
-`ifdef NRV_RAM_PAGE_3               
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_3_lo.hex")		 
-   ) page3_lo(
-       .RADDR(addr_internal), .RDATA(out_page3[15:0]),
-       .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(wrRAM && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_3_hi.hex")		 
-   ) page3_hi(
-       .RADDR(addr_internal), .RDATA(out_page3[31:16]),
-       .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(wrRAM && page == 3'b010), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-`endif 
-
-`ifdef NRV_RAM_PAGE_4
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_4_lo.hex")		 
-   ) page4_lo(
-       .RADDR(addr_internal), .RDATA(out_page4[15:0]),
-       .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(wrRAM && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_4_hi.hex")		 
-   ) page4_hi(
-       .RADDR(addr_internal), .RDATA(out_page4[31:16]),
-       .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(wrRAM && page == 3'b011), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-`endif 
-
-`ifdef NRV_RAM_PAGE_5
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_5_lo.hex")		 
-   ) page5_lo(
-       .RADDR(addr_internal), .RDATA(out_page5[15:0]),
-       .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(wrRAM && page == 3'b100), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_5_hi.hex")		 
-   ) page5_hi(
-       .RADDR(addr_internal), .RDATA(out_page5[31:16]),
-       .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(wrRAM && page == 3'b100), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-`endif 
-
-`ifdef NRV_RAM_PAGE_6   
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_6_lo.hex")		 
-   ) page6_lo(
-       .RADDR(addr_internal), .RDATA(out_page6[15:0]),
-       .WADDR(addr_internal), .WDATA(in[15:0]),
-       .WE(wrRAM && page == 3'b101), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[15:0]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-
-   SB_RAM40_4K #(
-       .INIT_FILE("FIRMWARE/page_6_hi.hex")		 
-   ) page6_hi(
-       .RADDR(addr_internal), .RDATA(out_page6[31:16]),
-       .WADDR(addr_internal), .WDATA(in[31:16]),
-       .WE(wrRAM && page == 3'b101), .WCLKE(1'b1), .WCLK(clk), .MASK(wmask_internal[31:16]),			 
-       .RE(rdRAM), .RCLKE(1'b1), .RCLK(clk)			
-   );
-`endif
-   
-   always @(*) begin
-      if(isIO) begin
-	 out = IOin;
-      end else begin
-	 (* parallel_case, full_case*)
-	 case(page)
-`ifdef NRV_RAM_PAGE_1	   	   
-	   3'b000:  out = out_page1;
-`endif	   
-`ifdef NRV_RAM_PAGE_2	   
-	   3'b001:  out = out_page2;
-`endif
-`ifdef NRV_RAM_PAGE_3	   
-	   3'b010:  out = out_page3;
-`endif	   
-`ifdef NRV_RAM_PAGE_4	   
-	   3'b011:  out = out_page4;
-`endif	   
-`ifdef NRV_RAM_PAGE_5	   
-	   3'b100:  out = out_page5;
-`endif	   
-`ifdef NRV_RAM_PAGE_6   	   
-	   3'b101:  out = out_page6;
-`endif	   
-	   default: out = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
-	 endcase // case (page)
-      end
-   end
-`endif 
    
    assign IOout     = in;
    assign IOwr      = (wr && isIO);
