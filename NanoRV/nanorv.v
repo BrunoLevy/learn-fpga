@@ -36,7 +36,7 @@
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32)
-//`define NRV_TWOSTAGE_SHIFTER
+`define NRV_TWOSTAGE_SHIFTER
 
 `define NRV_RESET        // Reset button
 
@@ -845,10 +845,11 @@ module NrvMemoryInterface(
 
    wire 	    wr    = (wrByteMask != 0);
    wire             wrRAM = wr && !isIO;
-   wire             rdRAM = 1'b1; // rd && !isIO; (but in fact if we always read, it does not harm..., and I'm missing read signal for instr)
-   wire [31:0] 	    wmask_internal = {{8{~wrByteMask[3]}},{8{~wrByteMask[2]}},{8{~wrByteMask[1]}},{8{~wrByteMask[0]}}};
+   wire             rdRAM = 1'b1; // rd && !isIO; 
+                                  // (but in fact if we always read, it does not harm..., 
+                                  // and I'm missing read signal for instr)
 
-   reg [31:0] RAM[1023:0];
+   reg [31:0] RAM[1023:0]; // 4K for now, we can do 6K: [1535:0]
    reg [31:0] out_RAM;
 
    initial begin
@@ -856,12 +857,13 @@ module NrvMemoryInterface(
    end
 
    wire [10:0] word_addr = {page,offset};
-   integer     i;
+   
    always @(posedge clk) begin
       if(wrRAM) begin
-	 for(i=0; i<32; i++)
-	   if(!wmask_internal[i]) 
-	     RAM[word_addr][i] <= in[i];
+	 if(wrByteMask[0]) RAM[word_addr][ 7:0 ] <= in[ 7:0 ];
+	 if(wrByteMask[1]) RAM[word_addr][15:8 ] <= in[15:8 ];
+	 if(wrByteMask[2]) RAM[word_addr][23:16] <= in[23:16];
+	 if(wrByteMask[3]) RAM[word_addr][31:24] <= in[31:24];	 
       end 
       if(rdRAM) begin
 	 out_RAM <= RAM[word_addr];
