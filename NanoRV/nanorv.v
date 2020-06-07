@@ -42,8 +42,8 @@
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
-//`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
+`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
+`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
 `define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
 
@@ -849,7 +849,9 @@ module NrvMemoryInterface(
                                   // (but in fact if we always read, it does not harm..., 
                                   // and I'm missing read signal for instr)
 
-   reg [31:0] RAM[1023:0]; // 4K for now, we can do 6K: [1535:0]
+   reg [31:0] RAM[1023:0]; // 4K
+// reg [31:0] RAM[1279:0]; // 5K    
+// reg [31:0] RAM[1535:0]; // 6K 
    reg [31:0] out_RAM;
 
    initial begin
@@ -1136,8 +1138,8 @@ module nanorv(
       .DIVR(4'b0000),
       //.DIVF(7'b0110100), .DIVQ(3'b011), // 80 MHz
       //.DIVF(7'b0110001), .DIVQ(3'b011), // 75 MHz
-      //.DIVF(7'b1001111), .DIVQ(3'b100), // 60 MHz
-      .DIVF(7'b0110100), .DIVQ(3'b100), // 40 MHz
+      .DIVF(7'b1001111), .DIVQ(3'b100), // 60 MHz
+      //.DIVF(7'b0110100), .DIVQ(3'b100), // 40 MHz
       //.DIVF(7'b1001111), .DIVQ(3'b101), // 30 MHz
       .FILTER_RANGE(3'b001),
    ) pll (
