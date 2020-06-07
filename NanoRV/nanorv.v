@@ -36,7 +36,7 @@
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32)
-// `define NRV_TWOSTAGE_SHIFTER
+//`define NRV_TWOSTAGE_SHIFTER
 
 `define NRV_RESET        // Reset button
 
@@ -426,9 +426,9 @@ endmodule
 module NrvProcessor(
    input 	     clk,
    output [31:0]     address,
-   output 	     dataRd,
+   output reg	     dataRd,
    input [31:0]      dataIn,
-   output [3:0]      dataWrByteMask, // write mask for individual bytes
+   output reg [3:0]  dataWrByteMask, // write mask for individual bytes
    output reg [31:0] dataOut,
 `ifdef NRV_RESET		    
    input wire 	     reset,
@@ -436,20 +436,25 @@ module NrvProcessor(
    output wire 	     error		    
 );
 
-   localparam WAIT_INSTR         = 0;
-   localparam FETCH              = 1;
-   localparam USE_PREFETCHED      = 2;
-   localparam DECODE             = 3;
-   localparam EXECUTE            = 4;
-   localparam WAIT_ALU_OR_DATA   = 5;
-   localparam LOAD               = 6;
-   localparam STORE              = 7;   
-   localparam ERROR              = 8;
-   reg [3:0] state = WAIT_INSTR;
    
+   localparam WAIT_INSTR         = 9'b000000001;
+   localparam FETCH              = 9'b000000010;
+   localparam USE_PREFETCHED     = 9'b000000100;
+   localparam DECODE             = 9'b000001000;
+   localparam EXECUTE            = 9'b000010000;
+   localparam WAIT_ALU_OR_DATA   = 9'b000100000;
+   localparam LOAD               = 9'b001000000;
+   localparam STORE              = 9'b010000000;   
+   localparam ERROR              = 9'b100000000;
+   reg [8:0] state = WAIT_INSTR;
+ 
    assign address = addressReg;
    
-
+   initial begin
+      dataRd = 1'b0;
+      dataWrByteMask = 4'b0000;
+   end
+   
    reg [`ADDR_WIDTH-1:0] addressReg = 0;
    reg [`ADDR_WIDTH-1:0] PC = 0;
    reg [31:0]    instr = 32'h00000013; // latched instruction. Initial = NOP
@@ -524,12 +529,9 @@ module NrvProcessor(
     .out2(regOut2) 
    );
 
-   assign dataRd = ((state == EXECUTE && isLoad)  || state == LOAD); // active during two cycles
-   wire   dataWr = (state == STORE);
+// assign dataRd = ((state == EXECUTE && isLoad)  || state == LOAD); // active during two cycles
+// wire   dataWr = (state == STORE);
 
-   reg[3:0] wmask;
-   assign dataWrByteMask = {4{dataWr}} & wmask;
-   
    // The ALU, partly combinatorial, partly state (for shifts).
    wire [31:0] aluIn1 = aluInSel1 ? PC  : regOut1;
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
@@ -574,56 +576,6 @@ module NrvProcessor(
 	2'b00: decodedDataIn = {{24{aluOp[2]?dataIn_B[7]:1'b0}},dataIn_B};
 	2'b01: decodedDataIn = {{16{aluOp[2]?dataIn_H[15]:1'b0}},dataIn_H};
 	default: decodedDataIn = dataIn;
-      endcase
-   end
-
-   // STORE: assemble write mask and data based on type and address
-
-   always @(*) begin
-      (* parallel_case, full_case *)      
-      case(aluOp[1:0])
-	2'b00: begin
-	   (* parallel_case, full_case *)
-	   case(address[1:0])
-	     2'b00: begin
-		wmask   = 4'b0001;
-		dataOut = {24'bxxxxxxxxxxxxxxxxxxxxxxxx,regOut2[7:0]};
-	     end
-	     2'b01: begin
-		wmask   = 4'b0010;
-		dataOut = {16'bxxxxxxxxxxxxxxxx,regOut2[7:0],8'bxxxxxxxx};
-	     end
-	     2'b10: begin
-		wmask   = 4'b0100;
-		dataOut = {8'bxxxxxxxx,regOut2[7:0],16'bxxxxxxxxxxxxxxxx};
-	     end
-	     2'b11: begin
-		wmask   = 4'b1000;
-		dataOut = {regOut2[7:0],24'bxxxxxxxxxxxxxxxxxxxxxxxx};
-	     end
-	   endcase
-	end
-	2'b01: begin
-	   (* parallel_case, full_case *)
-	   case(address[1])
-	     1'b0: begin
-		wmask   = 4'b0011;
-		dataOut = {16'bxxxxxxxxxxxxxxxx,regOut2[15:0]};
-	     end
-	     1'b1: begin
-		wmask   = 4'b1100;
-		dataOut = {regOut2[15:0],16'bxxxxxxxxxxxxxxxx};
-	     end
-	   endcase
-	end
-	2'b10: begin
-	   wmask = 4'b1111;
-	   dataOut = regOut2;
-	end
-	default: begin
-	   wmask   = 4'bxxxx;
-	   dataOut = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
-	end
       endcase
    end
 
@@ -673,6 +625,10 @@ module NrvProcessor(
 	 state <= WAIT_INSTR;
 	 addressReg <= 0;
 	 PC <= 0;
+	 dataRd <= 1'b1;
+	 dataWrByteMask <= 4'b0000;
+	 instr <= 32'h00000013;
+	 nextInstr <= 32'h00000013;
       end else
 `endif	
       case(state)
@@ -699,6 +655,7 @@ module NrvProcessor(
 	   // decode (and ready if there was no jump or branch)
 	   addressReg <= PCplus4; 
 	   state <= DECODE;
+	   dataWrByteMask <= 4'b0000;
 	end
 	DECODE: begin
 	   // instr was just updated -> input register ids also
@@ -746,6 +703,7 @@ module NrvProcessor(
 	      state <= LOAD;
 	      PC <= PCplus4;
 	      addressReg <= aluOut;
+	      dataRd <= 1'b1;
 	   end else if(isStore) begin
 	      state <= STORE;
 	      PC <= PCplus4;
@@ -780,12 +738,55 @@ module NrvProcessor(
 	   // data ready at next cycle
 	   // we go to WAIT_ALU_OR_DATA to write back read data
 	   state <= WAIT_ALU_OR_DATA;
+	   dataRd <= 1'b0;
 	end
 	STORE: begin
 	   `verbose($display("STORE"));
 	   // data address was just updated
 	   // data ready to be written now
 	   state <= USE_PREFETCHED;
+	   case(aluOp[1:0])
+	     2'b00: begin
+		case(address[1:0])
+		  2'b00: begin
+		     dataWrByteMask   = 4'b0001;
+		     dataOut <= {24'bxxxxxxxxxxxxxxxxxxxxxxxx,regOut2[7:0]};
+		  end
+		  2'b01: begin
+		     dataWrByteMask   = 4'b0010;
+		     dataOut <= {16'bxxxxxxxxxxxxxxxx,regOut2[7:0],8'bxxxxxxxx};
+		  end
+		  2'b10: begin
+		     dataWrByteMask   = 4'b0100;
+		     dataOut <= {8'bxxxxxxxx,regOut2[7:0],16'bxxxxxxxxxxxxxxxx};
+		  end
+		  2'b11: begin
+		     dataWrByteMask   = 4'b1000;
+		     dataOut <= {regOut2[7:0],24'bxxxxxxxxxxxxxxxxxxxxxxxx};
+		  end
+		endcase
+	     end
+	     2'b01: begin
+		case(address[1])
+		  1'b0: begin
+		     dataWrByteMask   = 4'b0011;
+		     dataOut <= {16'bxxxxxxxxxxxxxxxx,regOut2[15:0]};
+		  end
+		  1'b1: begin
+		     dataWrByteMask   = 4'b1100;
+		     dataOut <= {regOut2[15:0],16'bxxxxxxxxxxxxxxxx};
+		  end
+		endcase
+	     end
+	     2'b10: begin
+		dataWrByteMask = 4'b1111;
+		dataOut <= regOut2;
+	     end
+	     default: begin
+		dataWrByteMask   = 4'bxxxx;
+		dataOut <= 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
+	     end
+	   endcase 
 	end
 	WAIT_ALU_OR_DATA: begin
 	   `verbose($display("WAIT_INSTR_AND_ALU"));	   
@@ -795,6 +796,9 @@ module NrvProcessor(
 	end
 	ERROR: begin
 	   `bench($display("ERROR"));	   	   
+	end
+	default: begin
+	   state <= ERROR;
 	end
       endcase
   end   

@@ -2,7 +2,7 @@
 
 # Mapped IO constants
 
-.equ IO_BASE,      0x2000  # Base address of memory-mapped IO
+.equ IO_BASE,      0x2000   # Base address of memory-mapped IO
 .equ IO_LEDS,      0        # 4 LSBs mapped to D1,D2,D3,D4
 .equ IO_OLED_CNTL, 4        # OLED display control.
                             #  wr: 01: reset low 11: reset high 00: normal operation
