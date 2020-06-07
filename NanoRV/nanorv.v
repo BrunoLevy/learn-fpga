@@ -54,8 +54,8 @@
 `define NRV_RAM_PAGE_2    // free some BRAM space, for instance if a ROM larger
 `define NRV_RAM_PAGE_3    // than 512 words is needed, or if BRAM is needed by
 `define NRV_RAM_PAGE_4    // other functions on the IceStick.
-//`define NRV_RAM_PAGE_5    
-//`define NRV_RAM_PAGE_6    
+`define NRV_RAM_PAGE_5    
+`define NRV_RAM_PAGE_6    
 
 
 /*************************************************************************************/
@@ -150,14 +150,14 @@ module NrvALU(
   input 	    wr      // Raise to compute and store ALU result
 );
 
-   reg [4:0] shamt; // current shift amount
+   reg [4:0] shamt = 0; // current shift amount
    
    // ALU is busy if shift amount is non-zero, or if, at execute
    // state, operation is a shift (wr active)
    assign busy = (shamt != 0) || 
 		 (wr && ( op == 3'b001 || op == 3'b101));
    
-   reg [31:0] sR0;
+   reg [31:0] shifter;
    
    always @(*) begin
       (* parallel_case, full_case *)
@@ -168,8 +168,8 @@ module NrvALU(
         3'b100: out = in1 ^ in2;                                      // XOR
         3'b110: out = in1 | in2;                                      // OR
         3'b111: out = in1 & in2;                                      // AND
-        3'b001: out = sR0;                                            // SLL	   
-        3'b101: out = sR0;                                            // SRL/SRA
+        3'b001: out = shifter;                                        // SLL	   
+        3'b101: out = shifter;                                        // SRL/SRA
       endcase 
    end
 
@@ -180,8 +180,8 @@ module NrvALU(
       
       if(wr) begin
 	 case(op)
-           3'b001: begin sR0 <= in1; shamt <= in2[4:0]; end // SLL	   
-           3'b101: begin sR0 <= in1; shamt <= in2[4:0]; end // SRL/SRA
+           3'b001: begin shifter <= in1; shamt <= in2[4:0]; end // SLL	   
+           3'b101: begin shifter <= in1; shamt <= in2[4:0]; end // SRL/SRA
 	 endcase 
       end else begin
 
@@ -189,9 +189,9 @@ module NrvALU(
 	 if (shamt > 4) begin
 	    shamt <= shamt - 4;
 	    case(op)
-              3'b001: sR0 <= sR0 << 4;                            // SLL
-	      3'b101: sR0 <= opqual ? {{4{sR0[31]}}, sR0[31:4]} : // SRL/SRA 
-                                      { 4'b0000,     sR0[31:4]} ; 
+              3'b001: shifter <= shifter << 4;                                // SLL
+	      3'b101: shifter <= opqual ? {{4{shifter[31]}}, shifter[31:4]} : // SRL/SRA 
+                                          { 4'b0000,         shifter[31:4]} ; 
 	    endcase 
 	 end else  
 `endif
@@ -199,9 +199,9 @@ module NrvALU(
 	 if (shamt != 0) begin
 	    shamt <= shamt - 1;
 	    case(op)
-              3'b001: sR0 <= sR0 << 1;                       // SLL
-	      3'b101: sR0 <= opqual ? {sR0[31], sR0[31:1]} : // SRL/SRA 
-                                      {1'b0,    sR0[31:1]} ; 
+              3'b001: shifter <= shifter << 1;                           // SLL
+	      3'b101: shifter <= opqual ? {shifter[31], shifter[31:1]} : // SRL/SRA 
+                                          {1'b0,        shifter[31:1]} ; 
 	    endcase 
 	 end
 
@@ -431,7 +431,8 @@ module NrvProcessor(
    input wire 	     reset,
 `endif		    
    output wire 	     error,
-   output wire[3:0]  stateDebug
+   output wire[3:0]  stateDebug,
+   output wire[`ADDR_WIDTH-1:0] pcDebug		    
 );
 
    
@@ -452,6 +453,9 @@ module NrvProcessor(
    
    reg [`ADDR_WIDTH-1:0] addressReg;
    reg [`ADDR_WIDTH-1:0] PC;
+
+   assign pcDebug = PC;
+   
    reg [31:0]  	         instr;     // Latched instruction. 
    reg [31:0]            nextInstr; // Prefetced instruction.
 
@@ -621,7 +625,7 @@ module NrvProcessor(
 
    always @(posedge clk
 `ifdef NRV_RESET	    
-       ,negedge reset
+           ,negedge reset
 `endif	    
    ) begin
       `verbose($display("state = %h",state));
@@ -1399,11 +1403,11 @@ module nanorv(
 `ifdef NRV_RESET			 
     .reset(RESET),
 `endif
-    .error(D5)			 
+    .error(error)			 
   );
 
 `ifdef NRV_IO_LEDS  
-   assign D5 = error;
+     assign D5 = error;
 `endif
 
 endmodule

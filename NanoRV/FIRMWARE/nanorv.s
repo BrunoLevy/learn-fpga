@@ -48,6 +48,9 @@
 
 #################################################################################
 
+        nop
+	nop
+	nop
         li gp,IO_BASE # base address of memory-mapped IO
 	li sp,0x1000  # initial stack pointer, stack goes downwards
 	j _start
