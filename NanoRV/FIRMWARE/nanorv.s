@@ -51,6 +51,8 @@
         nop
 	nop
 	nop
+	nop
+	nop	
         li gp,IO_BASE # base address of memory-mapped IO
 	li sp,0x1000  # initial stack pointer, stack goes downwards
 	j _start
@@ -76,9 +78,7 @@ __muldi3:
 	
 	
 #################################################################################	
-
 # NanoRv OLED display support
-
 #################################################################################
 	
 # initialize oled display
@@ -212,3 +212,32 @@ oled_wait:
 	bnez t0,oled_wait
 	ret
 	
+#################################################################################	
+# NanoRv UART support
+#################################################################################
+
+put_char:
+        sw a0,IO_UART_TX_DATA(gp)
+pcrx:	lw t0,IO_UART_TX_CNTL(gp)
+	bnez t0,pcrx
+	ret
+
+get_char:
+        lw a0,IO_UART_RX_CNTL(gp)
+        beqz a0,get_char
+        lw a0,IO_UART_RX_DATA(gp)
+        ret 
+
+print_string:
+        mv t0, a0
+psl:	lb t1, 0(t0)
+	beqz t1,pseos
+	sw t1,IO_UART_TX_DATA(gp)
+psrx:	lw t1,IO_UART_TX_CNTL(gp)
+	bnez t1,psrx
+	add t0,t0,1
+	j psl
+pseos:  ret	
+
+
+        
