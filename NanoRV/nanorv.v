@@ -14,26 +14,6 @@
  * See also NOTES.txt
  */
 
-// WIP: from Harvard to Von Neumann
-//   - one unique address bus (+ instr prefetch register management)
-//   NEXT:
-//     1) fusion ROM and RAM in single component
-//        (use same memory map for now, replace first page of RAM
-//         with ROM, mandelbrot demo fits (232 words !!)
-//         --> DONE
-//     2) fusion data bus
-//         --> DONE
-//     3) use smthg similar to Claire's interface for memory, 
-//            move read sign expansion into processor --> DONE 
-//            keep write mask in memory (but adapted) --> DONE
-//     4) cleaner scripts to generate initial RAM content & no longer
-//        distingish ROM/RAM
-//     5) simulation backend --> DONE
-//     6) resize address bus to save LUTs --> DONE
-//     7) investigate error flag behavior
-//     8) investigate critical path that seems to connect things that
-//        should not be connected.
-
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32)
 `define NRV_TWOSTAGE_SHIFTER
@@ -798,6 +778,9 @@ module NrvProcessor(
 	   // - If ALU is still busy, continue to wait.
 	   // - register writeback is active
 	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
+	   if(isLoad) begin
+	      `bench($display("   datain=%h",dataIn));
+	   end
 	end
 	ERROR: begin
 	   `bench($display("ERROR"));
@@ -888,7 +871,7 @@ endmodule
 module NrvIO(
     input 	      clk, 
     input [7:0]       address, 
-    output 	      wr,
+    input 	      wr,
     output 	      rd,
     input [31:0]      in, 
     output reg [31:0] out,

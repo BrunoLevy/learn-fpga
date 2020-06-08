@@ -1,8 +1,15 @@
-const char* s = "hello, world\n";
+const char* hello = "hello, world\n";
 
-
-int fact(int x) {
-   return (x==1) ? 1 : x*fact(x-1);
+int charsum() {
+   int result = 0;
+   const char* p = hello;
+   while(*p) {
+      result += *p;
+      ++p;
+   }
+   return result;
 }
+
+
 
 
