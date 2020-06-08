@@ -7,7 +7,7 @@ riscv64-linux-gnu-ld -m elf32lriscv_ilp32 -b elf32-littleriscv -Ttext 0 -o $PROG
 # Dump hexadecimal content
 riscv64-linux-gnu-objcopy -O verilog $PROGNAME.elf $PROGNAME.objcopy.hex
 # Adapt hexadecimal content (32 bit words instead of individual bytes)
-./firmware_split
+./firmware_words
 
 ## Display assembly
 riscv64-linux-gnu-objcopy -O binary $PROGNAME.elf $PROGNAME.bin

@@ -1,15 +1,5 @@
-const char* hello = "hello, world\n";
+void print_string(char* s);
 
-int charsum() {
-   int result = 0;
-   const char* p = hello;
-   while(*p) {
-      result += *p;
-      ++p;
-   }
-   return result;
+int main() {
+   print_string("Hello, world\n");
 }
-
-
-
-

@@ -25,12 +25,13 @@
 //`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
 //`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
 `define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
-`define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
+//`define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
 
 `define ADDR_WIDTH 14 // Internal number of bits for PC and address register.
                       // 6kb needs 13 bits, + 1 page for IO -> 14 bits
 
 /*************************************************************************************/
+// Makes it easier to detect typos !
 `default_nettype none
 
 // Used by the UART, needs to match frequency defined in the PLL, 
@@ -96,16 +97,6 @@ module NrvRegisterFile(
       out2 <= bank2[~outRegId2];
 `endif      
    end
-
-   /*
-   integer i;
-   initial begin
-      for (i = 0; i < 31; i = i+1) begin
-	 bank1[i] = 32'b0;
-	 bank2[i] = 32'b0;
-      end
-   end
-   */
 endmodule
 
 
@@ -511,9 +502,6 @@ module NrvProcessor(
     .out2(regOut2) 
    );
 
-// assign dataRd = ((state == EXECUTE && isLoad)  || state == LOAD); // active during two cycles
-// wire   dataWr = (state == STORE);
-
    // The ALU, partly combinatorial, partly state (for shifts).
    wire [31:0] aluIn1 = aluInSel1 ? PC  : regOut1;
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
@@ -580,21 +568,6 @@ module NrvProcessor(
     .op(aluOp),
     .out(predOut)		    
    );
-
-   // Now I think I better understand what's going on,
-   //  by thinking about it like that:
-   //   Rule 1: x <= y:   x is ready right at the beginning
-   //                     of the *next* state.
-   //   Rule 2: whenever registers or memory are involved,
-   //                one needs an additional cycle right
-   //                after register Id or mem address changed
-   //                before getting the value.
-   //
-   // Important:
-   //    Carefully chose the states and their names !
-   //    Keep in mind what's ready (and not) at the beginning of each state,
-   //     especially when memory is involved (as well as registers since they
-   //     are in BRAM here).
 
    always @(posedge clk
 `ifdef NRV_RESET	    

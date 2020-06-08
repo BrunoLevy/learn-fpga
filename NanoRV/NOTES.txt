@@ -1,24 +1,27 @@
-// WIP: from Harvard to Von Neumann
-//   - one unique address bus (+ instr prefetch register management)
-//   NEXT:
-//     1) fusion ROM and RAM in single component
-//        (use same memory map for now, replace first page of RAM
-//         with ROM, mandelbrot demo fits (232 words !!)
-//         --> DONE
-//     2) fusion data bus
-//         --> DONE
-//     3) use smthg similar to Claire's interface for memory, 
-//            move read sign expansion into processor --> DONE 
-//            keep write mask in memory (but adapted) --> DONE
-//     4) cleaner scripts to generate initial RAM content & no longer
-//        distingish ROM/RAM
-//     5) simulation backend --> DONE
-//     6) resize address bus to save LUTs --> DONE
-//     7) investigate error flag behavior
-//          --> test with simpler ALU (temporarily deactivate
-//              shifts...) / latch for ALUbusy...
-//     8) investigate critical path that seems to connect things that
-//        should not be connected.
+ WIP: from Harvard to Von Neumann
+   - one unique address bus (+ instr prefetch register management)
+   NEXT:
+     1) fusion ROM and RAM in single component
+        (use same memory map for now, replace first page of RAM
+         with ROM, mandelbrot demo fits (232 words !!)
+         --> DONE
+     2) fusion data bus
+         --> DONE
+     3) use smthg similar to Claire's interface for memory, 
+            move read sign expansion into processor --> DONE 
+            keep write mask in memory (but adapted) --> DONE
+     4) cleaner scripts to generate initial RAM content & no longer
+        distingish ROM/RAM
+     5) simulation backend --> DONE
+     6) resize address bus to save LUTs --> DONE
+     7) investigate error flag behavior
+          --> test with simpler ALU (temporarily deactivate
+              shifts...) / latch for ALUbusy...
+     8) investigate critical path that seems to connect things that
+        should not be connected.
+
+
+  TODO: ldbu n'a pas l'air de marcher (à vérifier)
 
   
  
@@ -60,13 +63,33 @@
 	         by specifying linker options -m elf32lriscv_ilp32 -b elf32-littleriscv
 		 it fixed the problem (but I do not know exactly what
                  it means, maybe it was using some 64-bits specific instructions or someting...)
-           
+
+
+   DEBUGGING THE STATE MACHINE:
+   
+   Now I think I better understand what's going on,
+    by thinking about it like that:
+     Rule 1: x <= y:   x is ready right at the beginning
+                       of the *next* state.
+     Rule 2: whenever registers or memory are involved,
+                  one needs an additional cycle right
+                  after register Id or mem address changed
+                  before getting the value.
+   
+   Important:
+      Carefully chose the states and their names !
+      Keep in mind what's ready (and not) at the beginning of each state,
+       especially when memory is involved (as well as registers since they
+       are in BRAM here).
+
+
+
 
   TODO / IDEAS:
         DESIGN
              - Tests RISC-V (c.f. PICORV32), dans simulateur et 'on device' si possible
              - Check all recommendations from MIT course:
-                   http://web.mit.edu/6.111/www/f2016/handouts/L11_4.pdf
+                   http:web.mit.edu/6.111/www/f2016/handouts/L11_4.pdf
                    - beware of clock skew, don't gate the clock
                    - always assume that combinatorial logic glitches
                    - Never drive a critical asynchronous control signal 
@@ -81,12 +104,12 @@
                critical path (maxfreq is now 37 MHz, we can probably do 50 MHz)
                Critical path is way too long, need to insert registers in IO controller
                and maybe in other places (but I'm really running out of LUTs)
-             - Gain some LUTs by reducing address bus width in RAM and mapped IO 
+             DONE - Gain some LUTs by reducing address bus width in RAM and mapped IO 
                 and latched addresses (and this will also reduce the critical path since
                 the adder is plugged on it !)
              - Maybe gain some LUTs by not storing the two LSBs of the PC counter, and do
                PC+1 instead of PC+4
-             - Try increasing freq to 60 MHz and decreasing OLED controller freq (slower clock, 
+             DONE - Try increasing freq to 60 MHz and decreasing OLED controller freq (slower clock, 
                affect (&) both OLED clock signal and shifter)
  
          TOOLS
@@ -94,7 +117,7 @@
              - Find a way of interfacing gcc (nearly there ...)
   
          FIRMWARE / DEMOS
-             - Mandelbrot set demo (will it be fast ? not very fast...)
+             - Mandelbrot set demo: DONE
   
          MAPPED IO / PERIPHERALS
-             - Interface for led matrix display
+             - Interface for led matrix display: DONE

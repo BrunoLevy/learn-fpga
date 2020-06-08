@@ -1,3 +1,11 @@
+/**
+ * Converts ascii hex firmware files with byte values 
+ * into files with word values. 
+ * It is required by NanoRV's RAM initialization, that
+ * is organized by words, and initialized using verilog's 
+ * $readmemh().
+ */ 
+
 #include <iostream>
 #include <fstream>
 #include <cctype>
@@ -15,7 +23,7 @@ int main() {
     std::string line;
     while(std::getline(in, line)) {
         if(line[0] == '@') {
-//         not sure readmemh() understands this	   
+//         not sure readmemh() understands this kind of directive
 //	   out << line << std::endl;
 	} else {
 	   std::string bytes;
