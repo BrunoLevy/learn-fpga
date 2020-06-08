@@ -22,10 +22,10 @@
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
-`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
+//`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
+//`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
 `define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
-//`define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
+`define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
 
 `define ADDR_WIDTH 14 // Internal number of bits for PC and address register.
                       // 6kb needs 13 bits, + 1 page for IO -> 14 bits
@@ -779,6 +779,7 @@ module NrvProcessor(
 	   // - register writeback is active
 	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
 	   if(isLoad) begin
+	      `bench($display("   address=%h",addressReg));	      
 	      `bench($display("   datain=%h",dataIn));
 	   end
 	end
@@ -1034,7 +1035,7 @@ module NrvIO(
 	   LEDs_address: begin
 	      LEDs <= in[3:0];
 	      `bench($display("************************** LEDs = %b", in[3:0]));
-	      `bench($display(" in = %h   %d", in, $signed(in)));
+	      `bench($display(" in = %h  %d  %b", in, $signed(in),in));
 	   end
 `endif
 `ifdef NRV_IO_SSD1351	   
