@@ -16,7 +16,7 @@
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32)
-`define NRV_TWOSTAGE_SHIFTER
+//`define NRV_TWOSTAGE_SHIFTER
 
 `define NRV_RESET        // Reset button
 
@@ -426,7 +426,7 @@ module NrvProcessor(
       addressReg = 0;
       PC = 0;
    end
-   
+ 
    // Next program counter in normal operation: advance one word
    // I do not use the ALU, I create an additional adder for that.
    wire [`ADDR_WIDTH-1:0] PCplus4 = PC + 4;
@@ -1089,8 +1089,7 @@ module nanorv(
 `ifdef NRV_RESET	      
    input  RESET,
 `endif	      
-   input  pclk,
-   input DTRn
+   input  pclk
 );
 
   wire  clk;
