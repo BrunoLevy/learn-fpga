@@ -16,8 +16,8 @@
 .equ xmax,  2*mandel_mul
 .equ ymin, -2*mandel_mul
 .equ ymax,  2*mandel_mul	
-.equ dx, (xmax-xmin)/128
-.equ dy, (ymax-ymin)/128
+.equ dx, (xmax-xmin)/80
+.equ dy, (ymax-ymin)/80
 .equ norm_max,(4 << mandel_shift)
 
 # X,Y         : s0,s1
@@ -38,7 +38,7 @@ _start:
 
 	li s1,0
 	li s3,xmin
-	li s11,128	
+	li s11,80
 
 loop_y:	li s0,0
         li s2,ymin
@@ -73,7 +73,7 @@ loop_Z: mv a0,s4    # Zrr  <- (Zr*Zr) >> mandel_shift
 exit_Z:
         la  a0,colormap
 	add a0,a0,s10
-	lb a0,0(a0)
+	lbu a0,0(a0)
 	call put_char
 	
 	add s0,s0,1
@@ -91,7 +91,9 @@ exit_Z:
 	
 	li   t0, 15
 	sw   t0, IO_LEDS(gp)
-.word 0x0000	
+
+        call get_char
+        j _start
 
 
 hello:

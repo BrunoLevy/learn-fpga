@@ -230,7 +230,7 @@ get_char:
 
 print_string:
         mv t0, a0
-psl:	lb t1, 0(t0)
+psl:	lbu t1, 0(t0)
 	beqz t1,pseos
 	sw t1,IO_UART_TX_DATA(gp)
 psrx:	lw t1,IO_UART_TX_CNTL(gp)

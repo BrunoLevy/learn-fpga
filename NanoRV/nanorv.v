@@ -13,9 +13,9 @@
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
-//`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
-`define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
+`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
+`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
+//`define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
 
 `define ADDR_WIDTH 14 // Internal number of bits for PC and address register.
@@ -533,11 +533,11 @@ module NrvProcessor(
       endcase 
 
       // aluop[1:0] contains data size (00: byte, 01: half word, 10: word)
-      // aluop[2] sign expansion toggle     
+      // aluop[2] sign expansion toggle (0 = sign expansion, 1 = no sign expansion)
       (* parallel_case, full_case *)      
       case(aluOp[1:0])
-	2'b00: decodedDataIn = {{24{aluOp[2]?dataIn_B[7]:1'b0}},dataIn_B};
-	2'b01: decodedDataIn = {{16{aluOp[2]?dataIn_H[15]:1'b0}},dataIn_H};
+	2'b00: decodedDataIn = {{24{aluOp[2]?1'b0:dataIn_B[7]}},dataIn_B};
+	2'b01: decodedDataIn = {{16{aluOp[2]?1'b0:dataIn_H[15]}},dataIn_H};
 	default: decodedDataIn = dataIn;
       endcase
    end

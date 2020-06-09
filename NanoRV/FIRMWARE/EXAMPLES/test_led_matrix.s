@@ -23,7 +23,7 @@ MAX2719_image:
         mv s1,a0
         li s2,9
 MAXil:  mv a0,s0
-        lb a1,0(s1)
+        lbu a1,0(s1)
 	call MAX2719
 	add s0,s0,1
 	add s1,s1,1
