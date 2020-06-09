@@ -7,16 +7,17 @@
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32). Need to comment out if UART is used (else it does not fit).
-`define NRV_TWOSTAGE_SHIFTER
+//`define NRV_TWOSTAGE_SHIFTER
 
-`define NRV_RESET        // Reset button
+//`define NRV_RESET        // Reset button, active low (wire a push button and a pullup 
+                           // resistor to pin 47 or change in nanorv.pcf). 
 
 // Optional mapped IO devices
-`define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+// `define NRV_IO_LEDS   // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 `define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
 `define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
-//`define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
-//`define NRV_IO_MAX2719   // Mapped IO, 8x8 led matrix
+//`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
 
 `define ADDR_WIDTH 14 // Internal number of bits for PC and address register.
                       // 6kb needs 13 bits, + 1 page for IO -> 14 bits
@@ -210,15 +211,23 @@ module NrvDecoder(
 );
 
    reg inRegId1Sel; // 0: force inRegId1 to zero 1: use inRegId1 instr field
-  
+
+   // The beauty of RiscV: the instruction decoder is reasonably simple, because
+   // - register ids and alu operation are always encoded in the same bits
+   // - sign expansion for immediates is always done from bit 31, and minimum
+   //   shuffling (nice compromise with register IDs and aluOp that are always
+   //   the same bits). 
+
    // The control signals directly deduced from (fixed pos) fields
+   
    assign writeBackRegId = instr[11:7];
-   assign inRegId1       = instr[19:15] & {5{inRegId1Sel}};   
-   assign inRegId2       = instr[24:20];
+   assign inRegId1       = instr[19:15] & {5{inRegId1Sel}}; // Internal sig InRegId1Sel used to force zero in reg1
+   assign inRegId2       = instr[24:20];              // (because I'm maing maximum reuse of the adder of the ALU)
    assign aluOp          = instr[14:12];  
 
    // The five immediate formats, see the RiscV reference, Fig. 2.4 p. 12
    // Note: they all do sign expansion (sign bit is instr[31]), except the U format
+   
    wire [31:0] Iimm = {{21{instr[31]}}, instr[30:25], instr[24:21], instr[20]};
    wire [31:0] Simm = {{21{instr[31]}}, instr[30:25], instr[11:8], instr[7]};
    wire [31:0] Bimm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
@@ -236,7 +245,7 @@ module NrvDecoder(
    // nextPCSel      00: PC+4  01: ALU   10: (pred ? ALU : PC+4)
    // imm (select one of Iimm,Simm,Bimm,Jimm,Uimm)
 
-   // The beauty of RiscV: in fact there are only 11 instructions !
+   // The beauty of RiscV (again !): in fact there are only 11 instructions !
    //
    // LUI, AUIPC, JAL, JALR
    // Branch variants
@@ -245,6 +254,10 @@ module NrvDecoder(
    // Load, Store 
    // Fence, System (not implemented)
 
+   // We need to distingish shifts for two reasons:
+   //  - We need to wait for ALU when it is a shift
+   //  - For ALU ops with immediates, aluQual is 0, except
+   //    for shifts (then it is instr[30]).
    wire aluOpIsShift = (aluOp == 3'b001) || (aluOp == 3'b101);
    
    always @(*) begin
@@ -379,13 +392,13 @@ endmodule
 
 module NrvProcessor(
    input 	     clk,
-   output [31:0]     address,
-   output reg	     dataRd,
-   input [31:0]      dataIn,
-   output reg [3:0]  dataWrByteMask, // write mask for individual bytes
-   output reg [31:0] dataOut,
-   input wire 	     reset,
-   output wire 	     error
+   output [31:0]     address,        // address bus, only ADDR_WIDTH bits are used
+   output reg	     dataRd,         // active when reading data (but not when reading instr)
+   input [31:0]      dataIn,         // input lines for both data and instr
+   output reg [3:0]  dataWrByteMask, // write mask for individual bytes (1 means write byte)
+   output reg [31:0] dataOut,        // data to be written
+   input wire 	     reset,          // set to 0 to reset the processor
+   output wire 	     error           // 1 if current instruction could not be decoded
 );
 
 
@@ -407,8 +420,8 @@ module NrvProcessor(
 
    assign address = addressReg;
 
-   reg [31:0]  	         instr;     // Latched instruction. 
-   reg [31:0]            nextInstr; // Preftched instruction.
+   reg [31:0] instr;     // Latched instruction. 
+   reg [31:0] nextInstr; // Prefetched instruction.
 
    initial begin
       dataRd = 1'b0;
@@ -793,16 +806,18 @@ module NrvMemoryInterface(
                                   // and I'm missing read signal for instr)
 
    reg [31:0] RAM[1023:0]; // 4K
-// reg [31:0] RAM[1279:0]; // 5K    
-// reg [31:0] RAM[1535:0]; // 6K 
+// reg [31:0] RAM[1279:0]; // 5K  Unfortunately, activating more than 4K eats up too many 
+// reg [31:0] RAM[1535:0]; // 6K  LUTs ... (we keep 4K for now).                                               
    reg [31:0] out_RAM;
 
    initial begin
-      $readmemh("FIRMWARE/firmware.hex",RAM);
+      $readmemh("FIRMWARE/firmware.hex",RAM); // Read the firmware from the generated hex file.
    end
 
-   wire [10:0] word_addr = {page,offset};
+   // The power of YOSYS: it infers SB_RAM40_4K BRAM primitives automatically ! (and recognizes
+   // masked writes, amazing ...)
    
+   wire [10:0] word_addr = {page,offset};
    always @(posedge clk) begin
       if(wrRAM) begin
 	 if(wrByteMask[0]) RAM[word_addr][ 7:0 ] <= in[ 7:0 ];
