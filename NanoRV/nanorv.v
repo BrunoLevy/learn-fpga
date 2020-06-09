@@ -12,7 +12,7 @@
 `define NRV_RESET        // Reset button
 
 // Optional mapped IO devices
-`define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+//`define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
 //`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
 `define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
@@ -464,8 +464,6 @@ module NrvProcessor(
      .error(decoderError)     		     
    );
 
-   reg [1:0] writeBackSel_latched;
-   reg       writeBackEn_latched;
    reg       error_latched;
    assign error = error_latched;
    
@@ -535,9 +533,9 @@ module NrvProcessor(
       // aluop[1:0] contains data size (00: byte, 01: half word, 10: word)
       // aluop[2] sign expansion toggle     
       (* parallel_case, full_case *)      
-      case(aluOp_latched[1:0])
-	2'b00: decodedDataIn = {{24{aluOp_latched[2]?dataIn_B[7]:1'b0}},dataIn_B};
-	2'b01: decodedDataIn = {{16{aluOp_latched[2]?dataIn_H[15]:1'b0}},dataIn_H};
+      case(aluOp[1:0])
+	2'b00: decodedDataIn = {{24{aluOp[2]?dataIn_B[7]:1'b0}},dataIn_B};
+	2'b01: decodedDataIn = {{16{aluOp[2]?dataIn_H[15]:1'b0}},dataIn_H};
 	default: decodedDataIn = dataIn;
       endcase
    end
@@ -545,7 +543,7 @@ module NrvProcessor(
    // The value written back to the register file.
    always @(*) begin
       (* parallel_case, full_case *)
-      case(writeBackSel_latched)
+      case(writeBackSel)
 	2'b00: writeBackData = aluOut;	
 	2'b01: writeBackData = PCplus4;
 	2'b10: writeBackData = decodedDataIn; 
@@ -563,10 +561,6 @@ module NrvProcessor(
    );
 
    reg      waitAlu;
-   reg      isLoad_latched;
-   reg      isStore_latched;
-   reg[1:0] nextPCSel_latched;
-   reg [2:0] aluOp_latched;
    
    always @(posedge clk) begin
       `verbose($display("state = %h",state));
@@ -629,11 +623,6 @@ module NrvProcessor(
 	   `verbose($display("   nextPCSel      = %b", nextPCSel));
 	   `verbose($display("   error          = %b", error));
 	   waitAlu <= needWaitAlu;
-	   isLoad_latched <= isLoad;
-	   isStore_latched <= isStore;
-	   nextPCSel_latched <= nextPCSel;
-	   aluOp_latched <= aluOp;
-	   writeBackSel_latched <= writeBackSel;
 	   error_latched <= decoderError;
 	end
 	EXECUTE: begin
@@ -655,17 +644,17 @@ module NrvProcessor(
 
 	   if(error_latched) begin
 	      state <= ERROR;
-	   end else if(isLoad_latched) begin
+	   end else if(isLoad) begin
 	      state <= LOAD;
 	      PC <= PCplus4;
 	      addressReg <= aluOut;
 	      dataRd <= 1'b1;
-	   end else if(isStore_latched) begin
+	   end else if(isStore) begin
 	      state <= STORE;
 	      PC <= PCplus4;
 	      addressReg <= aluOut;
 	   end else begin
-	      case(nextPCSel_latched)
+	      case(nextPCSel)
 		2'b00: begin // normal operation
 		   PC <= PCplus4;
 		   state <= needWaitAlu ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
@@ -701,7 +690,7 @@ module NrvProcessor(
 	   // data address was just updated
 	   // data ready to be written now
 	   state <= USE_PREFETCHED;
-	   case(aluOp_latched[1:0])
+	   case(aluOp[1:0])
 	     2'b00: begin
 		case(address[1:0])
 		  2'b00: begin
@@ -1077,13 +1066,10 @@ module nanorv(
 `ifdef NRV_IO_MAX2719	   
    output ledmtx_DIN, ledmtx_CS, ledmtx_CLK,
 `endif
-//`ifdef NRV_RESET	      
+`ifdef NRV_RESET	      
    input  RESET,
-//`endif	      
-   input  pclk,
-   input  DTRn // This one is not used, but if I remove it, it uses
-	       // more LUTs (with it OLED SSD + TWOSTAGE_SHIFTER fit)
-	       // (mystery ???)
+`endif	      
+   input  pclk
 );
 
   wire  clk;
