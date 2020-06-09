@@ -393,9 +393,7 @@ module NrvProcessor(
    input [31:0]      dataIn,
    output reg [3:0]  dataWrByteMask, // write mask for individual bytes
    output reg [31:0] dataOut,
-`ifdef NRV_RESET		    
    input wire 	     reset,
-`endif		    
    output wire 	     error
 );
 
@@ -579,27 +577,17 @@ module NrvProcessor(
    reg[1:0] nextPCSel_latched;
    reg [2:0] aluOp_latched;
    
-   always @(posedge clk
-/*	    
-`ifdef NRV_RESET	    
-           ,negedge reset
-`endif	    
- */
-   ) begin
+   always @(posedge clk) begin
       `verbose($display("state = %h",state));
-`ifdef NRV_RESET      
       if(!reset) begin
 	 state <= INITIAL;
       end else
-`endif	
       case(state)
 	INITIAL: begin
 	   `verbose($display("INITIAL"));
 	   state <= WAIT_INSTR;
 	   addressReg <= 0;
 	   PC <= 0;
-//	   dataRd <= 1'b0;
-//	   dataWrByteMask <= 4'b0000;
 	end
 	WAIT_INSTR: begin
 	   // this state to give enough time to fetch the first
