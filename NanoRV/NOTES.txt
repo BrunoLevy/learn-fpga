@@ -11,19 +11,19 @@
             move read sign expansion into processor --> DONE 
             keep write mask in memory (but adapted) --> DONE
      4) cleaner scripts to generate initial RAM content & no longer
-        distingish ROM/RAM
+        distingish ROM/RAM --> DONE
      5) simulation backend --> DONE
      6) resize address bus to save LUTs --> DONE
      7) investigate error flag behavior
           --> test with simpler ALU (temporarily deactivate
               shifts...) / latch for ALUbusy...
+	  --> DONE (little delay at startup, like in PicoSOC for icebreaker)    
      8) investigate critical path that seems to connect things that
         should not be connected.
 
 
   TODO: ldbu n'a pas l'air de marcher (à vérifier)
 
-  
  
   DebugLog:  - register write back was writing stuff in some registers
                when Id was zero ! Added a test. 

@@ -12,7 +12,7 @@
 `define NRV_RESET        // Reset button
 
 // Optional mapped IO devices
-//`define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+`define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
 //`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
 `define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
@@ -435,10 +435,10 @@ module NrvProcessor(
    wire 	 aluQual;        // 'qualifier' used by some operations (+/-, logical/arith shifts)
    wire [1:0] 	 nextPCSel;      // 00: PC+4  01: ALU  10: (predicate ? ALU : PC+4)
    wire [31:0] 	 imm;            // immediate value decoded from the instruction
-   wire          needWaitAlu;
-   wire 	 isLoad;
-   wire 	 isStore;
-   wire          decoderError;
+   wire          needWaitAlu;    // true if we need to wait for the ALU (if instr is a shift)
+   wire 	 isLoad;         // guess what, true if instr is a load
+   wire 	 isStore;        // guess what, true if instr is a store
+   wire          decoderError;   // true if instr does not correspond to any known instr
 
    // The instruction decoder, that reads the current instruction 
    // and generates all the signals from it. It is in fact just a
@@ -464,7 +464,9 @@ module NrvProcessor(
      .error(decoderError)     		     
    );
 
-   reg       error_latched;
+   // Maybe not necessary, but I'd rather latch this one,
+   // if this one glitches, then it will break everything...
+   reg error_latched;
    assign error = error_latched;
    
    wire [31:0] aluOut;
@@ -560,8 +562,6 @@ module NrvProcessor(
     .out(predOut)		    
    );
 
-   reg      waitAlu;
-   
    always @(posedge clk) begin
       `verbose($display("state = %h",state));
       if(!reset) begin
@@ -622,7 +622,6 @@ module NrvProcessor(
 	   `verbose($display("   isLoad,isStore = %b,%b", isLoad, isStore));
 	   `verbose($display("   nextPCSel      = %b", nextPCSel));
 	   `verbose($display("   error          = %b", error));
-	   waitAlu <= needWaitAlu;
 	   error_latched <= decoderError;
 	end
 	EXECUTE: begin
@@ -737,7 +736,6 @@ module NrvProcessor(
 	   `verbose($display("WAIT_INSTR_AND_ALU"));	   
 	   // - If ALU is still busy, continue to wait.
 	   // - register writeback is active
-	   waitAlu <= 1'b0;
 	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
 	   if(isLoad) begin
 	      `bench($display("   address=%h",addressReg));	      
