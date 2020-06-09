@@ -4,19 +4,10 @@
 // and trying to organize the source in such a way I can understand
 // what I have written a while after...
 
-/*
- * Bugs:      - There is still somethig wrong ! if I test error flag, or
- *              if I test whether instr is zero, it always says yes...
- *              (unless I lower frequency), there is probably something
- *              I do wrong... Plus sometimes it does not start and stays
- *              stuck in error mode (D5 lit).
- *
- * See also NOTES.txt
- */
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
-// (inspired by PICORV32)
-//`define NRV_TWOSTAGE_SHIFTER
+// (inspired by PICORV32). Need to comment out if UART is used (else it does not fit).
+`define NRV_TWOSTAGE_SHIFTER
 
 `define NRV_RESET        // Reset button
 
@@ -1071,9 +1062,9 @@ endmodule
 /********************* Nrv main *******************************/
 
 module nanorv(
-// `ifdef NRV_IO_LEDS	      
+`ifdef NRV_IO_LEDS	      
    output D1,D2,D3,D4,D5,
-//`endif	      
+`endif	      
 `ifdef NRV_IO_SSD1351	      
    output oled_DIN, oled_CLK, oled_CS, oled_DC, oled_RST,
 `endif
@@ -1086,10 +1077,13 @@ module nanorv(
 `ifdef NRV_IO_MAX2719	   
    output ledmtx_DIN, ledmtx_CS, ledmtx_CLK,
 `endif
-`ifdef NRV_RESET	      
+//`ifdef NRV_RESET	      
    input  RESET,
-`endif	      
-   input  pclk
+//`endif	      
+   input  pclk,
+   input  DTRn // This one is not used, but if I remove it, it uses
+	       // more LUTs (with it OLED SSD + TWOSTAGE_SHIFTER fit)
+	       // (mystery ???)
 );
 
   wire  clk;
@@ -1115,15 +1109,28 @@ module nanorv(
    );
  `endif
 
-   reg [6:0] reset_cnt = 0;
-   wire       reset = &reset_cnt;
-   always @(posedge clk, negedge RESET) begin
-      if(!RESET) begin
-	 reset_cnt <= 0;
-      end else begin
-	 reset_cnt <= reset_cnt + !reset;
-      end
-   end
+  // Not 100% of what I'm doing here (but
+  // at least if seemingly fixed my pb):
+  // A little delay for sending the reset
+  // signal after startup. Without it the
+  // CPU stays stuck, seemingly fetching
+  // ramdom instr from BRAM.
+  // (picosoc on icebreaker does the same).
+  reg [6:0] reset_cnt = 0;
+  wire     reset = &reset_cnt;
+`ifdef NRV_RESET   
+  always @(posedge clk,negedge RESET) begin
+     if(!RESET) begin
+	reset_cnt <= 0;
+     end else begin
+	reset_cnt <= reset_cnt + !reset;
+     end
+  end
+`else
+  always @(posedge clk) begin
+     reset_cnt <= reset_cnt + !reset;
+  end
+`endif   
    
 
   wire [31:0] address;
