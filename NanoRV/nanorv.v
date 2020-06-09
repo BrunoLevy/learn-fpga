@@ -117,8 +117,7 @@ module NrvALU(
    
    // ALU is busy if shift amount is non-zero, or if, at execute
    // state, operation is a shift (wr active)
-   assign busy = (shamt != 0) || 
-		 (wr && ( op == 3'b001 || op == 3'b101));
+   assign busy = (shamt != 0);
    
    reg [31:0] shifter;
    
@@ -210,12 +209,13 @@ module NrvDecoder(
     output reg 	      aluInSel1, // 0: reg  1: pc
     output reg 	      aluInSel2, // 0: reg  1: imm
     output [2:0]      aluOp,
-    output reg	      aluQual,
+    output reg 	      aluQual,
     output reg 	      isLoad,
     output reg 	      isStore,
+    output reg        needWaitAlu,
     output reg [1:0]  nextPCSel, // 00: PC+4  01: ALU  10: (predicate ? ALU : PC+4)
     output reg [31:0] imm,
-    output reg	      error
+    output reg 	      error
 );
 
    reg inRegId1Sel; // 0: force inRegId1 to zero 1: use inRegId1 instr field
@@ -254,6 +254,8 @@ module NrvDecoder(
    // Load, Store 
    // Fence, System (not implemented)
 
+   wire aluOpIsShift = (aluOp == 3'b001) || (aluOp == 3'b101);
+   
    always @(*) begin
 
        error = 1'b0;
@@ -262,6 +264,7 @@ module NrvDecoder(
        isLoad = 1'b0;
        isStore = 1'b0;
        aluQual = 1'b0;
+       needWaitAlu = 1'b0;
       
        (* parallel_case, full_case *)
        case(instr[6:0])
@@ -322,8 +325,8 @@ module NrvDecoder(
 	      aluInSel1 = 1'b0;      // ALU source 1 : reg
 	      aluInSel2  = 1'b1;     // ALU source 2 : imm
 	                             // Qualifier for ALU op: SRLI/SRAI
-	      aluQual = (aluOp == 3'b001) || 
-                        (aluOp == 3'b101) ? instr[30] : 1'b0;   
+	      aluQual = aluOpIsShift ? instr[30] : 1'b0;
+	      needWaitAlu = aluOpIsShift;
 	      aluSel = 1'b1;         // ALU op : from instr
 	      imm = Iimm;            // imm format = I
 	   end
@@ -393,9 +396,7 @@ module NrvProcessor(
 `ifdef NRV_RESET		    
    input wire 	     reset,
 `endif		    
-   output wire 	     error,
-   output wire[3:0]  stateDebug,
-   output wire[`ADDR_WIDTH-1:0] pcDebug		    
+   output wire 	     error
 );
 
 
@@ -411,18 +412,14 @@ module NrvProcessor(
    localparam ERROR              = 9'b100000000;
    reg [8:0] state;
 
-   assign stateDebug = state[3:0];
-   
-   assign address = addressReg;
    
    reg [`ADDR_WIDTH-1:0] addressReg;
    reg [`ADDR_WIDTH-1:0] PC;
 
-   assign pcDebug = PC;
-   
-   reg [31:0]  	         instr;     // Latched instruction. 
-   reg [31:0]            nextInstr; // Prefetced instruction.
+   assign address = addressReg;
 
+   reg [31:0]  	         instr;     // Latched instruction. 
+   reg [31:0]            nextInstr; // Preftched instruction.
 
    initial begin
       dataRd = 1'b0;
@@ -431,7 +428,6 @@ module NrvProcessor(
       addressReg = 0;
       PC = 0;
    end
-
    
    // Next program counter in normal operation: advance one word
    // I do not use the ALU, I create an additional adder for that.
@@ -450,8 +446,10 @@ module NrvProcessor(
    wire 	 aluQual;        // 'qualifier' used by some operations (+/-, logical/arith shifts)
    wire [1:0] 	 nextPCSel;      // 00: PC+4  01: ALU  10: (predicate ? ALU : PC+4)
    wire [31:0] 	 imm;            // immediate value decoded from the instruction
+   wire          needWaitAlu;
    wire 	 isLoad;
    wire 	 isStore;
+   wire          decoderError;
 
    // The instruction decoder, that reads the current instruction 
    // and generates all the signals from it. It is in fact just a
@@ -469,13 +467,19 @@ module NrvProcessor(
      .aluSel(aluSel),		     
      .aluOp(aluOp),
      .aluQual(aluQual),
+     .needWaitAlu(needWaitAlu),		      
      .isLoad(isLoad),
      .isStore(isStore),
      .nextPCSel(nextPCSel),
      .imm(imm),
-     .error(error)     		     
+     .error(decoderError)     		     
    );
 
+   reg [1:0] writeBackSel_latched;
+   reg       writeBackEn_latched;
+   reg       error_latched;
+   assign error = error_latched;
+   
    wire [31:0] aluOut;
    wire        aluBusy;
 
@@ -542,9 +546,9 @@ module NrvProcessor(
       // aluop[1:0] contains data size (00: byte, 01: half word, 10: word)
       // aluop[2] sign expansion toggle     
       (* parallel_case, full_case *)      
-      case(aluOp[1:0])
-	2'b00: decodedDataIn = {{24{aluOp[2]?dataIn_B[7]:1'b0}},dataIn_B};
-	2'b01: decodedDataIn = {{16{aluOp[2]?dataIn_H[15]:1'b0}},dataIn_H};
+      case(aluOp_latched[1:0])
+	2'b00: decodedDataIn = {{24{aluOp_latched[2]?dataIn_B[7]:1'b0}},dataIn_B};
+	2'b01: decodedDataIn = {{16{aluOp_latched[2]?dataIn_H[15]:1'b0}},dataIn_H};
 	default: decodedDataIn = dataIn;
       endcase
    end
@@ -552,7 +556,7 @@ module NrvProcessor(
    // The value written back to the register file.
    always @(*) begin
       (* parallel_case, full_case *)
-      case(writeBackSel)
+      case(writeBackSel_latched)
 	2'b00: writeBackData = aluOut;	
 	2'b01: writeBackData = PCplus4;
 	2'b10: writeBackData = decodedDataIn; 
@@ -569,10 +573,18 @@ module NrvProcessor(
     .out(predOut)		    
    );
 
+   reg      waitAlu;
+   reg      isLoad_latched;
+   reg      isStore_latched;
+   reg[1:0] nextPCSel_latched;
+   reg [2:0] aluOp_latched;
+   
    always @(posedge clk
+/*	    
 `ifdef NRV_RESET	    
            ,negedge reset
 `endif	    
+ */
    ) begin
       `verbose($display("state = %h",state));
 `ifdef NRV_RESET      
@@ -586,9 +598,8 @@ module NrvProcessor(
 	   state <= WAIT_INSTR;
 	   addressReg <= 0;
 	   PC <= 0;
-	   dataRd <= 1'b0;
-	   dataWrByteMask <= 4'b0000;
-	   instr <= 32'h00000013;
+//	   dataRd <= 1'b0;
+//	   dataWrByteMask <= 4'b0000;
 	end
 	WAIT_INSTR: begin
 	   // this state to give enough time to fetch the first
@@ -619,7 +630,7 @@ module NrvProcessor(
 	   // instr was just updated -> input register ids also
 	   // input registers available at next cycle 
 	   
-	   state <= error ? ERROR : EXECUTE;  // Not okay, but okay after reset, why ?
+	   state <= EXECUTE;  // Not okay, but okay after reset, why ?
 	   // state <= EXECUTE; // So for now I do that ... (to be investigated)
 
 	   `verbose($display("DECODE"));
@@ -638,7 +649,13 @@ module NrvProcessor(
 	   `verbose($display("   isLoad,isStore = %b,%b", isLoad, isStore));
 	   `verbose($display("   nextPCSel      = %b", nextPCSel));
 	   `verbose($display("   error          = %b", error));
-
+	   waitAlu <= needWaitAlu;
+	   isLoad_latched <= isLoad;
+	   isStore_latched <= isStore;
+	   nextPCSel_latched <= nextPCSel;
+	   aluOp_latched <= aluOp;
+	   writeBackSel_latched <= writeBackSel;
+	   error_latched <= decoderError;
 	end
 	EXECUTE: begin
 	   `verbose($display("EXECUTE"));
@@ -656,21 +673,23 @@ module NrvProcessor(
 
 	   // Lookahead instr.
 	   nextInstr <= dataIn;
-	   
-	   if(isLoad) begin
+
+	   if(error_latched) begin
+	      state <= ERROR;
+	   end else if(isLoad_latched) begin
 	      state <= LOAD;
 	      PC <= PCplus4;
 	      addressReg <= aluOut;
 	      dataRd <= 1'b1;
-	   end else if(isStore) begin
+	   end else if(isStore_latched) begin
 	      state <= STORE;
 	      PC <= PCplus4;
 	      addressReg <= aluOut;
 	   end else begin
-	      case(nextPCSel)
+	      case(nextPCSel_latched)
 		2'b00: begin // normal operation
 		   PC <= PCplus4;
-		   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
+		   state <= needWaitAlu ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
 		end		   
 		2'b01: begin // unconditional jump (JAL, JALR)
 		   PC <= aluOut;
@@ -703,7 +722,7 @@ module NrvProcessor(
 	   // data address was just updated
 	   // data ready to be written now
 	   state <= USE_PREFETCHED;
-	   case(aluOp[1:0])
+	   case(aluOp_latched[1:0])
 	     2'b00: begin
 		case(address[1:0])
 		  2'b00: begin
@@ -750,6 +769,7 @@ module NrvProcessor(
 	   `verbose($display("WAIT_INSTR_AND_ALU"));	   
 	   // - If ALU is still busy, continue to wait.
 	   // - register writeback is active
+	   waitAlu <= 1'b0;
 	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
 	   if(isLoad) begin
 	      `bench($display("   address=%h",addressReg));	      
@@ -1081,10 +1101,11 @@ module nanorv(
 `ifdef NRV_RESET	      
    input  RESET,
 `endif	      
-   input  pclk
+   input  pclk,
+   input DTRn
 );
 
-   wire   clk;
+  wire  clk;
    
  `ifdef BENCH
    assign clk = pclk;
@@ -1106,7 +1127,18 @@ module nanorv(
       .BYPASS(1'b0)
    );
  `endif
+
+   reg [6:0] reset_cnt = 0;
+   wire       reset = &reset_cnt;
+   always @(posedge clk, negedge RESET) begin
+      if(!RESET) begin
+	 reset_cnt <= 0;
+      end else begin
+	 reset_cnt <= reset_cnt + !reset;
+      end
+   end
    
+
   wire [31:0] address;
   wire        error;
   
@@ -1164,7 +1196,7 @@ module nanorv(
     .IOwr(IOwr),
     .IOaddress(IOaddress)	      
   );
-  
+
   NrvProcessor processor(
     .clk(clk),			
     .address(address),
@@ -1172,12 +1204,10 @@ module nanorv(
     .dataOut(dataOut),
     .dataRd(dataRd),
     .dataWrByteMask(dataWrByteMask),
-`ifdef NRV_RESET			 
-    .reset(RESET),
-`endif
-    .error(error)			 
+    .reset(reset),
+    .error(error)
   );
-
+   
 `ifdef NRV_IO_LEDS  
      assign D5 = error;
 `endif
