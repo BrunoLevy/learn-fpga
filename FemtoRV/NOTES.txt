@@ -1,31 +1,14 @@
- WIP: from Harvard to Von Neumann
-   - one unique address bus (+ instr prefetch register management)
-   NEXT:
-     1) fusion ROM and RAM in single component
-        (use same memory map for now, replace first page of RAM
-         with ROM, mandelbrot demo fits (232 words !!)
-         --> DONE
-     2) fusion data bus
-         --> DONE
-     3) use smthg similar to Claire's interface for memory, 
-            move read sign expansion into processor --> DONE 
-            keep write mask in memory (but adapted) --> DONE
-     4) cleaner scripts to generate initial RAM content & no longer
-        distingish ROM/RAM --> DONE
-     5) simulation backend --> DONE
-     6) resize address bus to save LUTs --> DONE
-     7) investigate error flag behavior
-          --> test with simpler ALU (temporarily deactivate
-              shifts...) / latch for ALUbusy...
-	  --> DONE (little delay at startup, like in PicoSOC for icebreaker)    
-     8) investigate critical path that seems to connect things that
-        should not be connected.
+RISC-V pseudo-instructions:
+   https://compil-lyon.gitlabpages.inria.fr/compil-lyon/CAP1920_ENSL/riscv_isa.pdf
 
-
-  TODO: ldbu n'a pas l'air de marcher (à vérifier)
-
+  Bugs: on init, get_char() returns garbage the first time.
  
-  DebugLog:  - register write back was writing stuff in some registers
+  DebugLog:
+             - get_char() "clicking" twice: it was <enter> generating CR,LF!
+  
+             - I had swapped LB,LBU and LH,LHU
+
+             - register write back was writing stuff in some registers
                when Id was zero ! Added a test. 
   
              - ALU output is no longer latched, so that it is immediatly
@@ -121,3 +104,29 @@
   
          MAPPED IO / PERIPHERALS
              - Interface for led matrix display: DONE
+
+========================================================================
+
+DONE: from Harvard to Von Neumann
+   - one unique address bus (+ instr prefetch register management)
+   NEXT:
+     1) fusion ROM and RAM in single component
+        (use same memory map for now, replace first page of RAM
+         with ROM, mandelbrot demo fits (232 words !!)
+         --> DONE
+     2) fusion data bus
+         --> DONE
+     3) use smthg similar to Claire's interface for memory, 
+            move read sign expansion into processor --> DONE 
+            keep write mask in memory (but adapted) --> DONE
+     4) cleaner scripts to generate initial RAM content & no longer
+        distingish ROM/RAM --> DONE
+     5) simulation backend --> DONE
+     6) resize address bus to save LUTs --> DONE
+     7) investigate error flag behavior
+          --> test with simpler ALU (temporarily deactivate
+              shifts...) / latch for ALUbusy... --> DONE
+	  --> DONE (little delay at startup, like in PicoSOC for icebreaker)    
+     8) investigate critical path that seems to connect things that
+        should not be connected.
+

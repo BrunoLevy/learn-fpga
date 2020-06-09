@@ -1,15 +1,17 @@
+`define NRV_IO_LEDS
+
 `define BENCH
 //`define VERBOSE // Uncomment to have detailed log traces of all states
-`include "../nanorv.v"
+`include "../femtosoc.v"
 
-module NanoRV_bench();
+module femtoRV32_bench();
    
    reg pclk;
    wire [4:0] LEDs;
    wire [4:0] oled_SPI;
 //   wire oled_DIN, oled_CLK, oled_CS, oled_DC, oled_RST;
 
-   nanorv NanoRV(
+   femtosoc uut(
       .pclk(pclk),		 
       .D1(LEDs[0]),
       .D2(LEDs[1]),		 

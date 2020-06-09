@@ -105,7 +105,7 @@ exit_Z:
 
 
 hello:
-  .asciz "NanoRV RISC-V processor, Mandelbrot demo\n"
+  .asciz "NRV Femto RISC-V processor, Mandelbrot demo\n"
 
 string1:
   .asciz "Press any key to restart:"
