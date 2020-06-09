@@ -6,10 +6,11 @@
 
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
-// (inspired by PICORV32). Need to comment out if UART is used (else it does not fit).
-//`define NRV_TWOSTAGE_SHIFTER
+// (inspired by PICORV32). 
+`define NRV_TWOSTAGE_SHIFTER
 
-//`define NRV_RESET        // Reset button, active low (wire a push button and a pullup 
+//`define NRV_RESET        // It is sometimes good to have a physical reset button, 
+                           // this one is active low (wire a push button and a pullup 
                            // resistor to pin 47 or change in nanorv.pcf). 
 
 // Optional mapped IO devices
@@ -773,11 +774,13 @@ endmodule
 // Memory map: 4 pages of 256 32bit words + 1 virtual page for IO
 // Memory address: page[2:0] offset[7:0] byte_offset[1:0]
 //
-// Access to memory is 'typed', using dataType, directly mapped to
-// the corresponding field of the RISC-V LOAD and STORE operations.
-//
-// Page 3'b100 is used for memory-mapped IO's, that redirects the
+// Page 3'b200 is used for memory-mapped IO's, that redirects the
 // signals to IOaddress, IOwr, IOrd, IOin, IOout.
+//
+// There is enough room for additional pages between the 4 pages 
+// and mapped IO, and there are still 4 BRAMs that are available,
+// but unfortunately I do not have enough remaining LUTs for 
+// address decoder logic...
 
 module NrvMemoryInterface(
   input 	    clk,
@@ -803,7 +806,7 @@ module NrvMemoryInterface(
    wire             wrRAM = wr && !isIO;
    wire             rdRAM = 1'b1; // rd && !isIO; 
                                   // (but in fact if we always read, it does not harm..., 
-                                  // and I'm missing read signal for instr)
+                                  //  and I have not implemented read signal for instr)
 
    reg [31:0] RAM[1023:0]; // 4K
 // reg [31:0] RAM[1279:0]; // 5K  Unfortunately, activating more than 4K eats up too many 

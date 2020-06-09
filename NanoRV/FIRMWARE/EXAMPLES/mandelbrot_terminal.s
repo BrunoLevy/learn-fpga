@@ -92,12 +92,24 @@ exit_Z:
 	li   t0, 15
 	sw   t0, IO_LEDS(gp)
 
+        la   a0, string1
+	call print_string
         call get_char
+	call put_char
+        li a0,13
+	call put_char
+        li a0,10
+	call put_char
+	
         j _start
 
 
 hello:
-.asciz "NanoRV RISC-V processor, Mandelbrot demo\n"
+  .asciz "NanoRV RISC-V processor, Mandelbrot demo\n"
+
+string1:
+  .asciz "Press any key to restart:"
+
 
 colormap:
 .ascii " .,:;ox%#@"

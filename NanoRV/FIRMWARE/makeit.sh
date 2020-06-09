@@ -1,5 +1,8 @@
 PROGNAME=firmware
 
+# Compile program that post-processes hex file
+g++ firmware_words.cpp -o firmware_words
+
 # Assemble
 riscv64-linux-gnu-as -march=rv32i -mabi=ilp32 -o $PROGNAME.o $PROGNAME.s
 # Link

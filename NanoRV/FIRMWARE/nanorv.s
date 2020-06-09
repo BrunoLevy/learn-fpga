@@ -226,6 +226,8 @@ get_char:
         lw a0,IO_UART_RX_CNTL(gp)
         beqz a0,get_char
         lw a0,IO_UART_RX_DATA(gp)
+	li t0, 10                  # <enter> generates CR/LF, we ignore LF.
+	beq a0, t0, get_char
         ret 
 
 print_string:
