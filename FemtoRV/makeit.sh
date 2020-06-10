@@ -1,8 +1,13 @@
-# Compile ROM
-(cd FIRMWARE; ./makeit.sh)
-
 PROJECTNAME=femtosoc
 VERILOGS="$PROJECTNAME.v"
+echo ======== Firmware
+if [ ! -e FIRMWARE/firmware.hex ]
+then
+    echo "Missing FIRMWARE/firmware.hex"
+    echo "Using FIRMWARE/EXAMPLES/mandelbrot_terminal.s"
+    (cd FIRMWARE; ./make_firmware.sh EXAMPLES/mandelbrot_terminal.s)
+fi
+echo Firmware size: `cat FIRMWARE/firmware.hex | wc -w` words
 echo ======== Yosys
 yosys -q -p "ice40_braminit" -p "synth_ice40 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
 echo ======== NextPNR
