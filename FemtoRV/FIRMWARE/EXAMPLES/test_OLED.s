@@ -1,11 +1,13 @@
 # Testing the OLED screen, displaying an animated pattern with
 # all the 65K colors.
 
-.section .text
-.globl _start
 .include "LIB/femtorv32.inc"
+.globl main
+.type  main, @function
 	
-_start:
+main:   add sp,sp,-4
+        sw ra, 0(sp)
+	
 	call oled_init
 	
 	# anim
@@ -52,3 +54,6 @@ loop_x:	add s0,s0,1
 	sw s3, 0(gp)
 	j anim
 
+	lw ra, 0(sp)
+	add sp,sp,4
+	ret

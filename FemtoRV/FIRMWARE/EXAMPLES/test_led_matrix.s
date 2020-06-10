@@ -1,10 +1,11 @@
-.section .text
-.globl _start
 .include "LIB/femtorv32.inc"
 
-_start:
-        call MAX2719_init
+.globl main
+.type  main, @function
 
+main:   add sp,sp,-4
+        sw ra, 0(sp)
+        call MAX2719_init
 anim:   la a0,face1data
 	call MAX2719_image
         call wait
@@ -14,7 +15,9 @@ anim:   la a0,face1data
 	call wait
         call wait	
 	j anim
-	
+	lw ra, 0(sp)
+	add sp,sp,4
+	ret
 
 MAX2719_image:
         add sp,sp,-4

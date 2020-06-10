@@ -27,8 +27,13 @@
 # cnt: s10
 # 128: s11
 
+.globl main
+.type  main, @function
+main:
+        add sp,sp,-4
+        sw ra, 0(sp)	
 
-_start:
+mandelstart:
         la   a0,hello
 	call print_string
 	
@@ -101,7 +106,11 @@ exit_Z:
         li a0,10
 	call put_char
 	
-        j _start
+        j mandelstart
+	
+	lw ra, 0(sp)
+	add sp,sp,4
+	ret
 
 
 hello:
