@@ -7,17 +7,17 @@
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32). 
-//`define NRV_TWOSTAGE_SHIFTER
+`define NRV_TWOSTAGE_SHIFTER
 
-//`define NRV_RESET        // It is sometimes good to have a physical reset button, 
-                           // this one is active low (wire a push button and a pullup 
-                           // resistor to pin 47 or change in nanorv.pcf). 
+`define NRV_RESET        // It is sometimes good to have a physical reset button, 
+                         // this one is active low (wire a push button and a pullup 
+                         // resistor to pin 47 or change in nanorv.pcf). 
 
 // Optional mapped IO devices
-//`define NRV_IO_LEDS   // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
-`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
-//`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
+`define NRV_IO_LEDS   // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+//`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
+//`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
+`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
 
 `define ADDR_WIDTH 14 // Internal number of bits for PC and address register.
@@ -383,7 +383,8 @@ module femtosoc(
   // signal after startup. Without it the
   // CPU stays stuck, seemingly fetching
   // ramdom instr from BRAM.
-  // (picosoc on icebreaker does the same).
+  // (picosoc on icebreaker has the same 
+  //  waiting loop at startup).
   reg [6:0] reset_cnt = 0;
   wire     reset = &reset_cnt;
 `ifdef NRV_RESET   

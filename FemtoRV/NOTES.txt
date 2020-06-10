@@ -1,5 +1,7 @@
-RISC-V pseudo-instructions:
-   https://compil-lyon.gitlabpages.inria.fr/compil-lyon/CAP1920_ENSL/riscv_isa.pdf
+
+TODO: compliance test ! 
+  https://github.com/riscv/riscv-compliance/
+
 
   Bugs: on init, get_char() returns garbage the first time.
  

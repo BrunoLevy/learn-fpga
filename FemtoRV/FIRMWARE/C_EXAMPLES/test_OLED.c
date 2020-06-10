@@ -12,9 +12,9 @@ void main() {
 	oled0(0x5c);           // write RAM
 	for(uint32 y=0; y<128; ++y) {
 	    for(uint32 x=0; x<128; ++x) {
-		uint32 R = (x+frame)&63;
-		uint32 G = (x >> 3);
-		uint32 B = y+frame;
+		uint32 R = (x+frame) & 63;
+		uint32 G = (x >> 3)  & 63;
+		uint32 B = (y+frame) & 63;
 		// pixel color: RRRRR GGGGG 0 BBBBB
 		IO_OUT(IO_OLED_DATA,(G>>2)|(R<<3));
 	        oled_wait();

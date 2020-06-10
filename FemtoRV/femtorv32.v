@@ -500,7 +500,7 @@ module FemtoRV32(
    );
 
 
-   // LOAD: decode data in based on type and address
+   // LOAD: decode datain based on type and address
    
    reg [31:0] decodedDataIn;   
    reg [15:0]  dataIn_H;
@@ -564,10 +564,9 @@ module FemtoRV32(
 	   PC <= 0;
 	end
 	WAIT_INSTR: begin
-	   // this state to give enough time to fetch the first
-	   // instruction (else we are in the error state)
-	   // (in fact does not work, seems that we start in the error state,
-	   //  to be debugged, see comments in the DECODE state)
+	   // this state to give enough time to fetch the 
+	   // instruction. Used for jumps and taken branches (and 
+	   // when fetching the first instruction). 
 	   `verbose($display("WAIT_INSTR"));
 	   state <= FETCH;
 	end

@@ -8,6 +8,7 @@ extern void exit();
 extern char get_char();
 extern void put_char(char c);
 extern void print_string(const char* s);
+extern void wait(); 
 
 /* Memory-mapped IO */
 #define IO_BASE      0x2000   /* Base address of memory-mapped IO                       */
