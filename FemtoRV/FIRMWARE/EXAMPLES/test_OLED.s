@@ -3,7 +3,7 @@
 
 .section .text
 .globl _start
-.include "nanorv.s"
+.include "LIB/femtorv32.inc"
 	
 _start:
 	call oled_init

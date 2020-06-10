@@ -8,7 +8,7 @@
 
 .section .text
 .globl _start
-.include "nanorv.s"
+.include "LIB/femtorv32.inc"
 
 .equ mandel_shift, 10
 .equ mandel_mul,(1 << mandel_shift)	

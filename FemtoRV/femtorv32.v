@@ -183,6 +183,11 @@ module NrvDecoder(
 
    reg inRegId1Sel; // 0: force inRegId1 to zero 1: use inRegId1 instr field
 
+   // Reference:
+   // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
+   // See the table page 104
+
+
    // The beauty of RiscV: the instruction decoder is reasonably simple, because
    // - register ids and alu operation are always encoded in the same bits
    // - sign expansion for immediates is always done from bit 31, and minimum
@@ -584,12 +589,6 @@ module FemtoRV32(
 	   dataWrByteMask <= 4'b0000;
 	end
 	DECODE: begin
-	   // instr was just updated -> input register ids also
-	   // input registers available at next cycle 
-	   
-	   state <= EXECUTE;  // Not okay, but okay after reset, why ?
-	   // state <= EXECUTE; // So for now I do that ... (to be investigated)
-
 	   `verbose($display("DECODE"));
 	   `verbose($display("   PC             = %h",PC));	   
 	   `verbose($display("   instr          = %h",instr));
@@ -606,6 +605,9 @@ module FemtoRV32(
 	   `verbose($display("   isLoad,isStore = %b,%b", isLoad, isStore));
 	   `verbose($display("   nextPCSel      = %b", nextPCSel));
 	   `verbose($display("   error          = %b", error));
+	   // instr was just updated -> input register ids also
+	   // input registers available at next cycle 
+	   state <= EXECUTE;
 	   error_latched <= decoderError;
 	end
 	EXECUTE: begin

@@ -1,2 +1,5 @@
 * create a "runtime library" with different modules (do not pay for
   the OLED display code when it is not used).
+  
+* crt0.S:  
+  https://github.com/riscv/riscv-newlib/blob/riscv-newlib-2.5.0/libgloss/riscv/crt0.S#L12

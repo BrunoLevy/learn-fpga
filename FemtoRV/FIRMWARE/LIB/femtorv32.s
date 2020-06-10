@@ -1,67 +1,22 @@
-#################################################################################
-
-# Mapped IO constants
-
-.equ IO_BASE,      0x2000   # Base address of memory-mapped IO
-.equ IO_LEDS,      0        # 4 LSBs mapped to D1,D2,D3,D4
-.equ IO_OLED_CNTL, 4        # OLED display control.
-                            #  wr: 01: reset low 11: reset high 00: normal operation
-                            #  rd:  0: ready  1: busy
-.equ IO_OLED_CMD,  8        # OLED display command. Only 8 LSBs used.
-.equ IO_OLED_DATA, 12       # OLED display data. Only 8 LSBs used.
-.equ IO_UART_RX_CNTL, 16    # USB UART RX control. read: LSB bit 1 if data ready
-.equ IO_UART_RX_DATA, 20    # USB UART RX data (read)
-.equ IO_UART_TX_CNTL, 24    # USB UART TX control. read: LSB bit 1 if busy
-.equ IO_UART_TX_DATA, 28    # USB UART TX data (write)
-.equ IO_LEDMTX_CNTL,  32    # LED matrix control. read: LSB bit 1 if busy
-.equ IO_LEDMTX_DATA,  36    # LED matrix data (write)	
-	
-#################################################################################
-
-# Macros to send commands to the OLED driver (wrappers around OLEDx functions)
-	
-.macro OLED0 cmd
-	li a0,\cmd
-	call oled0
-.endm
-
-.macro OLED1 cmd,arg1
-	li a0,\cmd
-	li a1,\arg1
-	call oled1
-.endm
-
-.macro OLED2 cmd,arg1,arg2
-	li a0,\cmd
-	li a1,\arg1
-	li a2,\arg2
-	call oled2
-.endm
-
-.macro OLED3 cmd,arg1,arg2,arg3
-	li a0,\cmd
-	li a1,\arg1
-	li a2,\arg2
-	li a3,\arg3	
-	call oled3
-.endm
+.include "femtorv32.inc"
 
 #################################################################################
 
-        nop
-	nop
-	nop
-	nop
-	nop	
-        li gp,IO_BASE # base address of memory-mapped IO
-	li sp,0x1000  # initial stack pointer, stack goes downwards
-	j _start
+   li gp,IO_BASE # base address of memory-mapped IO
+   li sp,0x1000  # initial stack pointer, stack goes downwards
+   j _start
 
 #################################################################################
 
 # NanoRv support library
 
 # multiplication, source in a0 and a1, result in a0	
+.globl	__mulsi3
+.type	__mulsi3, @function
+
+.globl	__muldi3
+.type	__muldi3, @function
+
 __mulsi3:	
 __muldi3:
   mv     a2, a0
@@ -82,6 +37,8 @@ __muldi3:
 #################################################################################
 	
 # initialize oled display
+.globl	oled_init
+.type	oled_init, @function
 oled_init:
 	add sp,sp,-4
         sw ra, 0(sp)	
@@ -131,6 +88,8 @@ oled_init:
 	ret
 
 # Clear oled display
+.globl	oled_clear
+.type	oled_clear, @function
 oled_clear:  
         mv s2,ra
         OLED2 0x15,0x00,0x7f         # column address
@@ -152,7 +111,9 @@ cloop_x:sw t0,IO_OLED_DATA(gp)
 	ret
 
 
-# Oled display command, 0 argument, command in a0	
+# Oled display command, 0 argument, command in a0
+.globl	oled0
+.type	oled0, @function
 oled0:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
@@ -162,6 +123,8 @@ oled0:	add sp,sp,-4
 	ret
 
 # Oled display command, 1 argument, command in a0, arg in a1	
+.globl	oled1
+.type	oled1, @function
 oled1:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
@@ -173,6 +136,8 @@ oled1:	add sp,sp,-4
 	ret
 
 # Oled display command, 2 arguments, command in a0, args in a1,a2
+.globl	oled2
+.type	oled2, @function
 oled2:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
@@ -186,6 +151,8 @@ oled2:	add sp,sp,-4
 	ret
 
 # Oled display command, 3 arguments, command in a0, args in a1,a2,a3
+.globl	oled3
+.type	oled3, @function
 oled3:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
@@ -201,12 +168,16 @@ oled3:	add sp,sp,-4
 	ret
 
 # Wait for a while	
+.globl	wait
+.type	wait, @function
 wait:	li t0,0x100000
 waitl:	add t0,t0,-1
 	bnez t0,waitl
 	ret
 
-# Wait for Oled driver	
+# Wait for Oled driver
+.globl	oled_wait
+.type	oled_wait, @function
 oled_wait:
 	lw   t0,IO_OLED_CNTL(gp) # (non-zero = busy)
 	bnez t0,oled_wait
@@ -216,12 +187,16 @@ oled_wait:
 # NanoRv UART support
 #################################################################################
 
+.globl	put_char
+.type	put_char, @function
 put_char:
         sw a0,IO_UART_TX_DATA(gp)
 pcrx:	lw t0,IO_UART_TX_CNTL(gp)
 	bnez t0,pcrx
 	ret
 
+.globl	get_char
+.type	get_char, @function
 get_char:
         lw a0,IO_UART_RX_CNTL(gp)
         beqz a0,get_char
@@ -230,6 +205,8 @@ get_char:
 	beq a0, t0, get_char
         ret 
 
+.globl	print_string
+.type	print_string, @function
 print_string:
         mv t0, a0
 psl:	lbu t1, 0(t0)
@@ -245,6 +222,8 @@ pseos:  ret
 # NanoRv led matrix support
 #################################################################################
 
+.globl	MAX2719
+.type	MAX2719, @function
 MAX2719: # a0: register  a1: value
          slli t0, a0, 8
 	 or  t0, t0, a1
@@ -253,6 +232,8 @@ MAXwait: lw t0, IO_LEDMTX_CNTL(gp)
          bnez t0, MAXwait
 	 ret
 
+.globl	MAX2719_init
+.type	MAX2719_init, @function
 MAX2719_init:
 	 add sp,sp,-4
          sw ra, 0(sp)	

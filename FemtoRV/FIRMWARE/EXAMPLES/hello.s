@@ -4,7 +4,7 @@
 .section .text
 .globl _start
 .align 4,0
-.include "nanorv.s"
+.include "LIB/femtorv32.inc"
 
 # Needs both NRV_IO_UART_RX and NRV_IO_UART_TX to be
 # enabled. 
