@@ -3,8 +3,6 @@
 # If you do not have the OLED display, use mandelbrot_terminal.s 
 # instead.
 
-.section .text
-.globl _start
 .include "LIB/femtorv32.inc"
 
 .equ mandel_shift, 10
@@ -24,7 +22,12 @@
 # cnt: s10
 # 128: s11
 
-_start:
+.globl main
+.type  main, @function
+main:
+        add sp,sp,-4
+        sw ra, 0(sp)	
+
 	call oled_init
         call oled_clear
 
@@ -91,6 +94,10 @@ exit_Z:
 	
 	li   t0, 15
 	sw   t0, IO_LEDS(gp)
+
+	lw ra, 0(sp)
+	add sp,sp,4
+	ret
 	
 
 

@@ -10,11 +10,18 @@
 
 # NanoRv support library
 
+.global exit
+.type  exit, @function
+exit:
+   .word 0  # make it crash...
+   ret
+
+
 # multiplication, source in a0 and a1, result in a0	
-.globl	__mulsi3
+.global	__mulsi3
 .type	__mulsi3, @function
 
-.globl	__muldi3
+.global	__muldi3
 .type	__muldi3, @function
 
 __mulsi3:	
@@ -37,7 +44,7 @@ __muldi3:
 #################################################################################
 	
 # initialize oled display
-.globl	oled_init
+.global	oled_init
 .type	oled_init, @function
 oled_init:
 	add sp,sp,-4
@@ -88,7 +95,7 @@ oled_init:
 	ret
 
 # Clear oled display
-.globl	oled_clear
+.global	oled_clear
 .type	oled_clear, @function
 oled_clear:  
         mv s2,ra
@@ -112,7 +119,7 @@ cloop_x:sw t0,IO_OLED_DATA(gp)
 
 
 # Oled display command, 0 argument, command in a0
-.globl	oled0
+.global	oled0
 .type	oled0, @function
 oled0:	add sp,sp,-4
         sw ra, 0(sp)
@@ -123,7 +130,7 @@ oled0:	add sp,sp,-4
 	ret
 
 # Oled display command, 1 argument, command in a0, arg in a1	
-.globl	oled1
+.global	oled1
 .type	oled1, @function
 oled1:	add sp,sp,-4
         sw ra, 0(sp)
@@ -136,7 +143,7 @@ oled1:	add sp,sp,-4
 	ret
 
 # Oled display command, 2 arguments, command in a0, args in a1,a2
-.globl	oled2
+.global	oled2
 .type	oled2, @function
 oled2:	add sp,sp,-4
         sw ra, 0(sp)
@@ -151,7 +158,7 @@ oled2:	add sp,sp,-4
 	ret
 
 # Oled display command, 3 arguments, command in a0, args in a1,a2,a3
-.globl	oled3
+.global	oled3
 .type	oled3, @function
 oled3:	add sp,sp,-4
         sw ra, 0(sp)
@@ -168,7 +175,7 @@ oled3:	add sp,sp,-4
 	ret
 
 # Wait for a while	
-.globl	wait
+.global	wait
 .type	wait, @function
 wait:	li t0,0x100000
 waitl:	add t0,t0,-1
@@ -176,7 +183,7 @@ waitl:	add t0,t0,-1
 	ret
 
 # Wait for Oled driver
-.globl	oled_wait
+.global	oled_wait
 .type	oled_wait, @function
 oled_wait:
 	lw   t0,IO_OLED_CNTL(gp) # (non-zero = busy)
@@ -187,7 +194,7 @@ oled_wait:
 # NanoRv UART support
 #################################################################################
 
-.globl	put_char
+.global	put_char
 .type	put_char, @function
 put_char:
         sw a0,IO_UART_TX_DATA(gp)
@@ -195,7 +202,7 @@ pcrx:	lw t0,IO_UART_TX_CNTL(gp)
 	bnez t0,pcrx
 	ret
 
-.globl	get_char
+.global	get_char
 .type	get_char, @function
 get_char:
         lw a0,IO_UART_RX_CNTL(gp)
@@ -205,7 +212,7 @@ get_char:
 	beq a0, t0, get_char
         ret 
 
-.globl	print_string
+.global	print_string
 .type	print_string, @function
 print_string:
         mv t0, a0
@@ -222,7 +229,7 @@ pseos:  ret
 # NanoRv led matrix support
 #################################################################################
 
-.globl	MAX2719
+.global	MAX2719
 .type	MAX2719, @function
 MAX2719: # a0: register  a1: value
          slli t0, a0, 8
@@ -232,7 +239,7 @@ MAXwait: lw t0, IO_LEDMTX_CNTL(gp)
          bnez t0, MAXwait
 	 ret
 
-.globl	MAX2719_init
+.global	MAX2719_init
 .type	MAX2719_init, @function
 MAX2719_init:
 	 add sp,sp,-4

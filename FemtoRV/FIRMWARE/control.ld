@@ -1,0 +1,16 @@
+/*
+ * linker control script,
+ * Ensures that _start defined in LIB/crt0.S is put at address 0
+ */
+MEMORY
+{
+   BRAM (RWX) : ORIGIN = 0x000000, LENGTH = 0x00080000
+}
+SECTIONS
+{
+    .text :
+    {
+        crt0.o (.text) 
+        *(.text)
+    }
+}

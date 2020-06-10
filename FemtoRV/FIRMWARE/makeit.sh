@@ -7,7 +7,7 @@
 # Assemble
 riscv64-linux-gnu-as -march=rv32i -mabi=ilp32 -o BUILD/firmware.o firmware.s
 # Link
-riscv64-linux-gnu-ld -m elf32lriscv_ilp32 -b elf32-littleriscv -Ttext 0 -o BUILD/firmware.elf LIB/femtorv32.o BUILD/firmware.o
+riscv64-linux-gnu-ld -m elf32lriscv_ilp32 -b elf32-littleriscv -Tcontrol.ld -o BUILD/firmware.elf BUILD/firmware.o -LLIB -lfemtorv32
 # Dump hexadecimal content
 riscv64-linux-gnu-objcopy -O verilog BUILD/firmware.elf BUILD/firmware.objcopy.hex
 # Adapt hexadecimal content (32 bit words instead of individual bytes)
