@@ -30,13 +30,13 @@ riscv64-linux-gnu-ld -m elf32lriscv_ilp32 -b elf32-littleriscv -Tcontrol.ld -o B
 # Dump hexadecimal content
 riscv64-linux-gnu-objcopy -O verilog BUILD/firmware.elf BUILD/firmware.objcopy.hex
 # Adapt hexadecimal content (32 bit words instead of individual bytes)
-(cd BUILD; ../TOOLS/firmware_words)
+(cd BUILD; rm firmware.hex; ../TOOLS/firmware_words)
 cp BUILD/firmware.hex .
 
 ## Display assembly
-riscv64-linux-gnu-objcopy -O binary BUILD/firmware.elf BUILD/firmware.bin
-riscv64-linux-gnu-objdump -D -b binary -m riscv BUILD/firmware.bin 
+#riscv64-linux-gnu-objcopy -O binary BUILD/firmware.elf BUILD/firmware.bin
+#riscv64-linux-gnu-objdump -D -b binary -m riscv BUILD/firmware.bin 
 
-echo Firmware size: `cat BUILD/firmware.hex | wc -w` words
+#echo Firmware size: `cat BUILD/firmware.hex | wc -w` words
 
 

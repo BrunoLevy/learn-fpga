@@ -8,6 +8,9 @@ extern void exit();
 extern char get_char();
 extern void put_char(char c);
 extern void print_string(const char* s);
+extern void print_dec(int val);
+extern void print_hex_digits(unsigned int val, int digits);
+extern void print_hex(unsigned int val);
 extern void wait(); 
 
 /* Memory-mapped IO */
