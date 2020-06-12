@@ -1,6 +1,7 @@
 PROJECTNAME=femtosoc
 VERILOGS="$PROJECTNAME.v"
 echo ======== Firmware
+#(cd FIRMWARE; ./make_firmware.sh C_EXAMPLES/test_print_hex.c)
 if [ ! -e FIRMWARE/firmware.hex ]
 then
     echo "Missing FIRMWARE/firmware.hex"

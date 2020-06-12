@@ -34,8 +34,8 @@ riscv64-linux-gnu-objcopy -O verilog BUILD/firmware.elf BUILD/firmware.objcopy.h
 cp BUILD/firmware.hex .
 
 ## Display assembly
-#riscv64-linux-gnu-objcopy -O binary BUILD/firmware.elf BUILD/firmware.bin
-#riscv64-linux-gnu-objdump -D -b binary -m riscv BUILD/firmware.bin 
+riscv64-linux-gnu-objcopy -O binary BUILD/firmware.elf BUILD/firmware.bin
+riscv64-linux-gnu-objdump -D -b binary -m riscv BUILD/firmware.bin 
 
 #echo Firmware size: `cat BUILD/firmware.hex | wc -w` words
 

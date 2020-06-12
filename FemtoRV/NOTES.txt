@@ -6,6 +6,14 @@ TODO: compliance test !
   Bugs: on init, get_char() returns garbage the first time.
  
   DebugLog:
+             - after reorganization of ALU busy signal separated
+	       into ALU busy + decoder needWaitAlu, I had a big
+	       bug: shift by register content was no longer working !
+	       It is because I forgot to set needWaitAlu in register - register shift op.
+	          Debug strategy that worked:
+		    1) detect bug (sieve.c was not working)
+		    1) minimal example
+
              - get_char() "clicking" twice: it was <enter> generating CR,LF!
   
              - I had swapped LB,LBU and LH,LHU

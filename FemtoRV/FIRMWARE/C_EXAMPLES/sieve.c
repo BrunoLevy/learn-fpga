@@ -11,13 +11,15 @@
 
 #include <femtorv32.h>
 
-#define BITMAP_SIZE 500
+// Note: if this is changed, then checksum need 
+// to be updated as well.
+#define BITMAP_SIZE 64
 
 typedef unsigned int uint32_t;
 typedef int bool;
 
-//static uint32_t bitmap[BITMAP_SIZE/32];
-static char bitmap[BITMAP_SIZE];
+static uint32_t bitmap[BITMAP_SIZE/32];
+
 static uint32_t hash;
 
 static uint32_t mkhash(uint32_t a, uint32_t b)
@@ -28,14 +30,12 @@ static uint32_t mkhash(uint32_t a, uint32_t b)
 
 static void bitmap_set(int idx)
 {
-//	bitmap[idx/32] |= 1 << (idx % 32);
-   bitmap[idx] = 1;
+   bitmap[idx/32] |= 1 << (idx % 32);
 }
 
 static bool bitmap_get(int idx)
 {
-//	return (bitmap[idx/32] & (1 << (idx % 32))) != 0;
-   return bitmap[idx];
+   return (bitmap[idx/32] & (1 << (idx % 32))) != 0;
 }
 
 static void print_prime(int idx, int val)
@@ -63,6 +63,11 @@ static void print_prime(int idx, int val)
 void main(void)
 {
 	int idx = 1;
+        /*
+	for (int i = 0; i < BITMAP_SIZE; i++) {
+	   bitmap[i] = 0;
+	}   
+        */ 
 	hash = 5381;
 	print_prime(idx++, 2);
 	for (int i = 0; i < BITMAP_SIZE; i++) {

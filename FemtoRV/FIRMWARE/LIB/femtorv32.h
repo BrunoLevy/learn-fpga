@@ -4,7 +4,7 @@
 typedef unsigned int uint32;
 
 /* Standard library */
-extern void exit();
+extern void exit(int);
 extern char get_char();
 extern void put_char(char c);
 extern void print_string(const char* s);

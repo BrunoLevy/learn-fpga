@@ -318,6 +318,7 @@ module NrvDecoder(
 	      aluInSel2 = 1'b0;      // ALU source 2 : reg
 	      aluQual = instr[30];   // Qualifier for ALU op: +/- SRL/SRA
 	      aluSel = 1'b1;         // ALU op : from instr
+	      needWaitAlu = aluOpIsShift;	      
 	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; // don't care
 	   end
 	   
@@ -475,7 +476,9 @@ module FemtoRV32(
 	  //   - in that case, was already written back during EXECUTE
 	  //   - at that time, PCplus4 is already incremented (and JAL needs 
 	  //     the current one)
-	  (state == EXECUTE || state == WAIT_ALU_OR_DATA) && !aluBusy 
+	  //(state == EXECUTE || state == WAIT_ALU_OR_DATA && !aluBusy)
+	  //((state == EXECUTE && !needWaitAlu) || (state == WAIT_ALU_OR_DATA && !aluBusy))
+	  (state == EXECUTE || state == WAIT_ALU_OR_DATA) && !aluBusy
     ),
     .inRegId(writeBackRegId),		       
     .outRegId1(regId1),
@@ -604,6 +607,7 @@ module FemtoRV32(
 	   `verbose($display("   isLoad,isStore = %b,%b", isLoad, isStore));
 	   `verbose($display("   nextPCSel      = %b", nextPCSel));
 	   `verbose($display("   error          = %b", error));
+	   `verbose($display("   needWaitAlu    = %b", needWaitAlu));	   	   	   	   
 	   // instr was just updated -> input register ids also
 	   // input registers available at next cycle 
 	   state <= EXECUTE;
@@ -620,7 +624,8 @@ module FemtoRV32(
 	   `verbose($display("   aluBusy        = %b", aluBusy));
 	   `verbose($display("   isLoad,isStore = %b,%b", isLoad, isStore));
 	   `verbose($display("   error          = %b", error));
-	   `verbose($display("   writeBackData  = %h", writeBackData));	   	   
+	   `verbose($display("   writeBackData  = %h", writeBackData));
+	   `verbose($display("   needWaitAlu    = %b", needWaitAlu));	   	   	   
 	   // input registers are read, aluOut is up to date
 
 	   // Lookahead instr.
@@ -722,10 +727,10 @@ module FemtoRV32(
 	   // - If ALU is still busy, continue to wait.
 	   // - register writeback is active
 	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
-	   if(isLoad) begin
-	      `bench($display("   address=%h",addressReg));	      
-	      `bench($display("   datain=%h",dataIn));
-	   end
+	   //if(isLoad) begin
+	   //   `bench($display("   address=%h",addressReg));	      
+	   //   `bench($display("   datain=%h",dataIn));
+	   //end
 	end
 	ERROR: begin
 	   `bench($display("ERROR"));
