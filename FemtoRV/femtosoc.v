@@ -7,9 +7,9 @@
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32). 
-`define NRV_TWOSTAGE_SHIFTER
+//`define NRV_TWOSTAGE_SHIFTER
 
-`define NRV_RESET        // It is sometimes good to have a physical reset button, 
+`define NRV_RESET      // It is sometimes good to have a physical reset button, 
                          // this one is active low (wire a push button and a pullup 
                          // resistor to pin 47 or change in nanorv.pcf). 
 
@@ -19,6 +19,12 @@
 //`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
 `define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
+
+// Uncomment one of them. With UART, only 4K possible, but with OLed screen, 6K fits.
+//`define NRV_RAM_4K
+//`define NRV_RAM_5K
+`define NRV_RAM_6K
+
 
 `define ADDR_WIDTH 14 // Internal number of bits for PC and address register.
                       // 6kb needs 13 bits, + 1 page for IO -> 14 bits
@@ -74,9 +80,15 @@ module NrvMemoryInterface(
                                   // (but in fact if we always read, it does not harm..., 
                                   //  and I have not implemented read signal for instr)
 
-   reg [31:0] RAM[1023:0]; // 4K
-// reg [31:0] RAM[1279:0]; // 5K  Unfortunately, activating more than 4K eats up too many 
-// reg [31:0] RAM[1535:0]; // 6K  LUTs ... (we keep 4K for now).                                               
+`ifdef NRV_RAM_4K   
+   reg [31:0] RAM[1023:0];
+`endif
+`ifdef NRV_RAM_5K   
+   reg [31:0] RAM[1279:0];
+`endif
+`ifdef NRV_RAM_6K   
+   reg [31:0] RAM[1535:0];
+`endif   
    reg [31:0] out_RAM;
 
    initial begin
