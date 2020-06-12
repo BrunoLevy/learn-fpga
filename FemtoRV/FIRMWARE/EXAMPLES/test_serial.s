@@ -15,9 +15,9 @@
 
 main:   add sp,sp,-4
         sw ra, 0(sp)	
-loop:   call get_char
+loop:   call getchar
 	sw a0,IO_LEDS(gp)	
-        call put_char
+        call putchar
 	j loop
 	lw ra, 0(sp)
 	add sp,sp,4

@@ -79,16 +79,16 @@ exit_Z:
         la  a0,colormap
 	add a0,a0,s10
 	lbu a0,0(a0)
-	call put_char
+	call putchar
 	
 	add s0,s0,1
 	add s2,s2,dx
 	bne s0,s11,loop_x
 
         li a0,13
-	call put_char
+	call putchar
         li a0,10
-	call put_char
+	call putchar
 
 	add s1,s1,1
 	add s3,s3,dy
@@ -99,12 +99,12 @@ exit_Z:
 
         la   a0, string1
 	call print_string
-        call get_char
-	call put_char
+        call getchar
+	call putchar
         li a0,13
-	call put_char
+	call putchar
         li a0,10
-	call put_char
+	call putchar
 	
         j mandelstart
 	

@@ -41,20 +41,18 @@ static bool bitmap_get(int idx)
 static void print_prime(int idx, int val)
 {
 	if (idx < 10)
-		print_string(" ");
-	print_dec(idx);
+		printf(" ");
+	printf("%d",idx);
 	if (idx / 10 == 1)
 		goto force_th;
 	switch (idx % 10) {
-		case 1: print_string("st"); break;
-		case 2: print_string("nd"); break;
-		case 3: print_string("rd"); break;
+		case 1: printf("st"); break;
+		case 2: printf("nd"); break;
+		case 3: printf("rd"); break;
 	force_th:
-		default: print_string("th"); break;
+		default: printf("th"); break;
 	}
-	print_string(" prime is ");
-	print_dec(val);
-	print_string(".\n");
+	printf(" prime is %d.\n");
 
 	hash = mkhash(hash, idx);
 	hash = mkhash(hash, val);
@@ -79,13 +77,12 @@ int main(void)
 		}
 	}
 
-	print_string("checksum: ");
-	print_hex_digits(hash, 8);
+	printf("checksum: %x",hash);
 
 	if (hash == 0x1772A48F) {
-		print_string(" OK\n");
+	        printf(" OK\n");
 	} else {
-		print_string(" ERROR\n");
+		printf(" ERROR\n");
 		abort();
 	}
 	return 0;

@@ -2,8 +2,8 @@
 
 int main() {
    for(;;) {
-      print_string("hello, world\n");
-      get_char();
+      printf("femtoRV32 says: hello, world !!\n");
+      getchar();
    }
    return 0;
 }

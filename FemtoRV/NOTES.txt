@@ -4,15 +4,62 @@ TODO: compliance test !
 
 
   Bugs: on init, get_char() returns garbage the first time.
- 
+
+  Lessons taken:
+             - simulation is important ! (of course)
+	     - use generic primitives as much as possible, and let
+	       yosys infer BRAMs (my handwritten code with SB_xxx
+	       primitives used more LUTs than what yosys does)
+	     - when there is a bug, it can be in the hard, but it
+	       can be in the soft as well !
+	     - femtorv32 state machine: choose good names for the states,
+	       and be super clear about what's ready or not at the beginning
+	       and at the end of each state
+	     - reg is not a register, it is an abstraction that can be transformed
+	       into a reg/latch by the synthetizer if need be.
+	     - everything that appears on the left side of '=' or '<=' should be a
+	       reg.
+	     - number of used LUTs can vary in surprising manners ! For instance,
+	       sometimes changing the *names* of variables has an influence (???)
+
+  Observations:
+             - RISCV is super-well design and smart ! At the beginning, the design
+	       decision they took may seem weird (32 bit constant loaded by two
+	       different instructions, one PC-relative, or 5 different encoding for
+	       the constants, with parts of the bits scrambled in different parts
+	       of the instr, or special register x0), but everything makes sense
+	       when you write the instr decoder:
+	          - source and dest registers (5 bits) always at the same position
+		  - ALU op always at the same position
+		  - sign-expanded bit always at the same position
+	       Consequence: decoder uses a minimal number of gates, has low logic
+	       depth, its outputs do not need to be latched.
+	     - Coding in RISCV assembly is easier than I thought: few instructions
+	       to remember, so can be learnt quickly ! And for the somewhat weird
+	       instructions (lui, auipc, jal, jalr), the 'pseudo-instructions'
+	       (li, la, call, ret, branch variants) make things easier. The ABI
+	       register names make thing easier as well. 
+             - Having an assembler, linker, c compiler ready is fantastic !
+	       The only difficult part was:
+	          1) finding the right switch to generate pure RV32I instructions
+		  2) finding a way of generating an ELF and extracting the raw content
+		  3) converting this raw content into a form that VERILOG's $readmemh()
+		     can understand.
+
   DebugLog:
-             - after reorganization of ALU busy signal separated
-	       into ALU busy + decoder needWaitAlu, I had a big
+             - after reorganization of ALU (busy signal separated
+	       into ALU busy + decoder needWaitAlu), I had a big
 	       bug: shift by register content was no longer working !
 	       It is because I forgot to set needWaitAlu in register - register shift op.
 	          Debug strategy that worked:
-		    1) detect bug (sieve.c was not working)
-		    1) minimal example
+		    1) detect bug (sieve.c was not working) -> suspected weird interaction
+		       with UART (but in fact it was not the problem)
+		    2) minimal example
+		    3) send data to LED, made sure the problem was still there 
+		       -> ruled-out UART problem
+		       -> identified shift instruction as the culprit
+		    4) simulation + display of word sent to the LEDs
+		                  + full display of the processor's state.
 
              - get_char() "clicking" twice: it was <enter> generating CR,LF!
   
@@ -97,6 +144,8 @@ TODO: compliance test !
                critical path (maxfreq is now 37 MHz, we can probably do 50 MHz)
                Critical path is way too long, need to insert registers in IO controller
                and maybe in other places (but I'm really running out of LUTs)
+	         -> improved it (now 45 - 50 MHz depending on configured peripherals),
+		    and seems to work well at 60 MHz 
              DONE - Gain some LUTs by reducing address bus width in RAM and mapped IO 
                 and latched addresses (and this will also reduce the critical path since
                 the adder is plugged on it !)
@@ -106,8 +155,8 @@ TODO: compliance test !
                affect (&) both OLED clock signal and shifter)
  
          TOOLS
-             - Modular compilation and linking ? (+ automatic elimination of unused symbols)
-             - Find a way of interfacing gcc (nearly there ...)
+             - DONE: Modular compilation and linking (+ automatic elimination of unused symbols)
+             - DONE: Find a way of interfacing gcc 
   
          FIRMWARE / DEMOS
              - Mandelbrot set demo: DONE

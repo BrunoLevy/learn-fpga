@@ -16,7 +16,7 @@ main:   add sp,sp,-4
         sw ra, 0(sp)	
 loop:   li t0, 15
 	sw t0, IO_LEDS(gp)
-        call get_char
+        call getchar
 	la a0, hello
 	call print_string
 	j loop

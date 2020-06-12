@@ -1,19 +1,24 @@
 #ifndef H__FEMTORV32__H
 #define H__FEMTORV32__H
 
-typedef unsigned int uint32;
 typedef unsigned int uint32_t;
 
 /* Standard library */
 extern void exit(int);
 extern void abort();
-extern char get_char();
-extern void put_char(char c);
+extern char getchar();
+extern int  putchar(int c);
+extern int  puts(const char* s);
+extern int  printf(const char *fmt,...); /* supports %s, %d, %x */
+
+/* Specialized print functions (but one can use printf() instead) */
 extern void print_string(const char* s);
 extern void print_dec(int val);
 extern void print_hex_digits(unsigned int val, int digits);
 extern void print_hex(unsigned int val);
-extern void wait(); 
+
+/* Other functions */
+extern void wait(); /* waits a bit (human-discernable fraction of second) */
 
 /* Memory-mapped IO */
 #define IO_BASE      0x2000   /* Base address of memory-mapped IO                       */
@@ -30,21 +35,21 @@ extern void wait();
 #define IO_LEDMTX_CNTL  32    /* LED matrix control. read: LSB bit 1 if busy            */
 #define IO_LEDMTX_DATA  36    /* LED matrix data (write)	                        */
 
-#define IO_IN(port)       *(volatile uint32*)(IO_BASE + port)
-#define IO_OUT(port,val)  *(volatile uint32*)(IO_BASE + port)=(val)
+#define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
+#define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)
 #define LEDS(val)         IO_OUT(IO_LEDS,val)
 
 /* SSD1351 Oled display on 4-wire SPI bus */
 extern void oled_init();
 extern void oled_clear();
 extern void oled_wait();
-extern void oled0(uint32 cmd);
-extern void oled1(uint32 cmd, uint32 arg1);
-extern void oled2(uint32 cmd, uint32 arg1, uint32 arg2);
-extern void oled3(uint32 cmd, uint32 arg1, uint32 arg2, uint32 arg3);
+extern void oled0(uint32_t cmd);
+extern void oled1(uint32_t cmd, uint32_t arg1);
+extern void oled2(uint32_t cmd, uint32_t arg1, uint32_t arg2);
+extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
 
 /* MAX2719 led matrix */
 extern void MAX2719_init();
-extern void MAX2719(uint32 address, uint32 value);
+extern void MAX2719(uint32_t address, uint32_t value);
 
 #endif
