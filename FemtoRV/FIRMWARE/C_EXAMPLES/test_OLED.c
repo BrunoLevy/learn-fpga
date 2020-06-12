@@ -3,7 +3,7 @@
 
 #include <femtorv32.h>
 
-void main() {
+int main() {
     oled_init();
     int frame = 0;
     for(;;) {
@@ -24,4 +24,5 @@ void main() {
 	}
 	++frame;
     }
+    return 0;
 }

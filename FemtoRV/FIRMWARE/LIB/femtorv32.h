@@ -2,9 +2,11 @@
 #define H__FEMTORV32__H
 
 typedef unsigned int uint32;
+typedef unsigned int uint32_t;
 
 /* Standard library */
 extern void exit(int);
+extern void abort();
 extern char get_char();
 extern void put_char(char c);
 extern void print_string(const char* s);

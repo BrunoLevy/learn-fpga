@@ -60,14 +60,9 @@ static void print_prime(int idx, int val)
 	hash = mkhash(hash, val);
 }
 
-void main(void)
+int main(void)
 {
 	int idx = 1;
-        /*
-	for (int i = 0; i < BITMAP_SIZE; i++) {
-	   bitmap[i] = 0;
-	}   
-        */ 
 	hash = 5381;
 	print_prime(idx++, 2);
 	for (int i = 0; i < BITMAP_SIZE; i++) {
@@ -91,7 +86,8 @@ void main(void)
 		print_string(" OK\n");
 	} else {
 		print_string(" ERROR\n");
-		__asm__ volatile ("ebreak");
+		abort();
 	}
+	return 0;
 }
 

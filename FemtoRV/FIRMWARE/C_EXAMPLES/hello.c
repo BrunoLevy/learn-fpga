@@ -1,9 +1,10 @@
 #include <femtorv32.h>
 
-void main() {
+int main() {
    for(;;) {
       print_string("hello, world\n");
       get_char();
    }
+   return 0;
 }
 
