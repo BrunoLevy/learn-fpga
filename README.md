@@ -10,4 +10,4 @@ This repository contains my little experiments with an IceStick, yosys and nextp
 * LedTerminal: display scrolling messages on the LED matrix, obtained from the USB virtual UART
 * FemtoRV: a minimalistic RISC-V CPU. Implements the RV32I instruction set (minus FENCE and SYSTEM). 
     - Runs at 60MHz. 4Kb RAM, optional memory-mapped IOs (UART, LEDs, OLed screen).
-    - Firmware can be generated with gnu RISC-V toolsuite (script included), and soon gcc.
+    - Firmware can be generated with gnu RISC-V toolsuite (script included), in C or in assembly.
