@@ -9,21 +9,21 @@
 // (inspired by PICORV32). 
 //`define NRV_TWOSTAGE_SHIFTER
 
-`define NRV_RESET      // It is sometimes good to have a physical reset button, 
+//`define NRV_RESET      // It is sometimes good to have a physical reset button, 
                          // this one is active low (wire a push button and a pullup 
                          // resistor to pin 47 or change in nanorv.pcf). 
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS   // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
-//`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
-`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
+`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
+`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
+//`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
 
 // Uncomment one of them. With UART, only 4K possible, but with OLed screen, 6K fits.
-//`define NRV_RAM_4K
+`define NRV_RAM_4K
 //`define NRV_RAM_5K
-`define NRV_RAM_6K
+//`define NRV_RAM_6K
 
 
 `define ADDR_WIDTH 14 // Internal number of bits for PC and address register.

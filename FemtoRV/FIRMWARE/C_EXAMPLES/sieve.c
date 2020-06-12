@@ -52,7 +52,7 @@ static void print_prime(int idx, int val)
 	force_th:
 		default: printf("th"); break;
 	}
-	printf(" prime is %d.\n");
+	printf(" prime is %d.\n",val);
 
 	hash = mkhash(hash, idx);
 	hash = mkhash(hash, val);
