@@ -95,6 +95,7 @@ exit_Z:
 	li   t0, 15
 	sw   t0, IO_LEDS(gp)
 
+	li a0,0
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret

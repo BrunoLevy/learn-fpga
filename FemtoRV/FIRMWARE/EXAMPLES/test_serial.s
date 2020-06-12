@@ -19,7 +19,8 @@ loop:   call getchar
 	sw a0,IO_LEDS(gp)	
         call putchar
 	j loop
-	lw ra, 0(sp)
+	li a0,0
+	lw ra,0(sp)
 	add sp,sp,4
 	ret
 

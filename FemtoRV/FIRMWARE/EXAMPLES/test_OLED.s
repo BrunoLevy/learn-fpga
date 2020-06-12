@@ -54,6 +54,7 @@ loop_x:	add s0,s0,1
 	sw s3, 0(gp)
 	j anim
 
+        li a0,0
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret

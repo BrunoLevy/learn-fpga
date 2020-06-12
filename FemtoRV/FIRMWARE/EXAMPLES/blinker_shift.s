@@ -12,7 +12,8 @@ loop:	addi t1,t1,1
 	call show
 	bne  t0,t2,loop
 	j    end
-end:	lw ra, 0(sp)
+end:	li a0, 15      # main() return value, all leds lit
+        lw ra, 0(sp)
 	add sp,sp,4
 	ret
 	

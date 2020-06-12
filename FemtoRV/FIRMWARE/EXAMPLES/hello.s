@@ -20,7 +20,8 @@ loop:   li t0, 15
 	la a0, hello
 	call print_string
 	j loop
-	lw ra, 0(sp)
+	li a0,0
+	lw ra,0(sp)
 	add sp,sp,4
 	ret
 

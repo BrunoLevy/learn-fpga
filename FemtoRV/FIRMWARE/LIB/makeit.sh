@@ -1,7 +1,7 @@
 # Note: it seems that crt0.o is linked automatically (not added into lib)
 
-SOURCES="femtorv32.s mul.s div.s max2719.s ssd1351.s uart.s print.c printf.c crt0.s"
-OBJECTS="femtorv32.o mul.o div.o max2719.o ssd1351.o uart.o print.o printf.o"
+SOURCES="femtorv32.s mul.s div.s max2719.s ssd1351.s uart.s print.c printf.c font_8x8.s crt0.s"
+OBJECTS="femtorv32.o mul.o div.o max2719.o ssd1351.o uart.o print.o printf.o font_8x8.o"
 echo 'Compiling libfemtorv32'
 for i in `echo $SOURCES`
 do

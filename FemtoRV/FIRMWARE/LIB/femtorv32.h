@@ -17,6 +17,9 @@ extern void print_dec(int val);
 extern void print_hex_digits(unsigned int val, int digits);
 extern void print_hex(unsigned int val);
 
+/* 8x8 Font map */
+extern char* font_8x8;
+
 /* Other functions */
 extern void wait(); /* waits a bit (human-discernable fraction of second) */
 

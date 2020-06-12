@@ -15,6 +15,7 @@ anim:   la a0,face1data
 	call wait
         call wait	
 	j anim
+	li a0,0
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret

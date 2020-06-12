@@ -1,1 +1,1 @@
-g++ firmware_words.cpp -o firmware_words
+g++ FIRMWARE_WORDS/firmware_words.cpp -o firmware_words
