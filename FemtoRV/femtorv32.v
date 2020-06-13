@@ -471,14 +471,12 @@ module FemtoRV32(
     .clk(clk),
     .in(writeBackData),
     .inEn(
-	  writeBackEn &&
+	  writeBackEn && 	
+	  (state == EXECUTE || state == WAIT_ALU_OR_DATA) && !aluBusy
 	  // Do not write back when state == WAIT_INSTR, because
 	  //   - in that case, was already written back during EXECUTE
-	  //   - at that time, PCplus4 is already incremented (and JAL needs 
-	  //     the current one)
-	  //(state == EXECUTE || state == WAIT_ALU_OR_DATA && !aluBusy)
-	  //((state == EXECUTE && !needWaitAlu) || (state == WAIT_ALU_OR_DATA && !aluBusy))
-	  (state == EXECUTE || state == WAIT_ALU_OR_DATA) && !aluBusy
+	  //   - at that time, PCplus4 is already incremented (and JAL needs
+	  //     the current one to be written back)
     ),
     .inRegId(writeBackRegId),		       
     .outRegId1(regId1),

@@ -2,16 +2,23 @@
 
 #include <femtorv32.h>
 
-
+extern int GL_putchar(int);
 
 int main() {
+
+    GL_tty_init();
+
     oled_init();
-    int frame = 0;
+    oled_clear();
+    oled_wait();
+   
+    int frame=0;
+   
     for(;;) {
 	oled2(0x15,0x00,0x7f); // column address
 	oled2(0x75,0x00,0x7f); // row address
 	oled0(0x5c);           // write RAM
-       
+
 	for(uint32_t y=0; y<128; ++y) {
 	    for(uint32_t x=0; x<128; ++x) {
 	        uint32_t car_x = (x + frame)/8;
@@ -32,12 +39,10 @@ int main() {
 		IO_OUT(IO_OLED_DATA,BW & (B|(G << 6)));
 	        oled_wait();
 	       
-	       /*
-	        IO_OUT(IO_OLED_DATA,BW);
-	        oled_wait();
-		IO_OUT(IO_OLED_DATA,BW);
-	        oled_wait();
-	       */
+	        //IO_OUT(IO_OLED_DATA,BW);
+	        //oled_wait();
+		//IO_OUT(IO_OLED_DATA,BW);
+	        //oled_wait();
 	    }
 	}
 	++frame;

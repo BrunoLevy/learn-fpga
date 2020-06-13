@@ -6,10 +6,16 @@ typedef unsigned int uint32_t;
 /* Standard library */
 extern void exit(int);
 extern void abort();
-extern char getchar();
+extern int  getchar();
 extern int  putchar(int c);
 extern int  puts(const char* s);
 extern int  printf(const char *fmt,...); /* supports %s, %d, %x */
+
+/* Virtual I/O */
+typedef int (*putcharfunc_t)(int);
+typedef int (*getcharfunc_t)(void);
+void set_putcharfunc(putcharfunc_t fptr);
+void set_getcharfunc(getcharfunc_t fptr);
 
 /* Specialized print functions (but one can use printf() instead) */
 extern void print_string(const char* s);
@@ -18,10 +24,15 @@ extern void print_hex_digits(unsigned int val, int digits);
 extern void print_hex(unsigned int val);
 
 /* 8x8 Font map */
-extern char* font_8x8;
+extern char* font_8x8;        /* 8 bytes per char. Each byte corresponds to a column.   */
+
+/* FemtoGL library */
+void GL_tty_init();
+int  GL_putchar(int c);
+void GL_putchar_xy(int x, int y, char c);
 
 /* Other functions */
-extern void wait(); /* waits a bit (human-discernable fraction of second) */
+extern void wait();           /* waits a bit (human-discernable fraction of second).    */
 
 /* Memory-mapped IO */
 #define IO_BASE      0x2000   /* Base address of memory-mapped IO                       */

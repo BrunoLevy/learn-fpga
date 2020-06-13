@@ -52,7 +52,7 @@ static void print_prime(int idx, int val)
 	force_th:
 		default: printf("th"); break;
 	}
-	printf(" prime is %d.\n",val);
+	printf(" prime: %d\n",val);
 
 	hash = mkhash(hash, idx);
 	hash = mkhash(hash, val);
@@ -60,6 +60,7 @@ static void print_prime(int idx, int val)
 
 int main(void)
 {
+        GL_tty_init();
 	int idx = 1;
 	hash = 5381;
 	print_prime(idx++, 2);
@@ -67,6 +68,7 @@ int main(void)
 		if (bitmap_get(i))
 			continue;
 		print_prime(idx++, 3+2*i);
+		wait();
 		for (int j = 2*(3+2*i);; j += 3+2*i) {
 			if (j%2 == 0)
 				continue;
@@ -77,7 +79,7 @@ int main(void)
 		}
 	}
 
-	printf("checksum: %x",hash);
+	printf("checksum:\n   %x",hash);
 
 	if (hash == 0x1772A48F) {
 	        printf(" OK\n");

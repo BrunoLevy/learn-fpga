@@ -10,7 +10,8 @@
 #include <fstream>
 #include <cctype>
 
-const int RAM_SIZE = 4096;
+//const int RAM_SIZE = 4096;
+const int RAM_SIZE = 6144;
 unsigned char RAM[RAM_SIZE];
 unsigned char OCC[RAM_SIZE];
 

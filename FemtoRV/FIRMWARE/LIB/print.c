@@ -2,6 +2,18 @@
 
 /* print_dec, print_hex taken from picorv32 */
 
+void print_string(const char* s) {
+   for(const char* p = s; *p; ++p) {
+      putchar(*p);
+   }
+}
+
+int puts(const char* s) {
+   print_string(s);
+   putchar('\n');
+   return 1;
+}
+
 void print_dec(int val) {
    char buffer[255];
    char *p = buffer;
