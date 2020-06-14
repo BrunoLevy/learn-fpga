@@ -26,7 +26,7 @@ void GL_tty_scroll() {
     }
     cursor_Y = cursor_Y & 15;
     /* clear line: todo, use fillrect when implemented */
-    for(int x=0; x<15; ++x) {
+    for(int x=0; x<16; ++x) {
 	GL_putchar_xy(x*8, cursor_Y*8, ' ');
     }
     oled1(0xA1, display_start_line & 127);

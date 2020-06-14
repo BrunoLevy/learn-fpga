@@ -43,6 +43,7 @@ static void print_prime(int idx, int val)
 	if (idx < 10)
 		printf(" ");
 	printf("%d",idx);
+
 	if (idx / 10 == 1)
 		goto force_th;
 	switch (idx % 10) {
@@ -60,7 +61,7 @@ static void print_prime(int idx, int val)
 
 int main(void)
 {
-        GL_tty_init();
+/*      GL_tty_init(); */ /* Uncomment to redirect to OLED display. */
 	int idx = 1;
 	hash = 5381;
 	print_prime(idx++, 2);
