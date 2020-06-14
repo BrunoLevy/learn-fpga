@@ -37,7 +37,8 @@ mandelstart:
         la   a0,hello
 	call print_string
 	
-	call wait
+	li   a0, 250
+	call delay
 	li   t0, 0
 	sw   t0, IO_LEDS(gp)
 

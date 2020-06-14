@@ -27,12 +27,12 @@ extern void print_hex(unsigned int val);
 extern char* font_8x8;        /* 8 bytes per char. Each byte corresponds to a column.   */
 
 /* FemtoGL library */
-void GL_tty_init();
+void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */
 int  GL_putchar(int c);
 void GL_putchar_xy(int x, int y, char c);
 
 /* Other functions */
-extern void wait();           /* waits a bit (human-discernable fraction of second).    */
+extern void delay(int ms);    /* waits an (approximate) number of milliseconds.         */
 
 /* Memory-mapped IO */
 #define IO_BASE      0x2000   /* Base address of memory-mapped IO                       */

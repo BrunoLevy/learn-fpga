@@ -68,7 +68,9 @@ int main(void)
 		if (bitmap_get(i))
 			continue;
 		print_prime(idx++, 3+2*i);
-		wait();
+		delay(25); /* wait 25ms, so that we can see the 
+			    * OLED screen scrolling (else it is too fast).
+			    */
 		for (int j = 2*(3+2*i);; j += 3+2*i) {
 			if (j%2 == 0)
 				continue;

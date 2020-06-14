@@ -36,7 +36,8 @@ main:
 	OLED2 0x75,0x00,0x7f         # row address
 	OLED0 0x5c                   # write RAM
 
-	call wait
+        li   a0,250
+	call delay
 	li   t0, 0
 	sw   t0, IO_LEDS(gp)
 

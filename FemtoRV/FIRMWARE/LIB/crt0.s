@@ -8,7 +8,7 @@ _start:
      li gp,IO_BASE # base address of memory-mapped IO
      
      # test memory sizes by storing and reading 
-     # 'magic' 0xfeedbeef value.
+     # 'magic' 0xfeedbeef value.
      
      li t0,0xfeedbeef
      

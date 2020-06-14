@@ -8,12 +8,12 @@ main:   add sp,sp,-4
         call MAX2719_init
 anim:   la a0,face1data
 	call MAX2719_image
-        call wait
-        call wait	
+	li a0, 500
+        call delay
 	la a0,face2data
 	call MAX2719_image
-	call wait
-        call wait	
+	li a0,500
+	call delay
 	j anim
 	li a0,0
 	lw ra, 0(sp)

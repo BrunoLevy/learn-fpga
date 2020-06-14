@@ -13,14 +13,16 @@ oled_init:
 	# Initialization sequence / RESET
 	li a0,5
 	sw a0,IO_LEDS(gp)
-        li a0,1                      # reset low during 0.5 s
+        li a0,1                      # reset low during 0.25 s
 	sw a0,IO_OLED_CNTL(gp)
-	call wait
+	li a0,250
+	call delay
 	li a0,10
 	sw a0,IO_LEDS(gp)
-        li a0,3                      # reset high during 0.5 s
+        li a0,3                      # reset high during 0.25 s
 	sw a0,IO_OLED_CNTL(gp)
-	call wait
+	li a0,250
+	call delay
 	li a0,15
 	sw a0,IO_LEDS(gp)
         li a0,0                      # normal operation
