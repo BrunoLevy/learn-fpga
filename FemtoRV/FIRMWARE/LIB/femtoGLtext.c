@@ -25,10 +25,8 @@ void GL_tty_scroll() {
 	return;
     }
     cursor_Y = cursor_Y & 15;
-    /* clear line: todo, use fillrect when implemented */
-    for(int x=0; x<16; ++x) {
-	GL_putchar_xy(x*8, cursor_Y*8, ' ');
-    }
+    /* clear line */    
+    oled_clear_rect(0,cursor_Y*8,127,cursor_Y*8+7); 
     oled1(0xA1, display_start_line & 127);
     display_start_line += 8;
 }
@@ -49,14 +47,11 @@ int GL_putchar(int c) {
 }
 
 void GL_putchar_xy(int X, int Y, char c) {
-   oled2(0x15,X,X+7); // column address
-   oled2(0x75,Y,Y+7); // row address
-   oled0(0x5c);       // write RAM
-   
+   oled_write_window(X,Y,X+5,Y+7);
    unsigned int chardata = ((unsigned int*)font_5x6)[c - ' '];
    int shifted = chardata & (1 << 30);
    for(int row=0; row<8; ++row) {
-       for(int col=0; col<8; ++col) {
+       for(int col=0; col<6; ++col) {
 	   uint32_t BW;
 	   if(col >= 5) {
 	       BW = 0;

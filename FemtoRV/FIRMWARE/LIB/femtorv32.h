@@ -24,8 +24,8 @@ extern void print_hex_digits(unsigned int val, int digits);
 extern void print_hex(unsigned int val);
 
 /* Font maps */
-extern char* font_8x8;        /* 8 bytes per char. Each byte corresponds to a column.   */
-extern char* font_5x6;        /* 4 bytes per char. 5 columns of 6 bits. bit 31=shift.   */
+extern char*     font_8x8;    /* 8 bytes per char. Each byte corresponds to a column.   */
+extern uint32_t* font_5x6;    /* 4 bytes per char. 5 columns of 6 bits. bit 31=shift.   */
 
 /* FemtoGL library */
 void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */
@@ -57,7 +57,8 @@ extern void delay(int ms);    /* waits an (approximate) number of milliseconds. 
 /* SSD1351 Oled display on 4-wire SPI bus */
 extern void oled_init();
 extern void oled_clear();
-extern void oled_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
+extern void oled_clear_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
+extern void oled_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 extern void oled_wait();
 extern void oled0(uint32_t cmd);
 extern void oled1(uint32_t cmd, uint32_t arg1);
