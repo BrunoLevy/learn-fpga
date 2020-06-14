@@ -40,9 +40,9 @@ int GL_putchar(int c) {
 	GL_tty_scroll();
 	return c;
     }
-    GL_putchar_xy(cursor_X*8, cursor_Y*8, (char)c);
+    GL_putchar_xy(cursor_X*6, cursor_Y*8, (char)c); 
     ++cursor_X;
-    if(cursor_X >= 16) {
+    if(cursor_X >= 21) {
 	GL_putchar('\n');
     }
     return c;
@@ -52,6 +52,29 @@ void GL_putchar_xy(int X, int Y, char c) {
    oled2(0x15,X,X+7); // column address
    oled2(0x75,Y,Y+7); // row address
    oled0(0x5c);       // write RAM
+   
+   unsigned int chardata = ((unsigned int*)font_5x6)[c - ' '];
+   int shifted = chardata & (1 << 30);
+   for(int row=0; row<8; ++row) {
+       for(int col=0; col<8; ++col) {
+	   uint32_t BW;
+	   if(col >= 5) {
+	       BW = 0;
+	   } else {
+	       unsigned int coldata = (chardata >> (6 * col)) & 63;
+	       if(shifted) {
+		   coldata = coldata << 2;
+	       }
+	       BW = (coldata & (1 << row)) ? 255 : 0;
+	   }
+	   IO_OUT(IO_OLED_DATA,BW);
+	   oled_wait();
+	   IO_OUT(IO_OLED_DATA,BW);
+	   oled_wait();
+       }
+   }
+
+/*   
    char* car_ptr = font_8x8 + (int)c * 8;
    for(int row=0; row<8; ++row) {
       for(int col=0; col<8; ++col) {
@@ -62,6 +85,7 @@ void GL_putchar_xy(int X, int Y, char c) {
 	 oled_wait();
       }
    }
+*/   
 }
 
 		

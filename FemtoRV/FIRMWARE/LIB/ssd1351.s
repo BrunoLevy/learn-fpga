@@ -56,6 +56,29 @@ oled_init:
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
+
+# Oled window a0=x1 a1=y1 a2=x1 a3=y2
+#.global	oled_window
+#.type	oled_window, @function
+#oled_window:
+#	add sp,sp,-4
+#        sw ra, 0(sp)
+#	mv t0, a0
+#	mv t1, a2
+#	mv t2, a1
+#	mv t3, a3
+#	li a0, 0x15
+#	mv a1, t0
+#	mv a2, t1
+#	call oled2
+#	li a0, 0x75
+#	mv a1, t2
+#	mv a2, t3
+#	call oled2
+#	li a0, 0x5c
+#	call oled0
+#	add sp,sp,4
+#	ret
 	
 # Oled display command, 0 argument, command in a0
 .global	oled0
