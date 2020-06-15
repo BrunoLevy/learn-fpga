@@ -218,7 +218,8 @@ module NrvDecoder(
    wire [31:0] Jimm = {immB1[11:0], immB4, instr[20], immB2, immB3, 1'b0};   
    wire [31:0] Uimm = {instr[31],   instr[30:20], immB4, {12{1'b0}}};
 */
-   
+
+
    // (the previous verison it is equivalent to this simpler version, but the
    //  previous version saves some LUTs and gains some nano-s).
    wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
@@ -226,6 +227,7 @@ module NrvDecoder(
    wire [31:0] Bimm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
    wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};   
    wire [31:0] Uimm = {instr[31], instr[30:12], {12{1'b0}}};
+
 
    // The rest of instruction decoding, for the following signals:
    // writeBackEn

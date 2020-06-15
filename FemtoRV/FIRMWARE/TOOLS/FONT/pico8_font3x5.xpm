@@ -1,5 +1,5 @@
 /* XPM */
-static char * pico8_font_xpm[] = {
+static char * pico8_font3x5_xpm[] = {
 "128 128 2 1",
 " 	c #020408",
 "*	c #FFF1E8",

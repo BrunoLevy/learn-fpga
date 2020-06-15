@@ -1,7 +1,8 @@
 #ifndef H__FEMTORV32__H
 #define H__FEMTORV32__H
 
-typedef unsigned int uint32_t;
+typedef unsigned short uint16_t;
+typedef unsigned int   uint32_t;
 
 /* Standard library */
 extern void exit(int);
@@ -26,6 +27,7 @@ extern void print_hex(unsigned int val);
 /* Font maps */
 extern char*     font_8x8;    /* 8 bytes per char. Each byte corresponds to a column.   */
 extern uint32_t* font_5x6;    /* 4 bytes per char. 5 columns of 6 bits. bit 31=shift.   */
+extern uint16_t* font_3x5;    /* 2 bytes per char. 3 columns of 5 bits.                 */
 
 /* FemtoGL library */
 void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */

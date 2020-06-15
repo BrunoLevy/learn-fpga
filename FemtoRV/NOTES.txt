@@ -1,6 +1,18 @@
 
-TODO: compliance test ! 
-  https://github.com/riscv/riscv-compliance/
+TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
+      * debug oled_putchar() (use tty_OLED), the typed character appear
+        on the top line !!
+      * more graphics functions (fg/bg color, setpixel, line, circle)
+      * polygon fill
+      * femtoGL 3D
+      * soft floating point routines: https://github.com/riscv/riscv-glibc/tree/riscv-glibc-2.29/soft-fp
+      * print_float, printf("%f")
+      * virtual output for led matrix.
+      * A 90-ish "megademo" on the OLED display !
+      * Autodetect installed RAM in crt0.s (and autoinit stack pointer)
+      * Autodetect installed devices
+      * I2C, can we do it in sotft ? https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire/src
+           (seems to be complicated... probably need interrupts, and code will take more than a few bytes...)
 
 
   Bugs: on init, get_char() returns garbage the first time.
@@ -47,6 +59,8 @@ TODO: compliance test !
 		     can understand.
 
   DebugLog:
+             - forgot to restore ra in a function (oled_write_window)
+
              - after reorganization of ALU (busy signal separated
 	       into ALU busy + decoder needWaitAlu), I had a big
 	       bug: shift by register content was no longer working !
@@ -103,6 +117,7 @@ TODO: compliance test !
 	         by specifying linker options -m elf32lriscv_ilp32 -b elf32-littleriscv
 		 it fixed the problem (but I do not know exactly what
                  it means, maybe it was using some 64-bits specific instructions or someting...)
+		 
 
 
    DEBUGGING THE STATE MACHINE:
