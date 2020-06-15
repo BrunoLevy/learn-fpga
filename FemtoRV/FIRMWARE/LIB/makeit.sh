@@ -17,7 +17,7 @@ do
       if [[ $i == *.c ]] 
       then
          echo '   Compiling C source:' $i      
-         riscv64-linux-gnu-gcc-10 -O3 -fno-pic -march=rv32i -mabi=ilp32 -I. -c $i 
+         riscv64-linux-gnu-gcc-10 -Os -fno-pic -march=rv32i -mabi=ilp32 -I. -c $i 
       fi
    fi
 done   

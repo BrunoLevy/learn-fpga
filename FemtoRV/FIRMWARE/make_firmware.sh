@@ -14,8 +14,8 @@ else
    then
       echo "C compile"
       # This line so that we can examine produced assembly
-      riscv64-linux-gnu-gcc-10 -O3 -fno-pic -march=rv32i -mabi=ilp32 -ILIB -S $1 -o BUILD/firmware.s
-      riscv64-linux-gnu-gcc-10 -O3 -fno-pic -march=rv32i -mabi=ilp32 -ILIB -c -o BUILD/firmware.o $1
+      riscv64-linux-gnu-gcc-10 -Os -fno-pic -march=rv32i -mabi=ilp32 -ILIB -S $1 -o BUILD/firmware.s
+      riscv64-linux-gnu-gcc-10 -Os -fno-pic -march=rv32i -mabi=ilp32 -ILIB -c -o BUILD/firmware.o $1
    else
       echo "Invalid firmware source file:" $1
       echo "Specify one of the firmware source files in EXAMPLES (asm) or C_EXAMPLES (C)"
