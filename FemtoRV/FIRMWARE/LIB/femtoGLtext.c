@@ -1,8 +1,8 @@
 #include <femtorv32.h>
 
-//#define FONT_8x8
-#define FONT_5x6
-//#define FONT_3x5
+//#define FONT_8x8 // CGA font
+#define FONT_5x6   // pico8 font by zep
+//#define FONT_3x5 // pico8 default font
 
 #if   defined(FONT_8x8)
 #define FONT_WIDTH  8
@@ -31,11 +31,12 @@ void GL_tty_init() {
     oled1(0xA1, 0); /* reset display start line. */
 }
 
+/* 
+ Using SSD1351 'display start line' command, we 
+ can scroll the terminal without memorizing the 
+ contents anywhere !    
+ */
 void GL_tty_scroll() {
-    /* Using SSD1351 'display start line' command, we 
-       can scroll the terminal without memorizing the 
-       contents anywhere !    
-     */
     if(cursor_Y + FONT_HEIGHT > 128) {
        scrolling = 1;
        cursor_Y = 0;
@@ -81,14 +82,14 @@ void GL_putchar_xy(int X, int Y, char c) {
    }
 #elif defined(FONT_5x6)
    oled_write_window(X,Y,X+5,Y+7);
-   unsigned int chardata = ((unsigned int*)font_5x6)[c - ' '];
+   uint32_t chardata = font_5x6[c - ' '];
+   // bit 30 indicates whether character needs to be shifted downwards by
+   // two pixels (for instance, for letters 'p','q','g')
    int shifted = chardata & (1 << 30);
    for(int row=0; row<8; ++row) {
        for(int col=0; col<6; ++col) {
-	   uint32_t BW;
-	   if(col >= 5) {
-	       BW = 0;
-	   } else {
+	   uint32_t BW = 0;
+	   if(col < 5) {
 	       unsigned int coldata = (chardata >> (6 * col)) & 63;
 	       if(shifted) {
 		   coldata = coldata << 2;
