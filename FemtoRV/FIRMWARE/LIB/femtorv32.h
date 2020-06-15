@@ -31,6 +31,7 @@ extern uint16_t* font_3x5;    /* 2 bytes per char. 3 columns of 5 bits.         
 
 /* FemtoGL library */
 void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */
+void GL_tty_goto_xy(int X, int Y);
 int  GL_putchar(int c);
 void GL_putchar_xy(int x, int y, char c);
 

@@ -181,6 +181,25 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
 
 ========================================================================
 
+
+void __attribute__((optimize("O3"))) fast_function(void) {
+    // ...
+}
+
+For a whole file, you can use the optimize pragma:
+
+#pragma GCC push_options
+#pragma GCC optimize ("O3")
+
+/*
+ * Code that needs optimizing
+ */
+
+#pragma GCC pop_options
+
+
+========================================================================
+
 DONE: from Harvard to Von Neumann
    - one unique address bus (+ instr prefetch register management)
    NEXT:

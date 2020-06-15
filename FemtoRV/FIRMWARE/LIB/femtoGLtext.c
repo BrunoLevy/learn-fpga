@@ -31,6 +31,11 @@ void GL_tty_init() {
     oled1(0xA1, 0); /* reset display start line. */
 }
 
+void GL_tty_goto_xy(int X, int Y) {
+    cursor_X = X;
+    cursor_Y = Y;
+}
+
 /* 
  Using SSD1351 'display start line' command, we 
  can scroll the terminal without memorizing the 

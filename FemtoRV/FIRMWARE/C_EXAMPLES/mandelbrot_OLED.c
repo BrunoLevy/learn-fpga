@@ -18,13 +18,9 @@
 #define dy (ymax-ymin)/128
 #define norm_max (4 << mandel_shift)
 
-int main() {
-   oled_init();
-   oled_clear();
-   oled2(0x15,0x00,0x7f); // column address
-   oled2(0x75,0x00,0x7f); // row address
-   oled0(0x5c);           // write RAM
-   
+
+void mandel() {
+   oled_write_window(0,0,127,127);
    int Ci = ymin;
    for(int Y=0; Y<128; ++Y) {
       int Cr = xmin;
@@ -51,11 +47,28 @@ int main() {
       }
       Ci += dy;
    }
-
-   return 0;   
 }
 
-
+int main() {
+   for(;;) { 
+       GL_tty_init();
+       mandel();
+       printf("Mandelbrot Demo.     \n");
+       delay(1000);       
+       GL_tty_goto_xy(0,127);
+       printf("\n");
+       printf("FemtoRV32 60 MHz\n");   
+       printf("FemtOS 1.0\n");
+       // The 'terminal scrolling' functionality
+       // also scrolls the graphics, funny !
+       for(int i=0; i<13; i++) {
+	   delay(100);
+	   printf("\n");
+       }
+       delay(2000);
+   }
+   return 0;   
+}
 
 
 

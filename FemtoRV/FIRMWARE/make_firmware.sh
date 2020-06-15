@@ -26,7 +26,7 @@ fi
 
 # Link
 # Note: seems that LIB/crt0.o is linked automatically (it is good, but I do not know why...)
-riscv64-linux-gnu-ld -m elf32lriscv_ilp32 -b elf32-littleriscv -Tcontrol.ld -o BUILD/firmware.elf BUILD/firmware.o -LLIB -lfemtorv32
+riscv64-linux-gnu-ld -m elf32lriscv_ilp32 -b elf32-littleriscv -Tfemtorv32.ld -o BUILD/firmware.elf BUILD/firmware.o -LLIB -lfemtorv32
 # Dump hexadecimal content
 riscv64-linux-gnu-objcopy -O verilog BUILD/firmware.elf BUILD/firmware.objcopy.hex
 # Adapt hexadecimal content (32 bit words instead of individual bytes)
