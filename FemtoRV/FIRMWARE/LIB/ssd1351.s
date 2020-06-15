@@ -5,9 +5,9 @@
 #################################################################################
 	
 # initialize oled display
-.global	oled_init
-.type	oled_init, @function
-oled_init:
+.global	GL_init
+.type	GL_init, @function
+GL_init:
 	add sp,sp,-4
         sw ra, 0(sp)	
 	# Initialization sequence / RESET

@@ -8,7 +8,7 @@
 main:   add sp,sp,-4
         sw ra, 0(sp)
 	
-	call oled_init
+	call GL_init
 	
 	# anim
 	# s0 = X, s1 = Y, s2 = bound, s3 = frame

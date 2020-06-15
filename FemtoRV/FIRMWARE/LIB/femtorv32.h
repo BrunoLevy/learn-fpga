@@ -1,6 +1,7 @@
 #ifndef H__FEMTORV32__H
 #define H__FEMTORV32__H
 
+typedef unsigned char  uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int   uint32_t;
 
@@ -30,6 +31,18 @@ extern uint32_t* font_5x6;    /* 4 bytes per char. 5 columns of 6 bits. bit 31=s
 extern uint16_t* font_3x5;    /* 2 bytes per char. 3 columns of 5 bits.                 */
 
 /* FemtoGL library */
+
+#define GL_RGB(R,G,B) ((((((R) & 0xF8) << 2) | ((G) & 0xF8)) << 6) | ((B) >> 3))
+
+extern uint16_t GL_fg;
+extern uint16_t GL_bg;
+
+extern void GL_set_fg(uint8_t r, uint8_t g, uint8_t b);
+extern void GL_set_bg(uint8_t r, uint8_t g, uint8_t b);
+extern void GL_init();
+extern void GL_clear();
+extern void GL_fill_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color);
+
 void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */
 void GL_tty_goto_xy(int X, int Y);
 int  GL_putchar(int c);
@@ -58,9 +71,6 @@ extern void delay(int ms);    /* waits an (approximate) number of milliseconds. 
 #define LEDS(val)         IO_OUT(IO_LEDS,val)
 
 /* SSD1351 Oled display on 4-wire SPI bus */
-extern void oled_init();
-extern void oled_clear();
-extern void oled_clear_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 extern void oled_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 extern void oled_wait();
 extern void oled0(uint32_t cmd);

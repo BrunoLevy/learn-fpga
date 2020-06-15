@@ -21,8 +21,8 @@ static int cursor_Y = 0;
 static int display_start_line = 0;
 
 void GL_tty_init() {
-    oled_init();
-    oled_clear();
+    GL_init();
+    GL_clear();
     set_putcharfunc(GL_putchar);
     cursor_X = 0;
     cursor_Y = 0;
@@ -49,7 +49,7 @@ void GL_tty_scroll() {
     if(!scrolling) {
 	return;
     }
-    oled_clear_rect(0,cursor_Y,127,cursor_Y+FONT_HEIGHT-1);
+    GL_fill_rect(0,cursor_Y,127,cursor_Y+FONT_HEIGHT-1, GL_bg);
     oled1(0xA1, display_start_line + FONT_HEIGHT);
     display_start_line += FONT_HEIGHT;
     if(display_start_line > 127) {
@@ -73,15 +73,19 @@ int GL_putchar(int c) {
 }
 
 void GL_putchar_xy(int X, int Y, char c) {
+   uint32_t Blo = (uint32_t)GL_bg;    
+   uint32_t Bhi = Blo >> 8;
+   uint32_t Flo = (uint32_t)GL_fg;    
+   uint32_t Fhi = Flo >> 8;
 #if defined(FONT_8x8)   
    oled_write_window(X,Y,X+7,Y+7);   
    char* car_ptr = font_8x8 + (int)c * 8;
    for(int row=0; row<8; ++row) {
       for(int col=0; col<8; ++col) {
 	 uint32_t BW = (car_ptr[col] & (1 << row)) ? 255 : 0;
-	 IO_OUT(IO_OLED_DATA,BW);
+	 IO_OUT(IO_OLED_DATA,BW ? Fhi : Bhi);
 	 oled_wait();
-	 IO_OUT(IO_OLED_DATA,BW);
+	 IO_OUT(IO_OLED_DATA,BW ? Flo : Blo);
 	 oled_wait();
       }
    }
@@ -101,9 +105,9 @@ void GL_putchar_xy(int X, int Y, char c) {
 	       }
 	       BW = (coldata & (1 << row)) ? 255 : 0;
 	   }
-	   IO_OUT(IO_OLED_DATA,BW);
+	   IO_OUT(IO_OLED_DATA,BW ? Fhi : Bhi);
 	   oled_wait();
-	   IO_OUT(IO_OLED_DATA,BW);
+	   IO_OUT(IO_OLED_DATA,BW ? Flo : Blo);
 	   oled_wait();
        }
    }
@@ -117,10 +121,10 @@ void GL_putchar_xy(int X, int Y, char c) {
 	      uint32_t coldata = (car_data >> (5 * col)) & 31;
 	      BW = (coldata & (1 << row)) ? 255 : 0;
 	  }
-	 IO_OUT(IO_OLED_DATA,BW);
-	 oled_wait();
-	 IO_OUT(IO_OLED_DATA,BW);
-	 oled_wait();
+	  IO_OUT(IO_OLED_DATA,BW ? Fhi : Bhi);
+	  oled_wait();
+	  IO_OUT(IO_OLED_DATA,BW ? Flo : Blo);
+	  oled_wait();
       }
    }
 #endif

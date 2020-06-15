@@ -28,8 +28,8 @@ main:
         add sp,sp,-4
         sw ra, 0(sp)	
 
-	call oled_init
-        call oled_clear
+	call GL_init
+        call GL_clear
 
 
         OLED2 0x15,0x00,0x7f         # column address

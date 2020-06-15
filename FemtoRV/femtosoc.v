@@ -21,9 +21,9 @@
 //`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
 
 // Uncomment one of them. With UART, only 4K possible, but with OLed screen, 6K fits.
-`define NRV_RAM_4K
+//`define NRV_RAM_4K
 //`define NRV_RAM_5K
-//`define NRV_RAM_6K
+`define NRV_RAM_6K
 
 
 `define ADDR_WIDTH 14 // Internal number of bits for PC and address register.

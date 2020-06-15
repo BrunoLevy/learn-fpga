@@ -60,13 +60,10 @@ int sintab[64] = {
 };
 
 void main() {
-    oled_init();
+    GL_init();
     int frame = 0;
     for(;;) {
-	oled2(0x15,0x00,0x7f); // column address
-	oled2(0x75,0x00,0x7f); // row address
-	oled0(0x5c);           // write RAM
-
+	oled_write_window(0,0,127,127);
        
         int scaling = sintab[frame&63]+400;
         int Ux = scaling*sintab[frame & 63];         // The C compiler generates a call
