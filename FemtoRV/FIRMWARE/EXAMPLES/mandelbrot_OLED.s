@@ -67,7 +67,7 @@ loop_Z: mv a0,s4    # Zrr  <- (Zr*Zr) >> mandel_shift
 	srli s8,a0,mandel_shift
 	sub s4,s6,s8 # Zr <- Zrr - Zii + Cr  
 	add s4,s4,s2
-        add s5,s7,s3 # Zi <- 2Zri + Cr
+        add s5,s7,s3 # Zi <- 2Zri + Ci
 
         add s6,s6,s8     # if norm > norm max, exit loop
         li  s7,norm_max
