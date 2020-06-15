@@ -2,7 +2,7 @@
 
 #################################################################################
 
-# NanoRv support library
+# FemtoRV32 support library
 
 # exit function: display exit code
 # on LEDS, or spinning wheel if exit
@@ -27,15 +27,6 @@ exitl:	li t0, 1
 	call delay
         j exitl
 	
-# Wait for a while	
-.global	wait
-.type	wait, @function
-wait:	li t0,0x100000
-waitl:	add t0,t0,-1
-	bnez t0,waitl
-	ret
-
-
 # Wait for an approximate number of milliseconds
 #  The femtorv32 core operates at 60 MHz
 #  The delay loop uses 7 microcycles
@@ -47,9 +38,8 @@ waitl:	add t0,t0,-1
 .type	delay, @function
 delay:	sll t0,a0,13
 delayl:	add t0,t0,-1
-	bnez t0,waitl
+	bnez t0,delayl
 	ret
-
 	
 .global abort
 .type   abort, @function

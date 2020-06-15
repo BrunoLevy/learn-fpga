@@ -1,10 +1,13 @@
 # Note: it seems that crt0.o is linked automatically (not added into lib)
 
 SOURCES="femtorv32.s mul.s div.s max2719.s ssd1351.s uart.s print.c printf.c \
-         font_8x8.s font_5x6.s font_3x5.s virtual_io.c femtoGL.c femtoGLtext.c crt0.s"
+         font_8x8.s font_5x6.s font_3x5.s virtual_io.c femtoGL.c femtoGLtext.c \
+	 femtoGLsetpixel.c random.c \
+	 crt0.s"
 
 OBJECTS="femtorv32.o mul.o div.o max2719.o ssd1351.o uart.o print.o printf.o \
-         font_8x8.o font_5x6.o font_3x5.o virtual_io.o femtoGL.o femtoGLtext.o"
+         font_8x8.o font_5x6.o font_3x5.o virtual_io.o femtoGL.o femtoGLtext.o \
+	 femtoGLsetpixel.o random.o"
 
 echo 'Compiling libfemtorv32'
 for i in `echo $SOURCES`

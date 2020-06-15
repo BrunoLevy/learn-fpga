@@ -13,6 +13,10 @@ extern int  putchar(int c);
 extern int  puts(const char* s);
 extern int  printf(const char *fmt,...); /* supports %s, %d, %x */
 
+/* Other functions */
+extern void delay(int ms);    /* waits an (approximate) number of milliseconds.         */
+extern int  random();
+
 /* Virtual I/O */
 typedef int (*putcharfunc_t)(int);
 typedef int (*getcharfunc_t)(void);
@@ -42,14 +46,14 @@ extern void GL_set_bg(uint8_t r, uint8_t g, uint8_t b);
 extern void GL_init();
 extern void GL_clear();
 extern void GL_fill_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color);
+extern void GL_setpixel(int x, int y, uint16_t color);
+extern void GL_setpixel_RGB(int x, int y, uint8_t r, uint8_t g, uint8_t b);
 
 void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */
 void GL_tty_goto_xy(int X, int Y);
 int  GL_putchar(int c);
 void GL_putchar_xy(int x, int y, char c);
 
-/* Other functions */
-extern void delay(int ms);    /* waits an (approximate) number of milliseconds.         */
 
 /* Memory-mapped IO */
 #define IO_BASE      0x2000   /* Base address of memory-mapped IO                       */
