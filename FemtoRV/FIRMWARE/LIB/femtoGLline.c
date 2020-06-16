@@ -1,7 +1,6 @@
 #include <femtorv32.h>
 
 void GL_line(int x1, int y1, int x2, int y2, uint16_t color) {
-
     int dy = y2 - y1;
     int sy = 1;
     if(dy < 0) {
@@ -12,10 +11,10 @@ void GL_line(int x1, int y1, int x2, int y2, uint16_t color) {
     int dx = x2 - x1;
     int sx = 1;
     if(dx < 0) {
-	sx = 1;
+	sx = -1;
 	dx = -dx;
     }
-    
+
     int x = x1;
     int y = y1;
     if(dy > dx) {
