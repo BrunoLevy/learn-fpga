@@ -319,7 +319,7 @@ module NrvIO(
 	   end
 `endif	   
 	 endcase 
-      end else begin // if (wr)
+      end else begin 
 `ifdef NRV_IO_SSD1351	   	 
 	 if(SSD1351_sending && !SSD1351_slow_clk) begin
             SSD1351_bitcount <= SSD1351_bitcount - 4'd1;
@@ -389,7 +389,7 @@ module femtosoc(
    );
  `endif
 
-  // Not 100% of what I'm doing here (but
+  // Not 100% sure of what I'm doing here (but
   // at least if seemingly fixed my pb):
   // A little delay for sending the reset
   // signal after startup. Without it the

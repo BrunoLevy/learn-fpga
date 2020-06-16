@@ -30,7 +30,7 @@ extern void print_hex_digits(unsigned int val, int digits);
 extern void print_hex(unsigned int val);
 
 /* Font maps */
-extern char*     font_8x8;    /* 8 bytes per char. Each byte corresponds to a column.   */
+extern uint8_t*  font_8x8;    /* 8 bytes per char. Each byte corresponds to a column.   */
 extern uint32_t* font_5x6;    /* 4 bytes per char. 5 columns of 6 bits. bit 31=shift.   */
 extern uint16_t* font_3x5;    /* 2 bytes per char. 3 columns of 5 bits.                 */
 
@@ -47,7 +47,7 @@ extern void GL_init();
 extern void GL_clear();
 extern void GL_fill_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color);
 extern void GL_setpixel(int x, int y, uint16_t color);
-extern void GL_setpixel_RGB(int x, int y, uint8_t r, uint8_t g, uint8_t b);
+extern void GL_line(int x1, int y1, int x2, int y3, uint16_t color);
 
 void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */
 void GL_tty_goto_xy(int X, int Y);
@@ -85,5 +85,9 @@ extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
 /* MAX2719 led matrix */
 extern void MAX2719_init();
 extern void MAX2719(uint32_t address, uint32_t value);
+
+#define MIN(x,y) (((x) < (y)) ? (x) : (y))
+#define MAX(x,y) (((x) > (y)) ? (x) : (y))
+#define SGN(x)   (((x) > (0)) ? 1 : ((x) ? -1 : 0))
 
 #endif

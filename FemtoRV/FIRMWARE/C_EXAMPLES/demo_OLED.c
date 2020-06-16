@@ -4,6 +4,23 @@
 
 #include <femtorv32.h>
 
+void random_pixel() {
+    int x = random() & 127;
+    int y = random() & 127;
+    int col = random();
+    GL_setpixel(x,y,col);
+}
+
+
+void random_line() {
+    int x1 = random() & 127;
+    int y1 = random() & 127;
+    int x2 = random() & 127;
+    int y2 = random() & 127;
+    int col = random();
+    GL_line(x1,y1,x2,y2,col);
+}
+
 void random_rect() {
     int tmp;
     int x1 = random() & 127;
@@ -24,13 +41,6 @@ void random_rect() {
     GL_fill_rect(x1,y1,x2,y2,col);
 }
 
-void random_pixel() {
-    int x = random() % 127;
-    int y = random() % 127;
-    int col = random();
-    GL_setpixel(x,y,col);
-}
-
 /*
  * Note: there is a much faster way of 
  * doing that, using oled_write_window() 
@@ -43,7 +53,7 @@ void show_colors() {
 	    int r = x << 1;
 	    int g = x << 8;
 	    int b = y << 1;
-	    GL_setpixel_RGB(x,y,r,g,b);
+	    GL_setpixel(x,y,GL_RGB(r,g,b));
 	}
     }
 }
@@ -53,14 +63,19 @@ int main() {
     GL_init();
     GL_clear();
     show_colors();
-    delay(2000);
+    delay(1000);
     GL_clear();
-    for(cnt=0; cnt<50000; ++cnt) {
+    for(cnt=0; cnt<20000; ++cnt) {
 	random_pixel();
     }
-    delay(2000);
+    delay(1000);
+    GL_clear();
+    for(cnt=0; cnt<4000; ++cnt) {
+	random_line();
+    }
+    delay(1000);
     GL_clear();    
-    for(cnt=0; cnt<2000; ++cnt) {
+    for(cnt=0; cnt<1000; ++cnt) {
 	random_rect();
     }
 }
