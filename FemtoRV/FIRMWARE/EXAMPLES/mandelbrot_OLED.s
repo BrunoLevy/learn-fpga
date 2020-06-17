@@ -31,10 +31,11 @@ main:
 	call GL_init
         call GL_clear
 
-
-        OLED2 0x15,0x00,0x7f         # column address
-	OLED2 0x75,0x00,0x7f         # row address
-	OLED0 0x5c                   # write RAM
+        li a0, 0
+	li a1, 0
+	li a2, 127
+	li a3, 127
+        call oled_write_window
 
         li   a0,250
 	call delay

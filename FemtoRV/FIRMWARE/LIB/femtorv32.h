@@ -48,6 +48,7 @@ extern void GL_clear();
 extern void GL_fill_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color);
 extern void GL_setpixel(int x, int y, uint16_t color);
 extern void GL_line(int x1, int y1, int x2, int y3, uint16_t color);
+extern void GL_fill_poly(int nb_pts, int* points, uint16_t color);
 
 void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */
 void GL_tty_goto_xy(int X, int Y);

@@ -21,7 +21,7 @@ int main() {
     GL_clear();    
     int frame;
     for(;;) {
-	int a = frame;
+	int a = frame >> 2;
         int scaling = sintab[(frame >> 1)&63]+400;
 	
 	int Ux = (sintab[a & 63] * scaling) >> 12;         
