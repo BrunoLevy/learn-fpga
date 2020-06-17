@@ -145,10 +145,14 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
     
     if((minx < 0) || (miny < 0) || (maxx > 127) || (maxy > 127)) {
 	nb_pts = clip(nb_pts, &points);
-	minx = MAX(minx, 0);
-	miny = MAX(miny, 0);
-	maxx = MIN(maxx, 127);
-	maxy = MIN(maxy, 127);
+	miny =  256;
+	maxy = -256;
+	for(int i1=0; i1<nb_pts; ++i1) {
+	    int x1 = points[2*i1];
+	    int y1 = points[2*i1+1];
+	    miny = MIN(miny,y1);
+	    maxy = MAX(maxy,y1);
+	}
     }
     
     /* Determine x_left and x_right for each scaline */
