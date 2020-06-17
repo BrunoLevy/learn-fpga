@@ -1,12 +1,87 @@
 #include <femtorv32.h>
 
+/** 
+ * \brief Clips a polygon by a half-plane.
+ * \param[in] number of vertices of the input polygon.
+ * \param[in] buff1 vertices of the input polygon.
+ * \param[out] buff2 vertices of the resulting polygon.
+ * \param[in] a , b , c equation of the half-plane: ax + by + c >= 0
+ * \return number of vertices in resulting polygon.
+ */
+static int clip_H(
+    int nb_pts, int* buff1, int* buff2, int a, int b, int c
+) {
+    if(nb_pts == 0) {
+	return 0;
+    }
+
+    if(nb_pts == 1) {
+	if(a*buff1[0] + b*buff1[1] + c >= 0) {
+	    buff2[0] = buff1[0];
+	    buff2[1] = buff1[1];
+	    return 1;
+	} else {
+	    return 0;
+	}
+    }
+
+    int nb_result = 0;
+    int prev_x = buff1[2*(nb_pts-1)];
+    int prev_y = buff1[2*(nb_pts-1)+1];
+    int prev_status = SGN(a*prev_x + b*prev_y +c);
+
+    for(int i=0; i<nb_pts; ++i) {
+	int x = buff1[2*i];
+	int y = buff1[2*i+1];
+	int status = SGN(a*x + b*y + c);
+	if(status != prev_status && status != 0 && prev_status != 0) {
+	    int t_num   = -a*prev_x-b*prev_y-c;
+	    int t_denom = a*(x - prev_x) + b*(y - prev_y);
+	    int Ix = prev_x + t_num * (x - prev_x) / t_denom;
+	    int Iy = prev_y + t_num * (y - prev_y) / t_denom;
+	    buff2[2*nb_result]   = Ix;
+	    buff2[2*nb_result+1] = Iy;
+	    ++nb_result;
+	}
+	if(status >= 0) {
+	    buff2[2*nb_result]   = x;
+	    buff2[2*nb_result+1] = y;
+	    ++nb_result;
+	}
+	prev_x = x;
+	prev_y = y;
+	prev_status = status;
+    }
+
+    return nb_result;
+}
+
+/**
+ * \brief Clips a polygon by the screen.
+ * \param[in] number of vertices of the input polygon.
+ * \param[in,out] poly vertices of the polygon.
+ * \return number of vertices in the result polygon.
+ */
+static int clip(int nb_pts, int** poly) {
+    static int  buff1[20];    
+    int  buff2[20];
+    nb_pts = clip_H(nb_pts, *poly, buff2, 1, 0, 0);
+    nb_pts = clip_H(nb_pts, buff2, buff1,-1, 0, 127);
+    nb_pts = clip_H(nb_pts, buff1, buff2, 0, 1, 0);
+    nb_pts = clip_H(nb_pts, buff2, buff1, 0,-1, 127);
+    *poly = buff1;
+    return nb_pts;
+}
+
 void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 
-    static char x_left[128];
-    static char x_right[128];
+    char x_left[128];
+    char x_right[128];
 
     /* Determine clockwise, miny, maxy */
     int clockwise = 0;
+    int minx =  256;
+    int maxx = -256;
     int miny =  256;
     int maxy = -256;
     for(int i1=0; i1<nb_pts; ++i1) {
@@ -19,17 +94,32 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	int dx2 = points[2*i3]   - x1;
 	int dy2 = points[2*i3+1] - y1;
 	clockwise += dx1 * dy2 - dx2 * dy1;
+	minx = MIN(minx,x1);
+	maxx = MAX(maxx,x1);
 	miny = MIN(miny,y1);
 	maxy = MAX(maxy,y1);
     }
 
+    if(minx < 0 || miny < 0 || maxx > 127 || maxy > 127) {
+	nb_pts = clip(nb_pts, &points);
+	minx = MAX(minx, 0);
+	miny = MAX(miny, 0);
+	maxx = MIN(maxx, 127);
+	maxy = MIN(maxy, 127);
+    }
+    
     /* Determine x_left and x_right for each scaline */
     for(int i1=0; i1<nb_pts; ++i1) {
 	int i2=(i1==nb_pts-1) ? 0 : i1+1;
+
 	int x1 = points[2*i1];
 	int y1 = points[2*i1+1];
 	int x2 = points[2*i2];
 	int y2 = points[2*i2+1];
+
+	// GL_line(x1,y1,x2,y2,color);
+	// continue;
+	
 	char* x_buffer = (clockwise > 0) ^ (y2 > y1) ? x_left : x_right;
 	int dx = x2 - x1;
 	int sx = 1;
@@ -66,6 +156,8 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	}
     }
 
+    // return;
+    
     for(int y = miny; y <= maxy; ++y) {
 	int x1 = x_left[y];
 	int x2 = x_right[y];
