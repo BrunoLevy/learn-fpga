@@ -18,34 +18,41 @@ int sintab[64] = {
 
 int main() {
     GL_init();
-    GL_clear();    
+    GL_clear();
     int frame;
+
     for(;;) {
-	int a = frame >> 2;
-        int scaling = sintab[(frame >> 1)&63]+400;
+	int pts[8];
+
+	if(frame & (1 << 6)) {
+	    GL_clear();
+	}
+	int a = frame << 1;
+        int scaling = sintab[(frame >> 2)&63]+400;
 	
-	int Ux = (sintab[a & 63] * scaling) >> 12;         
-        int Uy = (sintab[(a + 16) & 63] * scaling) >> 12;
+	int Ux = (sintab[a & 63] * scaling) >> 11;         
+        int Uy = (sintab[(a + 16) & 63] * scaling) >> 11;
 	int Vx = -Uy;
 	int Vy =  Ux;
 	
-	int x1 = 64 + Ux + Vx; 
-	int y1 = 64 + Uy + Vy; 
+	pts[0] = 64 + Ux + Vx; 
+	pts[1] = 64 + Uy + Vy; 
 
-	int x2 = 64 + Ux - Vx; 
-	int y2 = 64 + Uy - Vy; 
+	pts[2] = 64 - Ux + Vx; 
+	pts[3] = 64 - Uy + Vy; 
 
-	int x3 = 64 - Ux - Vx; 
-	int y3 = 64 - Uy - Vy; 
+	pts[4] = 64 - Ux - Vx; 
+	pts[5] = 64 - Uy - Vy; 
 
-	int x4 = 64 - Ux + Vx; 
-	int y4 = 64 - Uy + Vy; 
+	pts[6] = 64 + Ux - Vx; 
+	pts[7] = 64 + Uy - Vy; 
 	
+	uint16_t color = frame; 
+
+	GL_fill_poly(4, pts, color);
+	GL_polygon_mode((frame & (1 << 5)) ? GL_POLY_LINES : GL_POLY_FILL);
 	
-	GL_line(x1,y1,x2,y2,frame);
-	GL_line(x2,y2,x3,y3,frame);
-	GL_line(x3,y3,x4,y4,frame);
-	GL_line(x4,y4,x1,y1,frame);
+        delay(50);
 	
 	++frame;
     }

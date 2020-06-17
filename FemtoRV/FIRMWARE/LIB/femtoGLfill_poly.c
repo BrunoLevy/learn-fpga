@@ -135,15 +135,15 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	maxy = MAX(maxy,y1);
     }
 
-    if(gl_culling_mode == GL_FRONT_FACE && clockwise < 0) {
+    if((gl_culling_mode == GL_FRONT_FACE) && (clockwise < 0)) {
 	return;
     }
 
-    if(gl_culling_mode == GL_BACK_FACE && clockwise > 0) {
+    if((gl_culling_mode == GL_BACK_FACE) && (clockwise > 0)) {
 	return;
     }
     
-    if(minx < 0 || miny < 0 || maxx > 127 || maxy > 127) {
+    if((minx < 0) || (miny < 0) || (maxx > 127) || (maxy > 127)) {
 	nb_pts = clip(nb_pts, &points);
 	minx = MAX(minx, 0);
 	miny = MAX(miny, 0);
@@ -165,7 +165,7 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	    continue;
 	}
 	
-	char* x_buffer = (clockwise > 0) ^ (y2 > y1) ? x_left : x_right;
+	char* x_buffer = ((clockwise > 0) ^ (y2 > y1)) ? x_left : x_right;
 	int dx = x2 - x1;
 	int sx = 1;
 	int dy = y2 - y1;
@@ -204,13 +204,14 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
     if(gl_polygon_mode == GL_POLY_LINES) {    
 	return;
     }
-    
+
+    uint32_t color_hi = color >> 8;
     for(int y = miny; y <= maxy; ++y) {
 	int x1 = x_left[y];
 	int x2 = x_right[y];
 	oled_write_window(x1,y,x2,y);
 	for(int x=x1; x<=x2; ++x) {
-	    IO_OUT(IO_OLED_DATA,color >> 8);
+	    IO_OUT(IO_OLED_DATA,color_hi);
 	    OLED_WAIT();
 	    IO_OUT(IO_OLED_DATA,color);
 	    OLED_WAIT();
