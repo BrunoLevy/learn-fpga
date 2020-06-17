@@ -35,8 +35,40 @@ static int clip_H(
 	int y = buff1[2*i+1];
 	int status = SGN(a*x + b*y + c);
 	if(status != prev_status && status != 0 && prev_status != 0) {
-	    int t_num   = -a*prev_x-b*prev_y-c;
-	    int t_denom = a*(x - prev_x) + b*(y - prev_y);
+
+	    /*
+	     * Remember, femtorv32 does not have hardware mul,
+	     * so we replace the following code with two switches
+	     * (a and b take values in -1,0,1, no need to mul).
+	     * int t_num   = -a*prev_x-b*prev_y-c;
+	     * int t_denom = a*(x - prev_x) + b*(y - prev_y);
+	     */
+
+	    int t_num = -c;
+	    int t_denom = 0;
+	    
+	    switch(a) {
+	    case -1:
+		t_num += prev_x;
+		t_denom -= (x - prev_x);
+		break;
+	    case  1:
+		t_num -= prev_x;
+		t_denom += (x - prev_x);
+		break;
+	    }
+
+	    switch(b) {
+	    case -1:
+		t_num += prev_y;
+		t_denom -= (y - prev_y);
+		break;
+	    case  1:
+		t_num -= prev_y;
+		t_denom += (y - prev_y);
+		break;
+	    }
+	    
 	    int Ix = prev_x + t_num * (x - prev_x) / t_denom;
 	    int Iy = prev_y + t_num * (y - prev_y) / t_denom;
 	    buff2[2*nb_result]   = Ix;
