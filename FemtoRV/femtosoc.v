@@ -397,6 +397,9 @@ module femtosoc(
   // ramdom instr from BRAM.
   // (picosoc on icebreaker has the same 
   //  waiting loop at startup).
+  // Explanation here: (ice40 BRAM reads incorrect values during
+  // first cycles).
+  // http://svn.clifford.at/handicraft/2017/ice40bramdelay/README 
   reg [6:0] reset_cnt = 0;
   wire     reset = &reset_cnt;
 `ifdef NRV_RESET   
