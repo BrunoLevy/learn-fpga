@@ -30,10 +30,20 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	int y1 = points[2*i1+1];
 	int x2 = points[2*i2];
 	int y2 = points[2*i2+1];
-	char* x_buffer = (clockwise > 0) ^ (y2 > y1) ? x_left : x_right;	
+	char* x_buffer = (clockwise > 0) ^ (y2 > y1) ? x_left : x_right;
+	int dx = x2 - x1;
+	int sx = 1;
 	int dy = y2 - y1;
 	int sy = 1;
-	int u;
+	int x = x1;
+	int y = y1;
+	int ex;
+	
+	if(dx < 0) {
+	    sx = -1;
+	    dx = -dx;
+	}
+	
 	if(dy < 0) {
 	    sy = -1;
 	    dy = -dy;
@@ -43,8 +53,29 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	    continue;
 	}
 
-	// GL_line(x1,y1,x2,y2,color);
-	
-	
+	ex = (dx << 1) - dy;
+
+	for(int u=0; u <= dy; ++u) {
+	    x_buffer[y] = x;
+	    y += sy;
+	    while(ex >= 0) {
+		x += sx;
+		ex -= dy << 1;
+	    }
+	    ex += dx << 1;
+	}
     }
+
+    for(int y = miny; y <= maxy; ++y) {
+	int x1 = x_left[y];
+	int x2 = x_right[y];
+	oled_write_window(x1,y,x2,y);
+	for(int x=x1; x<=x2; ++x) {
+	    IO_OUT(IO_OLED_DATA,color >> 8);
+	    OLED_WAIT();
+	    IO_OUT(IO_OLED_DATA,color);
+	    OLED_WAIT();
+	}
+    }
+    
 }
