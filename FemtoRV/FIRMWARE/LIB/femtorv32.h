@@ -50,6 +50,17 @@ extern void GL_setpixel(int x, int y, uint16_t color);
 extern void GL_line(int x1, int y1, int x2, int y3, uint16_t color);
 extern void GL_fill_poly(int nb_pts, int* points, uint16_t color);
 
+#define GL_POLY_LINES 1
+#define GL_POLY_FILL  2
+extern int gl_polygon_mode;
+#define GL_polygon_mode(mode) gl_polygon_mode = (mode);
+
+#define GL_FRONT_FACE     1
+#define GL_BACK_FACE      2
+#define GL_FRONT_AND_BACK 3
+extern int gl_culling_mode;
+#define GL_culling_mode(mode) gl_culling_mode = (mode);
+
 void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */
 void GL_tty_goto_xy(int X, int Y);
 int  GL_putchar(int c);

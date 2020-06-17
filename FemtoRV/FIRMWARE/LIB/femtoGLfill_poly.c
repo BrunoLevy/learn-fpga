@@ -1,5 +1,8 @@
 #include <femtorv32.h>
 
+int gl_polygon_mode = GL_POLY_FILL;
+int gl_culling_mode = GL_FRONT_AND_BACK;
+
 /** 
  * \brief Clips a polygon by a half-plane.
  * \param[in] number of vertices of the input polygon.
@@ -132,6 +135,14 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	maxy = MAX(maxy,y1);
     }
 
+    if(gl_culling_mode == GL_FRONT_FACE && clockwise < 0) {
+	return;
+    }
+
+    if(gl_culling_mode == GL_BACK_FACE && clockwise > 0) {
+	return;
+    }
+    
     if(minx < 0 || miny < 0 || maxx > 127 || maxy > 127) {
 	nb_pts = clip(nb_pts, &points);
 	minx = MAX(minx, 0);
@@ -149,8 +160,10 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	int x2 = points[2*i2];
 	int y2 = points[2*i2+1];
 
-	// GL_line(x1,y1,x2,y2,color);
-	// continue;
+	if(gl_polygon_mode == GL_POLY_LINES) {
+	    GL_line(x1,y1,x2,y2,color);
+	    continue;
+	}
 	
 	char* x_buffer = (clockwise > 0) ^ (y2 > y1) ? x_left : x_right;
 	int dx = x2 - x1;
@@ -188,7 +201,9 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	}
     }
 
-    // return;
+    if(gl_polygon_mode == GL_POLY_LINES) {    
+	return;
+    }
     
     for(int y = miny; y <= maxy; ++y) {
 	int x1 = x_left[y];
