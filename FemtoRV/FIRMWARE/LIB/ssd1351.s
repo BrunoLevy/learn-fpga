@@ -1,8 +1,47 @@
 .include "femtorv32.inc"
 
-#################################################################################	
+###############################################################################
 # NanoRv OLED display support
-#################################################################################
+###############################################################################
+
+# Macros to send commands to the OLED driver (wrappers around OLEDx functions)
+	
+.macro OLED0 cmd
+	li a0,\cmd
+	call oled0
+.endm
+
+.macro OLED1 cmd,arg1
+	li a0,\cmd
+	li a1,\arg1
+	call oled1
+.endm
+
+.macro OLED2 cmd,arg1,arg2
+	li a0,\cmd
+	li a1,\arg1
+	li a2,\arg2
+	call oled2
+.endm
+
+.macro OLED3 cmd,arg1,arg2,arg3
+	li a0,\cmd
+	li a1,\arg1
+	li a2,\arg2
+	li a3,\arg3	
+	call oled3
+.endm
+
+# 4*3 = 12 cycles, this is the time required
+# by the ssd1351 driver to consume one byte.	
+.macro OLED_WAIT
+	nop
+	nop
+	nop
+	nop
+.endm	
+	
+################################################################################
 	
 # initialize oled display
 .global	GL_init
@@ -27,7 +66,7 @@ GL_init:
 	sw a0,IO_LEDS(gp)
         li a0,0                      # normal operation
 	sw a0,4(gp)
-	call oled_wait
+	OLED_WAIT
 	# Initialization sequence / configuration
 	# Note: takes a lot of space, could be stored in an array of bytes
 	# if ROM space gets crowded
@@ -87,7 +126,7 @@ oled_write_window:
 oled0:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
-	call oled_wait
+	OLED_WAIT
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
@@ -98,9 +137,9 @@ oled0:	add sp,sp,-4
 oled1:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
-	call oled_wait
+	OLED_WAIT
 	sw a1, IO_OLED_DATA(gp)
-	call oled_wait
+	OLED_WAIT
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
@@ -111,11 +150,11 @@ oled1:	add sp,sp,-4
 oled2:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
-	call oled_wait
+	OLED_WAIT
 	sw a1, IO_OLED_DATA(gp)
-	call oled_wait
+	OLED_WAIT
 	sw a2, IO_OLED_DATA(gp)
-	call oled_wait
+	OLED_WAIT
 	lw ra, 0(sp)	
         add sp,sp,4
 	ret
@@ -126,18 +165,19 @@ oled2:	add sp,sp,-4
 oled3:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
-	call oled_wait
+	OLED_WAIT
 	sw a1, IO_OLED_DATA(gp)
-	call oled_wait
+	OLED_WAIT
 	sw a2, IO_OLED_DATA(gp)
-	call oled_wait
+	OLED_WAIT
 	sw a3, IO_OLED_DATA(gp)
-	call oled_wait
+	OLED_WAIT
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
 
 # Wait for Oled driver
+# Note: faster code uses the OLED_WAIT macro instead	
 .global	oled_wait
 .type	oled_wait, @function
 oled_wait:

@@ -82,6 +82,16 @@ extern void oled1(uint32_t cmd, uint32_t arg1);
 extern void oled2(uint32_t cmd, uint32_t arg1, uint32_t arg2);
 extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
 
+/* faster version of oled_wait() */
+/* (12 cycles, this is the time needed by the SSR1350 driver to consume one byte) */
+#define OLED_WAIT() \
+    asm("nop");     \
+    asm("nop");     \
+    asm("nop");     \
+    asm("nop")
+
+
+
 /* MAX2719 led matrix */
 extern void MAX2719_init();
 extern void MAX2719(uint32_t address, uint32_t value);

@@ -40,9 +40,9 @@ void mandel() {
 	    --iter;
 	 }
 	 IO_OUT(IO_OLED_DATA,iter << 3);
-	 oled_wait(); 
+	 OLED_WAIT(); 
 	 IO_OUT(IO_OLED_DATA,iter << 2);
-	 oled_wait();
+	 OLED_WAIT();
 	 Cr += dx;
       }
       Ci += dy;

@@ -36,7 +36,7 @@ loop_x:	add s0,s0,1
 	sw t0, IO_OLED_DATA(gp)
 #	call oled_wait  
 #         oled_wait not needed here:
-#         we just need 8 cycles (or 16 if overclocked at 60 MHz) 
+#         we just need 12 cycles.
 #         before next st xx, IO_OLED_DATA(gp)	
 	add t0,s1,s3
 	andi t0,t0,31

@@ -16,34 +16,4 @@
 .equ IO_LEDMTX_CNTL,  32    # LED matrix control. read: LSB bit 1 if busy
 .equ IO_LEDMTX_DATA,  36    # LED matrix data (write)	
 	
-#################################################################################
-
-# Macros to send commands to the OLED driver (wrappers around OLEDx functions)
-	
-.macro OLED0 cmd
-	li a0,\cmd
-	call oled0
-.endm
-
-.macro OLED1 cmd,arg1
-	li a0,\cmd
-	li a1,\arg1
-	call oled1
-.endm
-
-.macro OLED2 cmd,arg1,arg2
-	li a0,\cmd
-	li a1,\arg1
-	li a2,\arg2
-	call oled2
-.endm
-
-.macro OLED3 cmd,arg1,arg2,arg3
-	li a0,\cmd
-	li a1,\arg1
-	li a2,\arg2
-	li a3,\arg3	
-	call oled3
-.endm
-
-#################################################################################
+################################################################################

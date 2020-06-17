@@ -80,9 +80,9 @@ void main() {
 	    for(int x=0; x<128; ++x) {
 	        unsigned char col = logo[(Y >> 18)&15][(X >> 18)&15];
 		IO_OUT(IO_OLED_DATA,cmap[col][0]);
-	        oled_wait(); 
+	        OLED_WAIT(); 
 		IO_OUT(IO_OLED_DATA,cmap[col][1]);
-	        oled_wait();
+	        OLED_WAIT();
 	        X += Ux;
 	        Y += Uy;
 	    }

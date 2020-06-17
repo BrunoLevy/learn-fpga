@@ -11,6 +11,7 @@ void GL_set_bg(uint8_t r, uint8_t g, uint8_t b) {
     GL_bg = (uint16_t)GL_RGB((uint16_t)(r), (uint16_t)(g), (uint16_t)(b));
 }
 
+
 void GL_fill_rect(
     uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color
 ) {
@@ -20,9 +21,9 @@ void GL_fill_rect(
     for(int y=y1; y<=y2; ++y) {
 	for(int x=x1; x<=x2; ++x) {
 	   IO_OUT(IO_OLED_DATA,hi);
-	   oled_wait();
+	   OLED_WAIT();
 	   IO_OUT(IO_OLED_DATA,lo);
-	   oled_wait();
+	   OLED_WAIT();
 	}
     }
 }

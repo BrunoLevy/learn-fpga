@@ -15,9 +15,9 @@ int main() {
 		uint32_t B = (y+frame) & 63;
 		// pixel color: RRRRR GGGGG 0 BBBBB
 		IO_OUT(IO_OLED_DATA,(G>>2)|(R<<3));
-	        oled_wait();
+	        OLED_WAIT();
 		IO_OUT(IO_OLED_DATA,B|(G << 6));
-	        oled_wait();
+		OLED_WAIT();
 	    }
 	}
 	++frame;
