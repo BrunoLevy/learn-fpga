@@ -219,7 +219,7 @@ module NrvDecoder(
    wire [31:0] Uimm = {instr[31],   instr[30:20], immB4, {12{1'b0}}};
 */
 
-
+   
    // The previous version it is equivalent to this simpler version, but the
    // previous version sometimes (but not always) saves some LUTs and gains 
    // some nano-s.
