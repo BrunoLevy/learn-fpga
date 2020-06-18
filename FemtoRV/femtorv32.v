@@ -220,8 +220,9 @@ module NrvDecoder(
 */
 
 
-   // (the previous verison it is equivalent to this simpler version, but the
-   //  previous version saves some LUTs and gains some nano-s).
+   // The previous version it is equivalent to this simpler version, but the
+   // previous version sometimes (but not always) saves some LUTs and gains 
+   // some nano-s.
    wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
    wire [31:0] Simm = {{21{instr[31]}}, instr[30:25], instr[11:7]};
    wire [31:0] Bimm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};

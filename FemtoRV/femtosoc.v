@@ -390,7 +390,7 @@ module femtosoc(
  `endif
 
   // Not 100% sure of what I'm doing here (but
-  // at least if seemingly fixed my pb):
+  // at least it seemingly fixed my pb):
   // A little delay for sending the reset
   // signal after startup. Without it the
   // CPU stays stuck, seemingly fetching
