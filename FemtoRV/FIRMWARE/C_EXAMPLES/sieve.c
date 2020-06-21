@@ -61,7 +61,7 @@ static void print_prime(int idx, int val)
 
 int main(void)
 {
-        GL_tty_init();  /* Uncomment to redirect to OLED display. */
+    // GL_tty_init();  /* Uncomment to redirect to OLED display. */
 	int idx = 1;
 	hash = 5381;
 	print_prime(idx++, 2);

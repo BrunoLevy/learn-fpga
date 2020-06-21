@@ -392,9 +392,9 @@ module femtosoc(
       .RESETB(1'b1),
       .BYPASS(1'b0)
    );
-   `endif
+ `endif
    
-   `ifdef ECP5
+ `ifdef ECP5
    
       // I think that: output freq = 12 Mhz * CLKFB_DIV * (12 / CLKI_DIV) / CLKOP_DIV
       // CLKI_DIV = 2 -> 150 MHz
