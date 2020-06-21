@@ -20,11 +20,11 @@ FEMTORV32 / FEMTOSOC: a minimalistic RISC-V CPU, and companion SOC, that fit on 
     - edit femtosoc.v and select the target board, amount of RAM and on-board devices:
     - target board: supports ICEstick and ECP5 evaluation board
     - devices: 
-       . on-board ICEstick LEDS
-       . on-board ICEstick UART
-       . oled display SSD1351 128x128x65K colors (WaveShare)
-       . led matrix MAX 2719
-       . reset button (active low, you'll need to wire it on the ICEstick)
+       - on-board ICEstick LEDS
+       - on-board ICEstick UART
+       - oled display SSD1351 128x128x65K colors (WaveShare)
+       - led matrix MAX 2719
+       - reset button (active low, you'll need to wire it on the ICEstick)
     - quantity of RAM
     - two-stage shifter (like in picorv32): makes shifts faster (but eats up around 60 luts)
     - (TODO: more detailed wiring explanations and details on
