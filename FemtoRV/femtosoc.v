@@ -19,7 +19,7 @@
 // (inspired by PICORV32). 
 //`define NRV_TWOSTAGE_SHIFTER
 
-`define NRV_RESET      // It is sometimes good to have a physical reset button, 
+//`define NRV_RESET      // It is sometimes good to have a physical reset button, 
                          // this one is active low (wire a push button and a pullup 
                          // resistor to pin 47 or change in nanorv.pcf). 
 
@@ -153,8 +153,12 @@ module NrvIO(
     output            MAX2719_CLK 
 );
 
-   /***** Memory-mapped ports, all 32 bits, address/4 *******/
-
+   /***** Memory-mapped ports, all 32 bits ****************
+    * Mapped IO uses "one-hot" addressing, to make decoder
+    * simpler (saves a lot of LUTs), as in J1/swapforth,
+    * thanks to Matthias (Mecrisp author) for the idea !
+    */  
+   
    localparam LEDs_bit         = 0; // (write) LEDs (4 LSBs)
    localparam SSD1351_CNTL_bit = 1; // (read/write) Oled display control
    localparam SSD1351_CMD_bit  = 2; // (write) Oled display commands (8 bits)
