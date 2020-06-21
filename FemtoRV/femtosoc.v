@@ -71,7 +71,7 @@ module NrvMemoryInterface(
   input [31:0] 	    in,
   output reg [31:0] out,
 
-  output [9:0] 	    IOaddress, // = address[11:2]
+  output [7:0] 	    IOaddress, // = address[9:2]
   output 	    IOwr,
   output 	    IOrd,
   input [31:0] 	    IOin, 
@@ -119,7 +119,7 @@ module NrvMemoryInterface(
    assign IOout     = in;
    assign IOwr      = (wr && isIO);
    assign IOrd      = (rd && isIO);
-   assign IOaddress = address[11:2];
+   assign IOaddress = address[9:2];
    
 endmodule
 
@@ -127,7 +127,7 @@ endmodule
 
 module NrvIO(
     input 	      clk, 
-    input [9:0]       address, 
+    input [7:0]       address, 
     input 	      wr,
     output 	      rd,
     input [31:0]      in, 
@@ -166,15 +166,6 @@ module NrvIO(
    
    localparam MAX2719_CNTL_bit = 6; // (read) led matrix LSB: busy
    localparam MAX2719_DAT_bit  = 7; // (write)led matrix data (16 bits)
-   
-   /*
-   localparam UART_RX_CNTL_bit = 4; // (read) LSB: data ready
-   localparam UART_RX_DAT_bit  = 5; // (read) received data (8 bits)
-   localparam UART_TX_CNTL_bit = 6; // (read) LSB: busy
-   localparam UART_TX_DAT_bit  = 7; // (write) data to be sent (8 bits)
-   localparam MAX2719_CNTL_bit = 8; // (read) led matrix LSB: busy
-   localparam MAX2719_DAT_bit  = 9; // (write)led matrix data (16 bits)
-   */
    
    /********************** SSD1351 **************************/
 
@@ -468,7 +459,7 @@ module femtosoc(
   wire [31:0] IOout;
   wire        IOrd;
   wire        IOwr;
-  wire [9:0]  IOaddress;
+  wire [7:0]  IOaddress;
   
   NrvIO IO(
      .in(IOin),
