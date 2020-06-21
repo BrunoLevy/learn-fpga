@@ -1,5 +1,6 @@
-femtorv32 / femtosoc:
-a minimalistic RISC-V CPU, and companion SOC, that fit on the IceStick (< 1280 LUTs)
+FEMTORV32 / FEMTOSOC: a minimalistic RISC-V CPU, and companion SOC, that fit on the IceStick (< 1280 LUTs)
+
+1) FEATURES
     - Implements the RV32I instruction set (minus FENCE and SYSTEM). 
     - Runs at 60MHz. 4Kb - 6kb RAM, optional memory-mapped IOs (UART, LEDs, OLed screen).
     - Synthesis using the freeware tools (Yosys and nextpnr).
@@ -9,7 +10,7 @@ a minimalistic RISC-V CPU, and companion SOC, that fit on the IceStick (< 1280 L
     - "femtOS" virtual output support: redirects printf() to UART, OLED screen (or led matrix, WIP).
     - many RISC-V assembly and C demo programs, including graphics for the OLED display.
 
-1) FEMTOSOC/FEMTORV32 configuration
+2) FEMTOSOC/FEMTORV32 configuration
     - edit femtosoc.v and select the target board amount of RAM and on-board devices:
     - target board: supports ICEstick and ECP5 evaluation board
     - devices: 
@@ -27,7 +28,7 @@ then add one thing at a time. Depending on YOSYS and NextPNR version,
 it may use a different number of LUTs (and fit or not). Sometimes,
 activating something uses a *smaller* number of LUTs (!). 
 
-2) FIRMWARE
+3) FIRMWARE
    - asm RISC-V and C example programs are included in FIRMWARE/EXAMPLES and FIRMWARE/C_EXAMPLES
    - IMPORTANT: make sure you specify the quantity of RAM in FIRMWARE/LIB/crt0.s,
      it needs to match what was configured in femtosoc.v !
@@ -39,11 +40,11 @@ activating something uses a *smaller* number of LUTs (!).
      make_firmware.sh and LIB/makeit.sh depending on your installation. 
      I'm using the Linux Debian packages.
 
-3) SYNTHESIS
+4) SYNTHESIS
     use ./makeit_icestick.sh or ./makeit_ecp5_evn.sh depending on your board.
     This will also send the bitstream to the device.
     
-4) UART
+5) UART
     use ./start.sh to communicate with the board through a terminal.
     You can use any terminal emulator (at 115200 bauds).
     
