@@ -19,14 +19,13 @@
 // (inspired by PICORV32). 
 //`define NRV_TWOSTAGE_SHIFTER
 
-//`define NRV_RESET      // It is sometimes good to have a physical reset button, 
+`define NRV_RESET      // It is sometimes good to have a physical reset button, 
                          // this one is active low (wire a push button and a pullup 
                          // resistor to pin 47 or change in nanorv.pcf). 
 
 // Optional mapped IO devices
-`define NRV_IO_LEDS   // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-`define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
-`define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
+`define NRV_IO_LEDS    // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+`define NRV_IO_UART    // Mapped IO, virtual UART (USB)
 //`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
 
@@ -156,30 +155,26 @@ module NrvIO(
 
    /***** Memory-mapped ports, all 32 bits, address/4 *******/
 
-   /*
-   localparam LEDs_address         = 0; // (write) LEDs (4 LSBs)
-   localparam SSD1351_CNTL_address = 1; // (read/write) Oled display control
-   localparam SSD1351_CMD_address  = 2; // (write) Oled display commands (8 bits)
-   localparam SSD1351_DAT_address  = 3; // (write) Oled display data (8 bits)
-   localparam UART_RX_CNTL_address = 4; // (read) LSB: data ready
-   localparam UART_RX_DAT_address  = 5; // (read) received data (8 bits)
-   localparam UART_TX_CNTL_address = 6; // (read) LSB: busy
-   localparam UART_TX_DAT_address  = 7; // (write) data to be sent (8 bits)
-   localparam MAX2719_CNTL_address = 8; // (read) led matrix LSB: busy
-   localparam MAX2719_DAT_address  = 9; // (write)led matrix data (16 bits)
-   */ 
-
    localparam LEDs_bit         = 0; // (write) LEDs (4 LSBs)
    localparam SSD1351_CNTL_bit = 1; // (read/write) Oled display control
    localparam SSD1351_CMD_bit  = 2; // (write) Oled display commands (8 bits)
    localparam SSD1351_DAT_bit  = 3; // (write) Oled display data (8 bits)
+
+
+   localparam UART_CNTL_bit    = 4; // (read) busy (bit 9), data ready (bit 8)
+   localparam UART_DAT_bit     = 5; // (read/write) received data / data to send (8 bits)
+   
+   localparam MAX2719_CNTL_bit = 6; // (read) led matrix LSB: busy
+   localparam MAX2719_DAT_bit  = 7; // (write)led matrix data (16 bits)
+   
+   /*
    localparam UART_RX_CNTL_bit = 4; // (read) LSB: data ready
    localparam UART_RX_DAT_bit  = 5; // (read) received data (8 bits)
    localparam UART_TX_CNTL_bit = 6; // (read) LSB: busy
    localparam UART_TX_DAT_bit  = 7; // (write) data to be sent (8 bits)
    localparam MAX2719_CNTL_bit = 8; // (read) led matrix LSB: busy
    localparam MAX2719_DAT_bit  = 9; // (write)led matrix data (16 bits)
-
+   */
    
    /********************** SSD1351 **************************/
 
@@ -215,7 +210,7 @@ module NrvIO(
    
    /********************** UART receiver **************************/
 
-`ifdef NRV_IO_UART_RX
+`ifdef NRV_IO_UART
    
    reg serial_valid_latched = 1'b0;
    wire serial_valid;
@@ -235,7 +230,7 @@ module NrvIO(
          serial_rx_data_latched <= serial_rx_data;
 	 serial_valid_latched <= 1'b1;
       end
-      if(rd && address[UART_RX_DAT_bit]) begin
+      if(rd && address[UART_DAT_bit]) begin
          serial_valid_latched <= 1'b0;
       end
    end
@@ -244,7 +239,7 @@ module NrvIO(
 
    /********************** UART transmitter ***************************/
 
-`ifdef NRV_IO_UART_TX
+`ifdef NRV_IO_UART
    
    wire       serial_tx_busy;
    wire       serial_tx_wr;
@@ -287,13 +282,11 @@ module NrvIO(
 `ifdef NRV_IO_SSD1351
 	    | (address[SSD1351_CNTL_bit] ? {31'b0, SSD1351_sending} : 32'b0)
 `endif
-`ifdef NRV_IO_UART_RX
-	    | (address[UART_RX_CNTL_bit] ? {31'b0, serial_valid_latched} : 32'b0) 
-	    | (address[UART_RX_DAT_bit] ? serial_rx_data_latched : 32'b0)
-`endif
-`ifdef NRV_IO_UART_TX
-	    | (address[UART_TX_CNTL_bit] ? {31'b0, serial_tx_busy} : 32'b0) 	
-`endif
+`ifdef NRV_IO_UART
+	    | (address[UART_CNTL_bit]? {22'b0, serial_tx_busy, serial_valid_latched, 8'b0} : 32'b0) 
+	    | (address[UART_DAT_bit] ? serial_rx_data_latched : 32'b0)	      
+
+`endif	    
 `ifdef NRV_IO_MAX2719
 	    | (address[MAX2719_CNTL_bit] ? {31'b0, MAX2719_sending} : 32'b0)
 `endif	
@@ -352,8 +345,8 @@ module NrvIO(
      end	 
    end
 
-`ifdef NRV_IO_UART_TX
-  assign serial_tx_wr = (wr && address[UART_TX_DAT_bit]);
+`ifdef NRV_IO_UART
+  assign serial_tx_wr = (wr && address[UART_DAT_bit]);
 `endif  
    
 endmodule
@@ -368,10 +361,8 @@ module femtosoc(
 `ifdef NRV_IO_SSD1351	      
    output oled_DIN, oled_CLK, oled_CS, oled_DC, oled_RST,
 `endif
-`ifdef NRV_IO_UART_RX	      
+`ifdef NRV_IO_UART	      
    input  RXD,
-`endif
-`ifdef NRV_IO_UART_TX	      	      
    output TXD,
 `endif	      
 `ifdef NRV_IO_MAX2719	   
@@ -495,10 +486,8 @@ module femtosoc(
      .SSD1351_DC(oled_DC),
      .SSD1351_RST(oled_RST),
 `endif
-`ifdef NRV_IO_UART_RX	   
+`ifdef NRV_IO_UART	   
      .RXD(RXD),
-`endif
-`ifdef NRV_IO_UART_TX	   
      .TXD(TXD),
 `endif	   
 `ifdef NRV_IO_MAX2719	   

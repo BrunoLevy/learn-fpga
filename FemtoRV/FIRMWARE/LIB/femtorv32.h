@@ -75,12 +75,10 @@ void GL_putchar_xy(int x, int y, char c);
                               /*  rd:  0: ready  1: busy                                */
 #define IO_OLED_CMD     16    /* OLED display command. Only 8 LSBs used.                */
 #define IO_OLED_DATA    32    /* OLED display data. Only 8 LSBs used.                   */
-#define IO_UART_RX_CNTL 64    /* USB UART RX control. read: LSB bit 1 if data ready     */
-#define IO_UART_RX_DATA 128   /* USB UART RX data (read)                                */
-#define IO_UART_TX_CNTL 256   /* USB UART TX control. read: LSB bit 1 if busy           */
-#define IO_UART_TX_DATA 512   /* USB UART TX data (write)                               */
-#define IO_LEDMTX_CNTL  1024  /* LED matrix control. read: LSB bit 1 if busy            */
-#define IO_LEDMTX_DATA  2048  /* LED matrix data (write)	                        */
+#define IO_UART_CNTL    64    /* USB UART RX control. busy (bit 9), data ready (bit 8)  */
+#define IO_UART_DATA    128   /* USB UART RX data (read/write)                          */
+#define IO_LEDMTX_CNTL  256   /* LED matrix control. read: LSB bit 1 if busy            */
+#define IO_LEDMTX_DATA  512   /* LED matrix data (write)	                        */
 
 #define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
 #define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)
