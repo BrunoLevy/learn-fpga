@@ -21,6 +21,10 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
       * Use Claire's UART instead of J1's UART ? (Claire's code seems
         to be more compact, what does it gives in terms of number of LUTS ?)
       * Bugs: on init, get_char() returns garbage the first time.
+      * Decoder for immediates can probably be made let LUT-hungry:
+          * instr decoder can set Rtype, Itype, Stype, Btype, Utype, Jtype booleans
+	  * immediate can be assembled using muxes, driven by Xtype signals, as
+	    in table 2.4 p. 12 fom the RISC-V document.
 
 =================================================================================================================
 
