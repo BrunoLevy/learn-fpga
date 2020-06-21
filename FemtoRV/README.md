@@ -37,7 +37,7 @@ it may use a different number of LUTs (and fit or not). Sometimes,
 activating something uses a *smaller* number of LUTs (!), for instance,
 if you activate the RESET button, you can have both the UART and TWO_STAGE_SHIFTER,
 but without the RESET button you'll need to deactivate TWO_STAGE_SHIFTER to have
-the UART (try it).
+the UART (try it). I do not understand all the subtleties of VERILOG LUT-golfing...
 
 On the ICEStick, to wire the reset button, connect the pin (47 by default, can be changed in femtosoc.pcf)
 to +3.3V through a 1KOhm resistor, and to GND through a push button.
