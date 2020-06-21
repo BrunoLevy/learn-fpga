@@ -41,13 +41,17 @@ RISC-V notes:
 	       can be in the soft as well !
 	     - femtorv32 state machine: choose good names for the states,
 	       and be super clear about what's ready or not at the beginning
-	       and at the end of each state
+	       and at the end of each state. x <= y means that x will have value
+	       y at the beginning of the *next* state (en Francais dans le texte:
+	       "ca va sans dire mais ca va mieux en le disant" !!)
 	     - reg is not a register, it is an abstraction that can be transformed
 	       into a reg/latch by the synthetizer if need be.
 	     - everything that appears on the left side of '=' or '<=' should be a
 	       reg.
 	     - number of used LUTs can vary in surprising manners ! For instance,
 	       sometimes changing the *names* of variables has an influence (???)
+	     - SSD1351 driver, send clock signals in the middle of the serialized
+	       bits: do chronograms carefully, and everything goes much better !
 
   Observations:
              - RISCV is super-well designed and smart ! At the beginning, the design
@@ -134,6 +138,14 @@ RISC-V notes:
 	         by specifying linker options -m elf32lriscv_ilp32 -b elf32-littleriscv
 		 it fixed the problem (but I do not know exactly what
                  it means, maybe it was using some 64-bits specific instructions or someting...)
+
+             - freq adapter for OLED screen: to really figure out what happens, had to write
+	         chronograms and think carefully to understand how my own design sends the
+		 clocks in the middle of the serialized bits. Now I have a much better
+		 understanding (femtosoc.v.SSD1351_divider). Note that some work is still needed
+		 to toggle CS at the right moment after the last bit (I probably do that too soon,
+		 since it is done as soon as count reaches zero, which happens right in the middle
+		 of the bit, need to wait for the other half if divider is greater than 2).
 
    DEBUGGING THE STATE MACHINE, lessons taken:
    

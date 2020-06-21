@@ -60,3 +60,6 @@ Pin numbers: (with Lattice logo *upside down*)
        https://github.com/jamesbowman/swapforth
     (borrowed some ideas, and their UART)
     
+BRAMS:
+  16 blocs of 4KB = 8KB = 2Kwords (32-bit words).
+  

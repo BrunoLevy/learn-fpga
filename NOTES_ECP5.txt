@@ -6,9 +6,6 @@ ECP5 notes:
        reactivates the default "knight driver" program)
      - Can we drive the leds with LVCMOS33 instead of LVCMOS25 ? (I do
        not dare...)
-     - freq adapter for OLED screen: did not manage to make it work 
-       (needs to be done before increasing CPU freq).
-
   Examples in prjtrellis:
      ecp5_evn: the 'hello world' blinker example is here !
      soc_ecp5_evn: attoSOC + picoRV32
@@ -50,20 +47,25 @@ ECP5 notes:
 
    Buttons:
       * SW2 -> "G2" (meant to be used as global set/reset, active low)
+          Did not manage to use this one for now
       * SW3 -> "W3" (used to trigger config. process, probably can't be reused)
       * SW4 -> "P4" user button, active low
+          For now, I'm using this one for reset (the bottom one on the board)
 
-   UART: but needs to solder some SMC resistors :-(
-      * R34
-      * R35
-      * R21 (Optional for UART Activity LED)
-
-
+   UART: 
      LOCATE COMP "uart_tx" SITE "P3";
      LOCATE COMP "uart_rx" SITE "P2";
 
      IOBUF PORT "uart_tx" IO_TYPE=LVCMOS33;
      IOBUF PORT "uart_rx" IO_TYPE=LVCMOS33;
+   
+     but needs to solder some SMC resistors :-(
+      * R34
+      * R35
+      * R21 (Optional for UART Activity LED)
+      And even after that, not sure it will work: https://github.com/SymbiFlow/prjtrellis/issues/83
+     -> ordered a small FTDI adapter on Amazon, and will plug it on
+        another pair of balls / another USB port of the PC and this will do....
     
    PLL: (from prjtrellis/examples/soc_ecp5_evn/pll.v)
      Example for 50 MHz (according to README.md)
@@ -108,5 +110,17 @@ Links:
    Other attoSOC/picoRV32 project:
    https://github.com/emard/prjtrellis-picorv32/blob/master/README.md
    https://github.com/BracketMaster/ECP5-RISCV32-with-C-and-UART-Example   
+
+
+FPGA specs:
+   ECP5 5G
+   85K LUTS
+   DSP blocks: 18x18 mult (156 !!)
+               How to assemble a 32x32 mult (hi and lo) from 18x18 mults ?
+	       Probably not too difficult...
+   DP16KD    : 208  (1.6 megs, is that correct ? maybe enough for
+                     running some forme of muC Linux, but I'd rather 
+		     wire some SDRAM)
+   
 
 ======================================================

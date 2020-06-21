@@ -17,7 +17,7 @@
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32). 
-//`define NRV_TWOSTAGE_SHIFTER
+`define NRV_TWOSTAGE_SHIFTER
 
 `define NRV_RESET      // It is sometimes good to have a physical reset button, 
                          // this one is active low (wire a push button and a pullup 
@@ -72,7 +72,7 @@ module NrvMemoryInterface(
   input [31:0] 	    in,
   output reg [31:0] out,
 
-  output [7:0] 	    IOaddress, // = address[9:2]
+  output [9:0] 	    IOaddress, // = address[11:2]
   output 	    IOwr,
   output 	    IOrd,
   input [31:0] 	    IOin, 
@@ -80,16 +80,11 @@ module NrvMemoryInterface(
 );
 
    wire             isIO   = address[13];
-//  wire [2:0] 	    page   = address[12:10];
-//  wire [7:0] 	    offset = address[9:2];
    wire [10:0] word_addr   = address[12:2];
 
 
    wire 	    wr    = (wrByteMask != 0);
    wire             wrRAM = wr && !isIO;
-//   wire             rdRAM = 1'b1; // rd && !isIO; 
-                                  // (but in fact if we always read, it does not harm..., 
-                                  //  and I have not implemented read signal for instr)
 
 `ifdef NRV_RAM_4K   
    reg [31:0] RAM[1023:0];
@@ -108,8 +103,6 @@ module NrvMemoryInterface(
 
    // The power of YOSYS: it infers SB_RAM40_4K BRAM primitives automatically ! (and recognizes
    // masked writes, amazing ...)
-   
-// wire [10:0] word_addr = {page,offset};
    always @(posedge clk) begin
       if(wrRAM) begin
 	 if(wrByteMask[0]) RAM[word_addr][ 7:0 ] <= in[ 7:0 ];
@@ -117,9 +110,7 @@ module NrvMemoryInterface(
 	 if(wrByteMask[2]) RAM[word_addr][23:16] <= in[23:16];
 	 if(wrByteMask[3]) RAM[word_addr][31:24] <= in[31:24];	 
       end 
-//      if(rdRAM) begin
-           out_RAM <= RAM[word_addr];
-//      end
+      out_RAM <= RAM[word_addr];
    end
 
    always @(*) begin
@@ -129,7 +120,7 @@ module NrvMemoryInterface(
    assign IOout     = in;
    assign IOwr      = (wr && isIO);
    assign IOrd      = (rd && isIO);
-   assign IOaddress = address[9:2];
+   assign IOaddress = address[11:2];
    
 endmodule
 
@@ -137,7 +128,7 @@ endmodule
 
 module NrvIO(
     input 	      clk, 
-    input [7:0]       address, 
+    input [9:0]       address, 
     input 	      wr,
     output 	      rd,
     input [31:0]      in, 
@@ -164,7 +155,8 @@ module NrvIO(
 );
 
    /***** Memory-mapped ports, all 32 bits, address/4 *******/
-   
+
+   /*
    localparam LEDs_address         = 0; // (write) LEDs (4 LSBs)
    localparam SSD1351_CNTL_address = 1; // (read/write) Oled display control
    localparam SSD1351_CMD_address  = 2; // (write) Oled display commands (8 bits)
@@ -175,7 +167,19 @@ module NrvIO(
    localparam UART_TX_DAT_address  = 7; // (write) data to be sent (8 bits)
    localparam MAX2719_CNTL_address = 8; // (read) led matrix LSB: busy
    localparam MAX2719_DAT_address  = 9; // (write)led matrix data (16 bits)
-    
+   */ 
+
+   localparam LEDs_bit         = 0; // (write) LEDs (4 LSBs)
+   localparam SSD1351_CNTL_bit = 1; // (read/write) Oled display control
+   localparam SSD1351_CMD_bit  = 2; // (write) Oled display commands (8 bits)
+   localparam SSD1351_DAT_bit  = 3; // (write) Oled display data (8 bits)
+   localparam UART_RX_CNTL_bit = 4; // (read) LSB: data ready
+   localparam UART_RX_DAT_bit  = 5; // (read) received data (8 bits)
+   localparam UART_TX_CNTL_bit = 6; // (read) LSB: busy
+   localparam UART_TX_DAT_bit  = 7; // (write) data to be sent (8 bits)
+   localparam MAX2719_CNTL_bit = 8; // (read) led matrix LSB: busy
+   localparam MAX2719_DAT_bit  = 9; // (write)led matrix data (16 bits)
+
    
    /********************** SSD1351 **************************/
 
@@ -196,9 +200,13 @@ module NrvIO(
    reg      SSD1351_special; // pseudo-instruction, direct control of RST and DC.
 
    assign SSD1351_DIN = SSD1351_shifter[7];
-   assign SSD1351_CLK = SSD1351_sending &&  SSD1351_slow_clk; // Normally SSD1351_sending should not be tested here, but without it test_OLED.s does not work (why ?)
-   assign SSD1351_CS  = SSD1351_special ? 1'b0 : !SSD1351_sending;
 
+   // Normally SSD1351_sending should not be tested here, it should work with
+   // SSD1351_CLK = SSD1351_slow_clk, but without testing SSD1351_sending,
+   // test_OLED.s, test_OLED.c and mandelbrot_OLED.s do not work, whereas the
+   // other C OLED demos work (why ? To be understood...) 
+   assign SSD1351_CLK = SSD1351_sending &&  SSD1351_slow_clk; 
+   assign SSD1351_CS  = SSD1351_special ? 1'b0 : !SSD1351_sending;
 
    always @(posedge clk) begin
       SSD1351_slow_clk <= ~SSD1351_slow_clk;
@@ -227,7 +235,7 @@ module NrvIO(
          serial_rx_data_latched <= serial_rx_data;
 	 serial_valid_latched <= 1'b1;
       end
-      if(rd && address == UART_RX_DAT_address) begin
+      if(rd && address[UART_RX_DAT_bit]) begin
          serial_valid_latched <= 1'b0;
       end
    end
@@ -270,54 +278,51 @@ module NrvIO(
 `endif   
    
    /********************* Decoder for IO read **************************/
-   
+
    always @(*) begin
-      (* parallel_case, full_case *)
-      case(address)
+      out = 32'b0
 `ifdef NRV_IO_LEDS      
-	LEDs_address:         out = {28'b0, LEDs};
+	    | (address[LEDs_bit] ? {28'b0, LEDs} : 32'b0) 
 `endif
 `ifdef NRV_IO_SSD1351
-	SSD1351_CNTL_address: out = {31'b0, SSD1351_sending};
+	    | (address[SSD1351_CNTL_bit] ? {31'b0, SSD1351_sending} : 32'b0)
 `endif
 `ifdef NRV_IO_UART_RX
-	UART_RX_CNTL_address: out = {31'b0, serial_valid_latched}; 
-	UART_RX_DAT_address:  out = serial_rx_data_latched;
+	    | (address[UART_RX_CNTL_bit] ? {31'b0, serial_valid_latched} : 32'b0) 
+	    | (address[UART_RX_DAT_bit] ? serial_rx_data_latched : 32'b0)
 `endif
 `ifdef NRV_IO_UART_TX
-	UART_TX_CNTL_address: out = {31'b0, serial_tx_busy}; 	
+	    | (address[UART_TX_CNTL_bit] ? {31'b0, serial_tx_busy} : 32'b0) 	
 `endif
 `ifdef NRV_IO_MAX2719
-	MAX2719_CNTL_address: out = {31'b0, MAX2719_sending};
+	    | (address[MAX2719_CNTL_bit] ? {31'b0, MAX2719_sending} : 32'b0)
 `endif	
-	default: out = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ;
-      endcase
+	    ;
    end
-
+   
    /********************* Multiplexer for IO write *********************/
 
    always @(posedge clk) begin
       if(wr) begin
-	 case(address)
 `ifdef NRV_IO_LEDS	   
-	   LEDs_address: begin
+	   if(address[LEDs_bit]) begin
 	      LEDs <= in[3:0];
 	      `bench($display("************************** LEDs = %b", in[3:0]));
 	      `bench($display(" in = %h  %d  %b  \'%c\'", in, $signed(in),in,in));
 	   end
 `endif
 `ifdef NRV_IO_SSD1351	   
-	   SSD1351_CNTL_address: begin
+	   if(address[SSD1351_CNTL_bit]) begin
 	      { SSD1351_RST, SSD1351_special } <= in[1:0];
 	   end
-	   SSD1351_CMD_address: begin
+	   if(address[SSD1351_CMD_bit]) begin
 	      SSD1351_special <= 1'b0;
 	      SSD1351_RST <= 1'b1;
 	      SSD1351_DC <= 1'b0;
 	      SSD1351_shifter <= in[7:0];
 	      SSD1351_bitcount <= 8;
 	   end
-	   SSD1351_DAT_address: begin
+	   if(address[SSD1351_DAT_bit]) begin
 	      SSD1351_special <= 1'b0;
 	      SSD1351_RST <= 1'b1;
 	      SSD1351_DC <= 1'b1;
@@ -326,12 +331,11 @@ module NrvIO(
 	   end
 `endif 
 `ifdef NRV_IO_MAX2719
-	   MAX2719_DAT_address: begin
+	   if(address[MAX2719_DAT_bit]) begin
 	      MAX2719_shifter <= in[15:0];
 	      MAX2719_bitcount <= 16;
 	   end
 `endif	   
-	 endcase 
       end else begin
 `ifdef NRV_IO_SSD1351
 	 if(SSD1351_sending && SSD1351_slow_clk) begin
@@ -344,12 +348,12 @@ module NrvIO(
             MAX2719_bitcount <= MAX2719_bitcount - 5'd1;
             MAX2719_shifter <= {MAX2719_shifter[14:0], 1'b0};
 	 end
-`endif	   	 	 
-      end 
+`endif
+     end	 
    end
 
 `ifdef NRV_IO_UART_TX
-  assign serial_tx_wr = (wr && address == UART_TX_DAT_address);
+  assign serial_tx_wr = (wr && address[UART_TX_DAT_bit]);
 `endif  
    
 endmodule
@@ -473,7 +477,7 @@ module femtosoc(
   wire [31:0] IOout;
   wire        IOrd;
   wire        IOwr;
-  wire [7:0]  IOaddress;
+  wire [9:0]  IOaddress;
   
   NrvIO IO(
      .in(IOin),

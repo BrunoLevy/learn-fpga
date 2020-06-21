@@ -69,18 +69,18 @@ void GL_putchar_xy(int x, int y, char c);
 
 /* Memory-mapped IO */
 #define IO_BASE      0x2000   /* Base address of memory-mapped IO                       */
-#define IO_LEDS      0        /* 4 LSBs mapped to D1,D2,D3,D4                           */
-#define IO_OLED_CNTL 4        /* OLED display control.                                  */
+#define IO_LEDS      4        /* 4 LSBs mapped to D1,D2,D3,D4                           */
+#define IO_OLED_CNTL 8        /* OLED display control.                                  */
                               /*  wr: 01: reset low 11: reset high 00: normal operation */
                               /*  rd:  0: ready  1: busy                                */
-#define IO_OLED_CMD     8     /* OLED display command. Only 8 LSBs used.                */
-#define IO_OLED_DATA    12    /* OLED display data. Only 8 LSBs used.                   */
-#define IO_UART_RX_CNTL 16    /* USB UART RX control. read: LSB bit 1 if data ready     */
-#define IO_UART_RX_DATA 20    /* USB UART RX data (read)                                */
-#define IO_UART_TX_CNTL 24    /* USB UART TX control. read: LSB bit 1 if busy           */
-#define IO_UART_TX_DATA 28    /* USB UART TX data (write)                               */
-#define IO_LEDMTX_CNTL  32    /* LED matrix control. read: LSB bit 1 if busy            */
-#define IO_LEDMTX_DATA  36    /* LED matrix data (write)	                        */
+#define IO_OLED_CMD     16    /* OLED display command. Only 8 LSBs used.                */
+#define IO_OLED_DATA    32    /* OLED display data. Only 8 LSBs used.                   */
+#define IO_UART_RX_CNTL 64    /* USB UART RX control. read: LSB bit 1 if data ready     */
+#define IO_UART_RX_DATA 128   /* USB UART RX data (read)                                */
+#define IO_UART_TX_CNTL 256   /* USB UART TX control. read: LSB bit 1 if busy           */
+#define IO_UART_TX_DATA 512   /* USB UART TX data (write)                               */
+#define IO_LEDMTX_CNTL  1024  /* LED matrix control. read: LSB bit 1 if busy            */
+#define IO_LEDMTX_DATA  2048  /* LED matrix data (write)	                        */
 
 #define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
 #define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)

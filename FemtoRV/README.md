@@ -34,7 +34,13 @@ On the ICEStick, do not activate everything simultaneously, it will not fit!
 Start by activating what you need with the minimum amount of RAM (4K),
 then add one thing at a time. Depending on YOSYS and NextPNR version,
 it may use a different number of LUTs (and fit or not). Sometimes,
-activating something uses a *smaller* number of LUTs (!). 
+activating something uses a *smaller* number of LUTs (!), for instance,
+if you activate the RESET button, you can have both the UART and TWO_STAGE_SHIFTER,
+but without the RESET button you'll need to deactivate TWO_STAGE_SHIFTER to have
+the UART (try it).
+
+On the ICEStick, to wire the reset button, connect the pin (47 by default, can be changed in femtosoc.pcf)
+to +3.3V through a 1KOhm resistor, and to GND through a push button.
 
 3) FIRMWARE
    - asm RISC-V and C example programs are included in FIRMWARE/EXAMPLES and FIRMWARE/C_EXAMPLES
