@@ -40,7 +40,14 @@
 	nop
 	nop
 .endm	
-	
+
+# We will use this one instead if we increase clock freq
+# (really tests for the driver to be ready)
+#.macro OLED_WAIT
+#        call oled_wait
+#.endm
+
+
 ################################################################################
 	
 # initialize oled display

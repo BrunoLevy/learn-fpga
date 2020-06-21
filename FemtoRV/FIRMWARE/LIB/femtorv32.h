@@ -102,6 +102,10 @@ extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
     asm("nop");     \
     asm("nop")
 
+/* 
+ * We will use this one if we increase clock freq (this one really waits for the driver)
+ * #define OLED_WAIT() oled_wait()
+ */ 
 
 
 /* MAX2719 led matrix */

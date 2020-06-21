@@ -1,6 +1,33 @@
 # Testing the OLED screen, displaying an animated pattern with
 # all the 65K colors.
 
+.macro OLED0 cmd
+	li a0,\cmd
+	call oled0
+.endm
+
+.macro OLED1 cmd,arg1
+	li a0,\cmd
+	li a1,\arg1
+	call oled1
+.endm
+
+.macro OLED2 cmd,arg1,arg2
+	li a0,\cmd
+	li a1,\arg1
+	li a2,\arg2
+	call oled2
+.endm
+
+.macro OLED3 cmd,arg1,arg2,arg3
+	li a0,\cmd
+	li a1,\arg1
+	li a2,\arg2
+	li a3,\arg3	
+	call oled3
+.endm
+
+
 .include "LIB/femtorv32.inc"
 .globl main
 .type  main, @function
@@ -14,7 +41,13 @@ main:   add sp,sp,-4
 	# s0 = X, s1 = Y, s2 = bound, s3 = frame
 	li s2,128	
 	li s3,0
-anim:	OLED2 0x15,0x00,0x7f         # column address
+anim:	
+#        li a0, 0
+#        li a1, 0
+#	li a2, 127
+#	li a3, 127
+#	call oled_write_window
+        OLED2 0x15,0x00,0x7f         # column address
 	OLED2 0x75,0x00,0x7f         # row address
 	OLED0 0x5c                   # write RAM
 	li s1,0
@@ -34,7 +67,7 @@ loop_x:	add s0,s0,1
 	and t1,t1,7
 	or  t0,t0,t1
 	sw t0, IO_OLED_DATA(gp)
-#	call oled_wait  
+	call oled_wait
 #         oled_wait not needed here:
 #         we just need 12 cycles.
 #         before next st xx, IO_OLED_DATA(gp)	
@@ -44,7 +77,7 @@ loop_x:	add s0,s0,1
 	and t1,t1,192
 	or  t0,t0,t1
 	sw t0, IO_OLED_DATA(gp)
-#	call oled_wait  # not needed here.
+	call oled_wait
 	
 	bne s0,s2,loop_x
 	add s1,s1,1

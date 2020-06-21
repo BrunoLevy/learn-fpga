@@ -10,17 +10,21 @@
 // - and deactivate the LEDs as well if you do not have the RESET button
 //    (weird, with the RESET button it fits).
 
+// Uncomment one of the following two lines
+`define ICE40
+//`define ECP5 
+
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
 // (inspired by PICORV32). 
 //`define NRV_TWOSTAGE_SHIFTER
 
-//`define NRV_RESET      // It is sometimes good to have a physical reset button, 
+`define NRV_RESET      // It is sometimes good to have a physical reset button, 
                          // this one is active low (wire a push button and a pullup 
                          // resistor to pin 47 or change in nanorv.pcf). 
 
 // Optional mapped IO devices
-//`define NRV_IO_LEDS   // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+`define NRV_IO_LEDS   // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 `define NRV_IO_UART_RX   // Mapped IO, virtual UART receiver    (USB)
 `define NRV_IO_UART_TX   // Mapped IO, virtual UART transmetter (USB)
 //`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
@@ -76,13 +80,14 @@ module NrvMemoryInterface(
 );
 
    wire             isIO   = address[13];
-   wire [2:0] 	    page   = address[12:10];
-   wire [7:0] 	    offset = address[9:2];
-   wire [10:0] 	    addr_internal = {3'b000,offset};
+//  wire [2:0] 	    page   = address[12:10];
+//  wire [7:0] 	    offset = address[9:2];
+   wire [10:0] word_addr   = address[12:2];
+
 
    wire 	    wr    = (wrByteMask != 0);
    wire             wrRAM = wr && !isIO;
-// wire             rdRAM = 1'b1; // rd && !isIO; 
+//   wire             rdRAM = 1'b1; // rd && !isIO; 
                                   // (but in fact if we always read, it does not harm..., 
                                   //  and I have not implemented read signal for instr)
 
@@ -104,7 +109,7 @@ module NrvMemoryInterface(
    // The power of YOSYS: it infers SB_RAM40_4K BRAM primitives automatically ! (and recognizes
    // masked writes, amazing ...)
    
-   wire [10:0] word_addr = {page,offset};
+// wire [10:0] word_addr = {page,offset};
    always @(posedge clk) begin
       if(wrRAM) begin
 	 if(wrByteMask[0]) RAM[word_addr][ 7:0 ] <= in[ 7:0 ];
@@ -124,7 +129,7 @@ module NrvMemoryInterface(
    assign IOout     = in;
    assign IOwr      = (wr && isIO);
    assign IOrd      = (rd && isIO);
-   assign IOaddress = offset;
+   assign IOaddress = address[9:2];
    
 endmodule
 
@@ -180,18 +185,20 @@ module NrvIO(
       SSD1351_RST = 1'b0;
       LEDs        = 4'b0000;
    end
-   
+
    // Currently sent bit, 1-based index
    // (0000 config. corresponds to idle)
    reg      SSD1351_slow_clk; // clk=60MHz, slow_clk=30MHz
+   
    reg[3:0] SSD1351_bitcount = 4'b0000;
    reg[7:0] SSD1351_shifter = 0;
    wire     SSD1351_sending = (SSD1351_bitcount != 0);
    reg      SSD1351_special; // pseudo-instruction, direct control of RST and DC.
 
    assign SSD1351_DIN = SSD1351_shifter[7];
-   assign SSD1351_CLK = SSD1351_sending && !SSD1351_slow_clk;
+   assign SSD1351_CLK = SSD1351_sending &&  SSD1351_slow_clk; // Normally SSD1351_sending should not be tested here, but without it test_OLED.s does not work (why ?)
    assign SSD1351_CS  = SSD1351_special ? 1'b0 : !SSD1351_sending;
+
 
    always @(posedge clk) begin
       SSD1351_slow_clk <= ~SSD1351_slow_clk;
@@ -325,9 +332,9 @@ module NrvIO(
 	   end
 `endif	   
 	 endcase 
-      end else begin 
-`ifdef NRV_IO_SSD1351	   	 
-	 if(SSD1351_sending && !SSD1351_slow_clk) begin
+      end else begin
+`ifdef NRV_IO_SSD1351
+	 if(SSD1351_sending && SSD1351_slow_clk) begin
             SSD1351_bitcount <= SSD1351_bitcount - 4'd1;
             SSD1351_shifter <= {SSD1351_shifter[6:0], 1'b0};
 	 end
@@ -373,10 +380,12 @@ module femtosoc(
 );
 
   wire  clk;
-   
+
  `ifdef BENCH
    assign clk = pclk;
- `else   
+ `else
+ 
+ `ifdef ICE40
    SB_PLL40_CORE #(
       .FEEDBACK_PATH("SIMPLE"),
       .PLLOUT_SELECT("GENCLK"),
@@ -393,16 +402,49 @@ module femtosoc(
       .RESETB(1'b1),
       .BYPASS(1'b0)
    );
+   `endif
+   
+   `ifdef ECP5
+   
+      // I think that: output freq = 12 Mhz * CLKFB_DIV * (12 / CLKI_DIV) / CLKOP_DIV
+      // CLKI_DIV = 2 -> 150 MHz
+      // CLKI_DIV = 5 -> 60 MHz      
+      // CLKI_DIV = 6 -> 50 MHz
+
+    (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
+    EHXPLLL #(
+        .PLLRST_ENA("DISABLED"),
+        .INTFB_WAKE("DISABLED"),
+        .STDBY_ENABLE("DISABLED"),
+        .DPHASE_SOURCE("DISABLED"),
+        .CLKOP_FPHASE(0),
+        .CLKOP_CPHASE(11),
+        .OUTDIVIDER_MUXA("DIVA"),
+        .CLKOP_ENABLE("ENABLED"),
+        .CLKOP_DIV(12), // divide outplut clock
+        .CLKFB_DIV(25), // divide feedback signal = multiply output clock
+        .CLKI_DIV(6),   // reference clock divider  
+        .FEEDBK_PATH("CLKOP")
+    ) pll (
+        .CLKI(pclk),
+        .CLKFB(clk),
+        .CLKOP(clk),
+        .RST(1'b0),
+        .STDBY(1'b0),
+        .PHASESEL0(1'b0),
+        .PHASESEL1(1'b0),
+        .PHASEDIR(1'b0),
+        .PHASESTEP(1'b0),
+        .PLLWAKESYNC(1'b0),
+        .ENCLKOP(1'b0),
+    );
+   `endif
+   
  `endif
 
-  // Not 100% sure of what I'm doing here (but
-  // at least it seemingly fixed my pb):
+
   // A little delay for sending the reset
-  // signal after startup. Without it the
-  // CPU stays stuck, seemingly fetching
-  // ramdom instr from BRAM.
-  // (picosoc on icebreaker has the same 
-  //  waiting loop at startup).
+  // signal after startup. 
   // Explanation here: (ice40 BRAM reads incorrect values during
   // first cycles).
   // http://svn.clifford.at/handicraft/2017/ice40bramdelay/README 
@@ -432,6 +474,7 @@ module femtosoc(
   wire        IOrd;
   wire        IOwr;
   wire [7:0]  IOaddress;
+  
   NrvIO IO(
      .in(IOin),
      .out(IOout),

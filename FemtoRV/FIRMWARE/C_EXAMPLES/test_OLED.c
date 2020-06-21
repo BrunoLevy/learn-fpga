@@ -5,6 +5,7 @@
 
 int main() {
     GL_init();
+    GL_clear();
     int frame = 0;
     for(;;) {
         oled_write_window(0,0,127,127);

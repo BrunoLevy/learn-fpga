@@ -18,7 +18,6 @@
 #define dy (ymax-ymin)/128
 #define norm_max (4 << mandel_shift)
 
-
 void mandel() {
    oled_write_window(0,0,127,127);
    int Ci = ymin;

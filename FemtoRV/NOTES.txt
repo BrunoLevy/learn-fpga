@@ -1,21 +1,36 @@
 
 TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
-      * debug oled_putchar() (use tty_OLED), the typed character appear
-        on the top line !!
-      * more graphics functions (fg/bg color, setpixel, line, circle)
-      * polygon fill
-      * femtoGL 3D
       * soft floating point routines: https://github.com/riscv/riscv-glibc/tree/riscv-glibc-2.29/soft-fp
       * print_float, printf("%f")
       * virtual output for led matrix.
       * A 90-ish "megademo" on the OLED display !
       * Autodetect installed RAM in crt0.s (and autoinit stack pointer)
       * Autodetect installed devices
+      * Change RAM interface, make it match Claire's protocol (then
+        we'll be able to use many SOC / CPU configurations, see if we
+        can fit Claire's picoSOC on the ICEStick, use attoSOC with
+	femtoRV32 etc...)
       * I2C, can we do it in sotft ? https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire/src
            (seems to be complicated... probably need interrupts, and code will take more than a few bytes...)
+      * Matthias (Mecrisp, see message in git issues):
+          - add support for SPI Flash
+	  - one-hot addressing for mapped IO may save LUTs
+      *	ultraembedded (twitter) 
+          - AXI read port for SPI Flash / https://github.com/ultraembedded/core_spiflash
+      * "Factorize" clock for UART ?
+      * Use Claire's UART instead of J1's UART ? (Claire's code seems
+        to be more compact, what does it gives in terms of number of LUTS ?)
+      * Bugs: on init, get_char() returns garbage the first time.
 
+=================================================================================================================
 
-  Bugs: on init, get_char() returns garbage the first time.
+RISC-V notes:
+  * RISC-V specification: https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
+  * RISC-V assembly programmer's manual: https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md
+  * Fantastic answer to a question asked in StackOverflow (great source of inspiration for FemtoRV32):
+      https://stackoverflow.com/questions/51592244/implementation-of-simple-microprocessor-using-verilog/51621153#51621153
+
+=================================================================================================================
 
   Lessons taken:
              - simulation is important ! (of course)
@@ -35,7 +50,7 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
 	       sometimes changing the *names* of variables has an influence (???)
 
   Observations:
-             - RISCV is super-well design and smart ! At the beginning, the design
+             - RISCV is super-well designed and smart ! At the beginning, the design
 	       decision they took may seem weird (32 bit constant loaded by two
 	       different instructions, one PC-relative, or 5 different encoding for
 	       the constants, with parts of the bits scrambled in different parts
@@ -77,7 +92,9 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
 
              - get_char() "clicking" twice: it was <enter> generating CR,LF!
   
-             - I had swapped LB,LBU and LH,LHU
+             - I had swapped LB,LBU and LH,LHU: this is counter-intuitive:
+  	         bit is 1 for arith versus logical shifts
+	         bit is 0 for load arith versus load logical
 
              - register write back was writing stuff in some registers
                when Id was zero ! Added a test. 
@@ -117,13 +134,10 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
 	         by specifying linker options -m elf32lriscv_ilp32 -b elf32-littleriscv
 		 it fixed the problem (but I do not know exactly what
                  it means, maybe it was using some 64-bits specific instructions or someting...)
-		 
 
-
-   DEBUGGING THE STATE MACHINE:
+   DEBUGGING THE STATE MACHINE, lessons taken:
    
-   Now I think I better understand what's going on,
-    by thinking about it like that:
+   Now I think I better understand what's going on, by thinking about it like that:
      Rule 1: x <= y:   x is ready right at the beginning
                        of the *next* state.
      Rule 2: whenever registers or memory are involved,

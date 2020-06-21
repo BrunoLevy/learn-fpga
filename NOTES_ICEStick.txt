@@ -1,0 +1,62 @@
+
+ICEStick notes:
+      
+Pin numbers: (with Lattice logo *upside down*)
+
+ J1 and J3:
+
+    .------------------------------------------.....
+    |J3: 3V 0V 62  61  60  56  48  47  45  44  
+    |                                          
+    |                                             
+    |                                    I C E S T I C K        USB port here -->
+    |
+    |                                              
+    |J1: 3V 0V 112 113 114 115 116 117 118 119 
+    .------------------------------------------.....
+
+
+ J2: 
+                       .---------.
+                 78    | 1    7  |  87
+                 79    | 2    8  |  88
+  <-- IR LEDs    80    | 3    9  |  90
+                 81    | 4    10 |  91
+                 GND   | 5    11 |  GND
+                 +3.5V | 6    12 |  +3.5V
+                       .---------.
+
+ Other pins:
+    12 MHz clock  : 21
+    D1,D2,D3,D4,D5: 99,98,97,96,95
+    UART          : TXD:8  RXD:9
+  
+ PLL: 
+   SB_PLL40_CORE #(
+      .FEEDBACK_PATH("SIMPLE"),
+      .PLLOUT_SELECT("GENCLK"),
+      .DIVR(4'b0000),
+      //.DIVF(7'b0110100), .DIVQ(3'b011), // 80 MHz
+      //.DIVF(7'b0110001), .DIVQ(3'b011), // 75 MHz
+        .DIVF(7'b1001111), .DIVQ(3'b100), // 60 MHz
+      //.DIVF(7'b0110100), .DIVQ(3'b100), // 40 MHz
+      //.DIVF(7'b1001111), .DIVQ(3'b101), // 30 MHz
+      .FILTER_RANGE(3'b001),
+   ) pll (
+      .REFERENCECLK(pclk),
+      .PLLOUTCORE(clk),
+      .RESETB(1'b1),
+      .BYPASS(1'b0)
+   );
+  
+   to find values of DIVF and DIVQ, use:
+     icepll -o xxx
+   where xxx is the desired frequency in MHz
+
+ Links:
+    ICE40 SB primitives:
+       https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwjAvfeWspDqAhVJxIUKHcNNC08QFjABegQIBRAB&url=http%3A%2F%2Fwww.latticesemi.com%2F~%2Fmedia%2FLatticeSemi%2FDocuments%2FTechnicalBriefs%2FSBTICETechnologyLibrary201504.pdf&usg=AOvVaw3ZlbrCl8sUbwcM-SSLjMRQ
+    J1,A small processor + Forth interpreter that fits on the ICEStick:
+       https://github.com/jamesbowman/swapforth
+    (borrowed some ideas, and their UART)
+    
