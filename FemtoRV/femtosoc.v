@@ -19,7 +19,7 @@
 // (inspired by PICORV32). 
 //`define NRV_TWOSTAGE_SHIFTER
 
-//`define NRV_RESET      // It is sometimes good to have a physical reset button, 
+`define NRV_RESET      // It is sometimes good to have a physical reset button, 
                          // this one is active low (wire a push button and a pullup 
                          // resistor to pin 47 or change in nanorv.pcf). 
 
@@ -28,14 +28,14 @@
 `define NRV_IO_UART    // Mapped IO, virtual UART (USB)
 //`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
+//`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  (WIP, does not work for now)
 
 // Uncomment one of them. With UART, only 4K possible, but with OLed screen, 6K fits.
-`define NRV_RAM_4K
+//`define NRV_RAM_4K
 //`define NRV_RAM_5K
-//`define NRV_RAM_6K
+`define NRV_RAM_6K
 
-
-`define ADDR_WIDTH 14 // Internal number of bits for PC and address register.
+`define ADDR_WIDTH 16 // Internal number of bits for PC and address register.
                       // 6kb needs 13 bits, + 1 page for IO -> 14 bits
 
 /*************************************************************************************/
@@ -43,6 +43,10 @@
 `default_nettype none
 
 `include "femtorv32.v"
+
+`ifdef NRV_IO_SPI_FLASH
+`include "spi_flash_reader.v"
+`endif
 
 // Used by the UART, needs to match frequency defined in the PLL, 
 // at the end of the file
@@ -71,7 +75,7 @@ module NrvMemoryInterface(
   input [31:0] 	    in,
   output reg [31:0] out,
 
-  output [7:0] 	    IOaddress, // = address[9:2]
+  output [8:0] 	    IOaddress, // = address[10:2]
   output 	    IOwr,
   output 	    IOrd,
   input [31:0] 	    IOin, 
@@ -119,38 +123,56 @@ module NrvMemoryInterface(
    assign IOout     = in;
    assign IOwr      = (wr && isIO);
    assign IOrd      = (rd && isIO);
-   assign IOaddress = address[9:2];
+   assign IOaddress = address[10:2];
    
 endmodule
 
 /********************* Nrv IO  *******************************/
 
 module NrvIO(
-    input 	      clk, 
-    input [7:0]       address, 
+
+    input [8:0]       address, 
     input 	      wr,
-    output 	      rd,
+    input 	      rd,
     input [31:0]      in, 
     output reg [31:0] out,
 
+`ifdef NRV_IO_LEDS
     // LEDs D1-D4	     
     output reg [3:0]  LEDs,
+`endif
 
+`ifdef NRV_IO_SSD1351
     // Oled display
     output            SSD1351_DIN, 
     output            SSD1351_CLK, 
     output 	      SSD1351_CS, 
     output reg 	      SSD1351_DC, 
     output reg 	      SSD1351_RST,
-    
+`endif
+
+`ifdef NRV_IO_UART
     // Serial
     input  	      RXD,
     output            TXD,
+`endif
 
+`ifdef NRV_IO_MAX2719
     // Led matrix
     output            MAX2719_DIN, 
     output            MAX2719_CS, 
-    output            MAX2719_CLK 
+    output            MAX2719_CLK,
+`endif
+
+`ifdef NRV_IO_SPI_FLASH
+    // SPI flash
+    output wire spi_mosi,
+    input  wire spi_miso,
+    output wire spi_cs_n,
+    output wire spi_clk,
+`endif
+
+    input clk
 );
 
    /***** Memory-mapped ports, all 32 bits ****************
@@ -170,7 +192,9 @@ module NrvIO(
    
    localparam MAX2719_CNTL_bit = 6; // (read) led matrix LSB: busy
    localparam MAX2719_DAT_bit  = 7; // (write)led matrix data (16 bits)
-   
+
+   localparam SPI_FLASH_bit    = 8; // (write SPI address (24 bits) read: data (1 byte) + rdy (bit 8)
+
    /********************** SSD1351 **************************/
 
 `ifdef NRV_IO_SSD1351
@@ -195,7 +219,7 @@ module NrvIO(
    // SSD1351_CLK = SSD1351_slow_clk, but without testing SSD1351_sending,
    // test_OLED.s, test_OLED.c and mandelbrot_OLED.s do not work, whereas the
    // other C OLED demos work (why ? To be understood...) 
-   assign SSD1351_CLK = SSD1351_sending &&  SSD1351_slow_clk; 
+   assign SSD1351_CLK = SSD1351_sending &&  !SSD1351_slow_clk; 
    assign SSD1351_CS  = SSD1351_special ? 1'b0 : !SSD1351_sending;
 
    always @(posedge clk) begin
@@ -266,7 +290,32 @@ module NrvIO(
    assign MAX2719_CS  = !MAX2719_sending;
    assign MAX2719_CLK = MAX2719_sending && MAX2719_slow_clk;
 `endif   
+
+   /********************* SPI flash reader *****************************/
    
+`ifdef NRV_IO_SPI_FLASH
+   wire spi_flash_ready;
+   wire spi_flash_valid;
+   wire [7:0] spi_flash_data;
+   reg [23:0] spi_flash_addr;
+ 
+   spi_flash_reader flash_reader(
+     .spi_mosi(spi_mosi),
+     .spi_miso(spi_miso),
+     .spi_cs_n(spi_cs_n),
+     .spi_clk(spi_clk),
+     .addr(spi_flash_addr),
+     .len(16'b0),
+     .go(wr & address[SPI_FLASH_bit]),
+     .rdy(spi_flash_ready),
+     .valid(spi_flash_valid),				 
+     .data(spi_flash_data),
+     .clk(clk),
+     .rst(1'b0)
+   );
+`endif
+
+
    /********************* Decoder for IO read **************************/
 
    always @(*) begin
@@ -285,6 +334,9 @@ module NrvIO(
 `ifdef NRV_IO_MAX2719
 	    | (address[MAX2719_CNTL_bit] ? {31'b0, MAX2719_sending} : 32'b0)
 `endif	
+`ifdef NRV_IO_SPI_FLASH
+	    | (address[SPI_FLASH_bit] ? {22'b0, spi_flash_valid, spi_flash_ready, spi_flash_data} : 32'b0)
+`endif
 	    ;
    end
    
@@ -323,10 +375,15 @@ module NrvIO(
 	      MAX2719_shifter <= in[15:0];
 	      MAX2719_bitcount <= 16;
 	   end
-`endif	   
+`endif
+`ifdef NRV_IO_SPI_FLASH
+	   if(address[SPI_FLASH_bit]) begin
+	      spi_flash_addr <= in[23:0];
+	   end
+`endif	 
       end else begin
 `ifdef NRV_IO_SSD1351
-	 if(SSD1351_sending && SSD1351_slow_clk) begin
+	 if(SSD1351_sending && !SSD1351_slow_clk) begin
             SSD1351_bitcount <= SSD1351_bitcount - 4'd1;
             SSD1351_shifter <= {SSD1351_shifter[6:0], 1'b0};
 	 end
@@ -363,9 +420,15 @@ module femtosoc(
 `ifdef NRV_IO_MAX2719	   
    output ledmtx_DIN, ledmtx_CS, ledmtx_CLK,
 `endif
+`ifdef NRV_IO_SPI_FLASH
+   output spi_mosi,
+   input  spi_miso,
+   output spi_cs_n,
+   output spi_clk,
+`endif
 `ifdef NRV_RESET	      
    input  RESET,
-`endif	      
+`endif
    input  pclk
 );
 
@@ -413,7 +476,7 @@ module femtosoc(
         .CLKOP_ENABLE("ENABLED"),
         .CLKOP_DIV(12), // divide outplut clock
         .CLKFB_DIV(25), // divide feedback signal = multiply output clock
-        .CLKI_DIV(6),   // reference clock divider  
+        .CLKI_DIV(5),   // reference clock divider  
         .FEEDBK_PATH("CLKOP")
     ) pll (
         .CLKI(pclk),
@@ -463,7 +526,7 @@ module femtosoc(
   wire [31:0] IOout;
   wire        IOrd;
   wire        IOwr;
-  wire [7:0]  IOaddress;
+  wire [8:0]  IOaddress;
   
   NrvIO IO(
      .in(IOin),
@@ -489,6 +552,12 @@ module femtosoc(
      .MAX2719_DIN(ledmtx_DIN),
      .MAX2719_CS(ledmtx_CS),
      .MAX2719_CLK(ledmtx_CLK),
+`endif
+`ifdef NRV_IO_SPI_FLASH
+     .spi_mosi(spi_mosi),
+     .spi_miso(spi_miso),
+     .spi_cs_n(spi_cs_n),
+     .spi_clk(spi_clk),
 `endif
      .clk(clk)
   );

@@ -13,18 +13,21 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
       * I2C, can we do it in sotft ? https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire/src
            (seems to be complicated... probably need interrupts, and code will take more than a few bytes...)
       * Matthias (Mecrisp, see message in git issues):
-          - add support for SPI Flash
+          - add support for SPI Flash  (config uses 32K out of 16Mbits, leaves plenty of space for my stuff)
 	  - one-hot addressing for mapped IO may save LUTs
       *	ultraembedded (twitter) 
           - AXI read port for SPI Flash / https://github.com/ultraembedded/core_spiflash
+	  - Another SPI Flash reader: https://www.bastibl.net/open-source-fpga/
+ 	      Uses under the hood this one: https://github.com/smunaut/ice40-playground/blob/master/cores/spi_flash/rtl/spi_flash_reader.v
       * "Factorize" clock for UART ?
       * Use Claire's UART instead of J1's UART ? (Claire's code seems
-        to be more compact, what does it gives in terms of number of LUTS ?)
+        to be more compact, what does it give in terms of number of LUTS ?)
       * Bugs: on init, get_char() returns garbage the first time.
       * Decoder for immediates can probably be made let LUT-hungry:
           * instr decoder can set Rtype, Itype, Stype, Btype, Utype, Jtype booleans
 	  * immediate can be assembled using muxes, driven by Xtype signals, as
 	    in table 2.4 p. 12 fom the RISC-V document.
+      * SSD1351 clock adapter for higher freq.
 
 =================================================================================================================
 
@@ -252,4 +255,7 @@ DONE: from Harvard to Von Neumann
 	  --> DONE (little delay at startup, like in PicoSOC for icebreaker)    
      8) investigate critical path that seems to connect things that
         should not be connected.
+        
+Course on processor design / datapath: https://www.cise.ufl.edu/~mssz/CompOrg/CDA-proc.html        
+        
 

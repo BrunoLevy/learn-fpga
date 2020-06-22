@@ -205,7 +205,7 @@ module NrvDecoder(
    // The five immediate formats, see the RiscV reference, Fig. 2.4 p. 12
    // Note: they all do sign expansion (sign bit is instr[31]), except the U format
 
-/*   
+   
    wire [20:0] immB1 = {21{instr[31]}}; // Do sign expansion only once
    
    wire [5:0]  immB2 = instr[30:25];    //  \
@@ -217,9 +217,9 @@ module NrvDecoder(
    wire [31:0] Bimm = {immB1[19:0], instr[7], immB2, instr[11:8], 1'b0};
    wire [31:0] Jimm = {immB1[11:0], immB4, instr[20], immB2, immB3, 1'b0};   
    wire [31:0] Uimm = {instr[31],   instr[30:20], immB4, {12{1'b0}}};
-*/
 
-   
+
+/*   
    // The previous version it is equivalent to this simpler version, but the
    // previous version sometimes (but not always) saves some LUTs and gains 
    // some nano-s.
@@ -228,7 +228,7 @@ module NrvDecoder(
    wire [31:0] Bimm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
    wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};   
    wire [31:0] Uimm = {instr[31], instr[30:12], {12{1'b0}}};
-
+*/
 
    // The rest of instruction decoding, for the following signals:
    // writeBackEn

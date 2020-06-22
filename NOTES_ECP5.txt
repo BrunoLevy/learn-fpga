@@ -5,7 +5,8 @@ ECP5 notes:
        the default program ? (for now, if we plug the board, it
        reactivates the default "knight driver" program)
      - Can we drive the leds with LVCMOS33 instead of LVCMOS25 ? (I do
-       not dare...)
+       not dare...) --> Yes, it works, no problem.
+       
   Examples in prjtrellis:
      ecp5_evn: the 'hello world' blinker example is here !
      soc_ecp5_evn: attoSOC + picoRV32
@@ -43,6 +44,9 @@ ECP5 notes:
      LVCMOS25 and LVCMOS33 on the same "port", which prevents from
      having both LEDS and other balls activated (but I do not know
      which balls belong to the same port).
+     After examining the schematics, seeing the resistor, there is
+     no risk -> tryed and works like a charm. More comfortable, then
+     I'll be able to install my OLED display on the J39 connector.
 
 
    Buttons:
@@ -121,6 +125,7 @@ FPGA specs:
    DP16KD    : 208  (1.6 megs, is that correct ? maybe enough for
                      running some forme of muC Linux, but I'd rather 
 		     wire some SDRAM)
+		     3744 Kbits
    
 
 ======================================================

@@ -16,7 +16,8 @@ nextpnr-ice40 --force --json $PROJECTNAME.json --pcf $PROJECTNAME.pcf --asc $PRO
 echo ======== IceTime
 icetime -p $PROJECTNAME.pcf -P tq144 -r $PROJECTNAME.timings -d hx1k -t $PROJECTNAME.asc
 echo ======== IcePack
-icepack $PROJECTNAME.asc $PROJECTNAME.bin || exit
+#-s to disable SPI flash sleep
+icepack -s $PROJECTNAME.asc $PROJECTNAME.bin || exit
 echo ======== IceProg
 iceprog $PROJECTNAME.bin || exit
 echo DONE.

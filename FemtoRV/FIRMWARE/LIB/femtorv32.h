@@ -79,6 +79,7 @@ void GL_putchar_xy(int x, int y, char c);
 #define IO_UART_DATA    128   /* USB UART RX data (read/write)                          */
 #define IO_LEDMTX_CNTL  256   /* LED matrix control. read: LSB bit 1 if busy            */
 #define IO_LEDMTX_DATA  512   /* LED matrix data (write)	                        */
+#define IO_SPI_FLASH   1024
 
 #define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
 #define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)
@@ -94,17 +95,17 @@ extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
 
 /* faster version of oled_wait() */
 /* (12 cycles, this is the time needed by the SSR1350 driver to consume one byte) */
-#define OLED_WAIT() \
+/*#define OLED_WAIT()				\
     asm("nop");     \
     asm("nop");     \
     asm("nop");     \
     asm("nop")
+*/
 
 /* 
  * We will use this one if we increase clock freq (this one really waits for the driver)
- * #define OLED_WAIT() oled_wait()
- */ 
-
+ */
+#define OLED_WAIT() oled_wait()
 
 /* MAX2719 led matrix */
 extern void MAX2719_init();
