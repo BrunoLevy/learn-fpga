@@ -28,12 +28,12 @@
 `define NRV_IO_UART    // Mapped IO, virtual UART (USB)
 //`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
-//`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  (WIP, does not work for now)
+`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  (WIP, does not work for now)
 
 // Uncomment one of them. With UART, only 4K possible, but with OLed screen, 6K fits.
-//`define NRV_RAM_4K
+`define NRV_RAM_4K
 //`define NRV_RAM_5K
-`define NRV_RAM_6K
+//`define NRV_RAM_6K
 
 `define ADDR_WIDTH 16 // Internal number of bits for PC and address register.
                       // 6kb needs 13 bits, + 1 page for IO -> 14 bits
