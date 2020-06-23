@@ -19,6 +19,13 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
           - AXI read port for SPI Flash / https://github.com/ultraembedded/core_spiflash
 	  - Another SPI Flash reader: https://www.bastibl.net/open-source-fpga/
  	      Uses under the hood this one: https://github.com/smunaut/ice40-playground/blob/master/cores/spi_flash/rtl/spi_flash_reader.v
+          - https://zipcpu.com/blog/2018/08/16/spiflash.html
+             and code: https://github.com/ZipCPU/icozip/blob/master/rtl/icozip/spixpress.v
+          - Chip: https://www.micron.com/-/media/client/global/Documents/Products/Data%20Sheet/NOR%20Flash/Serial%20NOR/N25Q/n25q_32mb_1_8v_65nm.pdf
+          - mecrisp-ice-1.8/hx1k/nucleus.fs
+          - better datasheet: https://www.winbond.com/resource-files/w25q128jv%20spi%20revc%2011162016.pdf
+         iceprog -o 1M foo.txt
+      
       * "Factorize" clock for UART ?
       * Use Claire's UART instead of J1's UART ? (Claire's code seems
         to be more compact, what does it give in terms of number of LUTS ?)
@@ -154,6 +161,12 @@ RISC-V notes:
 		 since it is done as soon as count reaches zero, which happens right in the middle
 		 of the bit, need to wait for the other half if divider is greater than 2).
 
+             - SPI Flash memory reader: I had several difficulties:
+	          1) stupid errors in the shifter (shift left<->right, MSB<->LSB, which bits to copy)
+		  2) CS was combinatorially wired to busy, making it deactivating the chip too soon
+		     (on the fast clock). Replaced it with a latch, activated on write, and stopped
+		     on slow clock rising edge if not busy.
+
    DEBUGGING THE STATE MACHINE, lessons taken:
    
    Now I think I better understand what's going on, by thinking about it like that:
@@ -259,3 +272,4 @@ DONE: from Harvard to Von Neumann
 Course on processor design / datapath: https://www.cise.ufl.edu/~mssz/CompOrg/CDA-proc.html        
         
 
+https://zipcpu.com/blog/2017/06/12/minimizing-luts.html

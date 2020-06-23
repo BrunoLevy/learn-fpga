@@ -25,8 +25,8 @@
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS    // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-`define NRV_IO_UART    // Mapped IO, virtual UART (USB)
-//`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_UART    // Mapped IO, virtual UART (USB)
+`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
 `define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  (WIP, does not work for now)
 
@@ -43,10 +43,6 @@
 `default_nettype none
 
 `include "femtorv32.v"
-
-`ifdef NRV_IO_SPI_FLASH
-`include "spi_flash_reader.v"
-`endif
 
 // Used by the UART, needs to match frequency defined in the PLL, 
 // at the end of the file
@@ -168,7 +164,7 @@ module NrvIO(
     // SPI flash
     output wire spi_mosi,
     input  wire spi_miso,
-    output wire spi_cs_n,
+    output reg  spi_cs_n,
     output wire spi_clk,
 `endif
 
@@ -219,7 +215,7 @@ module NrvIO(
    // SSD1351_CLK = SSD1351_slow_clk, but without testing SSD1351_sending,
    // test_OLED.s, test_OLED.c and mandelbrot_OLED.s do not work, whereas the
    // other C OLED demos work (why ? To be understood...) 
-   assign SSD1351_CLK = SSD1351_sending &&  !SSD1351_slow_clk; 
+   assign SSD1351_CLK = SSD1351_sending &&  SSD1351_slow_clk; 
    assign SSD1351_CS  = SSD1351_special ? 1'b0 : !SSD1351_sending;
 
    always @(posedge clk) begin
@@ -294,25 +290,23 @@ module NrvIO(
    /********************* SPI flash reader *****************************/
    
 `ifdef NRV_IO_SPI_FLASH
-   wire spi_flash_ready;
-   wire spi_flash_valid;
-   wire [7:0] spi_flash_data;
-   reg [23:0] spi_flash_addr;
- 
-   spi_flash_reader flash_reader(
-     .spi_mosi(spi_mosi),
-     .spi_miso(spi_miso),
-     .spi_cs_n(spi_cs_n),
-     .spi_clk(spi_clk),
-     .addr(spi_flash_addr),
-     .len(16'b0),
-     .go(wr & address[SPI_FLASH_bit]),
-     .rdy(spi_flash_ready),
-     .valid(spi_flash_valid),				 
-     .data(spi_flash_data),
-     .clk(clk),
-     .rst(1'b0)
-   );
+   reg [5:0]  spi_flash_snd_bitcount;
+   reg [31:0] spi_flash_cmd_addr;
+   reg [3:0]  spi_flash_rcv_bitcount;
+   reg [7:0]  spi_flash_dat;
+   wire       spi_flash_sending   = (spi_flash_snd_bitcount != 0);
+   wire       spi_flash_receiving = (spi_flash_rcv_bitcount != 0);
+   wire       spi_flash_busy = spi_flash_sending | spi_flash_receiving;
+   reg 	spi_flash_slow_clk; // clk=60MHz, slow_clk=30MHz
+
+   assign spi_mosi = spi_flash_sending && spi_flash_cmd_addr[31];
+//   assign spi_cs_n = !spi_flash_busy;
+   initial spi_cs_n = 1'b1;
+   assign spi_clk  = spi_flash_busy && spi_flash_slow_clk;
+   
+   always @(posedge clk) begin
+      spi_flash_slow_clk <= ~spi_flash_slow_clk;
+   end
 `endif
 
 
@@ -335,7 +329,7 @@ module NrvIO(
 	    | (address[MAX2719_CNTL_bit] ? {31'b0, MAX2719_sending} : 32'b0)
 `endif	
 `ifdef NRV_IO_SPI_FLASH
-	    | (address[SPI_FLASH_bit] ? {22'b0, spi_flash_valid, spi_flash_ready, spi_flash_data} : 32'b0)
+	    | (address[SPI_FLASH_bit] ? {23'b0, spi_flash_busy, spi_flash_dat} : 32'b0)
 `endif
 	    ;
    end
@@ -378,16 +372,34 @@ module NrvIO(
 `endif
 `ifdef NRV_IO_SPI_FLASH
 	   if(address[SPI_FLASH_bit]) begin
-	      spi_flash_addr <= in[23:0];
+	      spi_cs_n <= 1'b0;
+	      spi_flash_cmd_addr <= {8'h03, in[23:0]};
+	      spi_flash_snd_bitcount <= 6'd32;
 	   end
 `endif	 
       end else begin
 `ifdef NRV_IO_SSD1351
-	 if(SSD1351_sending && !SSD1351_slow_clk) begin
+	 if(SSD1351_sending && SSD1351_slow_clk) begin
             SSD1351_bitcount <= SSD1351_bitcount - 4'd1;
             SSD1351_shifter <= {SSD1351_shifter[6:0], 1'b0};
 	 end
 `endif
+`ifdef NRV_IO_SPI_FLASH
+	 if(spi_flash_sending && spi_flash_slow_clk) begin
+	    if(spi_flash_snd_bitcount == 1) begin
+	       spi_flash_rcv_bitcount <= 4'd8;
+	    end
+	    spi_flash_snd_bitcount <= spi_flash_snd_bitcount - 6'd1;
+	    spi_flash_cmd_addr <= {spi_flash_cmd_addr[30:0],1'b0};
+	 end
+	 if(spi_flash_receiving && spi_flash_slow_clk) begin
+	    spi_flash_rcv_bitcount <= spi_flash_rcv_bitcount - 4'd1;
+	    spi_flash_dat <= {spi_flash_dat[6:0],spi_miso};
+	 end
+	 if(!spi_flash_busy && spi_flash_slow_clk) begin
+	    spi_cs_n <= 1'b1;
+	 end
+`endif	 
 `ifdef NRV_IO_MAX2719
 	 if(MAX2719_sending &&  MAX2719_slow_clk) begin
             MAX2719_bitcount <= MAX2719_bitcount - 5'd1;
