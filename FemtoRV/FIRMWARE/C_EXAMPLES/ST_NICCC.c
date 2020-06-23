@@ -42,13 +42,6 @@ int      poly[30];
 #define PALETTE_BIT 2
 #define INDEXED_BIT 4
 
-void* memset(void* s, int c, int n) {
-    for(int i=0; i<n; ++i) {
-	((char*)s)[i] = (char)c;
-    }
-    return s;
-}
-
 /* returns 0 at last frame */
 int read_frame() {
     uint8_t frame_flags = next_spi_byte();
@@ -66,15 +59,9 @@ int read_frame() {
     }
 
     if(frame_flags & CLEAR_BIT) {
-//	GL_clear();
+	GL_clear();
     }
 
-    for(int i=0; i<255; ++i) {
-	X[i] = 0;
-	Y[i] = 0;
-    }
-     
-    
     if(frame_flags & INDEXED_BIT) {
 	uint8_t nb_vertices = next_spi_byte();
 	for(int v=0; v<nb_vertices; ++v) {
@@ -110,14 +97,10 @@ int read_frame() {
 	    }
 	}
 
+	GL_polygon_mode(GL_POLY_FILL);	
 	GL_fill_poly(nvrtx,poly,cmap[poly_col]);
-	for(int i=0; i<nvrtx; ++i) {
-	    int j=i+1;
-	    if(j == nvrtx) {
-		j = 0;
-	    }
-	    // GL_line(poly[2*i], poly[2*i+1], poly[2*j], poly[2*j+1], 0);
-	}
+//	GL_polygon_mode(GL_POLY_LINES);
+//	GL_fill_poly(nvrtx,poly,0);	
     }
     return 1; 
 }
@@ -128,6 +111,6 @@ int main() {
     GL_init();
     GL_clear();
     while(read_frame()) {
-	// delay(20);
+	delay(50);
     }
 }
