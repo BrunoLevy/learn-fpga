@@ -40,7 +40,6 @@ int main() {
       putchar(data);
       printf("\n");
       ++addr;
-      delay(100);
    }
    return 0;
 }

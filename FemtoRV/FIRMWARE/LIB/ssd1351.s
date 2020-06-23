@@ -34,18 +34,18 @@
 
 # 4*3 = 12 cycles, this is the time required
 # by the ssd1351 driver to consume one byte.	
-#.macro OLED_WAIT
-#	nop
-#	nop
-#	nop
-#	nop
-#.endm	
+.macro OLED_WAIT
+	nop
+	nop
+	nop
+	nop
+.endm	
 
 # We will use this one instead if we increase clock freq
 # (really tests for the driver to be ready)
-.macro OLED_WAIT
-        call oled_wait
-.endm
+#.macro OLED_WAIT
+#        call oled_wait
+#.endm
 
 
 ################################################################################

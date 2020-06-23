@@ -31,9 +31,9 @@
 `define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  (WIP, does not work for now)
 
 // Uncomment one of them. With UART, only 4K possible, but with OLed screen, 6K fits.
-`define NRV_RAM_4K
+//`define NRV_RAM_4K
 //`define NRV_RAM_5K
-//`define NRV_RAM_6K
+`define NRV_RAM_6K
 
 `define ADDR_WIDTH 16 // Internal number of bits for PC and address register.
                       // 6kb needs 13 bits, + 1 page for IO -> 14 bits
@@ -193,11 +193,16 @@ module NrvIO(
 
    /********************** SSD1351 **************************/
 
+`ifdef NRV_IO_LEDS
+   initial begin
+      LEDs = 4'b0000;
+   end
+`endif   
+
 `ifdef NRV_IO_SSD1351
    initial begin
       SSD1351_DC  = 1'b0;
       SSD1351_RST = 1'b0;
-      LEDs        = 4'b0000;
    end
 
    // Currently sent bit, 1-based index
@@ -299,10 +304,9 @@ module NrvIO(
    wire       spi_flash_busy = spi_flash_sending | spi_flash_receiving;
    reg 	spi_flash_slow_clk; // clk=60MHz, slow_clk=30MHz
 
-   assign spi_mosi = spi_flash_sending && spi_flash_cmd_addr[31];
-//   assign spi_cs_n = !spi_flash_busy;
+   assign  spi_mosi = spi_flash_sending && spi_flash_cmd_addr[31];
    initial spi_cs_n = 1'b1;
-   assign spi_clk  = spi_flash_busy && spi_flash_slow_clk;
+   assign  spi_clk  = spi_flash_busy && spi_flash_slow_clk;
    
    always @(posedge clk) begin
       spi_flash_slow_clk <= ~spi_flash_slow_clk;
