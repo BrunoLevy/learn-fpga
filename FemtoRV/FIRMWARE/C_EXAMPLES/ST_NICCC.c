@@ -47,7 +47,7 @@ int read_frame() {
     uint8_t frame_flags = next_spi_byte();
     if(frame_flags & PALETTE_BIT) {
 	uint16_t colors = next_spi_word();
-	for(int b=0; b<16; ++b) {
+	for(int b=15; b>=0; --b) {
 	    if(colors & (1 << b)) {
 		int rgb = next_spi_word();
 		int b3 = (rgb & 0x007);

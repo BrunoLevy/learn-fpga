@@ -1,0 +1,7 @@
+UART:
+    https://github.com/BracketMaster/ECP5-RISCV32-with-C-and-UART-Example/blob/master/rtl/uart.v  (Thimothy Goddard)
+    
+ Specialized design for AI:
+ http://synergy.ece.gatech.edu/wp-content/uploads/sites/332/2018/01/maeri_asplos2018.pdf   
+    
+    
