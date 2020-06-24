@@ -10,7 +10,7 @@
 MAX2719: # a0: register  a1: value
          slli t0, a0, 8
 	 or  t0, t0, a1
-#         sw t0, IO_LEDMTX_DATA(gp)  # TODO
+         sw t0, IO_LEDMTX_DATA(gp)  
 MAXwait: lw t0, IO_LEDMTX_CNTL(gp)
          bnez t0, MAXwait
 	 ret

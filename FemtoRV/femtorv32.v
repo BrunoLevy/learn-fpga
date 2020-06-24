@@ -1,8 +1,22 @@
-// Bruno Levy, May 2020, learning Verilog,
+// femtorv32, a minimalistic RISC-V RV32I core
+//    (minus SYSTEM and FENCE that are not implemented)
 //
-// Trying to fit a minimalistic RV32I core on an IceStick,
-// and trying to organize the source in such a way I can understand
-// what I have written a while after...
+//       Bruno Levy, May-June 2020
+//
+// Mission statement:
+//   - understand basics of FPGA and processor design
+//   - learn about RISC-V
+//   - create a RISC-V design that is easy to understand (and that
+//       I'm able to re-read, re-understand later)
+//   - create a RISC-V design that can be used on the cheapest /
+//       smallest FPGAs (ICEStick) and that can be programmed in
+//       assembly and C using the GNU RISC-V toolchain
+//
+//   Note: femtorv32 is meant to be used for educational purposes,
+// targeting legibility of the design and minimal LUT footprint.
+//  For other usages, if your FPGA has more than 1380 LUTs (that means,
+// is something else than an ICEStick), I recommend using a more efficient /
+// more complete RISC-V core (e.g., Claire Wolf's picorv32).
 
 `ifdef VERBOSE
   `define verbose(command) command

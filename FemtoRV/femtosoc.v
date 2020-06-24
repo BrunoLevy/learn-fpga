@@ -1,14 +1,12 @@
-// Bruno Levy, May 2020, learning Verilog,
+// femtorv32, a minimalistic RISC-V RV32I core
+//    (minus SYSTEM and FENCE that are not implemented)
 //
-// Trying to fit a minimalistic RV32I core on an IceStick,
-// and trying to organize the source in such a way I can understand
-// what I have written a while after...
-
+//       Bruno Levy, May-June 2020
+//
+// This file: the "System on Chip" that goes with femtorv32.
+//
 // Note: the UART eats up many LUTs, to activate it you need to
-// - deactivate NRV_TWOSTAGE_SHIFTER
-// - set RAM config to 4K (because address decoder for 6K does not fit)
-// - and deactivate the LEDs as well if you do not have the RESET button
-//    (weird, with the RESET button it fits).
+//  deactivate NRV_TWOSTAGE_SHIFTER
 
 // Uncomment one of the following two lines
 `define ICE40
@@ -19,21 +17,30 @@
 // (inspired by PICORV32). 
 //`define NRV_TWOSTAGE_SHIFTER
 
-`define NRV_RESET      // It is sometimes good to have a physical reset button, 
-                         // this one is active low (wire a push button and a pullup 
-                         // resistor to pin 47 or change in nanorv.pcf). 
+//`define NRV_NEGATIVE_RESET // Uncomment if the RESET button is wired and active low:
+                           // (wire a push button and a pullup resistor to 
+                           // pin 47 or change in nanorv.pcf). 
+
+// On the ECP5 evaluation board, there is already a wired button, active low,
+// wired to the "P4" ball of the ECP5 (see femtosoc.lpf)
+`ifdef ECP5
+ `ifndef NRV_NEGATIVE_RESET
+  `define NRV_NEGATIVE_RESET
+ `endif
+`endif
+
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS    // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART    // Mapped IO, virtual UART (USB)
-`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
+`define NRV_IO_UART    // Mapped IO, virtual UART (USB)
+//`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
-`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  (WIP, does not work for now)
+//`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
 
 // Uncomment one of them. With UART, only 4K possible, but with OLed screen, 6K fits.
-//`define NRV_RAM_4K
+`define NRV_RAM_4K
 //`define NRV_RAM_5K
-`define NRV_RAM_6K
+//`define NRV_RAM_6K
 
 `define ADDR_WIDTH 16 // Internal number of bits for PC and address register.
                       // 6kb needs at least 13 bits, + 1 page for IO -> 14 bits.
@@ -448,9 +455,7 @@ module femtosoc(
    output spi_cs_n,
    output spi_clk,
 `endif
-`ifdef NRV_RESET	      
    input  RESET,
-`endif
    input  pclk
 );
 
@@ -526,20 +531,24 @@ module femtosoc(
   // http://svn.clifford.at/handicraft/2017/ice40bramdelay/README 
   reg [7:0] reset_cnt = 0;
   wire     reset = &reset_cnt;
-`ifdef NRV_RESET   
-  always @(posedge clk,negedge RESET) begin
-     if(!RESET) begin
-	reset_cnt <= 0;
-     end else begin
-	reset_cnt <= reset_cnt + !reset;
-     end
-  end
-`else
-  always @(posedge clk) begin
-     reset_cnt <= reset_cnt + !reset;
-  end
-`endif   
    
+`ifdef NRV_NEGATIVE_RESET
+   always @(posedge clk,negedge RESET) begin
+      if(!RESET) begin
+	 reset_cnt <= 0;
+      end else begin
+	 reset_cnt <= reset_cnt + !reset;
+      end
+   end
+`else
+   always @(posedge clk,posedge RESET) begin
+      if(RESET) begin
+	 reset_cnt <= 0;
+      end else begin
+	 reset_cnt <= reset_cnt + !reset;
+      end
+   end
+`endif
 
   wire [31:0] address;
   wire        error;
