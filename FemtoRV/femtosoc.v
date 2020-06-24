@@ -17,7 +17,7 @@
 // (inspired by PICORV32). 
 //`define NRV_TWOSTAGE_SHIFTER
 
-//`define NRV_NEGATIVE_RESET // Uncomment if the RESET button is wired and active low:
+`define NRV_NEGATIVE_RESET // Uncomment if the RESET button is wired and active low:
                            // (wire a push button and a pullup resistor to 
                            // pin 47 or change in nanorv.pcf). 
 
@@ -32,15 +32,18 @@
 
 // Optional mapped IO devices
 `define NRV_IO_LEDS    // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-`define NRV_IO_UART    // Mapped IO, virtual UART (USB)
-//`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_UART    // Mapped IO, virtual UART (USB)
+`define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
-//`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
+`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
 
-// Uncomment one of them. With UART, only 4K possible, but with OLed screen, 6K fits.
-`define NRV_RAM_4K
+// Uncomment one of them. Using smaller RAM saves a few LUTs (for address decoding),
+// depending on configured resources and YOSYS / Nextpnr versions, you may need them !
+// IMPORTANT: make sure declared quantity of RAM in FIRMWARE/LIB/crt0.s matches !!!
+
+//`define NRV_RAM_4K
 //`define NRV_RAM_5K
-//`define NRV_RAM_6K
+`define NRV_RAM_6K
 
 `define ADDR_WIDTH 16 // Internal number of bits for PC and address register.
                       // 6kb needs at least 13 bits, + 1 page for IO -> 14 bits.
