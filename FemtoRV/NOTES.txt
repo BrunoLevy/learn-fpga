@@ -25,6 +25,7 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
           - mecrisp-ice-1.8/hx1k/nucleus.fs
           - better datasheet: https://www.winbond.com/resource-files/w25q128jv%20spi%20revc%2011162016.pdf
          iceprog -o 1M foo.txt
+	  - quad SPI: https://github.com/dan-rodrigues/icestation-32/blob/82bb8b9fcf16ea89d0fd3b29eaee0813c684ee55/hardware/flash_reader.v
       
       * "Factorize" clock for UART ?
       * Use Claire's UART instead of J1's UART ? (Claire's code seems
@@ -35,6 +36,8 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
 	  * immediate can be assembled using muxes, driven by Xtype signals, as
 	    in table 2.4 p. 12 fom the RISC-V document.
       * SSD1351 clock adapter for higher freq.
+      * I2C keyboard: 
+          https://community.cypress.com/thread/52527
 
 =================================================================================================================
 

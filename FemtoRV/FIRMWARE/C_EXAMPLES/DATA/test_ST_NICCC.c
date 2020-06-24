@@ -1,3 +1,11 @@
+/*
+ * Standalone test program that reads scene1.bin
+ * and that displays what it finds in there,
+ * see scene_description.txt
+ * (it is easier to debug this one than on-device).
+ * The on-device version is in C_EXAMPLES/ST_NICCC.c.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -10,8 +18,9 @@ typedef unsigned int   uint32_t;
 FILE* stream = NULL;
 
 /*
- * Reading the ST-NICCC megademo data stored in
- * the SPI flash and streaming it to polygons.
+ * Reading the ST-NICCC megademo data.
+ * (compared with the version in C_EXAMPLES, this version
+ *  reads a file instead of reading from the SPI Flash memory).
  */
 
 int cur_spi = 0;
@@ -58,7 +67,7 @@ int read_frame() {
     uint8_t frame_flags = next_spi_byte();
    
     printf(
-	   "Frame %d: %c%c%c\n",
+	   "Frame flags: %d:%c%c%c\n",
 	   frame_flags,
 	   (frame_flags & CLEAR_BIT) ? 'C' : '_',
 	   (frame_flags & PALETTE_BIT) ? 'P' : '_',
@@ -79,14 +88,11 @@ int read_frame() {
 	       printf(" ");
 	       printb(rgb);
 	       printf("     ");
-	       
-	       int r = rgb >> 8;
-	       int g = (rgb >> 4) & 15;
-	       int b = rgb & 15;
-	       printf("%d %d %d\n", r<<4,g<<4,b<<4);
 
-	       printf("hex:%x\n", GL_RGB(r<<4, g<<4, b<<4));
-	       printf("bin:"); printb(GL_RGB(r<<4, g<<4, b<<4)); printf("\n");
+	       int b3 = (rgb & 0x007);
+	       int g3 = (rgb & 0x070) >> 4;
+	       int r3 = (rgb & 0x700) >> 8;
+	       printf(" ->RGB: %d %d %d\n", r3<<5,g3<<5,b3<<5);
 	    }
 	}
     }
@@ -102,10 +108,11 @@ int read_frame() {
     
     if(frame_flags & INDEXED_BIT) {
 	uint8_t nb_vertices = next_spi_byte();
+        printf("nb vrtx:%d\n", nb_vertices);
 	for(int v=0; v<nb_vertices; ++v) {
 	   X[v] = next_spi_byte() >> 1;
 	   Y[v] = next_spi_byte() >> 1;
-	   printf("vrtx %d: %d %d\n", v, X[v], Y[v]);
+	   printf("  vrtx %d: %d %d\n", v, X[v], Y[v]);
 	}
     }
 

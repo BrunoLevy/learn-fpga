@@ -15,7 +15,7 @@
 //`define ECP5 
 
 
-// Comment-out if running out of LUTs (makes shifter faster, but uses 66 LUTs)
+// Comment-out if running out of LUTs (makes shifter faster, but uses 60-100 LUTs)
 // (inspired by PICORV32). 
 //`define NRV_TWOSTAGE_SHIFTER
 
@@ -36,7 +36,9 @@
 `define NRV_RAM_6K
 
 `define ADDR_WIDTH 16 // Internal number of bits for PC and address register.
-                      // 6kb needs 13 bits, + 1 page for IO -> 14 bits
+                      // 6kb needs at least 13 bits, + 1 page for IO -> 14 bits.
+                      // Seems that 16 bits uses a *smaller* number of LUTs
+                      // (and leaves additional space for future extensions).
 
 /*************************************************************************************/
 // Makes it easier to detect typos !
@@ -46,6 +48,10 @@
 
 // Used by the UART, needs to match frequency defined in the PLL, 
 // at the end of the file
+// Seems that 80 MHz can work (note: code for peripherals such
+// as OLED screen and SPI ram needs to be adapted if > 60MHz)
+// Default is 60 MHz.
+
 `define CLKFREQ   60000000
 `include "uart.v"
 
@@ -459,7 +465,8 @@ module femtosoc(
       .FEEDBACK_PATH("SIMPLE"),
       .PLLOUT_SELECT("GENCLK"),
       .DIVR(4'b0000),
-      //.DIVF(7'b0110100), .DIVQ(3'b011), // 80 MHz
+      //.DIVF(7'b0111011), .DIVQ(3'b011), // 90 MHz (too fast)
+      //.DIVF(7'b0110100), .DIVQ(3'b011), // 80 MHz (seems to work)
       //.DIVF(7'b0110001), .DIVQ(3'b011), // 75 MHz
       .DIVF(7'b1001111), .DIVQ(3'b100), // 60 MHz
       //.DIVF(7'b0110100), .DIVQ(3'b100), // 40 MHz
@@ -517,7 +524,7 @@ module femtosoc(
   // Explanation here: (ice40 BRAM reads incorrect values during
   // first cycles).
   // http://svn.clifford.at/handicraft/2017/ice40bramdelay/README 
-  reg [6:0] reset_cnt = 0;
+  reg [7:0] reset_cnt = 0;
   wire     reset = &reset_cnt;
 `ifdef NRV_RESET   
   always @(posedge clk,negedge RESET) begin

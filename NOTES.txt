@@ -3,5 +3,8 @@ UART:
     
  Specialized design for AI:
  http://synergy.ece.gatech.edu/wp-content/uploads/sites/332/2018/01/maeri_asplos2018.pdf   
-    
+
+
+M5Stack mini I2C keyboard
+   https://github.com/m5stack/M5-ProductExampleCodes/tree/master/Hat/CardKB_HAT/
     
