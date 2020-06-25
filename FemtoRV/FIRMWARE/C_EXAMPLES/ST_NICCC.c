@@ -66,7 +66,7 @@ uint16_t next_spi_word() {
 
 /* 
  * The colormap, encoded in such a way that it
- * can be directly send to the OLED display.
+ * can be directly sent to the OLED display.
  */
 uint16_t cmap[16];
 

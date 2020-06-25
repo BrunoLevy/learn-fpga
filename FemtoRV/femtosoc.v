@@ -231,7 +231,6 @@ module NrvIO(
    reg[3:0] SSD1351_bitcount = 4'b0000;
    reg[7:0] SSD1351_shifter = 0;
    wire     SSD1351_sending = (SSD1351_bitcount != 0);
-   reg      SSD1351_special; // pseudo-instruction, direct control of RST and DC.
 
    assign SSD1351_DIN = SSD1351_shifter[7];
 
@@ -240,7 +239,6 @@ module NrvIO(
    // test_OLED.s, test_OLED.c and mandelbrot_OLED.s do not work, whereas the
    // other C OLED demos work (why ? To be understood...) 
    assign SSD1351_CLK = SSD1351_sending &&  SSD1351_slow_clk; 
-//   assign SSD1351_CS  = SSD1351_special ? 1'b0 : !SSD1351_sending;
 
    always @(posedge clk) begin
       SSD1351_slow_clk <= ~SSD1351_slow_clk;
@@ -370,11 +368,10 @@ module NrvIO(
 `endif
 `ifdef NRV_IO_SSD1351	   
 	   if(address[SSD1351_CNTL_bit]) begin
-	      { SSD1351_RST, SSD1351_special } <= in[1:0];
 	      SSD1351_CS  <= !in[0];
+	      SSD1351_RST <= in[1];
 	   end
 	   if(address[SSD1351_CMD_bit]) begin
-	      SSD1351_special <= 1'b0;
 	      SSD1351_RST <= 1'b1;
 	      SSD1351_DC <= 1'b0;
 	      SSD1351_shifter <= in[7:0];
@@ -382,7 +379,6 @@ module NrvIO(
 	      SSD1351_CS  <= 1'b0;	      
 	   end
 	   if(address[SSD1351_DAT_bit]) begin
-	      SSD1351_special <= 1'b0;
 	      SSD1351_RST <= 1'b1;
 	      SSD1351_DC <= 1'b1;
 	      SSD1351_shifter <= in[7:0];
