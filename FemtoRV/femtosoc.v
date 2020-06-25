@@ -8,11 +8,6 @@
 // Note: the UART eats up many LUTs, to activate it you need to
 //  deactivate NRV_TWOSTAGE_SHIFTER
 
-// Uncomment one of the following two lines
-`define ICE40
-//`define ECP5 
-
-
 // Comment-out if running out of LUTs (makes shifter faster, but uses 60-100 LUTs)
 // (inspired by PICORV32). 
 //`define NRV_TWOSTAGE_SHIFTER
@@ -58,7 +53,19 @@
 // Makes it easier to detect typos !
 `default_nettype none
 
+// Toggle FPGA defines (ICE40, ECP5) in function of board defines (ICE_STICK, ECP5_EVN)
+// Board defines are set in compilation scripts (makeit_icestick.sh and makeit_ecp5_evn.sh)
+
+`ifdef ICE_STICK
+ `define ICE40
+`endif
+
+`ifdef ECP5_EVN
+ `define ECP5 
+`endif
+
 `include "femtorv32.v"
+`include "femtopll.v"
 
 // Used by the UART, needs to match frequency defined in the PLL, 
 // at the end of the file
@@ -442,6 +449,7 @@ endmodule
 
 /********************* Nrv main *******************************/
 
+
 module femtosoc(
 `ifdef NRV_IO_LEDS	      
    output D1,D2,D3,D4,D5,
@@ -468,69 +476,8 @@ module femtosoc(
 
   wire  clk;
 
- `ifdef BENCH
-   assign clk = pclk;
- `else
- 
- `ifdef ICE40
-   SB_PLL40_CORE #(
-      .FEEDBACK_PATH("SIMPLE"),
-      .PLLOUT_SELECT("GENCLK"),
-      .DIVR(4'b0000),
-      //.DIVF(7'b0111011), .DIVQ(3'b011), // 90 MHz (too fast)
-      //.DIVF(7'b0110100), .DIVQ(3'b011), // 80 MHz (seems to work)
-      //.DIVF(7'b0110001), .DIVQ(3'b011), // 75 MHz
-      .DIVF(7'b1001111), .DIVQ(3'b100), // 60 MHz
-      //.DIVF(7'b0110100), .DIVQ(3'b100), // 40 MHz
-      //.DIVF(7'b1001111), .DIVQ(3'b101), // 30 MHz
-      .FILTER_RANGE(3'b001),
-   ) pll (
-      .REFERENCECLK(pclk),
-      .PLLOUTCORE(clk),
-      .RESETB(1'b1),
-      .BYPASS(1'b0)
-   );
- `endif
+  femtoPLL pll(.pclk(pclk), .clk(clk));
    
- `ifdef ECP5
-   
-      // I think that: output freq = 12 Mhz * CLKFB_DIV * (12 / CLKI_DIV) / CLKOP_DIV
-      // CLKI_DIV = 2 -> 150 MHz
-      // CLKI_DIV = 5 -> 60 MHz      
-      // CLKI_DIV = 6 -> 50 MHz
-
-    (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
-    EHXPLLL #(
-        .PLLRST_ENA("DISABLED"),
-        .INTFB_WAKE("DISABLED"),
-        .STDBY_ENABLE("DISABLED"),
-        .DPHASE_SOURCE("DISABLED"),
-        .CLKOP_FPHASE(0),
-        .CLKOP_CPHASE(11),
-        .OUTDIVIDER_MUXA("DIVA"),
-        .CLKOP_ENABLE("ENABLED"),
-        .CLKOP_DIV(12), // divide outplut clock
-        .CLKFB_DIV(25), // divide feedback signal = multiply output clock
-        .CLKI_DIV(5),   // reference clock divider  
-        .FEEDBK_PATH("CLKOP")
-    ) pll (
-        .CLKI(pclk),
-        .CLKFB(clk),
-        .CLKOP(clk),
-        .RST(1'b0),
-        .STDBY(1'b0),
-        .PHASESEL0(1'b0),
-        .PHASESEL1(1'b0),
-        .PHASEDIR(1'b0),
-        .PHASESTEP(1'b0),
-        .PLLWAKESYNC(1'b0),
-        .ENCLKOP(1'b0),
-    );
-   `endif
-   
- `endif
-
-
   // A little delay for sending the reset
   // signal after startup. 
   // Explanation here: (ice40 BRAM reads incorrect values during

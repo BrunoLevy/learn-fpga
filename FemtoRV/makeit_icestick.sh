@@ -10,7 +10,7 @@ then
 fi
 echo Firmware size: `cat FIRMWARE/firmware.hex | wc -w` words
 echo ======== Yosys
-yosys -q -p "ice40_braminit" -p "synth_ice40 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
+yosys -DICE_STICK -q -p "ice40_braminit" -p "synth_ice40 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
 echo ======== NextPNR
 nextpnr-ice40 --force --json $PROJECTNAME.json --pcf $PROJECTNAME.pcf --asc $PROJECTNAME.asc --freq 12 --hx1k --package tq144 $1 || exit
 echo ======== IceTime

@@ -12,7 +12,7 @@ echo Firmware size: `cat FIRMWARE/firmware.hex | wc -w` words
 
 
 echo ======== Yosys
-yosys -q -p "synth_ecp5 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
+yosys -DECP5_EVN -q -p "synth_ecp5 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
 
 echo ======== NextPNR
 nextpnr-ecp5 --force --json $PROJECTNAME.json --lpf $PROJECTNAME.lpf --textcfg $PROJECTNAME_out.config --um5g-85k --freq 50 --package CABGA381 $1 || exit
