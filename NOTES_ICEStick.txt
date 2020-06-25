@@ -63,3 +63,62 @@ Pin numbers: (with Lattice logo *upside down*)
 BRAMS:
   16 blocs of 4KB = 8KB = 2Kwords (32-bit words).
   
+SPI Flash:
+   https://www.digikey.fr/product-detail/fr/micron-technology-inc/N25Q032A13ESC40F-TR/557-1696-2-ND/4072513
+   32 Mbits, 108 MHz -> 4 Mbytes -> 1 MWord. If I manage to execute code from there, that makes a lot of
+   room for the code !
+   * FPGA configuration only uses approx. 32K (and yes, femtosoc.bin weights 32K)
+   * From ICEStick schematics, seems that only one line for MOSI/MISO is wired, I wonder
+     whether dual output / quad output are possible (maybe dual output, since one of the
+     pins seems to be reversible, but probaby not quad output, since only two pins seem to
+     be wired).
+   * Maybe we can switch to high speed SPI
+   * DDR mode does not seem to be supported (did not see mention of it in spec sheet)
+   * Even if I don't manage to execute code from there, maybe we can put font data in the SPI Flash.
+   
+   * Read instructions:
+   
+       Read data (03h) -> implemented
+           Read 1 word will take:
+	       03h                       :  8 cycles
+	       send address              : 24 cycles
+	       read word                 : 32 cycles
+	       total                     : 64 cycles
+	       
+       Fast read (0Bh) -> address + 8 dummy clocks, then data comes
+               0Bh                       : 8 fast cycles
+               send address + dummy bytes: 32 fast cycles
+	       read word                 : 32 fast cycles
+	       total                     : 72 fast cycles (equivalent to 36 cycles)
+
+
+       Fast read dual output (3Bh)
+               3Bh                       : 8 fast cycles
+	       send address + dummy bytes: 32 fast cycles
+               read word                 : 16 fast cycles
+	       total                     : 56 fast cycles (equivalent to 28 cycles)
+
+       Fast read dual IO (BBh)
+               BBh                       : 8 fast cycles
+	       send address + dummy bytes: 16 fast cycles
+	       read word                 : 16 fast cycles
+	       total                     : 40 fast cycles (equivalent to 20 cycles)
+
+      XIP mode: (eXecute In Place) no need to send command, just send address.
+         Activate XIP mode:
+	    1) set volatile configuration register bit 3 to 0 -> unsure it is needed (to be checked),
+	       depends on part number. Anyway, number of dummy bits needs to be specified...
+	    2) drive the XIP confirmation bit to 0 during the next fast read operation (the XIP confirmation
+	       bit is the first dummy bit, 0 = confirm XIP)
+
+       -> Fast read dual IO will take 32 fast cycles (equivalent to 16 cycles)
+
+      Execution from SPI ram will be super-slow... Best possibility is 16 cycles (but at 108 MHz)
+      
+      ... unless I have an instruction cache, but this sounds complicated to fit
+      on the icestick.
+      
+      Is it possible to tag functions / variables to assign them to either slow SPI
+      ROM or fast BRAM ? In asm yes, but in C ?
+
+

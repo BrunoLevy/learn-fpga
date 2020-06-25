@@ -21,6 +21,10 @@
                            // (wire a push button and a pullup resistor to 
                            // pin 47 or change in nanorv.pcf). 
 
+//`define NRV_TRY_COMPACT_PREDICATES // Uncomment to try experimental code to gain 
+                                     // some LUTs (WIP)
+
+
 // On the ECP5 evaluation board, there is already a wired button, active low,
 // wired to the "P4" ball of the ECP5 (see femtosoc.lpf)
 `ifdef ECP5

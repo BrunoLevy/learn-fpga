@@ -74,7 +74,13 @@ int read_frame() {
 	   (frame_flags & INDEXED_BIT) ? 'I' : '_'
     );
    
-   
+    if(frame_flag & CLEAR_BIT) {
+	/*
+	 * clear the screen now:
+	 * GL_clear();
+	 */
+    }
+    
     if(frame_flags & PALETTE_BIT) {
 	uint16_t colors = next_spi_word();
         printf("mask=");
@@ -155,20 +161,10 @@ int read_frame() {
 	   }
 	}
        
-       
-       
         /*
+	 * Draw the polygon now:
 	 * GL_fill_poly(nvrtx,poly,cmap[poly_col]);
 	 */ 
-	/*
-	for(int i=0; i<nvrtx; ++i) {
-	    int j=i+1;
-	    if(j == nvrtx) {
-		j = 0;
-	    }
-	    GL_line(poly[2*i], poly[2*i+1], poly[2*j], poly[2*j+1], GL_RGB(255,255,255));
-	}
-	*/
     }
     return 1; 
 }

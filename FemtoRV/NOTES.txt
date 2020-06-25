@@ -276,3 +276,49 @@ Course on processor design / datapath: https://www.cise.ufl.edu/~mssz/CompOrg/CD
         
 
 https://zipcpu.com/blog/2017/06/12/minimizing-luts.html
+
+============================================================================
+LUT golfing experiments, trying to reduce LUT count. 
+
+// Alternative decoder for immediates (that tries to shuffle the blocks)
+//
+// ... uses more LUTs in the end.
+
+   wire [20:0] immB1 = {21{instr[31]}}; // Do sign expansion only once
+   
+   wire [5:0]  immB2 = instr[30:25];    //  \
+   wire [3:0]  immB3 = instr[24:21];    //  - These three blocks are reused
+   wire [7:0]  immB4 = instr[19:12];    //  /   by several formats.
+
+   wire [31:0] Iimm = {immB1,       immB2, immB3, instr[20]};
+   wire [31:0] Simm = {immB1,       immB2, instr[11:8], instr[7]};
+   wire [31:0] Bimm = {immB1[19:0], instr[7], immB2, instr[11:8], 1'b0};
+   wire [31:0] Jimm = {immB1[11:0], immB4, instr[20], immB2, immB3, 1'b0};   
+   wire [31:0] Uimm = {instr[31],   instr[30:20], immB4, {12{1'b0}}};
+
+// Alternative branch predicates, implementation,
+// suggested by Matthias Koch, use a single 33 bits 
+// subtract for all the tests, as in swapforth/J1.
+// NOTE: J1's st0,st1 are inverted as compared to in1,in2
+//   (st0<->in2  st1<->in1)
+//
+// ... uses more LUTs in the end.
+    
+    wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
+    wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
+    wire        LTU = minus[32];
+    wire        EQ  = (minus[31:0] == 0);
+
+   always @(*) begin
+      (* parallel_case, full_case *)	 
+      case(op)
+        3'b000: out =  EQ;                   // BEQ
+        3'b001: out = !EQ;                   // BNE
+        3'b100: out =  LT;                   // BLT
+        3'b101: out = !LT;                   // BGE
+        3'b110: out =  LTU;                  // BLTU
+	3'b111: out = !LTU;                  // BGEU
+	default: out = 1'bx; // don't care...
+      endcase
+   end
+
