@@ -5,7 +5,9 @@
  * (for now, ICEStick and ECP5 evaluation board supported).
  */ 
 
-module femtoPLL(
+module femtoPLL /* #(
+ parameter freq = 60
+) */ (
  input 	pclk,
  output clk	   
 );

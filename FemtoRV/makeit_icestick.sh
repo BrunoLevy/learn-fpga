@@ -10,13 +10,12 @@ then
 fi
 echo Firmware size: `cat FIRMWARE/firmware.hex | wc -w` words
 echo ======== Yosys
-yosys -DICE_STICK -q -p "ice40_braminit" -p "synth_ice40 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
+yosys -DICE_STICK -q -p "synth_ice40 -relut -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
 echo ======== NextPNR
 nextpnr-ice40 --force --json $PROJECTNAME.json --pcf $PROJECTNAME.pcf --asc $PROJECTNAME.asc --freq 12 --hx1k --package tq144 $1 || exit
 echo ======== IceTime
 icetime -p $PROJECTNAME.pcf -P tq144 -r $PROJECTNAME.timings -d hx1k -t $PROJECTNAME.asc
 echo ======== IcePack
-#-s to disable SPI flash sleep
 icepack $PROJECTNAME.asc $PROJECTNAME.bin || exit
 echo ======== IceProg
 iceprog $PROJECTNAME.bin || exit

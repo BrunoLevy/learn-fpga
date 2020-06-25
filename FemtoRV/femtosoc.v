@@ -10,14 +10,15 @@
 
 // Comment-out if running out of LUTs (makes shifter faster, but uses 60-100 LUTs)
 // (inspired by PICORV32). 
-//`define NRV_TWOSTAGE_SHIFTER
+`define NRV_TWOSTAGE_SHIFTER
 
 `define NRV_NEGATIVE_RESET // Uncomment if the RESET button is wired and active low:
                            // (wire a push button and a pullup resistor to 
                            // pin 47 or change in nanorv.pcf). 
 
-//`define NRV_TRY_COMPACT_PREDICATES // Uncomment to try experimental code to gain 
-                                     // some LUTs (WIP)
+`define NRV_COMPACT_PREDICATES // Uncomment to try experimental code to gain
+`define NRV_COMPACT_ALU        // some LUTs (note: depending on YOSYS version,
+                               // results in fewer LUTs, or more LUTs sometimes !)
 
 
 // On the ECP5 evaluation board, there is already a wired button, active low,

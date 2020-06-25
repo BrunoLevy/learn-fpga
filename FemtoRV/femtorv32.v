@@ -98,7 +98,30 @@ module NrvALU(
    assign busy = (shamt != 0);
    
    reg [31:0] shifter;
-   
+
+`ifdef NRV_COMPACT_ALU
+   // Alternative ALU, may reduce LUT count (WIP)
+   // Implementation suggested by Matthias Koch, use a single 33 bits 
+   // subtract for all the tests, as in swapforth/J1.
+   // NOTE: J1's st0,st1 are inverted as compared to in1,in2
+   //   (st0<->in2  st1<->in1)
+   wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
+   wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
+   wire        LTU = minus[32];
+   always @(*) begin
+      (* parallel_case, full_case *)
+      case(op)
+        3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
+        3'b010: out = LT ;                               // SLT
+        3'b011: out = LTU;                               // SLTU
+        3'b100: out = in1 ^ in2;                         // XOR
+        3'b110: out = in1 | in2;                         // OR
+        3'b111: out = in1 & in2;                         // AND
+        3'b001: out = shifter;                           // SLL	   
+        3'b101: out = shifter;                           // SRL/SRA
+      endcase 
+   end
+`else   
    always @(*) begin
       (* parallel_case, full_case *)
       case(op)
@@ -112,7 +135,8 @@ module NrvALU(
         3'b101: out = shifter;                                        // SRL/SRA
       endcase 
    end
-
+`endif 
+   
    always @(posedge clk) begin
       
       /* verilator lint_off WIDTH */
@@ -161,7 +185,7 @@ module NrvPredicate(
    output reg   out
 );
 
-`ifdef NRV_TRY_COMPACT_PREDICATES
+`ifdef NRV_COMPACT_PREDICATES
 
    // Alternative branch predicates, may reduce LUT count (WIP)
    // Implementation suggested by Matthias Koch, use a single 33 bits 
