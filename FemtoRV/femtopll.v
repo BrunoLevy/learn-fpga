@@ -25,6 +25,10 @@ module femtoPLL #(
 	   parameter DIVF = 7'b0111011;
 	   parameter DIVQ = 3'b011;
 	end
+	85: begin
+	   parameter DIVF = 7'b0111000;
+	   parameter DIVQ = 3'b011;
+        end
 	80: begin
 	   parameter DIVF = 7'b0110100;
 	   parameter DIVQ = 3'b011;

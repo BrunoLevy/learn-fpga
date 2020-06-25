@@ -12,7 +12,7 @@
  * Comment-out if running out of LUTs (makes shifter faster, but uses 60-100 LUTs)
  * (inspired by PICORV32). 
  */ 
-//`define NRV_TWOSTAGE_SHIFTER 
+`define NRV_TWOSTAGE_SHIFTER 
 
 /* 
  * Uncomment if the RESET button is wired and active low:
@@ -31,8 +31,8 @@
 `define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
 
 
-`define NRV_FREQ 60 // Frequency in MHz. 
-                    // Still works with the UART (but not OLED driver that needs to be adapted).
+`define NRV_FREQ 60 // Frequency in MHz. Can push it to 80 MHz on the ICEStick
+                    // (but except UART out, the other peripherals won't work)
 
 // Quantity of RAM in Kb. Needs to be a multiple of 4. 
 // Can be decreased if running out of LUTs (address decoding).
@@ -71,7 +71,7 @@
 `include "femtopll.v"
 
 // Used by the UART (NRV_FREQ in Hz).
-`define CLKFREQ   (60*1000000)
+`define CLKFREQ   (`NRV_FREQ*1000000)
 `include "uart.v"
 
 
@@ -160,7 +160,7 @@ module NrvIO(
     // Oled display
     output            SSD1351_DIN, 
     output            SSD1351_CLK, 
-    output 	      SSD1351_CS, 
+    output reg	      SSD1351_CS, 
     output reg 	      SSD1351_DC, 
     output reg 	      SSD1351_RST,
 `endif
@@ -221,6 +221,7 @@ module NrvIO(
    initial begin
       SSD1351_DC  = 1'b0;
       SSD1351_RST = 1'b0;
+      SSD1351_CS  = 1'b1;
    end
 
    // Currently sent bit, 1-based index
@@ -239,7 +240,7 @@ module NrvIO(
    // test_OLED.s, test_OLED.c and mandelbrot_OLED.s do not work, whereas the
    // other C OLED demos work (why ? To be understood...) 
    assign SSD1351_CLK = SSD1351_sending &&  SSD1351_slow_clk; 
-   assign SSD1351_CS  = SSD1351_special ? 1'b0 : !SSD1351_sending;
+//   assign SSD1351_CS  = SSD1351_special ? 1'b0 : !SSD1351_sending;
 
    always @(posedge clk) begin
       SSD1351_slow_clk <= ~SSD1351_slow_clk;
@@ -370,6 +371,7 @@ module NrvIO(
 `ifdef NRV_IO_SSD1351	   
 	   if(address[SSD1351_CNTL_bit]) begin
 	      { SSD1351_RST, SSD1351_special } <= in[1:0];
+	      SSD1351_CS  <= !in[0];
 	   end
 	   if(address[SSD1351_CMD_bit]) begin
 	      SSD1351_special <= 1'b0;
@@ -377,6 +379,7 @@ module NrvIO(
 	      SSD1351_DC <= 1'b0;
 	      SSD1351_shifter <= in[7:0];
 	      SSD1351_bitcount <= 8;
+	      SSD1351_CS  <= 1'b0;	      
 	   end
 	   if(address[SSD1351_DAT_bit]) begin
 	      SSD1351_special <= 1'b0;
@@ -384,6 +387,7 @@ module NrvIO(
 	      SSD1351_DC <= 1'b1;
 	      SSD1351_shifter <= in[7:0];
 	      SSD1351_bitcount <= 8;
+	      SSD1351_CS  <= 1'b0;	      	      
 	   end
 `endif 
 `ifdef NRV_IO_MAX2719
@@ -404,6 +408,9 @@ module NrvIO(
 	 if(SSD1351_sending && SSD1351_slow_clk) begin
             SSD1351_bitcount <= SSD1351_bitcount - 4'd1;
             SSD1351_shifter <= {SSD1351_shifter[6:0], 1'b0};
+	    if(SSD1351_bitcount == 1) begin
+	       SSD1351_CS  <= 1'b1;	      	      	       
+	    end
 	 end
 `endif
 `ifdef NRV_IO_SPI_FLASH
