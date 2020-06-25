@@ -80,7 +80,9 @@ endmodule
 
 /********************************* ALU **********************************/
 
-module NrvALU(
+module NrvALU #(
+   parameter [0:0] TWOSTAGE_SHIFTER = 0
+) (
   input 	    clk, 
   input [31:0] 	    in1,
   input [31:0] 	    in2,
@@ -147,8 +149,7 @@ module NrvALU(
 	 endcase 
       end else begin
 
-`ifdef NRV_TWOSTAGE_SHIFTER
-	 if (shamt > 4) begin
+	 if (TWOSTAGE_SHIFTER && shamt > 4) begin
 	    shamt <= shamt - 4;
 	    case(op)
               3'b001: shifter <= shifter << 4;                                // SLL
@@ -156,20 +157,18 @@ module NrvALU(
                                           { 4'b0000,         shifter[31:4]} ; 
 	    endcase 
 	 end else  
-`endif
-
-	 if (shamt != 0) begin
-	    shamt <= shamt - 1;
-	    case(op)
-              3'b001: shifter <= shifter << 1;                           // SLL
-	      3'b101: shifter <= opqual ? {shifter[31], shifter[31:1]} : // SRL/SRA 
-                                          {1'b0,        shifter[31:1]} ; 
-	    endcase 
-	 end
-
-	 /* verilator lint_on WIDTH */
-	 /* verilator lint_on CASEINCOMPLETE */
+	   if (shamt != 0) begin
+	      shamt <= shamt - 1;
+	      case(op)
+		3'b001: shifter <= shifter << 1;                           // SLL
+		3'b101: shifter <= opqual ? {shifter[31], shifter[31:1]} : // SRL/SRA 
+                                   {1'b0,        shifter[31:1]} ; 
+	      endcase 
+	   end
       end 
+      
+      /* verilator lint_on WIDTH */
+      /* verilator lint_on CASEINCOMPLETE */
    end
    
 endmodule
