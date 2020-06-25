@@ -408,9 +408,9 @@ module NrvIO(
 	 if(SSD1351_sending && SSD1351_slow_clk) begin
             SSD1351_bitcount <= SSD1351_bitcount - 4'd1;
             SSD1351_shifter <= {SSD1351_shifter[6:0], 1'b0};
-	    if(SSD1351_bitcount == 1) begin
-	       SSD1351_CS  <= 1'b1;	      	      	       
-	    end
+	 end
+	 if(!SSD1351_sending && SSD1351_slow_clk) begin
+	    SSD1351_CS  <= 1'b1;	      	      	       	    
 	 end
 `endif
 `ifdef NRV_IO_SPI_FLASH

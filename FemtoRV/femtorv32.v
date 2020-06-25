@@ -18,9 +18,6 @@
 // is something else than an ICEStick), I recommend using a more efficient /
 // more complete RISC-V core (e.g., Claire Wolf's picorv32).
 
-
-// 1135
-
 `ifdef VERBOSE
   `define verbose(command) command
 `else
