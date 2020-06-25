@@ -8,15 +8,11 @@
 // Note: the UART eats up many LUTs, to activate it you need to
 //  deactivate NRV_TWOSTAGE_SHIFTER
 
-
-// 1159
-
-
 /*
  * Comment-out if running out of LUTs (makes shifter faster, but uses 60-100 LUTs)
  * (inspired by PICORV32). 
  */ 
-//`define NRV_TWOSTAGE_SHIFTER
+//`define NRV_TWOSTAGE_SHIFTER 
 
 /* 
  * Uncomment if the RESET button is wired and active low:
@@ -24,17 +20,6 @@
  * pin 47 or change in nanorv.pcf). 
  */ 
 `define NRV_NEGATIVE_RESET 
-
-/*
- * On the ECP5 evaluation board, there is already a wired button, active low,
- * wired to the "P4" ball of the ECP5 (see femtosoc.lpf)
- */ 
-`ifdef ECP5
- `ifndef NRV_NEGATIVE_RESET
-  `define NRV_NEGATIVE_RESET
- `endif
-`endif
-
 
 /*
  * Optional mapped IO devices
@@ -45,22 +30,31 @@
 //`define NRV_IO_MAX2719 // Mapped IO, 8x8 led matrix
 `define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
 
-// Uncomment one of them. Using smaller RAM saves a few LUTs (for address decoding),
-// depending on configured resources and YOSYS / Nextpnr versions, you may need them !
+
+`define NRV_FREQ 60 // Frequency in MHz. 
+                    // Still works with the UART (but not OLED driver that needs to be adapted).
+
+// Quantity of RAM in Kb. Needs to be a multiple of 4. 
+// Can be decreased if running out of LUTs (address decoding).
 // IMPORTANT: make sure declared quantity of RAM in FIRMWARE/LIB/crt0.s matches !!!
+`define NRV_RAM 6144
 
-//`define NRV_RAM_4K
-//`define NRV_RAM_5K
-`define NRV_RAM_6K
-
-`define ADDR_WIDTH 16 // Internal number of bits for PC and address register.
-                      // 6kb needs at least 13 bits, + 1 page for IO -> 14 bits.
-                      // Seems that 16 bits uses a *smaller* number of LUTs
-                      // (and leaves additional space for future extensions).
+`define NRV_ADDR_WIDTH 14 // Internal number of bits for PC and address register.
+                          // 6kb needs at least 13 bits, + 1 page for IO -> 14 bits.
 
 /*************************************************************************************/
 // Makes it easier to detect typos !
 `default_nettype none
+
+/*
+ * On the ECP5 evaluation board, there is already a wired button, active low,
+ * wired to the "P4" ball of the ECP5 (see femtosoc.lpf)
+ */ 
+`ifdef ECP5
+ `ifndef NRV_NEGATIVE_RESET
+  `define NRV_NEGATIVE_RESET
+ `endif
+`endif
 
 // Toggle FPGA defines (ICE40, ECP5) in function of board defines (ICE_STICK, ECP5_EVN)
 // Board defines are set in compilation scripts (makeit_icestick.sh and makeit_ecp5_evn.sh)
@@ -76,13 +70,8 @@
 `include "femtorv32.v"
 `include "femtopll.v"
 
-// Used by the UART, needs to match frequency defined in the PLL, 
-// at the end of the file
-// Seems that 80 MHz can work (note: code for peripherals such
-// as OLED screen and SPI ram needs to be adapted if > 60MHz)
-// Default is 60 MHz.
-
-`define CLKFREQ   60000000
+// Used by the UART (NRV_FREQ in Hz).
+`define CLKFREQ   (60*1000000)
 `include "uart.v"
 
 
@@ -121,15 +110,8 @@ module NrvMemoryInterface(
    wire 	    wr    = (wrByteMask != 0);
    wire             wrRAM = wr && !isIO;
 
-`ifdef NRV_RAM_4K   
-   reg [31:0] RAM[1023:0];
-`endif
-`ifdef NRV_RAM_5K   
-   reg [31:0] RAM[1279:0];
-`endif
-`ifdef NRV_RAM_6K   
-   reg [31:0] RAM[1535:0];
-`endif   
+   reg [31:0] RAM[(`NRV_RAM/4)-1:0];
+
    reg [31:0] out_RAM;
 
    initial begin
@@ -485,7 +467,12 @@ module femtosoc(
 
   wire  clk;
 
-  femtoPLL pll(.pclk(pclk), .clk(clk));
+  femtoPLL #(
+    .freq(`NRV_FREQ)	     
+  ) pll(
+    .pclk(pclk), 
+    .clk(clk)
+  );
    
   // A little delay for sending the reset
   // signal after startup. 
@@ -576,7 +563,16 @@ module femtosoc(
     .IOaddress(IOaddress)	      
   );
 
-  FemtoRV32 processor(
+  FemtoRV32 #(
+     .ADDR_WIDTH(`NRV_ADDR_WIDTH),
+`ifdef NRV_TWOSTAGE_SHIFTER	      
+     .TWOSTAGE_SHIFTER(1),
+`else
+     .TWOSTAGE_SHIFTER(0),	      
+`endif	      
+     .COMPACT_ALU(1),
+     .COMPACT_PREDICATES(1)	      
+  ) processor(
     .clk(clk),			
     .address(address),
     .dataIn(dataIn),

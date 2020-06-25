@@ -18,6 +18,9 @@
 // is something else than an ICEStick), I recommend using a more efficient /
 // more complete RISC-V core (e.g., Claire Wolf's picorv32).
 
+
+// 1135
+
 `ifdef VERBOSE
   `define verbose(command) command
 `else
@@ -81,8 +84,9 @@ endmodule
 /********************************* ALU **********************************/
 
 module NrvALU #(
-   parameter [0:0] TWOSTAGE_SHIFTER = 0
-) (
+   parameter [0:0] TWOSTAGE_SHIFTER = 0,
+   parameter [0:0] COMPACT_ALU      = 1		
+)(
   input 	    clk, 
   input [31:0] 	    in1,
   input [31:0] 	    in2,
@@ -101,42 +105,46 @@ module NrvALU #(
    
    reg [31:0] shifter;
 
-`ifdef NRV_NO_COMPACT_ALU
-   always @(*) begin
-      (* parallel_case, full_case *)
-      case(op)
-        3'b000: out = opqual ? in1 - in2 : in1 + in2;                 // ADD/SUB
-        3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ; // SLT
-        3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                    // SLTU
-        3'b100: out = in1 ^ in2;                                      // XOR
-        3'b110: out = in1 | in2;                                      // OR
-        3'b111: out = in1 & in2;                                      // AND
-        3'b001: out = shifter;                                        // SLL	   
-        3'b101: out = shifter;                                        // SRL/SRA
-      endcase 
-   end
-`else 
-   // LUT-optimized version of the ALU, used by default.
-   // Implementation suggested by Matthias Koch, use a single 33 bits 
-   // subtract for all the tests, as in swapforth/J1.
-   wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
-   wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
-   wire        LTU = minus[32];
-   always @(*) begin
-      (* parallel_case, full_case *)
-      case(op)
-        3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
-        3'b010: out = LT ;                               // SLT
-        3'b011: out = LTU;                               // SLTU
-        3'b100: out = in1 ^ in2;                         // XOR
-        3'b110: out = in1 | in2;                         // OR
-        3'b111: out = in1 & in2;                         // AND
-        3'b001: out = shifter;                           // SLL	   
-        3'b101: out = shifter;                           // SRL/SRA
-      endcase 
-   end
-`endif 
-   
+   generate
+      if(COMPACT_ALU) begin
+	 // Alternative ALU, may reduce LUT count (WIP)
+	 // Implementation suggested by Matthias Koch, uses a single 33 bits 
+	 // subtract for all the tests, as in swapforth/J1.
+	 // NOTE: J1's st0,st1 are inverted as compared to in1,in2
+	 //   (st0<->in2  st1<->in1)
+	 wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
+	 wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
+	 wire        LTU = minus[32];
+	 always @(*) begin
+	    (* parallel_case, full_case *)
+	    case(op)
+              3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
+              3'b010: out = LT ;                               // SLT
+              3'b011: out = LTU;                               // SLTU
+              3'b100: out = in1 ^ in2;                         // XOR
+              3'b110: out = in1 | in2;                         // OR
+              3'b111: out = in1 & in2;                         // AND
+              3'b001: out = shifter;                           // SLL	   
+              3'b101: out = shifter;                           // SRL/SRA
+	    endcase 
+	 end
+      end else begin
+	 always @(*) begin
+	    (* parallel_case, full_case *)
+	    case(op)
+              3'b000: out = opqual ? in1 - in2 : in1 + in2;                 // ADD/SUB
+              3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ; // SLT
+              3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                    // SLTU
+              3'b100: out = in1 ^ in2;                                      // XOR
+              3'b110: out = in1 | in2;                                      // OR
+              3'b111: out = in1 & in2;                                      // AND
+              3'b001: out = shifter;                                        // SLL	   
+              3'b101: out = shifter;                                        // SRL/SRA
+	    endcase 
+	 end
+      end
+   endgenerate
+      
    always @(posedge clk) begin
       
       /* verilator lint_off WIDTH */
@@ -162,62 +170,71 @@ module NrvALU #(
 	      case(op)
 		3'b001: shifter <= shifter << 1;                           // SLL
 		3'b101: shifter <= opqual ? {shifter[31], shifter[31:1]} : // SRL/SRA 
-                                   {1'b0,        shifter[31:1]} ; 
+                                            {1'b0,        shifter[31:1]} ; 
 	      endcase 
 	   end
       end 
       
       /* verilator lint_on WIDTH */
       /* verilator lint_on CASEINCOMPLETE */
+      
    end
    
 endmodule
 
 /********************* Branch predicates *******************************/
 
-module NrvPredicate(
+module NrvPredicate #(
+    parameter [0:0] COMPACT_PREDICATES = 1		
+)(
    input [31:0] in1,
    input [31:0] in2,
    input [2:0]  op, // Operation
    output reg   out
 );
 
-`ifdef NRV_NO_COMPACT_PREDICATES
-   always @(*) begin
-      (* parallel_case, full_case *)	 
-      case(op)
-        3'b000: out = (in1 == in2);                   // BEQ
-        3'b001: out = (in1 != in2);                   // BNE
-        3'b100: out = ($signed(in1) < $signed(in2));  // BLT
-        3'b101: out = ($signed(in1) >= $signed(in2)); // BGE
-        3'b110: out = (in1 < in2);                    // BLTU
-	3'b111: out = (in1 >= in2);                   // BGEU
-	default: out = 1'bx; // don't care...
-      endcase
-   end
-`else
-   // LUT-optimized version of the branch predicates, used by default.
-   // Implementation suggested by Matthias Koch, use a single 33 bits 
-   // subtraction for all the tests, as in swapforth/J1.
+generate
 
-   wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
-   wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
-   wire        LTU = minus[32];
-   wire        EQ  = (minus[31:0] == 0);
-
-   always @(*) begin
-      (* parallel_case, full_case *)	 
-      case(op)
-        3'b000: out =  EQ;   // BEQ
-        3'b001: out = !EQ;   // BNE
-        3'b100: out =  LT;   // BLT
-        3'b101: out = !LT;   // BGE
-        3'b110: out =  LTU;  // BLTU
-	3'b111: out = !LTU;  // BGEU
-	default: out = 1'bx; // don't care...
-      endcase
+   if(COMPACT_PREDICATES) begin
+      
+      // Alternative branch predicates, may reduce LUT count (WIP)
+      // Implementation suggested by Matthias Koch, uses a single 33 bits 
+      // subtract for all the tests, as in swapforth/J1.
+      // NOTE: J1's st0,st1 are inverted as compared to in1,in2
+      //   (st0<->in2  st1<->in1)
+      
+      wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
+      wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
+      wire        LTU = minus[32];
+      wire        EQ  = (minus[31:0] == 0);
+      
+      always @(*) begin
+	 (* parallel_case, full_case *)	 
+	 case(op)
+           3'b000: out =  EQ;   // BEQ
+           3'b001: out = !EQ;   // BNE
+           3'b100: out =  LT;   // BLT
+           3'b101: out = !LT;   // BGE
+           3'b110: out =  LTU;  // BLTU
+	   3'b111: out = !LTU;  // BGEU
+	   default: out = 1'bx; // don't care...
+	 endcase
+      end
+   end else begin
+      always @(*) begin
+	 (* parallel_case, full_case *)	 
+	 case(op)
+           3'b000: out = (in1 == in2);                   // BEQ
+           3'b001: out = (in1 != in2);                   // BNE
+           3'b100: out = ($signed(in1) < $signed(in2));  // BLT
+           3'b101: out = ($signed(in1) >= $signed(in2)); // BGE
+           3'b110: out = (in1 < in2);                    // BLTU
+	   3'b111: out = (in1 >= in2);                   // BGEU
+	   default: out = 1'bx; // don't care...
+	 endcase
+      end 
    end
-`endif
+endgenerate
 
 endmodule
 
@@ -265,13 +282,11 @@ module NrvDecoder(
 
    // The five immediate formats, see the RiscV reference, Fig. 2.4 p. 12
    // Note: they all do sign expansion (sign bit is instr[31]), except the U format
-
    wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
    wire [31:0] Simm = {{21{instr[31]}}, instr[30:25], instr[11:7]};
    wire [31:0] Bimm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
    wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};   
    wire [31:0] Uimm = {instr[31], instr[30:12], {12{1'b0}}};
-
 
    // The rest of instruction decoding, for the following signals:
    // writeBackEn
@@ -430,7 +445,12 @@ endmodule
 
 /********************* Nrv processor *******************************/
 
-module FemtoRV32(
+module FemtoRV32 #(
+  parameter [0:0] TWOSTAGE_SHIFTER   = 0,
+  parameter       ADDR_WIDTH         = 16,		   
+  parameter [0:0] COMPACT_ALU        = 1,
+  parameter [0:0] COMPACT_PREDICATES = 1		   		   
+) (
    input 	     clk,
    output [31:0]     address,        // address bus, only ADDR_WIDTH bits are used
    output reg	     dataRd,         // active when reading data (but not when reading instr)
@@ -455,8 +475,8 @@ module FemtoRV32(
    reg [8:0] state;
 
    
-   reg [`ADDR_WIDTH-1:0] addressReg;
-   reg [`ADDR_WIDTH-3:0] PC;
+   reg [ADDR_WIDTH-1:0] addressReg;
+   reg [ADDR_WIDTH-3:0] PC;
 
    assign address = addressReg;
 
@@ -473,7 +493,7 @@ module FemtoRV32(
  
    // Next program counter in normal operation: advance one word
    // I do not use the ALU, I create an additional adder for that.
-   wire [`ADDR_WIDTH-3:0] PCplus4 = PC + 1;
+   wire [ADDR_WIDTH-3:0] PCplus4 = PC + 1;
 
    // Internal signals, all generated by the decoder from the current instruction.
    wire [4:0] 	 writeBackRegId; // The register to be written back
@@ -552,7 +572,10 @@ module FemtoRV32(
    wire [31:0] aluIn1 = aluInSel1 ? {PC, 2'b00} : regOut1;
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
    
-   NrvALU alu(
+   NrvALU #(
+     .TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER),
+     .COMPACT_ALU(COMPACT_ALU)	    
+   ) alu(
     .clk(clk),	      
     .in1(aluIn1),
     .in2(aluIn2),
@@ -608,7 +631,9 @@ module FemtoRV32(
 
    // The predicate for conditional branches. 
    wire predOut;
-   NrvPredicate pred(
+   NrvPredicate #(
+     .COMPACT_PREDICATES(COMPACT_PREDICATES)		       
+   ) pred(
     .in1(regOut1),
     .in2(regOut2),
     .op(aluOp),
