@@ -8,21 +8,27 @@
 // Note: the UART eats up many LUTs, to activate it you need to
 //  deactivate NRV_TWOSTAGE_SHIFTER
 
-// Comment-out if running out of LUTs (makes shifter faster, but uses 60-100 LUTs)
-// (inspired by PICORV32). 
-`define NRV_TWOSTAGE_SHIFTER
 
-`define NRV_NEGATIVE_RESET // Uncomment if the RESET button is wired and active low:
-                           // (wire a push button and a pullup resistor to 
-                           // pin 47 or change in nanorv.pcf). 
-
-`define NRV_COMPACT_PREDICATES // Uncomment to try experimental code to gain
-`define NRV_COMPACT_ALU        // some LUTs (note: depending on YOSYS version,
-                               // results in fewer LUTs, or more LUTs sometimes !)
+// 1159
 
 
-// On the ECP5 evaluation board, there is already a wired button, active low,
-// wired to the "P4" ball of the ECP5 (see femtosoc.lpf)
+/*
+ * Comment-out if running out of LUTs (makes shifter faster, but uses 60-100 LUTs)
+ * (inspired by PICORV32). 
+ */ 
+//`define NRV_TWOSTAGE_SHIFTER
+
+/* 
+ * Uncomment if the RESET button is wired and active low:
+ * (wire a push button and a pullup resistor to 
+ * pin 47 or change in nanorv.pcf). 
+ */ 
+`define NRV_NEGATIVE_RESET 
+
+/*
+ * On the ECP5 evaluation board, there is already a wired button, active low,
+ * wired to the "P4" ball of the ECP5 (see femtosoc.lpf)
+ */ 
 `ifdef ECP5
  `ifndef NRV_NEGATIVE_RESET
   `define NRV_NEGATIVE_RESET
@@ -30,7 +36,9 @@
 `endif
 
 
-// Optional mapped IO devices
+/*
+ * Optional mapped IO devices
+ */ 
 `define NRV_IO_LEDS    // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART    // Mapped IO, virtual UART (USB)
 `define NRV_IO_SSD1351 // Mapped IO, 128x128x64K OLed screen

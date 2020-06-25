@@ -99,12 +99,24 @@ module NrvALU(
    
    reg [31:0] shifter;
 
-`ifdef NRV_COMPACT_ALU
-   // Alternative ALU, may reduce LUT count (WIP)
+`ifdef NRV_NO_COMPACT_ALU
+   always @(*) begin
+      (* parallel_case, full_case *)
+      case(op)
+        3'b000: out = opqual ? in1 - in2 : in1 + in2;                 // ADD/SUB
+        3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ; // SLT
+        3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                    // SLTU
+        3'b100: out = in1 ^ in2;                                      // XOR
+        3'b110: out = in1 | in2;                                      // OR
+        3'b111: out = in1 & in2;                                      // AND
+        3'b001: out = shifter;                                        // SLL	   
+        3'b101: out = shifter;                                        // SRL/SRA
+      endcase 
+   end
+`else 
+   // LUT-optimized version of the ALU, used by default.
    // Implementation suggested by Matthias Koch, use a single 33 bits 
    // subtract for all the tests, as in swapforth/J1.
-   // NOTE: J1's st0,st1 are inverted as compared to in1,in2
-   //   (st0<->in2  st1<->in1)
    wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
    wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
    wire        LTU = minus[32];
@@ -119,20 +131,6 @@ module NrvALU(
         3'b111: out = in1 & in2;                         // AND
         3'b001: out = shifter;                           // SLL	   
         3'b101: out = shifter;                           // SRL/SRA
-      endcase 
-   end
-`else   
-   always @(*) begin
-      (* parallel_case, full_case *)
-      case(op)
-        3'b000: out = opqual ? in1 - in2 : in1 + in2;                 // ADD/SUB
-        3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ; // SLT
-        3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                    // SLTU
-        3'b100: out = in1 ^ in2;                                      // XOR
-        3'b110: out = in1 | in2;                                      // OR
-        3'b111: out = in1 & in2;                                      // AND
-        3'b001: out = shifter;                                        // SLL	   
-        3'b101: out = shifter;                                        // SRL/SRA
       endcase 
    end
 `endif 
@@ -185,13 +183,23 @@ module NrvPredicate(
    output reg   out
 );
 
-`ifdef NRV_COMPACT_PREDICATES
-
-   // Alternative branch predicates, may reduce LUT count (WIP)
+`ifdef NRV_NO_COMPACT_PREDICATES
+   always @(*) begin
+      (* parallel_case, full_case *)	 
+      case(op)
+        3'b000: out = (in1 == in2);                   // BEQ
+        3'b001: out = (in1 != in2);                   // BNE
+        3'b100: out = ($signed(in1) < $signed(in2));  // BLT
+        3'b101: out = ($signed(in1) >= $signed(in2)); // BGE
+        3'b110: out = (in1 < in2);                    // BLTU
+	3'b111: out = (in1 >= in2);                   // BGEU
+	default: out = 1'bx; // don't care...
+      endcase
+   end
+`else
+   // LUT-optimized version of the branch predicates, used by default.
    // Implementation suggested by Matthias Koch, use a single 33 bits 
-   // subtract for all the tests, as in swapforth/J1.
-   // NOTE: J1's st0,st1 are inverted as compared to in1,in2
-   //   (st0<->in2  st1<->in1)
+   // subtraction for all the tests, as in swapforth/J1.
 
    wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
    wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
@@ -207,20 +215,6 @@ module NrvPredicate(
         3'b101: out = !LT;   // BGE
         3'b110: out =  LTU;  // BLTU
 	3'b111: out = !LTU;  // BGEU
-	default: out = 1'bx; // don't care...
-      endcase
-   end
-
-`else
-   always @(*) begin
-      (* parallel_case, full_case *)	 
-      case(op)
-        3'b000: out = (in1 == in2);                   // BEQ
-        3'b001: out = (in1 != in2);                   // BNE
-        3'b100: out = ($signed(in1) < $signed(in2));  // BLT
-        3'b101: out = ($signed(in1) >= $signed(in2)); // BGE
-        3'b110: out = (in1 < in2);                    // BLTU
-	3'b111: out = (in1 >= in2);                   // BGEU
 	default: out = 1'bx; // don't care...
       endcase
    end
@@ -273,30 +267,12 @@ module NrvDecoder(
    // The five immediate formats, see the RiscV reference, Fig. 2.4 p. 12
    // Note: they all do sign expansion (sign bit is instr[31]), except the U format
 
-   
-   wire [20:0] immB1 = {21{instr[31]}}; // Do sign expansion only once
-   
-   wire [5:0]  immB2 = instr[30:25];    //  \
-   wire [3:0]  immB3 = instr[24:21];    //  - These three blocks are reused
-   wire [7:0]  immB4 = instr[19:12];    //  /   by several formats.
-
-   wire [31:0] Iimm = {immB1,       immB2, immB3, instr[20]};
-   wire [31:0] Simm = {immB1,       immB2, instr[11:8], instr[7]};
-   wire [31:0] Bimm = {immB1[19:0], instr[7], immB2, instr[11:8], 1'b0};
-   wire [31:0] Jimm = {immB1[11:0], immB4, instr[20], immB2, immB3, 1'b0};   
-   wire [31:0] Uimm = {instr[31],   instr[30:20], immB4, {12{1'b0}}};
-
-
-/*   
-   // The previous version it is equivalent to this simpler version, but the
-   // previous version sometimes (but not always) saves some LUTs and gains 
-   // some nano-s.
    wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
    wire [31:0] Simm = {{21{instr[31]}}, instr[30:25], instr[11:7]};
    wire [31:0] Bimm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
    wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};   
    wire [31:0] Uimm = {instr[31], instr[30:12], {12{1'b0}}};
-*/
+
 
    // The rest of instruction decoding, for the following signals:
    // writeBackEn
