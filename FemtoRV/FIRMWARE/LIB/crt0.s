@@ -5,8 +5,8 @@
 .type _start, @function
 
 _start:
-     li gp,IO_BASE # base address of memory-mapped IO
-     la sp,FEMTOSOC_RAM
+     li gp,IO_BASE       # base address of memory-mapped IO
+     la sp,FEMTOSOC_RAM  
      lw sp,0(sp)
      call main
      tail exit
@@ -21,7 +21,7 @@ _start:
 .global FEMTOSOC_RAM
 .global FEMTOSOC_DEVICES	
 	
-FEMTORV32_PROC_CONFIG: .word 0xfeedbeef
+FEMTORV32_PROC_CONFIG: .word 0x00000000
 FEMTORV32_FREQ:        .word 0x00000000
 FEMTOSOC_RAM:          .word 0x00000000
 FEMTOSOC_DEVICES:      .word 0x00000000	

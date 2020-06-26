@@ -1,13 +1,8 @@
 #include <femtorv32.h>
 
-int main() {
+void show_config() {
    uint32_t devices = CONFIGWORDS[CONFIGWORD_DEVICES];
-   
-//   if(devices & CONFIGWORD_DEVICE_SSD1351) {
-//      GL_tty_init();
-//   }
-   
-   printf("FemtoSOC configuration\n");
+   printf("FemtoSOC config.\n");
    printf("\n");
    printf("[Processor]\n");
    printf("  Femtorv32 core\n");
@@ -20,6 +15,22 @@ int main() {
    printf("  UART     [%c]\n",  devices & CONFIGWORD_DEVICE_UART      ? '*' : ' ');
    printf("  OLED     [%c]\n",  devices & CONFIGWORD_DEVICE_SSD1351   ? '*' : ' ');
    printf("  LedMtx   [%c]\n",  devices & CONFIGWORD_DEVICE_MAX2719   ? '*' : ' ');
-   printf("  SPIFlash [%c]\n",  devices & CONFIGWORD_DEVICE_SPI_FLASH ? '*' : ' ');   
+   printf("  SPIFlash [%c]\n",  devices & CONFIGWORD_DEVICE_SPI_FLASH ? '*' : ' ');
+   printf("\n");
+}
+
+
+
+int main() {
+   uint32_t devices = CONFIGWORDS[CONFIGWORD_DEVICES];
+   if(devices & CONFIGWORD_DEVICE_SSD1351) {
+      GL_tty_init();
+   }
+   
+   for(;;) {
+      show_config();
+      delay(3000);
+   }
+   
    return 0;
 }

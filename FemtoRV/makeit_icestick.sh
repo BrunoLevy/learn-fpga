@@ -3,7 +3,7 @@ VERILOGS="$PROJECTNAME.v"
 echo ======== Firmware
 if [ -e FIRMWARE/firmware.hex ]
 then
-    (cd FIRMWARE/BUILD; rm firmware.hex; ../TOOLS/firmware_words)    
+    (cd FIRMWARE/BUILD; rm firmware.hex; ../TOOLS/firmware_words; cp firmware.hex ../)
 else    
     echo "Missing FIRMWARE/firmware.hex"
     echo "Using default (FIRMWARE/EXAMPLES/mandelbrot_terminal.s)"

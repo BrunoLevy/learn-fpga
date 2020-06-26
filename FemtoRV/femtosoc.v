@@ -12,7 +12,7 @@
  * Comment-out if running out of LUTs (makes shifter faster, but uses 60-100 LUTs)
  * (inspired by PICORV32). 
  */ 
-`define NRV_TWOSTAGE_SHIFTER // CONFIGWORD 0x0018 0
+//`define NRV_TWOSTAGE_SHIFTER // CONFIGWORD 0x0018 0
 
 /* 
  * Uncomment if the RESET button is wired and active low:
