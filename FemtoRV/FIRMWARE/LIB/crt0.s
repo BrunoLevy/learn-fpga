@@ -6,9 +6,25 @@
 
 _start:
      li gp,IO_BASE # base address of memory-mapped IO
-     li sp,0x1800 # 6K
-     #li sp,0x1400 # 5K
-     #li sp,0x1000 # 4K
+     la sp,FEMTOSOC_RAM
+     lw sp,0(sp)
      call main
      tail exit
-   
+
+# Place holder for configuration word,
+# extracted from femtosoc.v by firmware_words
+# (in FIRMWARE/TOOLS/FIRMWARE_WORDS/) and
+# implanted there when generating firmware.hex	
+	
+.global FEMTORV32_PROC_CONFIG
+.global FEMTORV32_FREQ
+.global FEMTOSOC_RAM
+.global FEMTOSOC_DEVICES	
+	
+FEMTORV32_PROC_CONFIG: .word 0xfeedbeef
+FEMTORV32_FREQ:        .word 0x00000000
+FEMTOSOC_RAM:          .word 0x00000000
+FEMTOSOC_DEVICES:      .word 0x00000000	
+
+.global CONFIGWORDS
+CONFIGWORDS: .word FEMTORV32_PROC_CONFIG	

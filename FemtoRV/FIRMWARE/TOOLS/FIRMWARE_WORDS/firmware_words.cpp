@@ -9,11 +9,15 @@
 #include <iostream>
 #include <fstream>
 #include <cctype>
+#include <map>
+#include <string>
+#include <vector>
+#include <cstring>
+#include <cstdint>
 
-//const int RAM_SIZE = 4096;
-const int RAM_SIZE = 6144;
-unsigned char RAM[RAM_SIZE];
-unsigned char OCC[RAM_SIZE];
+int RAM_SIZE;
+std::vector<unsigned char> RAM;
+std::vector<unsigned char> OCC;
 
 unsigned char char_to_nibble(char c) {
     unsigned char result;
@@ -46,6 +50,98 @@ char* byte_to_string(unsigned char c) {
     return result;
 }
 
+
+void split_string(
+    const std::string& in,
+    char separator,
+    std::vector<std::string>& out,
+    bool skip_empty_fields = true
+) {
+    size_t length = in.length();
+    size_t start = 0;
+    while(start < length) {
+	size_t end = in.find(separator, start);
+	if(end == std::string::npos) {
+	    end = length;
+	}
+	if(!skip_empty_fields || (end - start > 0)) {
+	    out.push_back(in.substr(start, end - start));
+	}
+	start = end + 1;
+    }
+}
+
+struct Sym {
+    std::string name;
+    int value;
+    int address;
+    int bit;      // or -1 if full word
+};
+typedef std::vector<Sym> SymTable;
+
+/*
+ * \brief Parses femtosoc.v and extracts configured devices,
+ *        frequency, RAM size.
+ * \return RAM size.
+ */
+int parse_verilog(const char* filename, SymTable& table) {
+    int result = 0;
+    std::ifstream in(filename);
+    if(!in) {
+	std::cerr << "Could not open " << filename << std::endl;
+	return 0;
+    }
+    std::string line;
+    while(std::getline(in, line)) {
+	std::vector<std::string> words;
+	split_string(line, ' ', words);
+	std::string symname;
+	std::string symvalue;
+	std::string symaddress;
+	if(words.size() >= 5 && words[0] == "`define") {
+	    if(words[2] == "//" && words[3] == "CONFIGWORD") {
+		symname = words[1];
+		symvalue = "1";
+		symaddress = words[4];
+	    } else if(words.size() >= 6 && words[3] == "//" && words[4] == "CONFIGWORD") {
+		symname = words[1];
+		symvalue = words[2];
+		symaddress = words[5];
+	    }
+	    if(symname != "" && symvalue != "" && symaddress != "") {
+		int value;
+		int addr;
+		int bit = -1;
+
+		sscanf(symvalue.c_str(), "%d", &value);
+		
+		sscanf(symaddress.c_str()+2, "%x", &addr);
+		const char* strbit = strchr(symaddress.c_str(), '[');
+		if(strbit != nullptr) {
+		    sscanf(strbit+1, "%d", &bit);
+		}
+		
+		if(bit != -1) {
+		    fprintf(stderr, "   CONFIG  %22s=%5d  @0x%lx[%d]\n", symname.c_str(), value, addr, bit);
+		} else {
+		    fprintf(stderr, "   CONFIG  %22s=%5d  @0x%lx\n", symname.c_str(), value, addr);		    
+		}
+
+		Sym sym;
+		sym.name = symname;
+		sym.value = value;
+		sym.address = addr;
+		sym.bit = bit;
+		if(sym.name == "NRV_RAM") {
+		    result = sym.value;
+		}
+		table.push_back(sym);
+	    }
+	}
+    }
+    return result;
+}
+
 int main() {
     std::string firmware;
     std::ifstream in("firmware.objcopy.hex");
@@ -57,10 +153,17 @@ int main() {
 	return 1;
     }
 
-    for(unsigned int i=0; i<RAM_SIZE; ++i) {
-	RAM[i] = 0;
-        OCC[i] = 0;
+    SymTable defines;
+    std::cerr << "Generating FIRMWARE/firmware.hex" << std::endl;
+    std::cerr << "   CONFIG: parsing femtosoc.v" << std::endl;
+    int RAM_SIZE = parse_verilog("../../femtosoc.v", defines);
+    if(RAM_SIZE == 0) {
+	std::cerr << "Did not find RAM size in femtosoc.v"
+		  << std::endl;
+	return 1;
     }
+    RAM.assign(RAM_SIZE,0);
+    OCC.assign(RAM_SIZE,0);
 
     int address = 0;
     int lineno = 0;
@@ -107,6 +210,36 @@ int main() {
 	   }
 	}
     }
+   
+    for(int i=0; i<defines.size(); ++i) {
+	int addr  = defines[i].address;
+	int value = defines[i].value;
+	int bit   = defines[i].bit;
+	if(addr + 4 >= RAM_SIZE) {
+	    std::cerr << defines[i].name << ": "
+		      << defines[i].address
+		      << " larger than RAM_SIZE(" << RAM_SIZE << ")"
+		      << std::endl;
+	    exit(-1);
+	}
+	/*
+	if(bit == -1) {
+	    std::cerr << "   CONFIG update RAM[" << addr << "]   , "
+		      << defines[i].name << " = " << value << std::endl;
+	} else {
+	    std::cerr << "   CONFIG update RAM[" << addr << "][" << bit << "], "
+		      << defines[i].name << " = " << value << std::endl;	    
+	}
+	*/
+	uint32_t* target = (uint32_t*)(&RAM[addr]);
+	if(bit == -1) {
+	    *target = value;
+	} else {
+	    *target |= (1 << bit);
+	}
+    }
+
+   
     for(int i=0; i<RAM_SIZE; i+=4) {
 	out << byte_to_string(RAM[i+3])
 	    << byte_to_string(RAM[i+2])
@@ -129,6 +262,7 @@ int main() {
 	}
     }
 
+    
     std::cout << "Code size: " << max_address/4 << " words" << std::endl;
     return 0;
 }

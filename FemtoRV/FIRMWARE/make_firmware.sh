@@ -8,11 +8,12 @@
 rm -f BUILD/firmware.o
 if [[ $1 == *.s ]]
 then
+  echo "asm compile: " $1 
   riscv64-linux-gnu-as -march=rv32i -mabi=ilp32 -o BUILD/firmware.o $1
 else
    if [[ $1 == *.c ]] 
    then
-      echo "C compile"
+      echo "C compile: " $1
       # This line so that we can examine produced assembly
       riscv64-linux-gnu-gcc-10 -Os -fno-pic -march=rv32i -mabi=ilp32 -ILIB -S $1 -o BUILD/firmware.s
       riscv64-linux-gnu-gcc-10 -Os -fno-pic -march=rv32i -mabi=ilp32 -ILIB -c -o BUILD/firmware.o $1

@@ -1,16 +1,15 @@
 PROJECTNAME=femtosoc
 VERILOGS="$PROJECTNAME.v"
 echo ======== Firmware
-#(cd FIRMWARE; ./make_firmware.sh C_EXAMPLES/test_print_hex.c)
-if [ ! -e FIRMWARE/firmware.hex ]
+if [ -e FIRMWARE/firmware.hex ]
 then
+    (cd FIRMWARE/BUILD; rm firmware.hex; ../TOOLS/firmware_words)    
+else    
     echo "Missing FIRMWARE/firmware.hex"
-    echo "Using FIRMWARE/EXAMPLES/mandelbrot_terminal.s"
+    echo "Using default (FIRMWARE/EXAMPLES/mandelbrot_terminal.s)"
+    echo "To replace, cd FIRMWARE; ./make_firmware.sh EXAMPLES/....   or C_EXAMPLES/...."
     (cd FIRMWARE; ./make_firmware.sh EXAMPLES/mandelbrot_terminal.s)
 fi
-echo Firmware size: `cat FIRMWARE/firmware.hex | wc -w` words
-
-
 echo ======== Yosys
 yosys -DECP5_EVN -q -p "synth_ecp5 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
 
