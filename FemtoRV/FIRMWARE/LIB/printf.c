@@ -13,6 +13,7 @@ int printf(const char *fmt,...)
                  if(*fmt=='s') print_string(va_arg(ap,char *));
             else if(*fmt=='x') print_hex(va_arg(ap,int));
             else if(*fmt=='d') print_dec(va_arg(ap,int));
+            else if(*fmt=='c') putchar(va_arg(ap,int));	   
             else putchar(*fmt);
         }
         else putchar(*fmt);

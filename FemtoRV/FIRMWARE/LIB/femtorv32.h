@@ -17,6 +17,19 @@ extern int  printf(const char *fmt,...); /* supports %s, %d, %x */
 extern void delay(int ms);    /* waits an (approximate) number of milliseconds.         */
 extern int  random();
 
+/* System */
+extern uint32_t* CONFIGWORDS;
+#define CONFIGWORD_PROC           0
+#define CONFIGWORD_PROC_FREQ      1
+#define CONFIGWORD_RAM            2
+#define CONFIGWORD_DEVICES        3
+
+#define CONFIGWORD_DEVICE_LEDS      1
+#define CONFIGWORD_DEVICE_UART      2
+#define CONFIGWORD_DEVICE_SSD1351   4
+#define CONFIGWORD_DEVICE_MAX2719   8
+#define CONFIGWORD_DEVICE_SPI_FLASH 16
+
 /* Virtual I/O */
 typedef int (*putcharfunc_t)(int);
 typedef int (*getcharfunc_t)(void);
