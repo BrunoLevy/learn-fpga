@@ -131,7 +131,18 @@ RISC-V notes:
                during WAIT state (that is, shifts) have now their own state
                (WAIT_INSTR_AND_ALU). All other write backs occur during EXECUTE
                state (then followed by WAIT_INSTR state).
-  
+
+               -> associated comment and combinatorial formula for writeBack:
+                // Do not write back when state == WAIT_INSTR, because
+ 	        //   - in that case, was already written back during EXECUTE
+                //   - at that time, PCplus4 is already incremented (and JAL needs
+                //     the current one to be written back)
+                // writeBack = (state == EXECUTE && writeBackEn) || 
+                //	       (state == WAIT_ALU_OR_DATA && !aluBusy);
+               -> now moved to a latch, updated in the state machine (cleaner I think,
+	        and probably reduces the critical path).
+   
+
              - verilator --lint-only detected a couple of width mismatch 
                 in the RAM controller that explained load/store address mismatch  
   
@@ -278,6 +289,33 @@ Course on processor design / datapath: https://www.cise.ufl.edu/~mssz/CompOrg/CD
 https://zipcpu.com/blog/2017/06/12/minimizing-luts.html
 
 ============================================================================
+
+writeBack: combinatorial ou latched
+
+combinatorial:
+      writeBack = (state[EXECUTE_bit] && writeBackEn) || state[WAIT_ALU_OR_DATA_bit];
+
+latched:
+   DECODE:
+      writeBack <= writeBackEn;
+   EXECUTE:
+      writeBack <= 1'b0; // par défaut
+      ...
+      case (nextPCsel)
+   	   2'b00: begin // normal operation
+	      PC <= PCplus4;
+	      state <= needWaitAlu ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
+	      writeBack <= needWaitAlu;
+           end		   
+   
+   LOAD:
+      writeBack <= 1'b1;
+      
+   WAIT_ALU_OR_DATA:
+      writeBack <= aluBusy;
+      
+============================================================================
+
 LUT golfing experiments, trying to reduce LUT count. 
 
 // Alternative decoder for immediates (that tries to shuffle the blocks)
@@ -295,30 +333,4 @@ LUT golfing experiments, trying to reduce LUT count.
    wire [31:0] Bimm = {immB1[19:0], instr[7], immB2, instr[11:8], 1'b0};
    wire [31:0] Jimm = {immB1[11:0], immB4, instr[20], immB2, immB3, 1'b0};   
    wire [31:0] Uimm = {instr[31],   instr[30:20], immB4, {12{1'b0}}};
-
-// Alternative branch predicates, implementation,
-// suggested by Matthias Koch, use a single 33 bits 
-// subtract for all the tests, as in swapforth/J1.
-// NOTE: J1's st0,st1 are inverted as compared to in1,in2
-//   (st0<->in2  st1<->in1)
-//
-// ... uses more LUTs in the end.
-    
-    wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
-    wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
-    wire        LTU = minus[32];
-    wire        EQ  = (minus[31:0] == 0);
-
-   always @(*) begin
-      (* parallel_case, full_case *)	 
-      case(op)
-        3'b000: out =  EQ;                   // BEQ
-        3'b001: out = !EQ;                   // BNE
-        3'b100: out =  LT;                   // BLT
-        3'b101: out = !LT;                   // BGE
-        3'b110: out =  LTU;                  // BLTU
-	3'b111: out = !LTU;                  // BGEU
-	default: out = 1'bx; // don't care...
-      endcase
-   end
 

@@ -103,7 +103,9 @@ int parse_verilog(const char* filename, SymTable& table) {
 		symname = words[1];
 		symvalue = "1";
 		symaddress = words[4];
-	    } else if(words.size() >= 6 && words[3] == "//" && words[4] == "CONFIGWORD") {
+	    } else if(
+		words.size() >= 6 && words[3] == "//" &&
+		words[4] == "CONFIGWORD") {
 		symname = words[1];
 		symvalue = words[2];
 		symaddress = words[5];
@@ -122,9 +124,13 @@ int parse_verilog(const char* filename, SymTable& table) {
 		}
 		
 		if(bit != -1) {
-		    fprintf(stderr, "   CONFIG  %22s=%5d  @0x%lx[%d]\n", symname.c_str(), value, addr, bit);
+		    fprintf(stderr, "   CONFIG  %22s=%5d  @0x%lx[%d]\n",
+			    symname.c_str(), value, addr, bit
+		    );
 		} else {
-		    fprintf(stderr, "   CONFIG  %22s=%5d  @0x%lx\n", symname.c_str(), value, addr);		    
+		    fprintf(stderr, "   CONFIG  %22s=%5d  @0x%lx\n",
+			    symname.c_str(), value, addr
+		    );		    
 		}
 
 		Sym sym;
@@ -227,8 +233,9 @@ int main() {
 	    std::cerr << "   CONFIG update RAM[" << addr << "]   , "
 		      << defines[i].name << " = " << value << std::endl;
 	} else {
-	    std::cerr << "   CONFIG update RAM[" << addr << "][" << bit << "], "
-		      << defines[i].name << " = " << value << std::endl;	    
+	    std::cerr << "   CONFIG update RAM[" << addr << "][" << bit 
+	              << "], "
+		      << defines[i].name << " = " << value << std::endl; 
 	}
 	*/
 	uint32_t* target = (uint32_t*)(&RAM[addr]);
@@ -263,6 +270,13 @@ int main() {
     }
 
     
-    std::cout << "Code size: " << max_address/4 << " words" << std::endl;
+    std::cout << "Code size: "
+	      << max_address/4 << " words"
+	      << " ( total RAM size: "
+	      << (RAM_SIZE/4)
+	      << " words )"
+	      << std::endl;
+    std::cout << "Occupancy: " << (max_address*100) / RAM_SIZE
+	      << "%" << std::endl;
     return 0;
 }

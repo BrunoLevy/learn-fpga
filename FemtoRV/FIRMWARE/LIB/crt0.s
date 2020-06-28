@@ -5,9 +5,9 @@
 .type _start, @function
 
 _start:
-     li gp,IO_BASE       # base address of memory-mapped IO
-     la sp,FEMTOSOC_RAM  
-     lw sp,0(sp)
+     li gp,IO_BASE       #   Base address of memory-mapped IO 
+     la sp,FEMTOSOC_RAM  #   Read RAM size and initialize sp
+     lw sp,0(sp)         # one position past the end of the RAM
      call main
      tail exit
 

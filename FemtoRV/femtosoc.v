@@ -9,10 +9,10 @@
 
 
 /*
- * Comment-out if running out of LUTs (makes shifter faster, but uses 60-100 LUTs)
- * (inspired by PICORV32). 
+ * Comment-out if running out of LUTs (makes shifter faster, 
+ * but uses 60-100 LUTs) (inspired by PICORV32). 
  */ 
-//`define NRV_TWOSTAGE_SHIFTER // CONFIGWORD 0x0018 0
+`define NRV_TWOSTAGE_SHIFTER // CONFIGWORD 0x0018[31]
 
 /* 
  * Uncomment if the RESET button is wired and active low:
@@ -25,12 +25,12 @@
  * Optional mapped IO devices
  */
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
+`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
-//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 
-`define NRV_FREQ 60          // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
+`define NRV_FREQ 60         // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
                                                   // (but except UART out, the other peripherals won't work)
 
 // Quantity of RAM in Kb. Needs to be a multiple of 4. 

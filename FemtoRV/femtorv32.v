@@ -469,6 +469,17 @@ module FemtoRV32 #(
    localparam LOAD               = 9'b001000000;
    localparam STORE              = 9'b010000000;   
    localparam ERROR              = 9'b100000000;
+
+   localparam WAIT_INSTR_bit       = 0;
+   localparam FETCH_bit            = 1;
+   localparam USE_PREFETCHED_bit   = 2;
+   localparam DECODE_bit           = 3;
+   localparam EXECUTE_bit          = 4;
+   localparam WAIT_ALU_OR_DATA_bit = 5;
+   localparam LOAD_bit             = 6;   
+   localparam STORE_bit            = 7;
+   localparam ERROR_bit            = 8;
+   
    reg [8:0] state;
 
    
@@ -541,7 +552,13 @@ module FemtoRV32 #(
    
    wire [31:0] aluOut;
    wire        aluBusy;
+   reg         writeBack;
+   
+   always @(*) begin
+      writeBack = (state[EXECUTE_bit] && writeBackEn) || state[WAIT_ALU_OR_DATA_bit];
+   end
 
+   
    // The register file. At each cycle, it can read two
    // registers (available at next cycle) and write one.
    reg  [31:0] writeBackData;
@@ -550,14 +567,7 @@ module FemtoRV32 #(
    NrvRegisterFile regs(
     .clk(clk),
     .in(writeBackData),
-    .inEn(
-	  writeBackEn && 	
-	  (state == EXECUTE || state == WAIT_ALU_OR_DATA) && !aluBusy
-	  // Do not write back when state == WAIT_INSTR, because
-	  //   - in that case, was already written back during EXECUTE
-	  //   - at that time, PCplus4 is already incremented (and JAL needs
-	  //     the current one to be written back)
-    ),
+    .inEn(writeBack),
     .inRegId(writeBackRegId),		       
     .outRegId1(regId1),
     .outRegId2(regId2),
@@ -642,21 +652,21 @@ module FemtoRV32 #(
       if(!reset) begin
 	 state <= INITIAL;
       end else
-      case(state)
-	INITIAL: begin
+      case(1'b1)
+	(state == 0): begin
 	   `verbose($display("INITIAL"));
 	   state <= WAIT_INSTR;
 	   addressReg <= 0;
 	   PC <= 0;
 	end
-	WAIT_INSTR: begin
+	state[WAIT_INSTR_bit]: begin
 	   // this state to give enough time to fetch the 
 	   // instruction. Used for jumps and taken branches (and 
 	   // when fetching the first instruction). 
 	   `verbose($display("WAIT_INSTR"));
 	   state <= FETCH;
 	end
-	FETCH: begin
+	state[FETCH_bit]: begin
 	   `verbose($display("FETCH"));	   
 	   instr <= dataIn;
 	   // update instr address so that next instr is fetched during
@@ -664,7 +674,7 @@ module FemtoRV32 #(
 	   addressReg <= {PCplus4, 2'b00}; 
 	   state <= DECODE;
 	end
-	USE_PREFETCHED: begin
+	state[USE_PREFETCHED_bit]: begin
 	   `verbose($display("USE_PREFETCHED"));	   
 	   instr <= nextInstr;
 	   // update instr address so that next instr is fetched during
@@ -673,7 +683,7 @@ module FemtoRV32 #(
 	   state <= DECODE;
 	   dataWrByteMask <= 4'b0000;
 	end
-	DECODE: begin
+	state[DECODE_bit]: begin
 	   `verbose($display("DECODE"));
 	   `verbose($display("   PC             = %h",{PC,2b00}));	   
 	   `verbose($display("   instr          = %h",instr));
@@ -696,7 +706,7 @@ module FemtoRV32 #(
 	   state <= EXECUTE;
 	   error_latched <= decoderError;
 	end
-	EXECUTE: begin
+	state[EXECUTE_bit]: begin
 	   `verbose($display("EXECUTE"));
 	   `verbose($display("   regOut1        = %h", regOut1));
 	   `verbose($display("   regOut2        = %h", regOut2));
@@ -749,7 +759,7 @@ module FemtoRV32 #(
 	      endcase 
 	   end 
 	end
-	LOAD: begin
+	state[LOAD_bit]: begin
 	   `verbose($display("LOAD"));
 	   // data address (aluOut) was just updated
 	   // data ready at next cycle
@@ -757,7 +767,7 @@ module FemtoRV32 #(
 	   state <= WAIT_ALU_OR_DATA;
 	   dataRd <= 1'b0;
 	end
-	STORE: begin
+	state[STORE_bit]: begin
 	   `verbose($display("STORE"));
 	   // data address was just updated
 	   // data ready to be written now
@@ -805,7 +815,7 @@ module FemtoRV32 #(
 	     end
 	   endcase 
 	end
-	WAIT_ALU_OR_DATA: begin
+	state[WAIT_ALU_OR_DATA_bit]: begin
 	   `verbose($display("WAIT_INSTR_AND_ALU"));	   
 	   // - If ALU is still busy, continue to wait.
 	   // - register writeback is active
@@ -815,7 +825,7 @@ module FemtoRV32 #(
 	   //   `bench($display("   datain=%h",dataIn));
 	   //end
 	end
-	ERROR: begin
+	state[ERROR_bit]: begin
 	   `bench($display("ERROR"));
            state <= ERROR;
 	end

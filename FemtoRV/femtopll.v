@@ -21,6 +21,14 @@ module femtoPLL #(
    // Use DIVF and DIVQ values from icepll -o freq
    generate
       case(freq)
+        100: begin
+	   parameter DIVF = 7'b1000010;
+	   parameter DIVQ = 3'b011;
+	end
+	95: begin
+	   parameter DIVF = 7'b0111110;
+	   parameter DIVQ = 3'b011;
+	end
 	90: begin
 	   parameter DIVF = 7'b0111011;
 	   parameter DIVQ = 3'b011;
