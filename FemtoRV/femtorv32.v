@@ -552,12 +552,7 @@ module FemtoRV32 #(
    
    wire [31:0] aluOut;
    wire        aluBusy;
-   reg         writeBack;
-   
-   always @(*) begin
-      writeBack = (state[EXECUTE_bit] && writeBackEn) || state[WAIT_ALU_OR_DATA_bit];
-   end
-
+   wire	       writeBack = (state[EXECUTE_bit] && writeBackEn) || state[WAIT_ALU_OR_DATA_bit];
    
    // The register file. At each cycle, it can read two
    // registers (available at next cycle) and write one.
