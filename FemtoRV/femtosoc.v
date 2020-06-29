@@ -30,7 +30,7 @@
 //`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 `define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 
-`define NRV_FREQ 85         // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
+`define NRV_FREQ 60         // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
                                                   // (but except UART out, the other peripherals won't work)
 
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
