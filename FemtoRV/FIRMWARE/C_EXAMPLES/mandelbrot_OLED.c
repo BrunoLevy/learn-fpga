@@ -56,7 +56,7 @@ int main() {
        delay(1000);       
        GL_tty_goto_xy(0,127);
        printf("\n");
-       printf("FemtoRV32 60 MHz\n");   
+       printf("FemtoRV32 %d MHz\n", CONFIGWORDS[CONFIGWORD_PROC_FREQ]);   
        printf("FemtOS 1.0\n");
        // The 'terminal scrolling' functionality
        // also scrolls the graphics, funny !

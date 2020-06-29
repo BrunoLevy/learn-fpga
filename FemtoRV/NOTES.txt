@@ -38,6 +38,9 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
       * SSD1351 clock adapter for higher freq.
       * I2C keyboard: 
           https://community.cypress.com/thread/52527
+          
+      * SPI, FPGA4Fun:
+        https://www.fpga4fun.com/SPI2.html
 
 =================================================================================================================
 

@@ -104,7 +104,7 @@ module NrvALU #(
 
    generate
       if(COMPACT_ALU) begin
-	 // Alternative ALU, may reduce LUT count (WIP)
+	 // Alternative ALU, reduces LUT count.
 	 // Implementation suggested by Matthias Koch, uses a single 33 bits 
 	 // subtract for all the tests, as in swapforth/J1.
 	 // NOTE: J1's st0,st1 are inverted as compared to in1,in2
@@ -194,7 +194,7 @@ generate
 
    if(COMPACT_PREDICATES) begin
       
-      // Alternative branch predicates, may reduce LUT count (WIP)
+      // Alternative branch predicates, reduces LUT count.
       // Implementation suggested by Matthias Koch, uses a single 33 bits 
       // subtract for all the tests, as in swapforth/J1.
       // NOTE: J1's st0,st1 are inverted as compared to in1,in2

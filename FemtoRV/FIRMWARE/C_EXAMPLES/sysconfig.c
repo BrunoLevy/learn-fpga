@@ -9,7 +9,7 @@ void show_config() {
    printf("  2shifter [%c]\n", (CONFIGWORDS[CONFIGWORD_PROC] & (1 << 31)) ? '*' : ' ');
    printf("  freq:    %d MHz\n",  CONFIGWORDS[CONFIGWORD_PROC_FREQ]);
    printf("[RAM]\n");
-   printf("  %d kB\n", CONFIGWORDS[CONFIGWORD_RAM]);
+   printf("  %d bytes\n", CONFIGWORDS[CONFIGWORD_RAM]);
    printf("[Devices]\n");
    printf("  LEDs     [%c]\n",  devices & CONFIGWORD_DEVICE_LEDS      ? '*' : ' ');
    printf("  UART     [%c]\n",  devices & CONFIGWORD_DEVICE_UART      ? '*' : ' ');
