@@ -81,7 +81,7 @@ void GL_putchar_xy(int x, int y, char c);
 
 
 /* Memory-mapped IO */
-#define IO_BASE      0x2000   /* Base address of memory-mapped IO                       */
+#define IO_BASE      0x400000 /* Base address of memory-mapped IO                       */
 #define IO_LEDS      4        /* 4 LSBs mapped to D1,D2,D3,D4                           */
 #define IO_OLED_CNTL 8        /* OLED display control.                                  */
                               /*  wr: 01: reset low 11: reset high 00: normal operation */

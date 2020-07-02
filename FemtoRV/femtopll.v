@@ -11,8 +11,12 @@ module femtoPLL #(
  input 	pclk,
  output clk	   
 );
-   
+
 `ifdef BENCH
+
+  assign clk = pclk;
+
+`elsif ULX3S
    
   assign clk = pclk;
    

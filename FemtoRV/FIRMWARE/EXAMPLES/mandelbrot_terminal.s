@@ -56,15 +56,15 @@ loop_x: mv s4,s2    # Z <- C
 	
 loop_Z: mv a0,s4    # Zrr  <- (Zr*Zr) >> mandel_shift
         mv a1,s4
-	call __muldi3
+	call __mulsi3
 	srli s6,a0,mandel_shift
 	mv a0,s4    # Zri <- (Zr*Zi) >> (mandel_shift-1)
 	mv a1,s5
-	call __muldi3
+	call __mulsi3
 	srai s7,a0,mandel_shift-1
 	mv a0,s5    # Zii <- (Zi*Zi) >> (mandel_shift)
 	mv a1,s5
-	call __muldi3
+	call __mulsi3
 	srli s8,a0,mandel_shift
 	sub s4,s6,s8 # Zr <- Zrr - Zii + Cr  
 	add s4,s4,s2

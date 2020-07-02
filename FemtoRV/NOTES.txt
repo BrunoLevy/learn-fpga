@@ -4,7 +4,6 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
       * print_float, printf("%f")
       * virtual output for led matrix.
       * A 90-ish "megademo" on the OLED display !
-      * Autodetect installed RAM in crt0.s (and autoinit stack pointer)
       * Autodetect installed devices
       * Change RAM interface, make it match Claire's protocol (then
         we'll be able to use many SOC / CPU configurations, see if we
@@ -12,9 +11,6 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
 	femtoRV32 etc...)
       * I2C, can we do it in sotft ? https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire/src
            (seems to be complicated... probably need interrupts, and code will take more than a few bytes...)
-      * Matthias (Mecrisp, see message in git issues):
-          - add support for SPI Flash  (config uses 32K out of 16Mbits, leaves plenty of space for my stuff)
-	  - one-hot addressing for mapped IO may save LUTs
       *	ultraembedded (twitter) 
           - AXI read port for SPI Flash / https://github.com/ultraembedded/core_spiflash
 	  - Another SPI Flash reader: https://www.bastibl.net/open-source-fpga/
@@ -35,12 +31,10 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
           * instr decoder can set Rtype, Itype, Stype, Btype, Utype, Jtype booleans
 	  * immediate can be assembled using muxes, driven by Xtype signals, as
 	    in table 2.4 p. 12 fom the RISC-V document.
-      * SSD1351 clock adapter for higher freq.
       * I2C keyboard: 
           https://community.cypress.com/thread/52527
-          
-      * SPI, FPGA4Fun:
-        https://www.fpga4fun.com/SPI2.html
+      * SPI, FPGA4Fun: https://www.fpga4fun.com/SPI2.html
+      * OLED SSD1351 driver is still unstable with freq > 80 MHz	
 
 =================================================================================================================
 
@@ -177,6 +171,23 @@ RISC-V notes:
 		 to toggle CS at the right moment after the last bit (I probably do that too soon,
 		 since it is done as soon as count reaches zero, which happens right in the middle
 		 of the bit, need to wait for the other half if divider is greater than 2).
+		 What improved much: management of (latched) CS:
+		     ** write: set CS to 1 (and bitcount to 8 etc...)
+		     ** on posedge clk:
+		     if(SSD1351_slow_cnt == SSD1351_cnt_max) begin
+		     	if(SSD1351_sending) begin
+		           if(SSD1351_CS) begin
+		               SSD1351_CS <= 1'b0;
+	                   end else begin
+		               SSD1351_bitcount <= SSD1351_bitcount - 4'd1;
+		               SSD1351_shifter <= {SSD1351_shifter[6:0], 1'b0};
+	                   end
+	                end else begin 
+	                   SSD1351_CS  <= 1'b1;  
+	                end
+	             end
+		     (in other word: first slow clk triggers CS, then next clks shift,
+		      and finally last clk switches CS off)
 
              - SPI Flash memory reader: I had several difficulties:
 	          1) stupid errors in the shifter (shift left<->right, MSB<->LSB, which bits to copy)
@@ -223,12 +234,13 @@ RISC-V notes:
                Critical path is way too long, need to insert registers in IO controller
                and maybe in other places (but I'm really running out of LUTs)
 	         -> improved it (now 45 - 50 MHz depending on configured peripherals),
-		    and seems to work well at 60 MHz 
+		    and seems to work well at 60 MHz
+		 -> one-hot state machine, peripherals -> now > 50 MHz, and OK at 85 MHz   
              DONE - Gain some LUTs by reducing address bus width in RAM and mapped IO 
                 and latched addresses (and this will also reduce the critical path since
                 the adder is plugged on it !)
-             - Maybe gain some LUTs by not storing the two LSBs of the PC counter, and do
-               PC+1 instead of PC+4
+             DONE - Maybe gain some LUTs by not storing the two LSBs of the PC counter, and do
+                 PC+1 instead of PC+4
              DONE - Try increasing freq to 60 MHz and decreasing OLED controller freq (slower clock, 
                affect (&) both OLED clock signal and shifter)
  

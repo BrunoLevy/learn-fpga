@@ -6,11 +6,7 @@
 .global	__mulsi3
 .type	__mulsi3, @function
 
-.global	__muldi3
-.type	__muldi3, @function
-
 __mulsi3:	
-__muldi3:
   mv     a2, a0
   li     a0, 0
 .L1:

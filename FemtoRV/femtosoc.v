@@ -28,7 +28,7 @@
 //`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
 `define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
-`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 
 `define NRV_FREQ 60         // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
                                                   // (but except UART out, the other peripherals won't work)
@@ -39,9 +39,6 @@
 // Do not forget the CONFIGWORD 0x0020 comment (FIRMWARE_WORDS depends on it)
 `define NRV_RAM 6144        // CONFIGWORD 0x0020
 //`define NRV_RAM 4096        // CONFIGWORD 0x0020
-
-`define NRV_ADDR_WIDTH 14 // Internal number of bits for PC and address register.
-                          // 6kb needs at least 13 bits, + 1 page for IO -> 14 bits.
 
 /*************************************************************************************/
 // Makes it easier to detect typos !
@@ -78,34 +75,34 @@
 
 /********************* Nrv RAM *******************************/
 
-// Memory map: 4 pages of 256 32bit words + 1 virtual page for IO
-// Memory address: page[2:0] offset[7:0] byte_offset[1:0]
-//
-// Page 3'b200 is used for memory-mapped IO's, that redirects the
-// signals to IOaddress, IOwr, IOrd, IOin, IOout.
-//
-// There is enough room for additional pages between the 4 pages 
-// and mapped IO, and there are still 4 BRAMs that are available,
-// but unfortunately I do not have enough remaining LUTs for 
-// address decoder logic...
+// Memory map:
+//   address[21:2] RAM word address (4 Mb max).
+//   address[22]   IO page (1-hot)
+//   address[23]   (future) SPI page (1-hot)
 
 module NrvMemoryInterface(
   input 	    clk,
-  input [13:0] 	    address, 
+  input [23:0] 	    address, 
   input [3:0] 	    wrByteMask,
   input 	    rd,
   input [31:0] 	    in,
   output reg [31:0] out,
+  output 	    ready, 
 
+
+			  
   output [8:0] 	    IOaddress, // = address[10:2]
   output 	    IOwr,
   output 	    IOrd,
   input [31:0] 	    IOin, 
-  output [31:0]     IOout
+  output [31:0]     IOout,
+  input 	    IObusy			  
 );
 
-   wire             isIO   = address[13];
-   wire [10:0] word_addr   = address[12:2];
+   assign ready = !IObusy;
+   
+   wire             isIO   = address[22];
+   wire [19:0] word_addr   = address[21:2];
 
 
    wire 	    wr    = (wrByteMask != 0);
@@ -151,6 +148,7 @@ module NrvIO(
     input 	      rd,
     input [31:0]      in, 
     output reg [31:0] out,
+    output 	      busy, 
 
 `ifdef NRV_IO_LEDS
     // LEDs D1-D4	     
@@ -159,35 +157,35 @@ module NrvIO(
 
 `ifdef NRV_IO_SSD1351
     // Oled display
-    output            SSD1351_DIN, 
-    output            SSD1351_CLK, 
-    output reg	      SSD1351_CS, 
+    output 	      SSD1351_DIN, 
+    output 	      SSD1351_CLK, 
+    output reg 	      SSD1351_CS, 
     output reg 	      SSD1351_DC, 
     output reg 	      SSD1351_RST,
 `endif
 
 `ifdef NRV_IO_UART
     // Serial
-    input  	      RXD,
-    output            TXD,
+    input 	      RXD,
+    output 	      TXD,
 `endif
 
 `ifdef NRV_IO_MAX2719
     // Led matrix
-    output            MAX2719_DIN, 
-    output            MAX2719_CS, 
-    output            MAX2719_CLK,
+    output 	      MAX2719_DIN, 
+    output 	      MAX2719_CS, 
+    output 	      MAX2719_CLK,
 `endif
 
 `ifdef NRV_IO_SPI_FLASH
     // SPI flash
-    output wire spi_mosi,
-    input  wire spi_miso,
-    output reg  spi_cs_n,
-    output wire spi_clk,
+    output wire       spi_mosi,
+    input wire 	      spi_miso,
+    output reg 	      spi_cs_n,
+    output wire       spi_clk,
 `endif
 
-    input clk
+    input 	      clk
 );
 
    /***** Memory-mapped ports, all 32 bits ****************
@@ -236,15 +234,10 @@ module NrvIO(
 	 localparam SSD1351_cnt_bit = 1;
 	 localparam SSD1351_cnt_max = 2'b11;
       end
-
    endgenerate
       
-   // reg      SSD1351_slow_clk; // clk=60MHz, slow_clk=30MHz
-   // wire     SSD1351_slow_clk = SSD1351_slow_cnt[3];
-
    // Currently sent bit, 1-based index
    // (0000 config. corresponds to idle)
-   
    reg[3:0] SSD1351_bitcount = 4'b0000;
    reg[7:0] SSD1351_shifter = 0;
    wire     SSD1351_sending = (SSD1351_bitcount != 0);
@@ -258,7 +251,6 @@ module NrvIO(
    assign SSD1351_CLK = SSD1351_slow_cnt[SSD1351_cnt_bit] && SSD1351_sending; 
 
    always @(posedge clk) begin
-      // SSD1351_slow_clk <= ~SSD1351_slow_clk;
       SSD1351_slow_cnt <= SSD1351_slow_cnt + 1;
    end
    
@@ -338,7 +330,7 @@ module NrvIO(
    wire       spi_flash_sending   = (spi_flash_snd_bitcount != 0);
    wire       spi_flash_receiving = (spi_flash_rcv_bitcount != 0);
    wire       spi_flash_busy = spi_flash_sending | spi_flash_receiving;
-   reg 	spi_flash_slow_clk; // clk=60MHz, slow_clk=30MHz
+   reg 	      spi_flash_slow_clk; // clk=60MHz, slow_clk=30MHz
 
    assign  spi_mosi = spi_flash_sending && spi_flash_cmd_addr[31];
    initial spi_cs_n = 1'b1;
@@ -358,7 +350,7 @@ module NrvIO(
 	    | (address[LEDs_bit] ? {28'b0, LEDs} : 32'b0) 
 `endif
 `ifdef NRV_IO_SSD1351
-	    | (address[SSD1351_CNTL_bit] ? {31'b0, /* SSD1351_sending || */ !SSD1351_CS} : 32'b0)
+	    | (address[SSD1351_CNTL_bit] ? {31'b0, !SSD1351_CS} : 32'b0)
 `endif
 `ifdef NRV_IO_UART
 	    | (address[UART_CNTL_bit]? {22'b0, serial_tx_busy, serial_valid_latched, 8'b0} : 32'b0) 
@@ -463,6 +455,14 @@ module NrvIO(
 `ifdef NRV_IO_UART
   assign serial_tx_wr = (wr && address[UART_DAT_bit]);
 `endif  
+
+
+   assign busy = 1'b0
+`ifdef NRV_IO_SPI_FLASH
+       | spi_flash_busy		 
+`endif	
+       // TODO: other peripherals	 	 
+   ;
    
 endmodule
 
@@ -508,8 +508,8 @@ module femtosoc(
   // Explanation here: (ice40 BRAM reads incorrect values during
   // first cycles).
   // http://svn.clifford.at/handicraft/2017/ice40bramdelay/README 
-  reg [7:0] reset_cnt = 0;
-  wire     reset = &reset_cnt;
+  reg [10:0] reset_cnt = 0;
+  wire       reset = &reset_cnt;
    
 `ifdef NRV_NEGATIVE_RESET
    always @(posedge clk,negedge RESET) begin
@@ -538,6 +538,8 @@ module femtosoc(
   wire        IOrd;
   wire        IOwr;
   wire [8:0]  IOaddress;
+  wire        IObusy;
+   
   
   NrvIO IO(
      .in(IOin),
@@ -545,6 +547,7 @@ module femtosoc(
      .rd(IOrd),
      .wr(IOwr),
      .address(IOaddress),
+     .busy(IObusy),
 `ifdef NRV_IO_LEDS	   
      .LEDs({D4,D3,D2,D1}),
 `endif
@@ -575,25 +578,28 @@ module femtosoc(
    
   wire [31:0] dataIn;
   wire [31:0] dataOut;
-  wire        dataRd;
+  wire        instrRd;
   wire [3:0]  dataWrByteMask;
+  wire        mem_ready;
    
   NrvMemoryInterface Memory(
     .clk(clk),
-    .address(address[13:0]),
+    .address(address[23:0]),
     .in(dataOut),
     .out(dataIn),
-    .rd(dataRd),
+    .rd(!instrRd),
     .wrByteMask(dataWrByteMask),
+    .ready(mem_ready),			   
     .IOin(IOout),
     .IOout(IOin),
     .IOrd(IOrd),
     .IOwr(IOwr),
-    .IOaddress(IOaddress)	      
+    .IOaddress(IOaddress),
+    .IObusy(IObusy)			    
   );
 
   FemtoRV32 #(
-     .ADDR_WIDTH(`NRV_ADDR_WIDTH),
+     .ADDR_WIDTH(24),
 `ifdef NRV_TWOSTAGE_SHIFTER	      
      .TWOSTAGE_SHIFTER(1),
 `else
@@ -603,11 +609,12 @@ module femtosoc(
      .COMPACT_PREDICATES(1)	      
   ) processor(
     .clk(clk),			
-    .address(address),
-    .dataIn(dataIn),
-    .dataOut(dataOut),
-    .dataRd(dataRd),
-    .dataWrByteMask(dataWrByteMask),
+    .mem_addr(address),
+    .mem_wdata(dataOut),
+    .mem_wstrb(dataWrByteMask),
+    .mem_rdata(dataIn),
+    .mem_instr(instrRd),
+    .mem_ready(mem_ready),
     .reset(reset),
     .error(error)
   );
