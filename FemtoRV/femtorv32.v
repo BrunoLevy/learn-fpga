@@ -484,7 +484,7 @@ module FemtoRV32 #(
    localparam STORE_bit            = 7;
    localparam ERROR_bit            = 8;
    
-   reg [8:0] state;
+   reg [8:0] state = INITIAL;
 
    
    reg [ADDR_WIDTH-1:0] addressReg;
@@ -495,13 +495,6 @@ module FemtoRV32 #(
    reg [31:0] instr;     // Latched instruction. 
    reg [31:0] nextInstr; // Prefetched instruction.
 
-   initial begin
-      mem_instr = 1'b1;
-      mem_wstrb = 4'b0000;
-      state = INITIAL;
-      addressReg = 0;
-      PC = 0;
-   end
  
    // Next program counter in normal operation: advance one word
    // I do not use the ALU, I create an additional adder for that.
@@ -650,6 +643,10 @@ module FemtoRV32 #(
       `verbose($display("state = %h",state));
       if(!reset) begin
 	 state <= INITIAL;
+	 mem_instr <= 1'b1;
+	 mem_wstrb <= 4'b0000;
+	 addressReg <= 0;
+	 PC <= 0;
       end else
       case(1'b1)
 	(state == 0): begin
