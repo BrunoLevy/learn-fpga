@@ -22,10 +22,13 @@ void show_config() {
 
 
 int main() {
-   uint32_t devices = CONFIGWORDS[CONFIGWORD_DEVICES];
-   if(devices & CONFIGWORD_DEVICE_SSD1351) {
-      GL_tty_init();
-   }
+    /*
+     * redirects display to UART (default), OLED display
+     * or led matrix, based on configured devices (in femtosoc.v).
+     * Note: pulls the two fonts (eats up a subsequent part of the
+     * available 6 Kbs).
+     */
+   femtosoc_tty_init();
    
    for(;;) {
       show_config();

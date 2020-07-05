@@ -4,6 +4,7 @@
 typedef unsigned char  uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int   uint32_t;
+typedef unsigned int   size_t;
 
 /* Standard library */
 extern void exit(int);
@@ -74,6 +75,11 @@ extern int gl_polygon_mode;
 extern int gl_culling_mode;
 #define GL_culling_mode(mode) gl_culling_mode = (mode);
 
+void femtosoc_tty_init();     /* Initializes tty (putchar()) based on present devices.
+			       * Note: pulls all fonts (eats up a consequent part of the
+			       * available 6Kb... Do not use systematically.
+			       */
+void MAX2719_tty_init();      /* Initializes led matrix and redirects output to it.     */
 void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */
 void GL_tty_goto_xy(int X, int Y);
 int  GL_putchar(int c);
