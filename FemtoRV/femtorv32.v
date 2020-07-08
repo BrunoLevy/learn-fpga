@@ -18,6 +18,8 @@
 // is something else than an ICEStick), I recommend using a more efficient /
 // more complete RISC-V core (e.g., Claire Wolf's picorv32).
 
+// 1245
+
 `ifdef VERBOSE
   `define verbose(command) command
 `else
@@ -456,7 +458,6 @@ module FemtoRV32 #(
    output reg [3:0]  mem_wstrb, // write mask for individual bytes (1 means write byte)   
    input [31:0]      mem_rdata, // input lines for both data and instr
    output reg 	     mem_instr, // active when reading instruction (and not when reading data)
-   input 	     mem_ready, // asserted at the end of memory transfer
    
    input wire 	     reset, // set to 0 to reset the processor
    output wire 	     error      // 1 if current instruction could not be decoded
@@ -785,7 +786,7 @@ module FemtoRV32 #(
 	   `verbose($display("WAIT_ALU_OR_DATA"));	   
 	   // - If ALU is still busy, continue to wait.
 	   // - register writeback is active
-	   state <= (aluBusy || !mem_ready) ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
+	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
 	end
 	state[ERROR_bit]: begin
 	   `bench($display("ERROR"));

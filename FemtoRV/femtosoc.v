@@ -25,10 +25,10 @@
  * Optional mapped IO devices
  */
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
+//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
-`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 
 `define NRV_FREQ 80         // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
                                                   // (but except UART out, the other peripherals won't work)
@@ -96,11 +96,8 @@ module NrvMemoryInterface(
   output 	    IOrd,
   input [31:0] 	    IOin, 
   output [31:0]     IOout,
-  input 	    IObusy			  
 );
 
-   assign ready = !IObusy;
-   
    wire             isIO   = address[22];
    wire [19:0] word_addr   = address[21:2];
 
@@ -148,7 +145,6 @@ module NrvIO(
     input 	      rd,
     input [31:0]      in, 
     output reg [31:0] out,
-    output 	      busy, 
 
 `ifdef NRV_IO_LEDS
     // LEDs D1-D4	     
@@ -458,14 +454,6 @@ module NrvIO(
   assign serial_tx_wr = (wr && address[UART_DAT_bit]);
 `endif  
 
-
-   assign busy = 1'b0
-`ifdef NRV_IO_SPI_FLASH
-       | spi_flash_busy		 
-`endif	
-       // TODO: other peripherals	 	 
-   ;
-   
 endmodule
 
 
@@ -540,7 +528,6 @@ module femtosoc(
   wire        IOrd;
   wire        IOwr;
   wire [8:0]  IOaddress;
-  wire        IObusy;
    
   
   NrvIO IO(
@@ -549,7 +536,6 @@ module femtosoc(
      .rd(IOrd),
      .wr(IOwr),
      .address(IOaddress),
-     .busy(IObusy),
 `ifdef NRV_IO_LEDS	   
      .LEDs({D4,D3,D2,D1}),
 `endif
@@ -582,7 +568,6 @@ module femtosoc(
   wire [31:0] dataOut;
   wire        instrRd;
   wire [3:0]  dataWrByteMask;
-  wire        mem_ready;
    
   NrvMemoryInterface Memory(
     .clk(clk),
@@ -591,13 +576,11 @@ module femtosoc(
     .out(dataIn),
     .rd(!instrRd),
     .wrByteMask(dataWrByteMask),
-    .ready(mem_ready),			   
     .IOin(IOout),
     .IOout(IOin),
     .IOrd(IOrd),
     .IOwr(IOwr),
     .IOaddress(IOaddress),
-    .IObusy(IObusy)			    
   );
 
   FemtoRV32 #(
@@ -616,7 +599,6 @@ module femtosoc(
     .mem_wstrb(dataWrByteMask),
     .mem_rdata(dataIn),
     .mem_instr(instrRd),
-    .mem_ready(mem_ready),
     .reset(reset),
     .error(error)
   );
