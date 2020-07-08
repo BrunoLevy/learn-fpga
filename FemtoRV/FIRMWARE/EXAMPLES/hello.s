@@ -13,10 +13,11 @@
 .type  main, @function
 
 main:   add sp,sp,-4
-        sw ra, 0(sp)	
+        sw ra, 0(sp)
+	call femtosoc_tty_init # redirect IO to configured device
 loop:   li t0, 15
 	sw t0, IO_LEDS(gp)
-        call getchar
+#       call getchar # wait for a char from the UART    
 	la a0, hello
 	call print_string
 	j loop

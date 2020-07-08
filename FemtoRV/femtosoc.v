@@ -26,11 +26,11 @@
  */
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
-//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 
-`define NRV_FREQ 60         // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
+`define NRV_FREQ 80         // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
                                                   // (but except UART out, the other peripherals won't work)
 
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
@@ -247,8 +247,10 @@ module NrvIO(
    // Normally SSD1351_sending should not be tested here, it should work with
    // SSD1351_CLK = SSD1351_slow_clk, but without testing SSD1351_sending,
    // test_OLED.s, test_OLED.c and mandelbrot_OLED.s do not work, whereas the
-   // other C OLED demos work (why ? To be understood...) 
-   assign SSD1351_CLK = SSD1351_slow_cnt[SSD1351_cnt_bit] && SSD1351_sending; 
+   // other C OLED demos work (why ? To be understood...)
+   // ... -> seems to be OK now with the new clocking (one clock delay after CS 
+   // going low).
+   assign SSD1351_CLK = SSD1351_slow_cnt[SSD1351_cnt_bit]; //  && !SSD1351_CS; // && SSD1351_sending;
 
    always @(posedge clk) begin
       SSD1351_slow_cnt <= SSD1351_slow_cnt + 1;

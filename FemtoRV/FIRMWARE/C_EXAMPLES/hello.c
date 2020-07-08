@@ -1,10 +1,10 @@
 #include <femtorv32.h>
 
 int main() {
-   MAX2719_tty_init();
+   femtosoc_tty_init();
    for(;;) {
-      printf("femtoRV32 says: hello, world !!\n");
-      getchar();
+      printf("Building the Inria computer of the future !!!\n");
+//    getchar();
    }
    return 0;
 }
