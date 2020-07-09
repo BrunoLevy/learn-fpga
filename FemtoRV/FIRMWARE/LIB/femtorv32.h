@@ -14,6 +14,13 @@ extern int  putchar(int c);
 extern int  puts(const char* s);
 extern int  printf(const char *fmt,...); /* supports %s, %d, %x */
 
+void* memset(void *s, int c, size_t n);
+void* memcpy(void *dest, const void *src, size_t n);
+
+char* strcpy(char *dest, const char *src);
+char* strncpy(char *dest, const char *src, size_t n);
+int   strcmp(const char *p1, const char *p2);
+
 /* Other functions */
 extern void delay(int ms);    /* waits an (approximate) number of milliseconds.         */
 extern int  random();

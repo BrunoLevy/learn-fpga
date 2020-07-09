@@ -3,14 +3,14 @@
 SOURCES="femtorv32.s mul.s div.s max2719.s ssd1351.s uart.s print.c printf.c \
          font_8x8.s font_5x6.s font_3x5.s virtual_io.c femtoGL.c femtoGLtext.c \
 	 femtoGLsetpixel.c femtoGLline.c femtoGLfill_poly.c \
-         memset.c random.c \
+         memset.c memcpy.c random.c strcpy.c strncpy.c strcmp.c\
 	 tty_init.c max2719_text.c \
 	 crt0.s"
 
 OBJECTS="femtorv32.o mul.o div.o max2719.o ssd1351.o uart.o print.o printf.o \
          font_8x8.o font_5x6.o font_3x5.o virtual_io.o femtoGL.o femtoGLtext.o \
 	 femtoGLsetpixel.o femtoGLline.o femtoGLfill_poly.o \
-         memset.o random.o \
+         memset.o memcpy.o random.o strcpy.o strncpy.o strcmp.o\
 	 tty_init.o max2719_text.o"
 
 echo 'Compiling libfemtorv32'
