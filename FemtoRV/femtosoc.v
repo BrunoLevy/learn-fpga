@@ -26,9 +26,9 @@
  */
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
-//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 
 `define NRV_FREQ 80         // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
                                                   // (but except UART out, the other peripherals won't work)
@@ -499,7 +499,7 @@ module femtosoc(
   // Explanation here: (ice40 BRAM reads incorrect values during
   // first cycles).
   // http://svn.clifford.at/handicraft/2017/ice40bramdelay/README 
-  reg [10:0] reset_cnt = 0;
+  reg [11:0] reset_cnt = 0;
   wire       reset = &reset_cnt;
    
 `ifdef NRV_NEGATIVE_RESET

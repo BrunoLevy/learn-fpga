@@ -651,8 +651,6 @@ module FemtoRV32 #(
 	(state == 0): begin
 	   `verbose($display("INITIAL"));
 	   state <= WAIT_INSTR;
-	   addressReg <= 0;
-	   PC <= 0;
 	end
 	state[WAIT_INSTR_bit]: begin
 	   // this state to give enough time to fetch the 
