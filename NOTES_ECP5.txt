@@ -126,6 +126,33 @@ FPGA specs:
                      running some forme of muC Linux, but I'd rather 
 		     wire some SDRAM)
 		     3744 Kbits
-   
+
+======================================================
+
+          TRELLIS_SLICE : LUTs, flipflops, etc..
+             TRELLIS_IO
+                   DCCA
+                 DP16KD : BRAMs
+             MULT18X18D : DSP blocks (multipliers)
+                 ALU54B
+                EHXPLLL : The PLL
+                EXTREFB
+                   DCUA
+              PCSCLKDIV : Clock dividers for bus widening / narrowing
+                IOLOGIC
+               SIOLOGIC
+                    GSR
+                  JTAGG
+                   OSCG : Oscillator (for timer, reset generator, not very accurate)
+                  SEDGA
+                    DTR
+                USRMCLK
+                CLKDIVF : Edge clock dividers
+              ECLKSYNCB : Edge clock stop
+                DLLDELD
+                 DDRDLL
+                DQSBUFM
+        TRELLIS_ECLKBUF
+           ECLKBRIDGECS : Edge clock bridge with clock select
 
 ======================================================

@@ -1,8 +1,8 @@
 #include <femtorv32.h>
 
 //#define FONT_8x8 // CGA font
-#define FONT_5x6   // pico8 font by zep
-//#define FONT_3x5 // pico8 default font
+#define FONT_5x6 // pico8 font by zep
+//#define FONT_3x5 // pico8 default font (still some pbs with scrolling)
 
 #if   defined(FONT_8x8)
 #define FONT_WIDTH  8
@@ -58,6 +58,17 @@ void GL_tty_scroll() {
 }
 
 int GL_putchar(int c) {
+#ifdef FONT_3x5
+    // In the pico8 font, small caps and big caps
+    // are swapped (I don't know why). TODO: fix
+    // the data instead, will be cleaner...
+    if(c >= 'A' && c <= 'Z') {
+	c = c - 'A' + 'a';
+    } else if(c >= 'a' && c <= 'z') {
+	c = c - 'a' + 'A';
+    }
+#endif    
+    
     if(c == '\n') {
 	cursor_X = 0;
         cursor_Y += FONT_HEIGHT;
@@ -66,7 +77,7 @@ int GL_putchar(int c) {
     }
     GL_putchar_xy(cursor_X, cursor_Y, (char)c); 
     cursor_X += FONT_WIDTH;
-    if(cursor_X > 127) {
+    if(cursor_X + FONT_WIDTH > 127) {
 	GL_putchar('\n');
     }
     return c;

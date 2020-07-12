@@ -18,8 +18,10 @@
  * Uncomment if the RESET button is wired and active low:
  * (wire a push button and a pullup resistor to 
  * pin 47 or change in nanorv.pcf). 
- */ 
-`define NRV_NEGATIVE_RESET 
+ */
+`ifdef ICE_STICK
+//`define NRV_NEGATIVE_RESET 
+`endif
 
 /*
  * Optional mapped IO devices
@@ -37,9 +39,13 @@
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
 // 6K max on the ICEstick
 // Do not forget the CONFIGWORD 0x0020 comment (FIRMWARE_WORDS depends on it)
-//`define NRV_RAM 65535        // CONFIGWORD 0x0020
+//`define NRV_RAM  131072        // CONFIGWORD 0x0020 // You need this to run DHRYSTONE
+//`define NRV_RAM 65536        // CONFIGWORD 0x0020
 `define NRV_RAM 6144        // CONFIGWORD 0x0020
 //`define NRV_RAM 4096        // CONFIGWORD 0x0020
+
+//`define NRV_COUNTERS    // Uncomment for instr and cycle counters (won't fit on the ICEStick)
+//`define NRV_COUNTERS_64 // ... and uncomment this one as well if you want 64-bit counters
 
 /*************************************************************************************/
 // Makes it easier to detect typos !
@@ -47,12 +53,10 @@
 
 /*
  * On the ECP5 evaluation board, there is already a wired button, active low,
- * wired to the "P4" ball of the ECP5 (see femtosoc.lpf)
+ * wired to the "P4" ball of the ECP5 (see ecp5_evn.lpf)
  */ 
-`ifdef ECP5
- `ifndef NRV_NEGATIVE_RESET
-  `define NRV_NEGATIVE_RESET
- `endif
+`ifdef ECP5_EVN
+`define NRV_NEGATIVE_RESET
 `endif
 
 // Toggle FPGA defines (ICE40, ECP5) in function of board defines (ICE_STICK, ECP5_EVN)
@@ -63,6 +67,10 @@
 `endif
 
 `ifdef ECP5_EVN
+ `define ECP5 
+`endif
+
+`ifdef ULX3S
  `define ECP5 
 `endif
 

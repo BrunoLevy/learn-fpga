@@ -11,16 +11,17 @@ else
     (cd FIRMWARE; ./make_firmware.sh EXAMPLES/mandelbrot_terminal.s)
 fi
 echo ======== Yosys
-yosys -DULX3S -q -p "synth_ecp5 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
+yosys -DULX3S -q -p "synth_ecp5 -abc9 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
 
 echo ======== NextPNR
-nextpnr-ecp5 --force --json $PROJECTNAME.json --lpf ulx3s.lpf --textcfg $PROJECTNAME_out.config --85k --freq 50 --package CABGA381 $1 || exit
+nextpnr-ecp5 --force --json $PROJECTNAME.json --lpf ulx3s.lpf --textcfg $PROJECTNAME_out.config --85k --freq 25 --package CABGA381 $1 || exit
 
 echo ======== ecppack
 ecppack --svf-rowsize 100000 --svf $PROJECTNAME.svf $PROJECTNAME_out.config $PROJECTNAME.bit
 
 echo ======== ujprog
 ujprog $PROJECTNAME.bit
+#ujprog -j FLASH $PROJECTNAME.bit
 
 echo DONE.
 

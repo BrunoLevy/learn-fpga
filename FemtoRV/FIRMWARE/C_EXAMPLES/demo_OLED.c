@@ -78,4 +78,11 @@ int main() {
     for(cnt=0; cnt<1000; ++cnt) {
 	random_rect();
     }
+    GL_tty_init();
+    for(int i=0; i<20; ++i) {
+	printf("All work and no play makes Jack a dull boy.\n");
+	delay(100);
+	printf("The quick brown fox jumps over the lazy dog.\n");
+	delay(100);	
+    }
 }

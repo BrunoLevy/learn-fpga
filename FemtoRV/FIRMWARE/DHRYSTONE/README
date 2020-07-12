@@ -1,0 +1,3 @@
+The Dhrystone benchmark, with some modifications by Claire Wolf.
+Added redirection to OLED display.
+Needs 128K of RAM and counters (does not fit on the ICEStick).

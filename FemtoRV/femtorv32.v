@@ -423,6 +423,19 @@ module NrvDecoder(
 	   7'b1110011: begin // System
 	   end
 	   */
+
+`ifdef NRV_COUNTERS
+	   7'b1110011: begin // System RDCYCLE[H], RDTIME[H] and RDINSTRET[H]
+	      writeBackEn = 1'b1;
+	      writeBackSel = 2'b11;
+	      inRegId1Sel = 1'bx; 
+	      aluInSel1 = 1'bx;      
+	      aluInSel2 = 1'bx;      
+	      aluSel = 1'bx;      
+	      nextPCSel = 2'b00;  
+	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
+	   end
+`endif	 
 	 
            default: begin
 	      writeBackEn = 1'b0;
@@ -446,7 +459,7 @@ module FemtoRV32 #(
   parameter [0:0] TWOSTAGE_SHIFTER   = 0,
   parameter       ADDR_WIDTH         = 16,		   
   parameter [0:0] COMPACT_ALU        = 1,
-  parameter [0:0] COMPACT_PREDICATES = 1		   		   
+  parameter [0:0] COMPACT_PREDICATES = 1
 ) (
    input 	     clk,
 
@@ -489,6 +502,16 @@ module FemtoRV32 #(
    reg [ADDR_WIDTH-1:0] addressReg;
    reg [ADDR_WIDTH-3:0] PC;
 
+`ifdef NRV_COUNTERS
+ `ifdef NRV_COUNTERS_64   
+   reg [63:0] 		counter_cycle;
+   reg [63:0] 		counter_instret;
+ `else
+   reg [31:0] 		counter_cycle;
+   reg [31:0] 		counter_instret;
+ `endif   
+`endif
+   
    assign mem_addr = addressReg;
 
    reg [31:0] instr;     // Latched instruction. 
@@ -616,14 +639,36 @@ module FemtoRV32 #(
       endcase
    end
 
+`ifdef NRV_COUNTERS
+   reg [31:0] counter;
+   always @(*) begin
+      (* parallel_case, full_case *)      
+      case(instr[31:20])
+	12'b110000000000: counter = counter_cycle[31:0];    // CYCLE
+	12'b110000000001: counter = counter_cycle[31:0];    // TIME
+	12'b110000000010: counter = counter_instret[31:0];  // INSTRET
+ `ifdef NRV_COUNTERS_64
+	12'b110010000000: counter = counter_cycle[63:32];   // CYCLEH
+	12'b110010000001: counter = counter_cycle[63:32];   // TIMEH
+	12'b110010000010: counter = counter_instret[63:32]; // INSTRETH
+ `endif
+	default: counter = {32{1'bx}};
+      endcase 
+   end
+`endif   
+   
    // The value written back to the register file.
    always @(*) begin
       (* parallel_case, full_case *)
       case(writeBackSel)
 	2'b00: writeBackData = aluOut;	
 	2'b01: writeBackData = {PCplus4, 2'b00};
-	2'b10: writeBackData = decodedDataIn; 
+	2'b10: writeBackData = decodedDataIn;
+`ifdef NRV_COUNTERS
+	2'b11: writeBackData = counter;	
+`else
 	default: writeBackData = {32{1'bx}};
+`endif	
       endcase 
    end
 
@@ -638,6 +683,20 @@ module FemtoRV32 #(
     .out(predOut)		    
    );
 
+`ifdef NRV_COUNTERS
+   always @(posedge clk) begin
+      if(!reset) begin	    
+	 counter_instret <= 0;
+	 counter_cycle   <= 0;
+      end else begin
+	 counter_cycle <= counter_cycle+1;
+	 if(state[DECODE_bit]) begin
+	    counter_instret <= counter_instret+1;
+	 end
+      end
+   end
+`endif
+   
    always @(posedge clk) begin
       `verbose($display("state = %h",state));
       if(!reset) begin
