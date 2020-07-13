@@ -19,7 +19,7 @@ module femtoPLL #(
 `elsif ULX3S
 
 (* FREQUENCY_PIN_CLKI="25" *)
-(* FREQUENCY_PIN_CLKOP="80" *)
+(* FREQUENCY_PIN_CLKOP="60" *)
 (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
 EHXPLLL #(
         .PLLRST_ENA("DISABLED"),
@@ -32,11 +32,11 @@ EHXPLLL #(
         .OUTDIVIDER_MUXD("DIVD"),
         .CLKI_DIV(5),
         .CLKOP_ENABLE("ENABLED"),
-        .CLKOP_DIV(7),
-        .CLKOP_CPHASE(3),
+        .CLKOP_DIV(10),
+        .CLKOP_CPHASE(4),
         .CLKOP_FPHASE(0),
         .FEEDBK_PATH("CLKOP"),
-        .CLKFB_DIV(16)
+        .CLKFB_DIV(12)
     ) pll_i (
         .RST(1'b0),
         .STDBY(1'b0),

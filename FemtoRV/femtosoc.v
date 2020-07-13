@@ -13,6 +13,10 @@
  * but uses 60-100 LUTs) (inspired by PICORV32). 
  */ 
 `define NRV_TWOSTAGE_SHIFTER // CONFIGWORD 0x0018[31]
+//`define NRV_BARREL_SHIFTER   // CONFIGWORD 0x0018[30]
+
+// 333767 / 88420 / 3.774 / 0.170
+// 329867 / 88420 / 3.730 / 0.172
 
 /* 
  * Uncomment if the RESET button is wired and active low:
@@ -32,15 +36,15 @@
 //`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 `define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 
-`define NRV_FREQ 80         // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
+`define NRV_FREQ 60         // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
                                                   // (but except UART out, the other peripherals won't work)
 
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
 // 6K max on the ICEstick
 // Do not forget the CONFIGWORD 0x0020 comment (FIRMWARE_WORDS depends on it)
-//`define NRV_RAM  131072        // CONFIGWORD 0x0020 // You need this to run DHRYSTONE
-//`define NRV_RAM 65536        // CONFIGWORD 0x0020
+//`define NRV_RAM  131072       // CONFIGWORD 0x0020 // You need this to run DHRYSTONE
+//`define NRV_RAM 65536       // CONFIGWORD 0x0020
 `define NRV_RAM 6144        // CONFIGWORD 0x0020
 //`define NRV_RAM 4096        // CONFIGWORD 0x0020
 
@@ -594,6 +598,11 @@ module femtosoc(
 
   FemtoRV32 #(
      .ADDR_WIDTH(24),
+`ifdef NRV_BARREL_SHIFTER	      
+     .BARREL_SHIFTER(1),
+`else
+     .BARREL_SHIFTER(0),	      
+`endif	      
 `ifdef NRV_TWOSTAGE_SHIFTER	      
      .TWOSTAGE_SHIFTER(1),
 `else
