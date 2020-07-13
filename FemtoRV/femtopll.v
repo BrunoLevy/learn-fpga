@@ -2,7 +2,7 @@
  *  The PLL, that generates the internal clock (high freq) from the 
  * external one (lower freq).
  *  Trying to make something that is portable between different boards
- * (for now, ICEStick and ECP5 evaluation boards supported).
+ * (for now, ICEStick, ULX3S and ECP5 evaluation boards supported).
  */ 
 
 module femtoPLL #(
@@ -17,9 +17,66 @@ module femtoPLL #(
   assign clk = pclk;
 
 `elsif ULX3S
+   // Use values from ecpll -i 25 -o freq -f tmp.v
+   generate
+      case(freq)
+        100: begin
+	   localparam CLKI_DIV = 1;
+	   localparam CLKOP_DIV = 6;
+	   localparam CLKOP_CPHASE = 2;
+	   localparam CLKFB_DIV = 4;	   	   
+	end
+	95: begin
+	   localparam CLKI_DIV = 5;
+	   localparam CLKOP_DIV = 6;
+	   localparam CLKOP_CPHASE = 3;
+	   localparam CLKFB_DIV = 19;	   	   
+	end
+	90: begin
+	   localparam CLKI_DIV = 5;
+	   localparam CLKOP_DIV = 7;
+	   localparam CLKOP_CPHASE = 3;
+	   localparam CLKFB_DIV = 18;	   	   
+	end
+	85: begin
+	   localparam CLKI_DIV = 5;
+	   localparam CLKOP_DIV = 7;
+	   localparam CLKOP_CPHASE = 3;
+	   localparam CLKFB_DIV = 17;	   	   
+        end
+	80: begin
+	   localparam CLKI_DIV = 5;
+	   localparam CLKOP_DIV = 7;
+	   localparam CLKOP_CPHASE = 3;
+	   localparam CLKFB_DIV = 16;	   	   
+        end
+	75: begin
+	   localparam CLKI_DIV = 1;
+	   localparam CLKOP_DIV = 8;
+	   localparam CLKOP_CPHASE = 4;
+	   localparam CLKFB_DIV = 3;	   	   
+	end
+	70: begin
+	   localparam CLKI_DIV = 5;
+	   localparam CLKOP_DIV = 9;
+	   localparam CLKOP_CPHASE = 4;
+	   localparam CLKFB_DIV = 14;	   	   
+	end
+	65: begin
+	   localparam CLKI_DIV = 5;
+	   localparam CLKOP_DIV = 9;
+	   localparam CLKOP_CPHASE = 4;
+	   localparam CLKFB_DIV = 13;	   	   
+	end
+	60: begin
+	   localparam CLKI_DIV = 5;
+	   localparam CLKOP_DIV = 10;
+	   localparam CLKOP_CPHASE = 4;
+	   localparam CLKFB_DIV = 12;	   	   
+	end
+      endcase
+   endgenerate
 
-(* FREQUENCY_PIN_CLKI="25" *)
-(* FREQUENCY_PIN_CLKOP="60" *)
 (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
 EHXPLLL #(
         .PLLRST_ENA("DISABLED"),
@@ -30,13 +87,13 @@ EHXPLLL #(
         .OUTDIVIDER_MUXB("DIVB"),
         .OUTDIVIDER_MUXC("DIVC"),
         .OUTDIVIDER_MUXD("DIVD"),
-        .CLKI_DIV(5),
+        .CLKI_DIV(CLKI_DIV),
         .CLKOP_ENABLE("ENABLED"),
-        .CLKOP_DIV(10),
-        .CLKOP_CPHASE(4),
+        .CLKOP_DIV(CLKOP_DIV),
+        .CLKOP_CPHASE(CLKOP_CPHASE),
         .CLKOP_FPHASE(0),
         .FEEDBK_PATH("CLKOP"),
-        .CLKFB_DIV(12)
+        .CLKFB_DIV(CLKFB_DIV)
     ) pll_i (
         .RST(1'b0),
         .STDBY(1'b0),
@@ -52,7 +109,6 @@ EHXPLLL #(
         .PLLWAKESYNC(1'b0),
         .ENCLKOP(1'b0)
 	);
-
 
 `elsif ICE40
 
@@ -123,6 +179,7 @@ EHXPLLL #(
 `elsif ECP5_EVN
    
       // I think that: output freq = 12 Mhz * CLKFB_DIV * (12 / CLKI_DIV) / CLKOP_DIV
+      // (to be double-checked...)
       // CLKI_DIV = 2 -> 150 MHz
       // CLKI_DIV = 5 -> 60 MHz      
       // CLKI_DIV = 6 -> 50 MHz
