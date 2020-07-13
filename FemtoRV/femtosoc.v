@@ -20,7 +20,7 @@
  * pin 47 or change in nanorv.pcf). 
  */
 `ifdef ICE_STICK
-//`define NRV_NEGATIVE_RESET 
+`define NRV_NEGATIVE_RESET 
 `endif
 
 /*

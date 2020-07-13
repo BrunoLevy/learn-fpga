@@ -18,7 +18,20 @@
 // is something else than an ICEStick), I recommend using a more efficient /
 // more complete RISC-V core (e.g., Claire Wolf's picorv32).
 
-// 1245
+// LUT-golfing par: 1233 LUTs (ICESTORM_LC)
+// Tested with the configuration for the ST_NICC demo on the IceStick,
+// that is:
+//   NRV_TWO_STAGE_SHIFTER=ON
+//   NRV_NEGATIVE_RESET=ON,
+//   NRV_IO_LEDS=ON
+//   NRV_IO_UART=OFF
+//   NRV_IO_SSD1351=ON
+//   NRV_IO_MAX2719=OFF
+//   NRV_IO_SPI_FLASH=ON
+//   NRV_FREQ=80
+//   NRV_RAM=6144
+//   NRV_COUNTERS=OFF
+//   NRV_COUNTERS_64=OFF
 
 `ifdef VERBOSE
   `define verbose(command) command
@@ -81,7 +94,8 @@ endmodule
 /********************************* ALU **********************************/
 
 module NrvALU #(
-   parameter [0:0] TWOSTAGE_SHIFTER = 0,
+   parameter [0:0] BARREL_SHIFTER = 0,		
+   parameter [0:0] TWOSTAGE_SHIFTER = 0
 )(
   input 	    clk, 
   input [31:0] 	    in1,
@@ -431,6 +445,7 @@ endmodule
 /********************* Nrv processor *******************************/
 
 module FemtoRV32 #(
+  parameter [0:0] BARREL_SHIFTER     = 0,		   
   parameter [0:0] TWOSTAGE_SHIFTER   = 0,
   parameter       ADDR_WIDTH         = 16
 ) (
@@ -567,6 +582,7 @@ module FemtoRV32 #(
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
    
    NrvALU #(
+     .BARREL_SHIFTER(BARREL_SHIFTER),	    
      .TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER)
    ) alu(
     .clk(clk),	      
