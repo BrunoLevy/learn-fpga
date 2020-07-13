@@ -599,8 +599,6 @@ module femtosoc(
 `else
      .TWOSTAGE_SHIFTER(0),	      
 `endif	      
-     .COMPACT_ALU(1),
-     .COMPACT_PREDICATES(1)	      
   ) processor(
     .clk(clk),			
     .mem_addr(address),

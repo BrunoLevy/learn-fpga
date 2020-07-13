@@ -82,7 +82,6 @@ endmodule
 
 module NrvALU #(
    parameter [0:0] TWOSTAGE_SHIFTER = 0,
-   parameter [0:0] COMPACT_ALU      = 1		
 )(
   input 	    clk, 
   input [31:0] 	    in1,
@@ -102,45 +101,33 @@ module NrvALU #(
    
    reg [31:0] shifter;
 
-   generate
-      if(COMPACT_ALU) begin
-	 // Alternative ALU, reduces LUT count.
-	 // Implementation suggested by Matthias Koch, uses a single 33 bits 
-	 // subtract for all the tests, as in swapforth/J1.
-	 // NOTE: J1's st0,st1 are inverted as compared to in1,in2
-	 //   (st0<->in2  st1<->in1)
-	 wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
-	 wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
-	 wire        LTU = minus[32];
-	 always @(*) begin
-	    (* parallel_case, full_case *)
-	    case(op)
-              3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
-              3'b010: out = LT ;                               // SLT
-              3'b011: out = LTU;                               // SLTU
-              3'b100: out = in1 ^ in2;                         // XOR
-              3'b110: out = in1 | in2;                         // OR
-              3'b111: out = in1 & in2;                         // AND
-              3'b001: out = shifter;                           // SLL	   
-              3'b101: out = shifter;                           // SRL/SRA
-	    endcase 
-	 end
-      end else begin
-	 always @(*) begin
-	    (* parallel_case, full_case *)
-	    case(op)
-              3'b000: out = opqual ? in1 - in2 : in1 + in2;                 // ADD/SUB
-              3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ; // SLT
-              3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                    // SLTU
-              3'b100: out = in1 ^ in2;                                      // XOR
-              3'b110: out = in1 | in2;                                      // OR
-              3'b111: out = in1 & in2;                                      // AND
-              3'b001: out = shifter;                                        // SLL	   
-              3'b101: out = shifter;                                        // SRL/SRA
-	    endcase 
-	 end
-      end
-   endgenerate
+   // Implementation suggested by Matthias Koch, uses a single 33 bits 
+   // subtract for all the tests, as in swapforth/J1.
+   // NOTE: if you read swapforth/J1 source,
+   //   J1's st0,st1 are inverted as compared to in1,in2 (st0<->in2  st1<->in1)
+   // Equivalent code:
+   // case(op) 
+   //    3'b000: out = opqual ? in1 - in2 : in1 + in2;                 // ADD/SUB
+   //    3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ; // SLT
+   //    3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                    // SLTU
+   //    ...
+	 
+   wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
+   wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
+   wire        LTU = minus[32];
+   always @(*) begin
+      (* parallel_case, full_case *)
+      case(op)
+        3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
+        3'b010: out = LT ;                               // SLT
+        3'b011: out = LTU;                               // SLTU
+        3'b100: out = in1 ^ in2;                         // XOR
+        3'b110: out = in1 | in2;                         // OR
+        3'b111: out = in1 & in2;                         // AND
+        3'b001: out = shifter;                           // SLL	   
+        3'b101: out = shifter;                           // SRL/SRA
+      endcase 
+   end
       
    always @(posedge clk) begin
       
@@ -181,58 +168,46 @@ endmodule
 
 /********************* Branch predicates *******************************/
 
-module NrvPredicate #(
-    parameter [0:0] COMPACT_PREDICATES = 1		
-)(
+module NrvPredicate(
    input [31:0] in1,
    input [31:0] in2,
    input [2:0]  op, // Operation
    output reg   out
 );
 
-generate
+   // Alternative branch predicates, reduces LUT count.
+   // Implementation suggested by Matthias Koch, uses a single 33 bits 
+   // subtract for all the tests, as in swapforth/J1.
+   // NOTE: if you read swapforth/J1 source, J1's st0,st1 are inverted 
+   // as compared to in1,in2 (st0<->in2  st1<->in1)
+   // Equivalent code:
+   // case(op)
+   //   3'b000: out = (in1 == in2);                   // BEQ
+   //   3'b001: out = (in1 != in2);                   // BNE
+   //   3'b100: out = ($signed(in1) < $signed(in2));  // BLT
+   //   3'b101: out = ($signed(in1) >= $signed(in2)); // BGE
+   //   3'b110: out = (in1 < in2);                    // BLTU
+   //   3'b111: out = (in1 >= in2);                   // BGEU
+   //   ...
 
-   if(COMPACT_PREDICATES) begin
+   wire [32:0] 	minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
+   wire 	LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
+   wire 	LTU = minus[32];
+   wire 	EQ  = (minus[31:0] == 0);
       
-      // Alternative branch predicates, reduces LUT count.
-      // Implementation suggested by Matthias Koch, uses a single 33 bits 
-      // subtract for all the tests, as in swapforth/J1.
-      // NOTE: J1's st0,st1 are inverted as compared to in1,in2
-      //   (st0<->in2  st1<->in1)
-      
-      wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
-      wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
-      wire        LTU = minus[32];
-      wire        EQ  = (minus[31:0] == 0);
-      
-      always @(*) begin
-	 (* parallel_case, full_case *)	 
-	 case(op)
-           3'b000: out =  EQ;   // BEQ
-           3'b001: out = !EQ;   // BNE
-           3'b100: out =  LT;   // BLT
-           3'b101: out = !LT;   // BGE
-           3'b110: out =  LTU;  // BLTU
-	   3'b111: out = !LTU;  // BGEU
-	   default: out = 1'bx; // don't care...
-	 endcase
-      end
-   end else begin
-      always @(*) begin
-	 (* parallel_case, full_case *)	 
-	 case(op)
-           3'b000: out = (in1 == in2);                   // BEQ
-           3'b001: out = (in1 != in2);                   // BNE
-           3'b100: out = ($signed(in1) < $signed(in2));  // BLT
-           3'b101: out = ($signed(in1) >= $signed(in2)); // BGE
-           3'b110: out = (in1 < in2);                    // BLTU
-	   3'b111: out = (in1 >= in2);                   // BGEU
-	   default: out = 1'bx; // don't care...
-	 endcase
-      end 
-   end
-endgenerate
-
+   always @(*) begin
+      (* parallel_case, full_case *)	 
+      case(op)
+        3'b000: out =  EQ;   // BEQ
+        3'b001: out = !EQ;   // BNE
+        3'b100: out =  LT;   // BLT
+        3'b101: out = !LT;   // BGE
+        3'b110: out =  LTU;  // BLTU
+	3'b111: out = !LTU;  // BGEU
+	default: out = 1'bx; // don't care...
+      endcase
+   end 
+   
 endmodule
 
 /********************* Instruction decoder *******************************/
@@ -457,9 +432,7 @@ endmodule
 
 module FemtoRV32 #(
   parameter [0:0] TWOSTAGE_SHIFTER   = 0,
-  parameter       ADDR_WIDTH         = 16,		   
-  parameter [0:0] COMPACT_ALU        = 1,
-  parameter [0:0] COMPACT_PREDICATES = 1
+  parameter       ADDR_WIDTH         = 16
 ) (
    input 	     clk,
 
@@ -594,8 +567,7 @@ module FemtoRV32 #(
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
    
    NrvALU #(
-     .TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER),
-     .COMPACT_ALU(COMPACT_ALU)	    
+     .TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER)
    ) alu(
     .clk(clk),	      
     .in1(aluIn1),
@@ -674,9 +646,7 @@ module FemtoRV32 #(
 
    // The predicate for conditional branches. 
    wire predOut;
-   NrvPredicate #(
-     .COMPACT_PREDICATES(COMPACT_PREDICATES)		       
-   ) pred(
+   NrvPredicate pred(
     .in1(regOut1),
     .in2(regOut2),
     .op(aluOp),

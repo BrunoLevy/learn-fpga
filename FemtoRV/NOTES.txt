@@ -349,3 +349,5 @@ LUT golfing experiments, trying to reduce LUT count.
    wire [31:0] Jimm = {immB1[11:0], immB4, instr[20], immB2, immB3, 1'b0};   
    wire [31:0] Uimm = {instr[31],   instr[30:20], immB4, {12{1'b0}}};
 
+=============================================================================
+
