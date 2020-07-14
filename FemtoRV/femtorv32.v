@@ -18,8 +18,8 @@
 // is something else than an ICEStick), I recommend using a more efficient /
 // more complete RISC-V core (e.g., Claire Wolf's picorv32).
 
-// LUT-golfing par: 1212 LUTs (ICESTORM_LC)
-// Tested on the ICESTick, with the following configuration:
+// LUT-golfing par: 1198 LUTs (ICEStick, ICESTORM_LC)
+// Tested with the following configuration:
 //   NRV_TWO_STAGE_SHIFTER=ON
 //   NRV_BARREL_SHIFTER=OFF
 //   NRV_NEGATIVE_RESET=ON,
