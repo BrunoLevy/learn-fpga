@@ -45,8 +45,8 @@
 `define NRV_RAM 6144        // CONFIGWORD 0x0020
 //`define NRV_RAM 4096        // CONFIGWORD 0x0020
 
-//`define NRV_COUNTERS    // Uncomment for instr and cycle counters (won't fit on the ICEStick)
-//`define NRV_COUNTERS_64 // ... and uncomment this one as well if you want 64-bit counters
+//`define NRV_COUNTERS    // CONFIGWORD 0x0018[0] // Uncomment for instr and cycle counters (won't fit on the ICEStick)
+//`define NRV_COUNTERS_64 // CONFIGWORD 0x0018[1] // ... and uncomment this one as well if you want 64-bit counters
 
 /*************************************************************************************/
 // Makes it easier to detect typos !

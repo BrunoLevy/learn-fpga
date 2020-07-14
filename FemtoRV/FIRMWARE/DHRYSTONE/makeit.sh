@@ -1,10 +1,10 @@
 (cd ../LIB; ./makeit.sh)
-riscv64-linux-gnu-gcc-10 -w -DRISCV -DTIME -DUSE_MYSTDLIB -O3 -fno-pic -march=rv32i -mabi=ilp32 -ILIB -c dhry_1.c
-riscv64-linux-gnu-gcc-10 -w -DRISCV -DTIME -DUSE_MYSTDLIB -O3 -fno-pic -march=rv32i -mabi=ilp32 -ILIB -c dhry_2.c
-riscv64-linux-gnu-gcc-10 -w -DRISCV -DTIME -DUSE_MYSTDLIB -O3 -fno-pic -march=rv32i -mabi=ilp32 -ILIB -c stubs.c
+riscv64-linux-gnu-gcc-10 -w -DRISCV -DTIME -DUSE_MYSTDLIB -O3 -fno-pic -march=rv32i -mabi=ilp32 -I../LIB -c dhry_1.c
+riscv64-linux-gnu-gcc-10 -w -DRISCV -DTIME -DUSE_MYSTDLIB -O3 -fno-pic -march=rv32i -mabi=ilp32 -I../LIB -c dhry_2.c
+riscv64-linux-gnu-gcc-10 -w -DRISCV -DTIME -DUSE_MYSTDLIB -O3 -fno-pic -march=rv32i -mabi=ilp32 -I../LIB -c stubs.c
 
-riscv64-linux-gnu-gcc-10 -S -w -DRISCV -DTIME -DUSE_MYSTDLIB -O3 -fno-pic -march=rv32i -mabi=ilp32 -ILIB -c dhry_1.c
-riscv64-linux-gnu-gcc-10 -S -w -DRISCV -DTIME -DUSE_MYSTDLIB -O3 -fno-pic -march=rv32i -mabi=ilp32 -ILIB -c dhry_2.c
+riscv64-linux-gnu-gcc-10 -S -w -DRISCV -DTIME -DUSE_MYSTDLIB -O3 -fno-pic -march=rv32i -mabi=ilp32 -I../LIB -c dhry_1.c
+riscv64-linux-gnu-gcc-10 -S -w -DRISCV -DTIME -DUSE_MYSTDLIB -O3 -fno-pic -march=rv32i -mabi=ilp32 -I../LIB -c dhry_2.c
 
 
 # Link

@@ -100,11 +100,39 @@ main ()
  
   /* Initializations */
 
+   
+  /*
+   * FEMTOSOC/FEMTORV32 modifications ===========================
+   */ 
+   
+  /*
+   * Since there are only two calls to malloc(), and that malloc()
+   * is not supported yet by femtosoc lib, I replaced them with
+   * pre-allocated structures.
+   */ 
   Next_Ptr_Glob = &R1; // (Rec_Pointer) malloc (sizeof (Rec_Type));
   Ptr_Glob = &R2; // (Rec_Pointer) malloc (sizeof (Rec_Type));
 
+  /*
+   * Initialize IO (redirect to UART or OLED screen depending on 
+   * femtosoc.v configuration).
+   */ 
   femtosoc_tty_init();
-   
+  
+   /*
+    * Verify that this core was synthetized with counters. 
+    * The generation script extracts configuration 
+    * from femtosoc.v and writes values at specific memory addresses. 
+    * See stubs.c and LIB/femtorv32.h
+    */
+  if(!has_counters()) {
+      printf("This femtorv32 core does not have counters (see femtosoc.v)");
+      return -1;
+  }
+
+  /*
+   * End of FEMTOSOC/FEMTORV32 modifications ======================
+   */ 
    
   Ptr_Glob->Ptr_Comp                    = Next_Ptr_Glob;
   Ptr_Glob->Discr                       = Ident_1;
@@ -288,6 +316,12 @@ main ()
   int Dhrystones_Per_Second_Per_MHz = (Number_Of_Runs * 1000000) / User_Time;
   printf("Dhrystones_Per_Second_Per_MHz: %d\n", Dhrystones_Per_Second_Per_MHz);
 
+   /*
+    * "Another common representation of the Dhrystone benchmark is the DMIPS (Dhrystone MIPS) obtained 
+    * when the Dhrystone score is divided by 1757 (the number of Dhrystones per second obtained on the 
+    * VAX 11/780, nominally a 1 MIPS machine)."
+    */
+   
   int DMIPS_Per_MHz_x1000 = (1000 * Dhrystones_Per_Second_Per_MHz) / 1757;
   printf("DMIPS_Per_MHz: %d.%d%d%d\n", DMIPS_Per_MHz_x1000 / 1000,
 		(DMIPS_Per_MHz_x1000 / 100) % 10,
