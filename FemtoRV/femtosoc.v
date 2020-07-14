@@ -33,9 +33,8 @@
 //`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 
-`define NRV_FREQ 80           // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick
-                                                  // (but except UART out, the other peripherals won't work)
-
+`define NRV_FREQ 80           // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick.
+                                                  
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
 // 6K max on the ICEstick
@@ -605,6 +604,11 @@ module femtosoc(
      .TWOSTAGE_SHIFTER(1),
 `else
      .TWOSTAGE_SHIFTER(0),	      
+`endif
+`ifdef NRV_MUL
+     .MUL(1)
+`else
+     .MUL(0)	      
 `endif	      
   ) processor(
     .clk(clk),			

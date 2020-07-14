@@ -80,6 +80,12 @@ module femtoPLL #(
 	   localparam CLKOP_CPHASE = 5;
 	   localparam CLKFB_DIV = 2;	   	   
 	end
+	40: begin
+	   localparam CLKI_DIV = 5;
+	   localparam CLKOP_DIV = 15;
+	   localparam CLKOP_CPHASE = 7;
+	   localparam CLKFB_DIV = 8;	   	   
+	end
       endcase
    endgenerate
 

@@ -99,16 +99,15 @@ endmodule
 
 module NrvALU #(
    parameter [0:0] BARREL_SHIFTER = 0,		
-   parameter [0:0] TWOSTAGE_SHIFTER = 0
+   parameter [0:0] TWOSTAGE_SHIFTER = 0,
+   parameter [0:0] MUL = 0		
 )(
   input 	    clk, 
   input [31:0] 	    in1,
   input [31:0] 	    in2,
   input [2:0] 	    op,     // Operation
   input 	    opqual, // Operation qualification (+/-, Logical/Arithmetic)
-`ifdef NRV_MUL
   input             opM,    // Asserted if operation is an RV32M operation
-`endif  
   output reg [31:0] out,    // ALU result. Latched if operation is a shift.
   output 	    busy,   // 1 if ALU is currently computing (that is, shift ops)
   input 	    wr      // Raise to compute and store ALU result
@@ -142,32 +141,50 @@ module NrvALU #(
    wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
    wire        LTU = minus[32];
 
-   wire [63:0] times = in1 * in2;
-
+   wire [63:0] timesSS = $signed(in1)*$signed(in2);
+   wire [63:0] timesSU = $signed(in1)*in2;   
+   wire [63:0] timesUU = in1*in2;
+   
    always @(*) begin
-      (* parallel_case, full_case *)
-      case(op)
-        3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
-        3'b010: out = LT ;                               // SLT
-        3'b011: out = LTU;                               // SLTU
-        3'b100: out = in1 ^ in2;                         // XOR
-        3'b110: out = in1 | in2;                         // OR
-        3'b111: out = in1 & in2;                         // AND
-
-	// We could generate the barrel shifter here, but doing so
-	// makes the critical path too long, so we keep a two-phase
-	// ALU instead.
-        3'b001: out = shifter;                           // SLL	   
-        3'b101: out = shifter;                           // SRL/SRA
-      endcase 
+      if(MUL && opM) begin
+	 out = shifter;
+      end else begin
+	 (* parallel_case, full_case *)
+	 case(op)
+           3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
+           3'b010: out = LT ;                               // SLT
+           3'b011: out = LTU;                               // SLTU
+           3'b100: out = in1 ^ in2;                         // XOR
+           3'b110: out = in1 | in2;                         // OR
+           3'b111: out = in1 & in2;                         // AND
+	   
+	   // We could generate the barrel shifter here, but doing so
+	   // makes the critical path too long, so we keep a two-phase
+	   // ALU instead.
+           3'b001: out = shifter;                           // SLL	   
+           3'b101: out = shifter;                           // SRL/SRA
+	 endcase // case (op)
+      end
    end 
-	 
+
+   
    always @(posedge clk) begin
       
       /* verilator lint_off WIDTH */
       /* verilator lint_off CASEINCOMPLETE */
 
-      if(BARREL_SHIFTER) begin
+      if(MUL && opM && wr) begin
+	 case(op)
+	   3'b000: shifter <= timesSS[31:0];  // MUL
+	   3'b001: shifter <= timesSS[63:32]; // MULH
+	   3'b010: shifter <= timesSU[63:32]; // MULHSU
+	   3'b011: shifter <= timesUU[63:32]; // MULHU
+	   3'b100: shifter <= 0; // DIV : TODO
+	   3'b101: shifter <= 0; // DIVU: TODO
+	   3'b110: shifter <= 0; // REM : TODO
+	   3'b111: shifter <= 0; // REMU: TODO	     
+	 endcase
+      end else if(BARREL_SHIFTER) begin
 	 if(wr) begin
 	    case(op)
               3'b001: shifter <= in1 << in2[4:0];                                      // SLL	   
@@ -254,21 +271,19 @@ module NrvDecoder(
     input wire [31:0] instr,
     output wire [4:0] writeBackRegId,
     output reg 	      writeBackEn,
-    output reg [1:0]  writeBackSel, // 00: ALU, 01: PC+4, 10: RAM
+    output reg [1:0]  writeBackSel, // 00: ALU, 01: PC+4, 10: RAM, 11: counters
     output wire [4:0] inRegId1,
     output wire [4:0] inRegId2,
-    output reg 	      aluSel,    // 0: force aluOp,aluQual to zero (ADD)  1: use aluOp,aluQual from instr field
-    output reg 	      aluInSel1, // 0: reg  1: pc
-    output reg 	      aluInSel2, // 0: reg  1: imm
+    output reg 	      aluSel,       // 0: force aluOp,aluQual to zero (ADD)  1: use aluOp,aluQual from instr field
+    output reg 	      aluInSel1,    // 0: reg  1: pc
+    output reg 	      aluInSel2,    // 0: reg  1: imm
     output [2:0]      aluOp,
     output reg 	      aluQual,
-`ifdef NRV_MUL
-    output 	      aluM,       // Asserted if operation is an RV32M operation
-`endif 
+    output reg	      aluM,         // Asserted if operation is an RV32M operation
     output reg 	      isLoad,
     output reg 	      isStore,
-    output reg 	      isShift,
-    output reg [1:0]  nextPCSel, // 00: PC+4  01: ALU  10: (predicate ? ALU : PC+4)
+    output reg 	      needWaitALU,
+    output reg [1:0]  nextPCSel,    // 00: PC+4  01: ALU  10: (predicate ? ALU : PC+4)
     output reg [31:0] imm,
     output reg 	      error
 );
@@ -335,10 +350,8 @@ module NrvDecoder(
        isLoad = 1'b0;
        isStore = 1'b0;
        aluQual = 1'b0;
-       isShift = 1'b0;
-`ifdef NRV_MUL
+       needWaitALU = 1'b0;
        aluM    = 1'b0;
-`endif      
       
        (* parallel_case, full_case *)
        case(instr[6:0])
@@ -400,7 +413,7 @@ module NrvDecoder(
 	      aluInSel2  = 1'b1;     // ALU source 2 : imm
 	                             // Qualifier for ALU op: SRLI/SRAI
 	      aluQual = aluOpIsShift ? instr[30] : 1'b0;
-	      isShift = aluOpIsShift;
+	      needWaitALU = aluOpIsShift;
 	      aluSel = 1'b1;         // ALU op : from instr
 	      imm = Iimm;            // imm format = I
 	   end
@@ -412,7 +425,12 @@ module NrvDecoder(
 	      aluInSel2 = 1'b0;      // ALU source 2 : reg
 	      aluQual = instr[30];   // Qualifier for ALU op: +/- SRL/SRA
 	      aluSel = 1'b1;         // ALU op : from instr
-	      isShift = aluOpIsShift;	      
+`ifdef NRV_MUL
+	      needWaitALU = aluOpIsShift || instr[25];	
+              aluM = instr[25];
+`else
+	      needWaitALU = aluOpIsShift;	      
+`endif	      
 	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; // don't care
 	   end
 	   
@@ -456,20 +474,6 @@ module NrvDecoder(
 	   end
 `endif	 
 
-`ifdef NRV_MUL
-	 7'b0110011: begin
-	      writeBackEn = 1'b1;    // enable write back
-	      writeBackSel = 2'b00;  // write back source = ALU
-	      aluInSel1 = 1'b0;      // ALU source 1 : reg
-	      aluInSel2 = 1'b0;      // ALU source 2 : reg
-	      aluQual = 1'bx;        // Qualifier for ALU op: don't care
-	      aluM = 1'b1;           // It is an RV32M instruction
-	      aluSel = 1'b1;         // ALU op : from instr
-	      isShift = 1'b1;        // Need wait ALU (todo: rename signal)
-	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; // don't care
-	 end
-`endif
-	 
            default: begin
 	      writeBackEn = 1'b0;
 	      error = 1'b1;
@@ -491,6 +495,7 @@ endmodule
 module FemtoRV32 #(
   parameter [0:0] BARREL_SHIFTER     = 0,		   
   parameter [0:0] TWOSTAGE_SHIFTER   = 0,
+  parameter [0:0] MUL                = 0,		   
   parameter       ADDR_WIDTH         = 16
 ) (
    input 	     clk,
@@ -565,12 +570,10 @@ module FemtoRV32 #(
    wire 	 aluSel;         // 0: force aluOp,aluQual to zero (ADD)  1: use aluOp,aluQual from instr field
    wire [2:0] 	 aluOp;          // one of the 8 operations done by the ALU
    wire 	 aluQual;        // 'qualifier' used by some operations (+/-, logical/arith shifts)
-`ifdef NRV_MUL
    wire          aluM;           // asserted if instr is RV32M.
-`endif 
    wire [1:0] 	 nextPCSel;      // 00: PC+4  01: ALU  10: (predicate ? ALU : PC+4)
    wire [31:0] 	 imm;            // immediate value decoded from the instruction
-   wire          isShift;        // guess what, true if instr is a shift
+   wire          needWaitALU;    // asserted if instruction uses at least one additional phase in ALU
    wire 	 isLoad;         // guess what, true if instr is a load
    wire 	 isStore;        // guess what, true if instr is a store
    wire          decoderError;   // true if instr does not correspond to any known instr
@@ -591,10 +594,8 @@ module FemtoRV32 #(
      .aluSel(aluSel),		     
      .aluOp(aluOp),
      .aluQual(aluQual),
-`ifdef NRV_MUL
      .aluM(aluM),		      
-`endif		      
-     .isShift(isShift),		      
+     .needWaitALU(needWaitALU),		      
      .isLoad(isLoad),
      .isStore(isStore),
      .nextPCSel(nextPCSel),
@@ -633,16 +634,15 @@ module FemtoRV32 #(
    
    NrvALU #(
      .BARREL_SHIFTER(BARREL_SHIFTER),	    
-     .TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER)
+     .TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER),
+     .MUL(MUL)	    
    ) alu(
     .clk(clk),	      
     .in1(aluIn1),
     .in2(aluIn2),
     .op(aluOp & {3{aluSel}}),
     .opqual(aluQual & aluSel),
-`ifdef NRV_MUL
     .opM(aluM),	 
-`endif	 
     .out(aluOut),
     .wr(state == EXECUTE), 
     .busy(aluBusy)	      
@@ -799,7 +799,7 @@ module FemtoRV32 #(
 	      case(nextPCSel)
 		2'b00: begin // normal operation
 		   PC <= PCplus4;
-		   state <= isShift ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
+		   state <= needWaitALU ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
 		end		   
 		2'b01: begin // unconditional jump (JAL, JALR)
 		   PC <= aluOut[31:2];
