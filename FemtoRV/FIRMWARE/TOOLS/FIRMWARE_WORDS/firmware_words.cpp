@@ -29,7 +29,7 @@ unsigned char char_to_nibble(char c) {
 	result = c - 'a' + 10;
     } else {
 	std::cerr << "Invalid hexadecimal digit: " << c << std::endl;
-	abort();
+	exit(-1);
     }
     return result;
 }
@@ -191,7 +191,7 @@ int main() {
 	       std::cerr << "Line : " << lineno << std::endl;
 	       std::cerr << " invalid number of characters"
 			 << std::endl;
-	       abort();
+	       exit(-1);
 	   }
 
 	   int i = 0;
@@ -200,13 +200,13 @@ int main() {
 		   std::cerr << "Line : " << lineno << std::endl;
 		   std::cerr << " RAM size exceeded"
 			     << std::endl;
-		   abort();
+		   exit(-1);
 	       }
 	       if(OCC[address] != 0) {
 		   std::cerr << "Line : " << lineno << std::endl;
 		   std::cerr << " same RAM address written twice"
 			     << std::endl;
-		   abort();
+		   exit(-1);
 	       }
 	       max_address = std::max(max_address, address);
 	       RAM[address] = string_to_byte(&charbytes[i]);

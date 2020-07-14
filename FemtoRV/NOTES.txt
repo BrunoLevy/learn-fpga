@@ -1,10 +1,15 @@
 
-TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
+TODO: * ULX3S SDRAM
+      * ULX3S sdcard, seems to be more or less the same interface as SPI Flash, cool !
+      * ULX3S display
+      * ULX3S USB keyboard (or tiny I2C keyboard before then)
+      * ST_NICCC demo, run on sdcard
+      * support FAT file system on sdcard
+      
+      * compliance test ! https://github.com/riscv/riscv-compliance/
       * soft floating point routines: https://github.com/riscv/riscv-glibc/tree/riscv-glibc-2.29/soft-fp
       * print_float, printf("%f")
-      * virtual output for led matrix.
       * A 90-ish "megademo" on the OLED display !
-      * Autodetect installed devices
       * Change RAM interface, make it match Claire's protocol (then
         we'll be able to use many SOC / CPU configurations, see if we
         can fit Claire's picoSOC on the ICEStick, use attoSOC with
@@ -27,14 +32,10 @@ TODO: * compliance test ! https://github.com/riscv/riscv-compliance/
       * Use Claire's UART instead of J1's UART ? (Claire's code seems
         to be more compact, what does it give in terms of number of LUTS ?)
       * Bugs: on init, get_char() returns garbage the first time.
-      * Decoder for immediates can probably be made let LUT-hungry:
-          * instr decoder can set Rtype, Itype, Stype, Btype, Utype, Jtype booleans
-	  * immediate can be assembled using muxes, driven by Xtype signals, as
-	    in table 2.4 p. 12 fom the RISC-V document.
       * I2C keyboard: 
           https://community.cypress.com/thread/52527
       * SPI, FPGA4Fun: https://www.fpga4fun.com/SPI2.html
-      * OLED SSD1351 driver is still unstable with freq > 80 MHz	
+      * OLED SSD1351 driver is still unstable with freq > nnn (100?) MHz	
 
 =================================================================================================================
 

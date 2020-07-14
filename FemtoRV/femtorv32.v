@@ -18,20 +18,24 @@
 // is something else than an ICEStick), I recommend using a more efficient /
 // more complete RISC-V core (e.g., Claire Wolf's picorv32).
 
-// LUT-golfing par: 1217 LUTs (ICESTORM_LC)
-// Tested with the configuration for the ST_NICC demo on the IceStick,
-// that is:
+// LUT-golfing par: 1212 LUTs (ICESTORM_LC)
+// Tested on the ICESTick, with the following configuration:
 //   NRV_TWO_STAGE_SHIFTER=ON
+//   NRV_BARREL_SHIFTER=OFF
 //   NRV_NEGATIVE_RESET=ON,
 //   NRV_IO_LEDS=ON
-//   NRV_IO_UART=OFF
-//   NRV_IO_SSD1351=ON
+//   NRV_IO_UART=ON
+//   NRV_IO_SSD1351=OFF
 //   NRV_IO_MAX2719=OFF
-//   NRV_IO_SPI_FLASH=ON
+//   NRV_IO_SPI_FLASH=OFF
 //   NRV_FREQ=80
 //   NRV_RAM=6144
 //   NRV_COUNTERS=OFF
 //   NRV_COUNTERS_64=OFF
+//
+// Dhrystones test (tested on the ULX3S and ECPC-EVN):
+// With NRV_TWOSTAGE_SHIFTER: 3.904 CPI, 714 Dhrystones/s/MHz, 0.406 DMIPS/MHz
+// With NRV_BARREL_SHIFTER  : 3.854 CPI, 723 Dhrystones/s/MHz, 0.411 DMIPS/MHz
 
 `ifdef VERBOSE
   `define verbose(command) command
@@ -107,6 +111,8 @@ module NrvALU #(
   input 	    wr      // Raise to compute and store ALU result
 );
 
+   reg [31:0] shifter;
+   
    generate
       if(BARREL_SHIFTER) begin
 	 assign busy = 1'b0;
@@ -115,7 +121,6 @@ module NrvALU #(
 	 // ALU is busy if shift amount is non-zero, or if, at execute
 	 // state, operation is a shift (wr active)
 	 assign busy = (shamt != 0);
-	 reg [31:0]    shifter;
       end
    endgenerate
       
@@ -134,71 +139,65 @@ module NrvALU #(
    wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
    wire        LTU = minus[32];
 
-   generate
-      if(BARREL_SHIFTER) begin
-	 always @(*) begin
-	    (* parallel_case, full_case *)
-	    case(op)
-              3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
-              3'b010: out = LT ;                               // SLT
-              3'b011: out = LTU;                               // SLTU
-              3'b100: out = in1 ^ in2;                         // XOR
-              3'b110: out = in1 | in2;                         // OR
-              3'b111: out = in1 & in2;                         // AND
-              3'b001: out = in1 << in2[4:0];                   // SLL	   
-              3'b101: out = $signed({opqual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
-	    endcase 
-	 end 
-      end else begin
+
+   always @(*) begin
+      (* parallel_case, full_case *)
+      case(op)
+        3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
+        3'b010: out = LT ;                               // SLT
+        3'b011: out = LTU;                               // SLTU
+        3'b100: out = in1 ^ in2;                         // XOR
+        3'b110: out = in1 | in2;                         // OR
+        3'b111: out = in1 & in2;                         // AND
+
+	// We could generate the barrel shifter here, but doing so
+	// makes the critical path too long, so we keep a two-phase
+	// ALU instead.
+        3'b001: out = shifter;                           // SLL	   
+        3'b101: out = shifter;                           // SRL/SRA
+      endcase 
+   end 
 	 
-	 always @(*) begin
-	    (* parallel_case, full_case *)
+   always @(posedge clk) begin
+      
+      /* verilator lint_off WIDTH */
+      /* verilator lint_off CASEINCOMPLETE */
+
+      if(BARREL_SHIFTER) begin
+	 if(wr) begin
 	    case(op)
-              3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
-              3'b010: out = LT ;                               // SLT
-              3'b011: out = LTU;                               // SLTU
-              3'b100: out = in1 ^ in2;                         // XOR
-              3'b110: out = in1 | in2;                         // OR
-              3'b111: out = in1 & in2;                         // AND
-              3'b001: out = shifter;                           // SLL	   
-              3'b101: out = shifter;                           // SRL/SRA
+              3'b001: shifter <= in1 << in2[4:0];                                      // SLL	   
+              3'b101: shifter <= $signed({opqual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
 	    endcase 
-	 end 
-      
-	 always @(posedge clk) begin
-      
-	    /* verilator lint_off WIDTH */
-	    /* verilator lint_off CASEINCOMPLETE */
-	    
-	    if(wr) begin
+	 end
+      end else begin
+	 if(wr) begin
+	    case(op)
+	      3'b001: begin shifter <= in1; shamt <= in2[4:0]; end // SLL	   
+	      3'b101: begin shifter <= in1; shamt <= in2[4:0]; end // SRL/SRA
+	    endcase 
+	 end else begin
+	    if (TWOSTAGE_SHIFTER && shamt > 4) begin
+	       shamt <= shamt - 4;
 	       case(op)
-		 3'b001: begin shifter <= in1; shamt <= in2[4:0]; end // SLL	   
-		 3'b101: begin shifter <= in1; shamt <= in2[4:0]; end // SRL/SRA
+		 3'b001: shifter <= shifter << 4;                                // SLL
+		 3'b101: shifter <= opqual ? {{4{shifter[31]}}, shifter[31:4]} : // SRL/SRA 
+                                             { 4'b0000,         shifter[31:4]} ; 
 	       endcase 
-	    end else begin
-	    
-	       if (TWOSTAGE_SHIFTER && shamt > 4) begin
-		  shamt <= shamt - 4;
-		  case(op)
-		    3'b001: shifter <= shifter << 4;                                // SLL
-		    3'b101: shifter <= opqual ? {{4{shifter[31]}}, shifter[31:4]} : // SRL/SRA 
-                                                 { 4'b0000,         shifter[31:4]} ; 
-		  endcase 
-	       end else  
-		 if (shamt != 0) begin
-		    shamt <= shamt - 1;
-		    case(op)
-		      3'b001: shifter <= shifter << 1;                           // SLL
-		      3'b101: shifter <= opqual ? {shifter[31], shifter[31:1]} : // SRL/SRA 
-					          {1'b0,        shifter[31:1]} ; 
-		    endcase 
-		 end
-	    end
-	    /* verilator lint_on WIDTH */
-	    /* verilator lint_on CASEINCOMPLETE */
-	 end // always @ (posedge clk)
+	    end else  
+	      if (shamt != 0) begin
+		 shamt <= shamt - 1;
+		 case(op)
+		   3'b001: shifter <= shifter << 1;                           // SLL
+		   3'b101: shifter <= opqual ? {shifter[31], shifter[31:1]} : // SRL/SRA 
+				               {1'b0,        shifter[31:1]} ; 
+		 endcase 
+	      end
+	 end 
       end
-   endgenerate
+      /* verilator lint_on WIDTH */
+      /* verilator lint_on CASEINCOMPLETE */
+   end 
 endmodule
 
 /********************* Branch predicates *******************************/
@@ -284,7 +283,7 @@ module NrvDecoder(
    
    assign writeBackRegId = instr[11:7];
    assign inRegId1       = instr[19:15] & {5{inRegId1Sel}}; // Internal sig InRegId1Sel used to force zero in reg1
-   assign inRegId2       = instr[24:20];              // (because I'm maing maximum reuse of the adder of the ALU)
+   assign inRegId2       = instr[24:20];             // (because I'm making maximum reuse of the adder of the ALU)
    assign aluOp          = instr[14:12];  
 
    // The five immediate formats, see the RiscV reference, Fig. 2.4 p. 12
@@ -437,7 +436,7 @@ module NrvDecoder(
 `ifdef NRV_COUNTERS
 	   7'b1110011: begin // System RDCYCLE[H], RDTIME[H] and RDINSTRET[H]
 	      writeBackEn = 1'b1;
-	      writeBackSel = 2'b11;
+	      writeBackSel = 2'b11; // write back sel = counter
 	      inRegId1Sel = 1'bx; 
 	      aluInSel1 = 1'bx;      
 	      aluInSel2 = 1'bx;      
@@ -768,7 +767,7 @@ module FemtoRV32 #(
 	      case(nextPCSel)
 		2'b00: begin // normal operation
 		   PC <= PCplus4;
-		   state <= (isShift && !BARREL_SHIFTER) ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
+		   state <= isShift ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
 		end		   
 		2'b01: begin // unconditional jump (JAL, JALR)
 		   PC <= aluOut[31:2];
