@@ -106,6 +106,9 @@ module NrvALU #(
   input [31:0] 	    in2,
   input [2:0] 	    op,     // Operation
   input 	    opqual, // Operation qualification (+/-, Logical/Arithmetic)
+`ifdef NRV_MUL
+  input             opM,    // Asserted if operation is an RV32M operation
+`endif  
   output reg [31:0] out,    // ALU result. Latched if operation is a shift.
   output 	    busy,   // 1 if ALU is currently computing (that is, shift ops)
   input 	    wr      // Raise to compute and store ALU result
@@ -139,6 +142,7 @@ module NrvALU #(
    wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
    wire        LTU = minus[32];
 
+   wire [63:0] times = in1 * in2;
 
    always @(*) begin
       (* parallel_case, full_case *)
@@ -253,14 +257,17 @@ module NrvDecoder(
     output reg [1:0]  writeBackSel, // 00: ALU, 01: PC+4, 10: RAM
     output wire [4:0] inRegId1,
     output wire [4:0] inRegId2,
-    output reg 	      aluSel, // 0: force aluOp,aluQual to zero (ADD)  1: use aluOp,aluQual from instr field
+    output reg 	      aluSel,    // 0: force aluOp,aluQual to zero (ADD)  1: use aluOp,aluQual from instr field
     output reg 	      aluInSel1, // 0: reg  1: pc
     output reg 	      aluInSel2, // 0: reg  1: imm
     output [2:0]      aluOp,
     output reg 	      aluQual,
+`ifdef NRV_MUL
+    output 	      aluM,       // Asserted if operation is an RV32M operation
+`endif 
     output reg 	      isLoad,
     output reg 	      isStore,
-    output reg        isShift,
+    output reg 	      isShift,
     output reg [1:0]  nextPCSel, // 00: PC+4  01: ALU  10: (predicate ? ALU : PC+4)
     output reg [31:0] imm,
     output reg 	      error
@@ -329,6 +336,9 @@ module NrvDecoder(
        isStore = 1'b0;
        aluQual = 1'b0;
        isShift = 1'b0;
+`ifdef NRV_MUL
+       aluM    = 1'b0;
+`endif      
       
        (* parallel_case, full_case *)
        case(instr[6:0])
@@ -445,6 +455,20 @@ module NrvDecoder(
 	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
 	   end
 `endif	 
+
+`ifdef NRV_MUL
+	 7'b0110011: begin
+	      writeBackEn = 1'b1;    // enable write back
+	      writeBackSel = 2'b00;  // write back source = ALU
+	      aluInSel1 = 1'b0;      // ALU source 1 : reg
+	      aluInSel2 = 1'b0;      // ALU source 2 : reg
+	      aluQual = 1'bx;        // Qualifier for ALU op: don't care
+	      aluM = 1'b1;           // It is an RV32M instruction
+	      aluSel = 1'b1;         // ALU op : from instr
+	      isShift = 1'b1;        // Need wait ALU (todo: rename signal)
+	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; // don't care
+	 end
+`endif
 	 
            default: begin
 	      writeBackEn = 1'b0;
@@ -541,6 +565,9 @@ module FemtoRV32 #(
    wire 	 aluSel;         // 0: force aluOp,aluQual to zero (ADD)  1: use aluOp,aluQual from instr field
    wire [2:0] 	 aluOp;          // one of the 8 operations done by the ALU
    wire 	 aluQual;        // 'qualifier' used by some operations (+/-, logical/arith shifts)
+`ifdef NRV_MUL
+   wire          aluM;           // asserted if instr is RV32M.
+`endif 
    wire [1:0] 	 nextPCSel;      // 00: PC+4  01: ALU  10: (predicate ? ALU : PC+4)
    wire [31:0] 	 imm;            // immediate value decoded from the instruction
    wire          isShift;        // guess what, true if instr is a shift
@@ -564,6 +591,9 @@ module FemtoRV32 #(
      .aluSel(aluSel),		     
      .aluOp(aluOp),
      .aluQual(aluQual),
+`ifdef NRV_MUL
+     .aluM(aluM),		      
+`endif		      
      .isShift(isShift),		      
      .isLoad(isLoad),
      .isStore(isStore),
@@ -610,11 +640,13 @@ module FemtoRV32 #(
     .in2(aluIn2),
     .op(aluOp & {3{aluSel}}),
     .opqual(aluQual & aluSel),
+`ifdef NRV_MUL
+    .opM(aluM),	 
+`endif	 
     .out(aluOut),
     .wr(state == EXECUTE), 
     .busy(aluBusy)	      
    );
-
 
    // LOAD: decode datain based on type and address
    
