@@ -96,7 +96,9 @@ endmodule
 
 
 /********************************* Small ALU **********************************/
-// Implements the RV32I instruction set
+// Small version of the ALU
+// To be used on the ICEStick, when NRV_RV32M is not set.
+// Implements the RV32I instruction set.
 
 module NrvSmallALU #(
    parameter [0:0] TWOSTAGE_SHIFTER = 0 // optional twostage shifter, makes shifts faster
@@ -111,9 +113,9 @@ module NrvSmallALU #(
   input 	    wr      // Raise to write ALU inputs and start computing
 );
 
-   reg [31:0] ALUreg;          // The internal register of the ALU.
-   reg [4:0]  shamt = 0;       // current shift amount
-   assign busy = (shamt != 0); // ALU is busy if shift amount is non-zero
+   reg [31:0] ALUreg;          // The internal register of the ALU, used by shifts.
+   reg [4:0]  shamt = 0;       // current shift amount.
+   assign busy = (shamt != 0); // ALU is busy if shift amount is non-zero.
       
    // Implementation suggested by Matthias Koch, uses a single 33 bits 
    // subtract for all the tests, as in swapforth/J1.
@@ -183,7 +185,8 @@ endmodule
 
 
 /********************************* Large ALU **********************************/
-// Implements the RV32IM instruction set
+// Large version of the ALU
+// Implements the RV32IM instruction set, with MUL,DIV,REM
 // Includes a barrel shifter
 
 module NrvLargeALU (
@@ -198,19 +201,16 @@ module NrvLargeALU (
   input 	    wr      // Raise to write ALU inputs and start computing
 );
 
-   reg [31:0] ALUreg; // The internal register of the ALU.
+   reg [31:0] ALUreg; // The internal register of the ALU, used by MUL(H)(U) and shifts.
 
-   // Implementation of DIV/REM instructions, 
-   // highly inspired by PICORV32
+   // Implementation of DIV/REM instructions, highly inspired by PICORV32
    reg [31:0] 	      dividend;
    reg [62:0] 	      divisor;
    reg [31:0] 	      quotient;
    reg [31:0] 	      quotient_msk;
    reg 		      outsign;
 
-
    assign busy = opM && |quotient_msk; // ALU is busy if a DIV or REM operation is running.
-   
       
    // Implementation suggested by Matthias Koch, uses a single 33 bits 
    // subtract for all the tests, as in swapforth/J1.
@@ -310,7 +310,7 @@ module NrvLargeALU (
 		 quotient_msk <= 1 << 31;
 	      end
 	    endcase // case (op)
-	 end else begin // if (wr)
+	 end else begin 
 	    if(divisor <= dividend) begin
 	       dividend <= dividend - divisor;
 	       quotient <= quotient | quotient_msk;
@@ -537,7 +537,8 @@ module NrvDecoder(
 	      needWaitALU = aluOpIsShift || instr[25];	
               aluM = instr[25];
 `else
-	      needWaitALU = aluOpIsShift;	      
+	      needWaitALU = aluOpIsShift;
+	      error = instr[25];
 `endif	      
 	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; // don't care
 	   end
@@ -601,8 +602,8 @@ endmodule
 /********************* Nrv processor *******************************/
 
 module FemtoRV32 #(
-  parameter [0:0] RV32M              = 0,		   
-  parameter       ADDR_WIDTH         = 16
+  parameter [0:0] RV32M              = 0, // Set to 1 to support mul/div/rem instructions		   
+  parameter       ADDR_WIDTH         = 16 // width of the address bus
 ) (
    input 	     clk,
 
