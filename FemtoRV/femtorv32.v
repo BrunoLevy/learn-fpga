@@ -95,44 +95,25 @@ module NrvRegisterFile(
 endmodule
 
 
-/********************************* ALU **********************************/
+/********************************* Small ALU **********************************/
+// Implements the RV32I instruction set
 
-module NrvALU #(
-   parameter [0:0] BARREL_SHIFTER = 0,		
-   parameter [0:0] TWOSTAGE_SHIFTER = 0,
-   parameter [0:0] RV32M = 0		
+module NrvSmallALU #(
+   parameter [0:0] TWOSTAGE_SHIFTER = 0 // optional twostage shifter, makes shifts faster
 )(
   input 	    clk, 
   input [31:0] 	    in1,
   input [31:0] 	    in2,
   input [2:0] 	    op,     // Operation
   input 	    opqual, // Operation qualification (+/-, Logical/Arithmetic)
-  input             opM,    // Asserted if operation is an RV32M operation
-  output reg [31:0] out,    // ALU result. Latched if operation is a shift.
-  output 	    busy,   // 1 if ALU is currently computing (that is, shift ops)
-  input 	    wr      // Raise to compute and store ALU result
+  output reg [31:0] out,    // ALU result. Latched if operation is a shift,mul,div,rem
+  output 	    busy,   // 1 if ALU is currently computing (that is, shift,mul,div,rem)
+  input 	    wr      // Raise to write ALU inputs and start computing
 );
 
-   reg [31:0] ALUreg; // The internal register of the ALU.
-
-   // Implementation of DIV/REM instructions, 
-   // highly inspired by PICORV32
-   reg [31:0] 	      dividend;
-   reg [62:0] 	      divisor;
-   reg [31:0] 	      quotient;
-   reg [31:0] 	      quotient_msk;
-   reg 		      outsign;
-   
-   generate
-      if(BARREL_SHIFTER) begin
-	 assign busy = RV32M && opM && |quotient_msk;
-      end else begin
-	 reg [4:0]     shamt = 0; // current shift amount
-	 // ALU is busy if shift amount is non-zero, or if, at execute
-	 // state, operation is a shift (wr active)
-	 assign busy = (shamt != 0) || (RV32M && opM && |quotient_msk);
-      end
-   endgenerate
+   reg [31:0] ALUreg;          // The internal register of the ALU.
+   reg [4:0]  shamt = 0;       // current shift amount
+   assign busy = (shamt != 0); // ALU is busy if shift amount is non-zero
       
    // Implementation suggested by Matthias Koch, uses a single 33 bits 
    // subtract for all the tests, as in swapforth/J1.
@@ -149,6 +130,102 @@ module NrvALU #(
    wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
    wire        LTU = minus[32];
 
+   always @(*) begin
+      (* parallel_case, full_case *)
+      case(op)
+	3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
+	3'b010: out = LT ;                               // SLT
+	3'b011: out = LTU;                               // SLTU
+	3'b100: out = in1 ^ in2;                         // XOR
+	3'b110: out = in1 | in2;                         // OR
+	3'b111: out = in1 & in2;                         // AND
+	
+	// We could generate the barrel shifter here, but doing so
+	// makes the critical path too long, so we keep a two-phase
+	// ALU instead.
+	3'b001: out = ALUreg;                           // SLL	   
+	3'b101: out = ALUreg;                           // SRL/SRA
+      endcase // case (op)
+   end
+   
+   always @(posedge clk) begin
+      
+      /* verilator lint_off WIDTH */
+      /* verilator lint_off CASEINCOMPLETE */
+
+      if(wr) begin
+	 case(op)
+	   3'b001: begin ALUreg <= in1; shamt <= in2[4:0]; end // SLL	   
+	   3'b101: begin ALUreg <= in1; shamt <= in2[4:0]; end // SRL/SRA
+	 endcase 
+      end else begin
+	 if (TWOSTAGE_SHIFTER && shamt > 4) begin
+	    shamt <= shamt - 4;
+	    case(op)
+	      3'b001: ALUreg <= ALUreg << 4;                               // SLL
+	      3'b101: ALUreg <= opqual ? {{4{ALUreg[31]}}, ALUreg[31:4]} : // SRL/SRA 
+                                         { 4'b0000,        ALUreg[31:4]} ; 
+	    endcase 
+	 end else  
+	   if (shamt != 0) begin
+	      shamt <= shamt - 1;
+	      case(op)
+		3'b001: ALUreg <= ALUreg << 1;                          // SLL
+		3'b101: ALUreg <= opqual ? {ALUreg[31], ALUreg[31:1]} : // SRL/SRA 
+				           {1'b0,       ALUreg[31:1]} ; 
+	      endcase 
+	   end
+      end 
+      /* verilator lint_on WIDTH */
+      /* verilator lint_on CASEINCOMPLETE */
+   end 
+endmodule
+
+
+/********************************* Large ALU **********************************/
+// Implements the RV32IM instruction set
+// Includes a barrel shifter
+
+module NrvLargeALU (
+  input 	    clk, 
+  input [31:0] 	    in1,
+  input [31:0] 	    in2,
+  input [2:0] 	    op,     // Operation
+  input 	    opqual, // Operation qualification (+/-, Logical/Arithmetic)
+  input             opM,    // Asserted if operation is an RV32M operation
+  output reg [31:0] out,    // ALU result. Latched if operation is a shift,mul,div,rem
+  output 	    busy,   // 1 if ALU is currently computing (that is, shift,mul,div,rem)
+  input 	    wr      // Raise to write ALU inputs and start computing
+);
+
+   reg [31:0] ALUreg; // The internal register of the ALU.
+
+   // Implementation of DIV/REM instructions, 
+   // highly inspired by PICORV32
+   reg [31:0] 	      dividend;
+   reg [62:0] 	      divisor;
+   reg [31:0] 	      quotient;
+   reg [31:0] 	      quotient_msk;
+   reg 		      outsign;
+
+
+   assign busy = opM && |quotient_msk; // ALU is busy if a DIV or REM operation is running.
+   
+      
+   // Implementation suggested by Matthias Koch, uses a single 33 bits 
+   // subtract for all the tests, as in swapforth/J1.
+   // NOTE: if you read swapforth/J1 source,
+   //   J1's st0,st1 are inverted as compared to in1,in2 (st0<->in2  st1<->in1)
+   // Equivalent code:
+   // case(op) 
+   //    3'b000: out = opqual ? in1 - in2 : in1 + in2;                 // ADD/SUB
+   //    3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ; // SLT
+   //    3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                    // SLTU
+   //    ...
+	 
+   wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
+   wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
+   wire        LTU = minus[32];
 
    // Implementation of MUL instructions: using a single 33 * 33
    // multiplier, and doing sign extension or not according to
@@ -161,7 +238,7 @@ module NrvALU #(
    wire signed [63:0] times = in1E * in2E;
 
    always @(*) begin
-      if(RV32M && opM) begin
+      if(opM) begin
 	 case(op)
 	   3'b000: out <= ALUreg; // MUL
 	   3'b001: out <= ALUreg; // MULH
@@ -197,7 +274,7 @@ module NrvALU #(
       /* verilator lint_off WIDTH */
       /* verilator lint_off CASEINCOMPLETE */
 
-      if(RV32M && opM) begin
+      if(opM) begin
 	 if(wr) begin 
 	    case(op)
 	      3'b000: ALUreg <= times[31:0];  // MUL
@@ -241,39 +318,12 @@ module NrvALU #(
 	    divisor <= divisor >> 1;
 	    quotient_msk <= quotient_msk >> 1;
 	 end
-      end else 
-	if(BARREL_SHIFTER) begin
-	   if(wr) begin
-	      case(op)
-		3'b001: ALUreg <= in1 << in2[4:0];                                      // SLL	   
-		3'b101: ALUreg <= $signed({opqual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
-	      endcase 
-	   end
-	end else begin
-	   if(wr) begin
-	      case(op)
-		3'b001: begin ALUreg <= in1; shamt <= in2[4:0]; end // SLL	   
-		3'b101: begin ALUreg <= in1; shamt <= in2[4:0]; end // SRL/SRA
-	      endcase 
-	   end else begin
-	      if (TWOSTAGE_SHIFTER && shamt > 4) begin
-		 shamt <= shamt - 4;
-		 case(op)
-		   3'b001: ALUreg <= ALUreg << 4;                               // SLL
-		   3'b101: ALUreg <= opqual ? {{4{ALUreg[31]}}, ALUreg[31:4]} : // SRL/SRA 
-                                              { 4'b0000,        ALUreg[31:4]} ; 
-		 endcase 
-	      end else  
-		if (shamt != 0) begin
-		   shamt <= shamt - 1;
-		   case(op)
-		     3'b001: ALUreg <= ALUreg << 1;                          // SLL
-		     3'b101: ALUreg <= opqual ? {ALUreg[31], ALUreg[31:1]} : // SRL/SRA 
-				                {1'b0,       ALUreg[31:1]} ; 
-		   endcase 
-		end
-	   end 
-	end
+      end else if(wr) begin // Barrel shifter
+	 case(op)
+	   3'b001: ALUreg <= in1 << in2[4:0];                                      // SLL	   
+	   3'b101: ALUreg <= $signed({opqual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
+	 endcase 
+      end 
       /* verilator lint_on WIDTH */
       /* verilator lint_on CASEINCOMPLETE */
    end 
@@ -551,9 +601,7 @@ endmodule
 /********************* Nrv processor *******************************/
 
 module FemtoRV32 #(
-  parameter [0:0] BARREL_SHIFTER     = 0,		   
-  parameter [0:0] TWOSTAGE_SHIFTER   = 0,
-  parameter [0:0] RV32M                = 0,		   
+  parameter [0:0] RV32M              = 0,		   
   parameter       ADDR_WIDTH         = 16
 ) (
    input 	     clk,
@@ -690,22 +738,39 @@ module FemtoRV32 #(
    wire [31:0] aluIn1 = aluInSel1 ? {PC, 2'b00} : regOut1;
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
    
-   NrvALU #(
-     .BARREL_SHIFTER(BARREL_SHIFTER),	    
-     .TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER),
-     .RV32M(RV32M)	    
-   ) alu(
-    .clk(clk),	      
-    .in1(aluIn1),
-    .in2(aluIn2),
-    .op(aluOp & {3{aluSel}}),
-    .opqual(aluQual & aluSel),
-    .opM(aluM),	 
-    .out(aluOut),
-    .wr(state == EXECUTE), 
-    .busy(aluBusy)	      
-   );
-
+   generate
+      if(RV32M) begin
+         NrvLargeALU alu(
+            .clk(clk),	      
+            .in1(aluIn1),
+            .in2(aluIn2),
+            .op(aluOp & {3{aluSel}}),
+            .opqual(aluQual & aluSel),
+            .opM(aluM),	 
+            .out(aluOut),
+            .wr(state == EXECUTE), 
+            .busy(aluBusy)	      
+         );
+      end else begin 
+         NrvSmallALU #(
+`ifdef NRV_TWOSTAGE_SHIFTER	      
+          .TWOSTAGE_SHIFTER(1),
+`else
+          .TWOSTAGE_SHIFTER(0),	      
+`endif
+         ) alu(
+            .clk(clk),	      
+            .in1(aluIn1),
+            .in2(aluIn2),
+            .op(aluOp & {3{aluSel}}),
+            .opqual(aluQual & aluSel),
+            .out(aluOut),
+            .wr(state == EXECUTE), 
+            .busy(aluBusy)	      
+         );
+      end
+   endgenerate
+      
    // LOAD: decode datain based on type and address
    
    reg [31:0] decodedDataIn;   

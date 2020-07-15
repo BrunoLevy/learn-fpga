@@ -8,13 +8,6 @@
 // (that generates firmware content). See also LIB/crt0.s
 
 
-/*
- * Comment-out if running out of LUTs (makes shifter faster, 
- * but uses 60-100 LUTs) (inspired by PICORV32). 
- */ 
-`define NRV_TWOSTAGE_SHIFTER // CONFIGWORD 0x0018[31]
-//`define NRV_BARREL_SHIFTER   // CONFIGWORD 0x0018[30]
-
 /* 
  * Uncomment if the RESET button is wired and active low:
  * (wire a push button and a pullup resistor to 
@@ -47,6 +40,14 @@
 //`define NRV_COUNTERS    // CONFIGWORD 0x0018[0] // Uncomment for instr and cycle counters (won't fit on the ICEStick)
 //`define NRV_COUNTERS_64 // CONFIGWORD 0x0018[1] // ... and uncomment this one as well if you want 64-bit counters
 //`define NRV_RV32M         // CONFIGWORD 0x0018[2] // Uncomment for hardware mul and div support (RV32M instructions)
+
+
+/*
+ * For the small ALU (that is, when not using RV32M),
+ * comment-out if running out of LUTs (makes shifter faster, 
+ * but uses 60-100 LUTs) (inspired by PICORV32). 
+ */ 
+`define NRV_TWOSTAGE_SHIFTER 
 
 /*************************************************************************************/
 // Makes it easier to detect typos !
@@ -595,16 +596,6 @@ module femtosoc(
 
   FemtoRV32 #(
      .ADDR_WIDTH(24),
-`ifdef NRV_BARREL_SHIFTER	      
-     .BARREL_SHIFTER(1),
-`else
-     .BARREL_SHIFTER(0),	      
-`endif	      
-`ifdef NRV_TWOSTAGE_SHIFTER	      
-     .TWOSTAGE_SHIFTER(1),
-`else
-     .TWOSTAGE_SHIFTER(0),	      
-`endif
 `ifdef NRV_RV32M
      .RV32M(1)
 `else
