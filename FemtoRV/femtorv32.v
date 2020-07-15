@@ -113,7 +113,7 @@ module NrvALU #(
   input 	    wr      // Raise to compute and store ALU result
 );
 
-   reg [31:0] shifter;
+   reg [31:0] ALUreg; // The internal register of the ALU.
    
    generate
       if(BARREL_SHIFTER) begin
@@ -154,7 +154,7 @@ module NrvALU #(
    
    always @(*) begin
       if(MUL && opM) begin
-	 out = shifter;
+	 out = ALUreg;
       end else begin
 	 (* parallel_case, full_case *)
 	 case(op)
@@ -168,8 +168,8 @@ module NrvALU #(
 	   // We could generate the barrel shifter here, but doing so
 	   // makes the critical path too long, so we keep a two-phase
 	   // ALU instead.
-           3'b001: out = shifter;                           // SLL	   
-           3'b101: out = shifter;                           // SRL/SRA
+           3'b001: out = ALUreg;                           // SLL	   
+           3'b101: out = ALUreg;                           // SRL/SRA
 	 endcase // case (op)
       end
    end 
@@ -182,45 +182,45 @@ module NrvALU #(
 
       if(MUL && opM && wr) begin
 	 case(op)
-	   3'b000: shifter <= times[31:0];  // MUL
-	   3'b001: shifter <= times[63:32]; // MULH
-	   3'b010: shifter <= times[63:32]; // MULHSU
-	   3'b011: shifter <= times[63:32]; // MULHU
-	   3'b100: shifter <= 0; // DIV : TODO
-	   3'b101: shifter <= 0; // DIVU: TODO
-	   3'b110: shifter <= 0; // REM : TODO
-	   3'b111: shifter <= 0; // REMU: TODO	     
+	   3'b000: ALUreg <= times[31:0];  // MUL
+	   3'b001: ALUreg <= times[63:32]; // MULH
+	   3'b010: ALUreg <= times[63:32]; // MULHSU
+	   3'b011: ALUreg <= times[63:32]; // MULHU
+	   3'b100: ALUreg <= 0; // DIV : TODO
+	   3'b101: ALUreg <= 0; // DIVU: TODO
+	   3'b110: ALUreg <= 0; // REM : TODO
+	   3'b111: ALUreg <= 0; // REMU: TODO	     
 	 endcase
       end else 
 
       if(BARREL_SHIFTER) begin
 	 if(wr) begin
 	    case(op)
-              3'b001: shifter <= in1 << in2[4:0];                                      // SLL	   
-              3'b101: shifter <= $signed({opqual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
+              3'b001: ALUreg <= in1 << in2[4:0];                                      // SLL	   
+              3'b101: ALUreg <= $signed({opqual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
 	    endcase 
 	 end
       end else begin
 	 if(wr) begin
 	    case(op)
-	      3'b001: begin shifter <= in1; shamt <= in2[4:0]; end // SLL	   
-	      3'b101: begin shifter <= in1; shamt <= in2[4:0]; end // SRL/SRA
+	      3'b001: begin ALUreg <= in1; shamt <= in2[4:0]; end // SLL	   
+	      3'b101: begin ALUreg <= in1; shamt <= in2[4:0]; end // SRL/SRA
 	    endcase 
 	 end else begin
 	    if (TWOSTAGE_SHIFTER && shamt > 4) begin
 	       shamt <= shamt - 4;
 	       case(op)
-		 3'b001: shifter <= shifter << 4;                                // SLL
-		 3'b101: shifter <= opqual ? {{4{shifter[31]}}, shifter[31:4]} : // SRL/SRA 
-                                             { 4'b0000,         shifter[31:4]} ; 
+		 3'b001: ALUreg <= ALUreg << 4;                                // SLL
+		 3'b101: ALUreg <= opqual ? {{4{ALUreg[31]}}, ALUreg[31:4]} : // SRL/SRA 
+                                             { 4'b0000,         ALUreg[31:4]} ; 
 	       endcase 
 	    end else  
 	      if (shamt != 0) begin
 		 shamt <= shamt - 1;
 		 case(op)
-		   3'b001: shifter <= shifter << 1;                           // SLL
-		   3'b101: shifter <= opqual ? {shifter[31], shifter[31:1]} : // SRL/SRA 
-				               {1'b0,        shifter[31:1]} ; 
+		   3'b001: ALUreg <= ALUreg << 1;                           // SLL
+		   3'b101: ALUreg <= opqual ? {ALUreg[31], ALUreg[31:1]} : // SRL/SRA 
+				               {1'b0,        ALUreg[31:1]} ; 
 		 endcase 
 	      end
 	 end 
