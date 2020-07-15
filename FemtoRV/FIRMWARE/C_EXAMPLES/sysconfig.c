@@ -6,7 +6,9 @@ void show_config() {
    printf("\n");
    printf("[Processor]\n");
    printf("  Femtorv32 core\n");
-   printf("  2shifter [%c]\n", (CONFIGWORDS[CONFIGWORD_PROC] & (1 << 31)) ? '*' : ' ');
+   printf("  counters: [%c]\n", (CONFIGWORDS[CONFIGWORD_PROC] & 1) ? '*' : ' ');
+   printf("  count64:  [%c]\n", (CONFIGWORDS[CONFIGWORD_PROC] & 2) ? '*' : ' ');
+   printf("  RV32M:    [%c]\n", (CONFIGWORDS[CONFIGWORD_PROC] & 3) ? '*' : ' ');   
    printf("  freq:    %d MHz\n",  CONFIGWORDS[CONFIGWORD_PROC_FREQ]);
    printf("[RAM]\n");
    printf("  %d bytes\n", CONFIGWORDS[CONFIGWORD_RAM]);

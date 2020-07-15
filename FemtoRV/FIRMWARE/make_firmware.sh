@@ -1,3 +1,7 @@
+ARCH=rv32i
+ABI=ilp32
+OPTIMIZE=-Os
+
 # Compile lib
 (cd LIB; ./makeit.sh)
 
@@ -9,14 +13,14 @@ rm -f BUILD/firmware.o
 if [[ $1 == *.s ]]
 then
   echo "asm compile: " $1 
-  riscv64-linux-gnu-as -march=rv32i -mabi=ilp32 -o BUILD/firmware.o $1
+  riscv64-linux-gnu-as -march=$ARCH -mabi=$ABI -o BUILD/firmware.o $1
 else
    if [[ $1 == *.c ]] 
    then
       echo "C compile: " $1
       # This line so that we can examine produced assembly
-      riscv64-linux-gnu-gcc-10 -Os -fno-pic -march=rv32i -mabi=ilp32 -ILIB -S $1 -o BUILD/firmware.s
-      riscv64-linux-gnu-gcc-10 -Os -fno-pic -march=rv32i -mabi=ilp32 -ILIB -c -o BUILD/firmware.o $1
+      riscv64-linux-gnu-gcc-10 $OPTIMIZE -fno-pic -march=$ARCH -mabi=$ABI -ILIB -S $1 -o BUILD/firmware.s
+      riscv64-linux-gnu-gcc-10 $OPTIMIZE -fno-pic -march=$ARCH -mabi=$ABI -ILIB -c -o BUILD/firmware.o $1
    else
       echo "Invalid firmware source file:" $1
       echo "Specify one of the firmware source files in EXAMPLES (asm) or C_EXAMPLES (C)"
@@ -37,7 +41,3 @@ cp BUILD/firmware.hex .
 ## Display assembly
 #riscv64-linux-gnu-objcopy -O binary BUILD/firmware.elf BUILD/firmware.bin
 #riscv64-linux-gnu-objdump -D -b binary -m riscv BUILD/firmware.bin 
-
-
-
-
