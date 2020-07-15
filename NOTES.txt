@@ -10,3 +10,5 @@ M5Stack mini I2C keyboard
     
 
 https://github.com/ultraembedded/core_dvi_framebuffer
+
+https://github.com/XarkLabs/Xosera

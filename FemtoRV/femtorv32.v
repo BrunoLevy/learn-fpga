@@ -100,7 +100,7 @@ endmodule
 module NrvALU #(
    parameter [0:0] BARREL_SHIFTER = 0,		
    parameter [0:0] TWOSTAGE_SHIFTER = 0,
-   parameter [0:0] MUL = 0		
+   parameter [0:0] RV32M = 0		
 )(
   input 	    clk, 
   input [31:0] 	    in1,
@@ -114,15 +114,23 @@ module NrvALU #(
 );
 
    reg [31:0] ALUreg; // The internal register of the ALU.
+
+   // Implementation of DIV/REM instructions, 
+   // highly inspired by PICORV32
+   reg [31:0] 	      dividend;
+   reg [62:0] 	      divisor;
+   reg [31:0] 	      quotient;
+   reg [31:0] 	      quotient_msk;
+   reg 		      outsign;
    
    generate
       if(BARREL_SHIFTER) begin
-	 assign busy = 1'b0;
+	 assign busy = RV32M && opM && |quotient_msk;
       end else begin
 	 reg [4:0]     shamt = 0; // current shift amount
 	 // ALU is busy if shift amount is non-zero, or if, at execute
 	 // state, operation is a shift (wr active)
-	 assign busy = (shamt != 0);
+	 assign busy = (shamt != 0) || (RV32M && opM && |quotient_msk);
       end
    endgenerate
       
@@ -144,17 +152,26 @@ module NrvALU #(
 
    // Implementation of MUL instructions: using a single 33 * 33
    // multiplier, and doing sign extension or not according to
-   // signedness of the operands in instruction.
-
-   wire        in1U = (op == 3'b011);
-   wire        in2U = (op == 3'b010 || op == 3'b011);
+   // the signedness of the operands in instruction.
+   // On the ECP5, yosys infers four 18x18 DSPs.
+   wire               in1U = (op == 3'b011);
+   wire               in2U = (op == 3'b010 || op == 3'b011);
    wire signed [33:0] in1E = {in1U ? 1'b0 : in1[31], in1};
    wire signed [33:0] in2E = {in2U ? 1'b0 : in2[31], in2};
    wire signed [63:0] times = in1E * in2E;
-   
+
    always @(*) begin
-      if(MUL && opM) begin
-	 out = ALUreg;
+      if(RV32M && opM) begin
+	 case(op)
+	   3'b000: out <= ALUreg; // MUL
+	   3'b001: out <= ALUreg; // MULH
+	   3'b010: out <= ALUreg; // MULHSU
+	   3'b011: out <= ALUreg; // MULHU
+	   3'b100: out <= outsign ? -quotient : quotient; // DIV
+	   3'b101: out <= quotient; // DIVU
+	   3'b110: out <= outsign ? -dividend : dividend; // REM 
+	   3'b111: out <= dividend; // REMU
+	 endcase
       end else begin
 	 (* parallel_case, full_case *)
 	 case(op)
@@ -180,17 +197,50 @@ module NrvALU #(
       /* verilator lint_off WIDTH */
       /* verilator lint_off CASEINCOMPLETE */
 
-      if(MUL && opM && wr) begin
-	 case(op)
-	   3'b000: ALUreg <= times[31:0];  // MUL
-	   3'b001: ALUreg <= times[63:32]; // MULH
-	   3'b010: ALUreg <= times[63:32]; // MULHSU
-	   3'b011: ALUreg <= times[63:32]; // MULHU
-	   3'b100: ALUreg <= 0; // DIV  (TODO)
-	   3'b101: ALUreg <= 0; // DIVU (TODO)
-	   3'b110: ALUreg <= 0; // REM  (TODO)
-	   3'b111: ALUreg <= 0; // REMU (TODO)
-	 endcase
+      if(RV32M && opM) begin
+	 if(wr) begin 
+	    case(op)
+	      3'b000: ALUreg <= times[31:0];  // MUL
+	      3'b001: ALUreg <= times[63:32]; // MULH
+	      3'b010: ALUreg <= times[63:32]; // MULHSU
+	      3'b011: ALUreg <= times[63:32]; // MULHU
+	      3'b100: begin // DIV
+		 dividend <= in1[31] ? -in1 : in1;
+		 divisor  <= (in2[31] ? -in2 : in2) << 31;
+		 outsign  <= (in1[31] != in2[31]) && |in2;
+		 quotient <= 0;
+		 quotient_msk <= 1 << 31;
+	      end
+	      3'b101: begin // DIVU
+		 dividend <= in1;
+		 divisor  <= in2 << 31;
+		 outsign  <= 1'b0;
+		 quotient <= 0;
+		 quotient_msk <= 1 << 31;
+	      end
+	      3'b110: begin // REM
+		 dividend <= in1[31] ? -in1 : in1;
+		 divisor  <= (in2[31] ? -in2 : in2) << 31;		 
+		 outsign  <= in1[31];
+		 quotient <= 0;
+		 quotient_msk <= 1 << 31;
+	      end
+	      3'b111: begin // REMU
+		 dividend <= in1;
+		 divisor  <= in2 << 31;
+		 outsign  <= 1'b0;
+		 quotient <= 0;
+		 quotient_msk <= 1 << 31;
+	      end
+	    endcase // case (op)
+	 end else begin // if (wr)
+	    if(divisor <= dividend) begin
+	       dividend <= dividend - divisor;
+	       quotient <= quotient | quotient_msk;
+	    end
+	    divisor <= divisor >> 1;
+	    quotient_msk <= quotient_msk >> 1;
+	 end
       end else 
 	if(BARREL_SHIFTER) begin
 	   if(wr) begin
@@ -433,7 +483,7 @@ module NrvDecoder(
 	      aluInSel2 = 1'b0;      // ALU source 2 : reg
 	      aluQual = instr[30];   // Qualifier for ALU op: +/- SRL/SRA
 	      aluSel = 1'b1;         // ALU op : from instr
-`ifdef NRV_MUL
+`ifdef NRV_RV32M
 	      needWaitALU = aluOpIsShift || instr[25];	
               aluM = instr[25];
 `else
@@ -503,7 +553,7 @@ endmodule
 module FemtoRV32 #(
   parameter [0:0] BARREL_SHIFTER     = 0,		   
   parameter [0:0] TWOSTAGE_SHIFTER   = 0,
-  parameter [0:0] MUL                = 0,		   
+  parameter [0:0] RV32M                = 0,		   
   parameter       ADDR_WIDTH         = 16
 ) (
    input 	     clk,
@@ -643,7 +693,7 @@ module FemtoRV32 #(
    NrvALU #(
      .BARREL_SHIFTER(BARREL_SHIFTER),	    
      .TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER),
-     .MUL(MUL)	    
+     .RV32M(RV32M)	    
    ) alu(
     .clk(clk),	      
     .in1(aluIn1),
