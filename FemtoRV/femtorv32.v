@@ -149,7 +149,7 @@ module NrvALU #(
    wire        in1U = (op == 3'b011);
    wire        in2U = (op == 3'b010 || op == 3'b011);
    wire signed [33:0] in1E = {in1U ? 1'b0 : in1[31], in1};
-   wire signed [33:0] in2E = {in2U ? 1'b0 : in2[31], in2};   
+   wire signed [33:0] in2E = {in2U ? 1'b0 : in2[31], in2};
    wire signed [63:0] times = in1E * in2E;
    
    always @(*) begin
@@ -186,45 +186,44 @@ module NrvALU #(
 	   3'b001: ALUreg <= times[63:32]; // MULH
 	   3'b010: ALUreg <= times[63:32]; // MULHSU
 	   3'b011: ALUreg <= times[63:32]; // MULHU
-	   3'b100: ALUreg <= 0; // DIV : TODO
-	   3'b101: ALUreg <= 0; // DIVU: TODO
-	   3'b110: ALUreg <= 0; // REM : TODO
-	   3'b111: ALUreg <= 0; // REMU: TODO	     
+	   3'b100: ALUreg <= 0; // DIV  (TODO)
+	   3'b101: ALUreg <= 0; // DIVU (TODO)
+	   3'b110: ALUreg <= 0; // REM  (TODO)
+	   3'b111: ALUreg <= 0; // REMU (TODO)
 	 endcase
       end else 
-
-      if(BARREL_SHIFTER) begin
-	 if(wr) begin
-	    case(op)
-              3'b001: ALUreg <= in1 << in2[4:0];                                      // SLL	   
-              3'b101: ALUreg <= $signed({opqual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
-	    endcase 
-	 end
-      end else begin
-	 if(wr) begin
-	    case(op)
-	      3'b001: begin ALUreg <= in1; shamt <= in2[4:0]; end // SLL	   
-	      3'b101: begin ALUreg <= in1; shamt <= in2[4:0]; end // SRL/SRA
-	    endcase 
-	 end else begin
-	    if (TWOSTAGE_SHIFTER && shamt > 4) begin
-	       shamt <= shamt - 4;
-	       case(op)
-		 3'b001: ALUreg <= ALUreg << 4;                                // SLL
-		 3'b101: ALUreg <= opqual ? {{4{ALUreg[31]}}, ALUreg[31:4]} : // SRL/SRA 
-                                             { 4'b0000,         ALUreg[31:4]} ; 
-	       endcase 
-	    end else  
-	      if (shamt != 0) begin
-		 shamt <= shamt - 1;
+	if(BARREL_SHIFTER) begin
+	   if(wr) begin
+	      case(op)
+		3'b001: ALUreg <= in1 << in2[4:0];                                      // SLL	   
+		3'b101: ALUreg <= $signed({opqual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
+	      endcase 
+	   end
+	end else begin
+	   if(wr) begin
+	      case(op)
+		3'b001: begin ALUreg <= in1; shamt <= in2[4:0]; end // SLL	   
+		3'b101: begin ALUreg <= in1; shamt <= in2[4:0]; end // SRL/SRA
+	      endcase 
+	   end else begin
+	      if (TWOSTAGE_SHIFTER && shamt > 4) begin
+		 shamt <= shamt - 4;
 		 case(op)
-		   3'b001: ALUreg <= ALUreg << 1;                           // SLL
-		   3'b101: ALUreg <= opqual ? {ALUreg[31], ALUreg[31:1]} : // SRL/SRA 
-				               {1'b0,        ALUreg[31:1]} ; 
+		   3'b001: ALUreg <= ALUreg << 4;                               // SLL
+		   3'b101: ALUreg <= opqual ? {{4{ALUreg[31]}}, ALUreg[31:4]} : // SRL/SRA 
+                                              { 4'b0000,        ALUreg[31:4]} ; 
 		 endcase 
-	      end
-	 end 
-      end
+	      end else  
+		if (shamt != 0) begin
+		   shamt <= shamt - 1;
+		   case(op)
+		     3'b001: ALUreg <= ALUreg << 1;                          // SLL
+		     3'b101: ALUreg <= opqual ? {ALUreg[31], ALUreg[31:1]} : // SRL/SRA 
+				                {1'b0,       ALUreg[31:1]} ; 
+		   endcase 
+		end
+	   end 
+	end
       /* verilator lint_on WIDTH */
       /* verilator lint_on CASEINCOMPLETE */
    end 
