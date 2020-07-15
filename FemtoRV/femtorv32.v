@@ -141,9 +141,16 @@ module NrvALU #(
    wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
    wire        LTU = minus[32];
 
-   wire [63:0] timesSS = $signed(in1)*$signed(in2);
-   wire [63:0] timesSU = $signed(in1)*in2;   
-   wire [63:0] timesUU = in1*in2;
+
+   // Implementation of MUL instructions: using a single 33 * 33
+   // multiplier, and doing sign extension or not according to
+   // signedness of the operands in instruction.
+
+   wire        in1U = (op == 3'b011);
+   wire        in2U = (op == 3'b010 || op == 3'b011);
+   wire signed [33:0] in1E = {in1U ? 1'b0 : in1[31], in1};
+   wire signed [33:0] in2E = {in2U ? 1'b0 : in2[31], in2};   
+   wire signed [63:0] times = in1E * in2E;
    
    always @(*) begin
       if(MUL && opM) begin
@@ -175,16 +182,18 @@ module NrvALU #(
 
       if(MUL && opM && wr) begin
 	 case(op)
-	   3'b000: shifter <= timesSS[31:0];  // MUL
-	   3'b001: shifter <= timesSS[63:32]; // MULH
-	   3'b010: shifter <= timesSU[63:32]; // MULHSU
-	   3'b011: shifter <= timesUU[63:32]; // MULHU
+	   3'b000: shifter <= times[31:0];  // MUL
+	   3'b001: shifter <= times[63:32]; // MULH
+	   3'b010: shifter <= times[63:32]; // MULHSU
+	   3'b011: shifter <= times[63:32]; // MULHU
 	   3'b100: shifter <= 0; // DIV : TODO
 	   3'b101: shifter <= 0; // DIVU: TODO
 	   3'b110: shifter <= 0; // REM : TODO
 	   3'b111: shifter <= 0; // REMU: TODO	     
 	 endcase
-      end else if(BARREL_SHIFTER) begin
+      end else 
+
+      if(BARREL_SHIFTER) begin
 	 if(wr) begin
 	    case(op)
               3'b001: shifter <= in1 << in2[4:0];                                      // SLL	   
