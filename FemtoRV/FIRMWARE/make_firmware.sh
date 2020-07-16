@@ -1,6 +1,4 @@
-ARCH=rv32i
-ABI=ilp32
-OPTIMIZE=-Os
+. ./config.sh
 
 # Compile lib
 (cd LIB; ./makeit.sh)
@@ -37,6 +35,8 @@ riscv64-linux-gnu-objcopy -O verilog BUILD/firmware.elf BUILD/firmware.objcopy.h
 # Adapt hexadecimal content (32 bit words instead of individual bytes)
 (cd BUILD; rm firmware.hex; ../TOOLS/firmware_words)
 cp BUILD/firmware.hex .
+
+echo "Generated firmware (arch=$ARCH, abi=$ABI, optimize=$OPTIMIZE)"
 
 ## Display assembly
 #riscv64-linux-gnu-objcopy -O binary BUILD/firmware.elf BUILD/firmware.bin

@@ -21,7 +21,6 @@
 // LUT-golfing par: 1198 LUTs (ICEStick, ICESTORM_LC)
 // Tested with the following configuration:
 //   NRV_TWO_STAGE_SHIFTER=ON
-//   NRV_BARREL_SHIFTER=OFF
 //   NRV_NEGATIVE_RESET=ON,
 //   NRV_IO_LEDS=ON
 //   NRV_IO_UART=ON
@@ -32,6 +31,7 @@
 //   NRV_RAM=6144
 //   NRV_COUNTERS=OFF
 //   NRV_COUNTERS_64=OFF
+//   NRV_RV32M=OFF
 //
 // Dhrystones test (tested on the ULX3S and ECPC-EVN):
 // With NRV_TWOSTAGE_SHIFTER: 3.904 CPI, 714 Dhrystones/s/MHz, 0.406 DMIPS/MHz
@@ -231,6 +231,8 @@ module NrvLargeALU (
    // multiplier, and doing sign extension or not according to
    // the signedness of the operands in instruction.
    // On the ECP5, yosys infers four 18x18 DSPs.
+   // For boards that don't have DSP blocks, we could use an
+   // iterative algorithm instead (e.g., the one in FIRMWARE/LIB/mul.s)
    wire               in1U = (op == 3'b011);
    wire               in2U = (op == 3'b010 || op == 3'b011);
    wire signed [33:0] in1E = {in1U ? 1'b0 : in1[31], in1};
@@ -240,14 +242,14 @@ module NrvLargeALU (
    always @(*) begin
       if(opM) begin
 	 case(op)
-	   3'b000: out <= ALUreg; // MUL
-	   3'b001: out <= ALUreg; // MULH
-	   3'b010: out <= ALUreg; // MULHSU
-	   3'b011: out <= ALUreg; // MULHU
-	   3'b100: out <= outsign ? -quotient : quotient; // DIV
-	   3'b101: out <= quotient; // DIVU
-	   3'b110: out <= outsign ? -dividend : dividend; // REM 
-	   3'b111: out <= dividend; // REMU
+	   3'b000: out <= ALUreg;                           // MUL
+	   3'b001: out <= ALUreg;                           // MULH
+	   3'b010: out <= ALUreg;                           // MULHSU
+	   3'b011: out <= ALUreg;                           // MULHU
+	   3'b100: out <= outsign ? -quotient : quotient;   // DIV
+	   3'b101: out <= quotient;                         // DIVU
+	   3'b110: out <= outsign ? -dividend : dividend;   // REM 
+	   3'b111: out <= dividend;                         // REMU
 	 endcase
       end else begin
 	 (* parallel_case, full_case *)
@@ -281,6 +283,11 @@ module NrvLargeALU (
 	      3'b001: ALUreg <= times[63:32]; // MULH
 	      3'b010: ALUreg <= times[63:32]; // MULHSU
 	      3'b011: ALUreg <= times[63:32]; // MULHU
+
+	      // Initialize internal registers for
+	      // DIV, DIVU, REM, REMU.
+	      // DIV, and REM: extract operand signs,
+	      // and get absolute value of operands.
 	      3'b100: begin // DIV
 		 dividend <= in1[31] ? -in1 : in1;
 		 divisor  <= (in2[31] ? -in2 : in2) << 31;
@@ -310,7 +317,9 @@ module NrvLargeALU (
 		 quotient_msk <= 1 << 31;
 	      end
 	    endcase // case (op)
-	 end else begin 
+	 end else begin // if (wr)
+	    // The division algorithm is here.
+	    // On exit, divisor is the remainder.
 	    if(divisor <= dividend) begin
 	       dividend <= dividend - divisor;
 	       quotient <= quotient | quotient_msk;
@@ -318,7 +327,7 @@ module NrvLargeALU (
 	    divisor <= divisor >> 1;
 	    quotient_msk <= quotient_msk >> 1;
 	 end
-      end else if(wr) begin // Barrel shifter
+      end else if(wr) begin // Barrel shifter, latched to reduce combinatorial depth.
 	 case(op)
 	   3'b001: ALUreg <= in1 << in2[4:0];                                      // SLL	   
 	   3'b101: ALUreg <= $signed({opqual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
@@ -338,7 +347,6 @@ module NrvPredicate(
    output reg   out
 );
 
-   // Alternative branch predicates, reduces LUT count.
    // Implementation suggested by Matthias Koch, uses a single 33 bits 
    // subtract for all the tests, as in swapforth/J1.
    // NOTE: if you read swapforth/J1 source, J1's st0,st1 are inverted 
@@ -426,11 +434,12 @@ module NrvDecoder(
 
    // The rest of instruction decoding, for the following signals:
    // writeBackEn
-   // writeBackSel   00: ALU  01: PC+4 10: RAM
+   // writeBackSel   00: ALU  01: PC+4 10: RAM 11: counters
    // inRegId1Sel    0: zero   1: regId
    // aluInSel1      0: reg    1: PC 
    // aluInSel2      0: reg    1: imm
    // aluQual        +/- SRLI/SRAI
+   // aluM           1 if instr is RV32M
    // aluSel         0: force aluOp,aluQual=00  1: use aluOp/aluQual
    // nextPCSel      00: PC+4  01: ALU   10: (pred ? ALU : PC+4)
    // imm (select one of Iimm,Simm,Bimm,Jimm,Uimm)
@@ -608,13 +617,13 @@ module FemtoRV32 #(
    input 	     clk,
 
    // Memory interface: using the same protocol as Claire Wolf's picoR32
-   output [31:0]     mem_addr, // address bus, only ADDR_WIDTH bits are used
+   output [31:0]     mem_addr,  // address bus, only ADDR_WIDTH bits are used
    output reg [31:0] mem_wdata, // data to be written
    output reg [3:0]  mem_wstrb, // write mask for individual bytes (1 means write byte)   
    input [31:0]      mem_rdata, // input lines for both data and instr
    output reg 	     mem_instr, // active when reading instruction (and not when reading data)
    
-   input wire 	     reset, // set to 0 to reset the processor
+   input wire 	     reset,     // set to 0 to reset the processor
    output wire 	     error      // 1 if current instruction could not be decoded
 );
 

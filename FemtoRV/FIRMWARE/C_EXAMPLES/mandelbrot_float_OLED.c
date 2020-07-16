@@ -1,7 +1,7 @@
 /*
  Computes and displays the Mandelbrot set on the OLED display.
  (needs an SSD1351 128x128 OLED display plugged on the IceStick).
- This version uses floating-point number (much slower than mandelbrot_OLED.c
+ This version uses floating-point numbers (much slower than mandelbrot_OLED.c
  that uses integer arithmetic).
 */
 

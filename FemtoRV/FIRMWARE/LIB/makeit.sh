@@ -1,8 +1,6 @@
 # Note: it seems that crt0.o is linked automatically (not added into lib)
 
-ARCH=rv32i
-ABI=ilp32
-OPTIMIZE=-Os
+. ../config.sh
 
 SINGLE_SRC="soft-fp/negsf2.c soft-fp/addsf3.c soft-fp/subsf3.c soft-fp/mulsf3.c soft-fp/divsf3.c soft-fp/eqsf2.c \
 	soft-fp/lesf2.c soft-fp/gesf2.c soft-fp/unordsf2.c soft-fp/fixsfsi.c soft-fp/fixunssfsi.c soft-fp/floatsisf.c soft-fp/fixsfdi.c \

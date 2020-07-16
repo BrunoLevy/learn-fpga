@@ -5,9 +5,11 @@ TODO: * ULX3S SDRAM
       * ULX3S USB keyboard (or tiny I2C keyboard before then)
       * ST_NICCC demo, run on sdcard
       * support FAT file system on sdcard
-      
+
+      * STORE state is not useful, could be done in EXECUTE (but addressReg should be
+        set to ALUout in DECODE state).
+
       * compliance test ! https://github.com/riscv/riscv-compliance/
-      * soft floating point routines: https://github.com/riscv/riscv-glibc/tree/riscv-glibc-2.29/soft-fp
       * print_float, printf("%f")
       * A 90-ish "megademo" on the OLED display !
       * Change RAM interface, make it match Claire's protocol (then
@@ -36,6 +38,8 @@ TODO: * ULX3S SDRAM
           https://community.cypress.com/thread/52527
       * SPI, FPGA4Fun: https://www.fpga4fun.com/SPI2.html
       * OLED SSD1351 driver is still unstable with freq > nnn (100?) MHz	
+
+DONE: * soft floating point routines: https://github.com/riscv/riscv-glibc/tree/riscv-glibc-2.29/soft-fp
 
 =================================================================================================================
 
