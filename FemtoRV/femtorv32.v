@@ -628,16 +628,15 @@ module FemtoRV32 #(
 );
 
 
-   localparam INITIAL            = 9'b000000000;   
-   localparam WAIT_INSTR         = 9'b000000001;
-   localparam FETCH              = 9'b000000010;
-   localparam USE_PREFETCHED     = 9'b000000100;
-   localparam DECODE             = 9'b000001000;
-   localparam EXECUTE            = 9'b000010000;
-   localparam WAIT_ALU_OR_DATA   = 9'b000100000;
-   localparam LOAD               = 9'b001000000;
-   localparam STORE              = 9'b010000000;   
-   localparam ERROR              = 9'b100000000;
+   localparam INITIAL            = 8'b00000000;   
+   localparam WAIT_INSTR         = 8'b00000001;
+   localparam FETCH              = 8'b00000010;
+   localparam USE_PREFETCHED     = 8'b00000100;
+   localparam DECODE             = 8'b00001000;
+   localparam EXECUTE            = 8'b00010000;
+   localparam WAIT_ALU_OR_DATA   = 8'b00100000;
+   localparam LOAD               = 8'b01000000;
+   localparam ERROR              = 8'b10000000;
 
    localparam WAIT_INSTR_bit       = 0;
    localparam FETCH_bit            = 1;
@@ -646,8 +645,7 @@ module FemtoRV32 #(
    localparam EXECUTE_bit          = 4;
    localparam WAIT_ALU_OR_DATA_bit = 5;
    localparam LOAD_bit             = 6;   
-   localparam STORE_bit            = 7;
-   localparam ERROR_bit            = 8;
+   localparam ERROR_bit            = 7;
    
    reg [8:0] state = INITIAL;
 
@@ -914,20 +912,65 @@ module FemtoRV32 #(
 	end
 	state[EXECUTE_bit]: begin
 	   // input registers are read, aluOut is up to date
+	   
 	   // Lookahead instr.
 	   nextInstr <= mem_rdata;
 
+	   // Needed for LOAD,STORE,jump,branch
+	   // (in other cases it will be ignored)
+	   addressReg <= aluOut; 
+	   
 	   if(error_latched) begin
 	      state <= ERROR;
 	   end else if(isLoad) begin
 	      state <= LOAD;
 	      PC <= PCplus4;
-	      addressReg <= aluOut;
 	      mem_instr <= 1'b0;
 	   end else if(isStore) begin
-	      state <= STORE;
+	      state <= USE_PREFETCHED; // Data will be written in USE_PREFETCHED
 	      PC <= PCplus4;
-	      addressReg <= aluOut;
+	      case(aluOp[1:0])
+		2'b00: begin
+		   case(aluOut[1:0]) // Address is now in aluOut (and not in mem_address yet !!)
+		     2'b00: begin
+			mem_wstrb <= 4'b0001;
+			mem_wdata <= {24'bxxxxxxxxxxxxxxxxxxxxxxxx,regOut2[7:0]};
+		     end
+		     2'b01: begin
+			mem_wstrb <= 4'b0010;
+			mem_wdata <= {16'bxxxxxxxxxxxxxxxx,regOut2[7:0],8'bxxxxxxxx};
+		     end
+		     2'b10: begin
+			mem_wstrb <= 4'b0100;
+			mem_wdata <= {8'bxxxxxxxx,regOut2[7:0],16'bxxxxxxxxxxxxxxxx};
+		     end
+		     2'b11: begin
+			mem_wstrb <= 4'b1000;
+			mem_wdata <= {regOut2[7:0],24'bxxxxxxxxxxxxxxxxxxxxxxxx};
+		     end
+		   endcase
+		end
+		2'b01: begin
+		   case(aluOut[1]) // Address is now in aluOut (and not in mem_address yet !!)
+		     1'b0: begin
+			mem_wstrb <= 4'b0011;
+			mem_wdata <= {16'bxxxxxxxxxxxxxxxx,regOut2[15:0]};
+		     end
+		     1'b1: begin
+			mem_wstrb <= 4'b1100;
+			mem_wdata <= {regOut2[15:0],16'bxxxxxxxxxxxxxxxx};
+		     end
+		   endcase
+		end
+		2'b10: begin
+		   mem_wstrb <= 4'b1111;
+		   mem_wdata <= regOut2;
+		end
+		default: begin
+		   mem_wstrb <= 4'bxxxx;
+		   mem_wdata <= 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
+		end
+	      endcase 
 	   end else begin
 	      case(nextPCSel)
 		2'b00: begin // normal operation
@@ -936,13 +979,11 @@ module FemtoRV32 #(
 		end		   
 		2'b01: begin // unconditional jump (JAL, JALR)
 		   PC <= aluOut[31:2];
-		   addressReg <= aluOut;
 		   state <= WAIT_INSTR;
 		end
 		2'b10: begin // branch
 		   if(predOut) begin
 		      PC <= aluOut[31:2];
-		      addressReg <= aluOut;
 		      state <= WAIT_INSTR;
 		   end else begin
 		      PC <= PCplus4;
@@ -959,54 +1000,6 @@ module FemtoRV32 #(
 	   // we go to WAIT_ALU_OR_DATA to write back read data
 	   state <= WAIT_ALU_OR_DATA;
 	   mem_instr <= 1'b1;
-	end
-	state[STORE_bit]: begin
-	   `verbose($display("STORE"));
-	   // data address was just updated
-	   // data ready to be written now
-	   state <= USE_PREFETCHED;
-	   case(aluOp[1:0])
-	     2'b00: begin
-		case(mem_addr[1:0])
-		  2'b00: begin
-		     mem_wstrb <= 4'b0001;
-		     mem_wdata <= {24'bxxxxxxxxxxxxxxxxxxxxxxxx,regOut2[7:0]};
-		  end
-		  2'b01: begin
-		     mem_wstrb <= 4'b0010;
-		     mem_wdata <= {16'bxxxxxxxxxxxxxxxx,regOut2[7:0],8'bxxxxxxxx};
-		  end
-		  2'b10: begin
-		     mem_wstrb <= 4'b0100;
-		     mem_wdata <= {8'bxxxxxxxx,regOut2[7:0],16'bxxxxxxxxxxxxxxxx};
-		  end
-		  2'b11: begin
-		     mem_wstrb <= 4'b1000;
-		     mem_wdata <= {regOut2[7:0],24'bxxxxxxxxxxxxxxxxxxxxxxxx};
-		  end
-		endcase
-	     end
-	     2'b01: begin
-		case(mem_addr[1])
-		  1'b0: begin
-		     mem_wstrb <= 4'b0011;
-		     mem_wdata <= {16'bxxxxxxxxxxxxxxxx,regOut2[15:0]};
-		  end
-		  1'b1: begin
-		     mem_wstrb <= 4'b1100;
-		     mem_wdata <= {regOut2[15:0],16'bxxxxxxxxxxxxxxxx};
-		  end
-		endcase
-	     end
-	     2'b10: begin
-		mem_wstrb <= 4'b1111;
-		mem_wdata <= regOut2;
-	     end
-	     default: begin
-		mem_wstrb <= 4'bxxxx;
-		mem_wdata <= 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
-	     end
-	   endcase 
 	end
 	state[WAIT_ALU_OR_DATA_bit]: begin
 	   `verbose($display("WAIT_ALU_OR_DATA"));	   
