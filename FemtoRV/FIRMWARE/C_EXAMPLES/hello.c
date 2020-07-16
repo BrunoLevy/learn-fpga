@@ -4,7 +4,7 @@ int main() {
    femtosoc_tty_init();
    for(;;) {
       printf("Hello, world !!\n");
-      getchar();
+//    getchar();
    }
    return 0;
 }

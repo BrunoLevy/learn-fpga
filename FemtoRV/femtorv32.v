@@ -628,24 +628,24 @@ module FemtoRV32 #(
 );
 
 
-   localparam INITIAL            = 8'b00000000;   
-   localparam WAIT_INSTR         = 8'b00000001;
-   localparam FETCH              = 8'b00000010;
-   localparam USE_PREFETCHED     = 8'b00000100;
-   localparam DECODE             = 8'b00001000;
-   localparam EXECUTE            = 8'b00010000;
-   localparam WAIT_ALU_OR_DATA   = 8'b00100000;
-   localparam LOAD               = 8'b01000000;
-   localparam ERROR              = 8'b10000000;
+   localparam INITIAL              = 8'b00000000;   
+   localparam WAIT_INSTR           = 8'b00000001;
+   localparam FETCH_INSTR          = 8'b00000010;
+   localparam USE_PREFETCHED_INSTR = 8'b00000100;
+   localparam FETCH_REGS           = 8'b00001000;
+   localparam EXECUTE              = 8'b00010000;
+   localparam WAIT_ALU_OR_DATA     = 8'b00100000;
+   localparam LOAD                 = 8'b01000000;
+   localparam ERROR                = 8'b10000000;
 
-   localparam WAIT_INSTR_bit       = 0;
-   localparam FETCH_bit            = 1;
-   localparam USE_PREFETCHED_bit   = 2;
-   localparam DECODE_bit           = 3;
-   localparam EXECUTE_bit          = 4;
-   localparam WAIT_ALU_OR_DATA_bit = 5;
-   localparam LOAD_bit             = 6;   
-   localparam ERROR_bit            = 7;
+   localparam WAIT_INSTR_bit           = 0;
+   localparam FETCH_INSTR_bit          = 1;
+   localparam USE_PREFETCHED_INSTR_bit = 2;
+   localparam FETCH_REGS_bit           = 3;
+   localparam EXECUTE_bit              = 4;
+   localparam WAIT_ALU_OR_DATA_bit     = 5;
+   localparam LOAD_bit                 = 6;   
+   localparam ERROR_bit                = 7;
    
    reg [8:0] state = INITIAL;
 
@@ -859,7 +859,7 @@ module FemtoRV32 #(
 	 counter_cycle   <= 0;
       end else begin
 	 counter_cycle <= counter_cycle+1;
-	 if(state[DECODE_bit]) begin
+	 if(state[FETCH_REGS_bit]) begin
 	    counter_instret <= counter_instret+1;
 	 end
       end
@@ -885,26 +885,26 @@ module FemtoRV32 #(
 	   // instruction. Used for jumps and taken branches (and 
 	   // when fetching the first instruction). 
 	   `verbose($display("WAIT_INSTR"));
-	   state <= FETCH;
+	   state <= FETCH_INSTR;
 	end
-	state[FETCH_bit]: begin
-	   `verbose($display("FETCH"));	   
+	state[FETCH_INSTR_bit]: begin
+	   `verbose($display("FETCH_INSTR"));	   
 	   instr <= mem_rdata;
 	   // update instr address so that next instr is fetched during
 	   // decode (and ready if there was no jump or branch)
 	   addressReg <= {PCplus4, 2'b00}; 
-	   state <= DECODE;
+	   state <= FETCH_REGS;
 	end
-	state[USE_PREFETCHED_bit]: begin
-	   `verbose($display("USE_PREFETCHED"));	   
+	state[USE_PREFETCHED_INSTR_bit]: begin
+	   `verbose($display("USE_PREFETCHED_INSTR"));	   
 	   instr <= nextInstr;
 	   // update instr address so that next instr is fetched during
 	   // decode (and ready if there was no jump or branch)
 	   addressReg <= {PCplus4, 2'b00}; 
-	   state <= DECODE;
+	   state <= FETCH_REGS;
 	   mem_wstrb <= 4'b0000;
 	end
-	state[DECODE_bit]: begin
+	state[FETCH_REGS_bit]: begin
 	   // instr was just updated -> input register ids also
 	   // input registers available at next cycle 
 	   state <= EXECUTE;
@@ -927,7 +927,7 @@ module FemtoRV32 #(
 	      PC <= PCplus4;
 	      mem_instr <= 1'b0;
 	   end else if(isStore) begin
-	      state <= USE_PREFETCHED; // Data will be written in USE_PREFETCHED
+	      state <= USE_PREFETCHED_INSTR; // Data will be written in USE_PREFETCHED_INSTR
 	      PC <= PCplus4;
 	      case(aluOp[1:0])
 		2'b00: begin
@@ -975,7 +975,7 @@ module FemtoRV32 #(
 	      case(nextPCSel)
 		2'b00: begin // normal operation
 		   PC <= PCplus4;
-		   state <= needWaitALU ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
+		   state <= needWaitALU ? WAIT_ALU_OR_DATA : USE_PREFETCHED_INSTR;
 		end		   
 		2'b01: begin // unconditional jump (JAL, JALR)
 		   PC <= aluOut[31:2];
@@ -987,7 +987,7 @@ module FemtoRV32 #(
 		      state <= WAIT_INSTR;
 		   end else begin
 		      PC <= PCplus4;
-		      state <= USE_PREFETCHED;
+		      state <= USE_PREFETCHED_INSTR;
 		   end
 		end
 	      endcase 
@@ -1005,7 +1005,7 @@ module FemtoRV32 #(
 	   `verbose($display("WAIT_ALU_OR_DATA"));	   
 	   // - If ALU is still busy, continue to wait.
 	   // - register writeback is active
-	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED;
+	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED_INSTR;
 	end
 	state[ERROR_bit]: begin
 	   `bench($display("ERROR"));
