@@ -40,6 +40,14 @@ delay:	sll t0,a0,13
 delayl:	add t0,t0,-1
 	bnez t0,delayl
 	ret
+
+.global	nanowait
+.type	nanowait, @function
+nanowait: sll t0,a0,3
+ndelayl: add t0,t0,-1
+	 bnez t0,delayl
+	 ret
+	
 	
 .global abort
 .type   abort, @function

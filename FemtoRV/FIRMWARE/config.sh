@@ -1,4 +1,3 @@
-ARCH=rv32i
+ARCH=rv32im
 ABI=ilp32
-OPTIMIZE=-Os
-
+OPTIMIZE=-O6

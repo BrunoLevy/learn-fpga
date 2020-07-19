@@ -22,7 +22,8 @@ char* strncpy(char *dest, const char *src, size_t n);
 int   strcmp(const char *p1, const char *p2);
 
 /* Other functions */
-extern void delay(int ms);    /* waits an (approximate) number of milliseconds.         */
+extern void delay(int ms);     /* waits an (approximate) number of milliseconds. */
+extern void microwait(int ns); /* waits an (approximate) number of microseconds.  */
 extern int  random();
 
 /* System */
@@ -37,6 +38,7 @@ extern uint32_t* CONFIGWORDS;
 #define CONFIGWORD_DEVICE_SSD1351   4
 #define CONFIGWORD_DEVICE_MAX2719   8
 #define CONFIGWORD_DEVICE_SPI_FLASH 16
+#define CONFIGWORD_DEVICE_SPI_SDCARD 32
 
 /* Virtual I/O */
 typedef int (*putcharfunc_t)(int);
@@ -106,6 +108,7 @@ void GL_putchar_xy(int x, int y, char c);
 #define IO_LEDMTX_CNTL  256   /* LED matrix control. read: LSB bit 1 if busy            */
 #define IO_LEDMTX_DATA  512   /* LED matrix data (write)	                        */
 #define IO_SPI_FLASH   1024
+#define IO_SPI_SDCARD  2048
 
 #define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
 #define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)

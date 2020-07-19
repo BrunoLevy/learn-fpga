@@ -10,7 +10,10 @@
  * 
  * The polygon stream is a 640K file, that needs
  * to be stored in the SPI flash, using:
- * iceprog -o 1M C_EXAMPLES/DATA/scene1.bin
+ * ICEStick: iceprog -o 1M C_EXAMPLES/DATA/scene1.bin
+ * ULX3S:    cp C_EXAMPLES/DATA/scene1.bin scene1.img
+ *           ujprog -j flash -f 1048576 scene1.img
+ *   (using latest version of ujprog compiled from https://github.com/kost/fujprog)
  *
  * More details and links in C_EXAMPLES/DATA/notes.txt
  *

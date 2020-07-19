@@ -21,32 +21,33 @@
  * Optional mapped IO devices
  */
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
+`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[4]  // Mapped IO, SPI SDCARD
 
-`define NRV_FREQ 80          // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick.
+`define NRV_FREQ 60          // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick.
                                                   
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
 // 6K max on the ICEstick
 // Do not forget the CONFIGWORD 0x0020 comment (FIRMWARE_WORDS depends on it)
-//`define NRV_RAM 131072       // CONFIGWORD 0x0020 // You need this to run DHRYSTONE
+`define NRV_RAM 131072       // CONFIGWORD 0x0020 // You need this to run DHRYSTONE
 //`define NRV_RAM 65536       // CONFIGWORD 0x0020
-`define NRV_RAM 6144        // CONFIGWORD 0x0020
+//`define NRV_RAM 6144        // CONFIGWORD 0x0020
 //`define NRV_RAM 4096        // CONFIGWORD 0x0020
 
-//`define NRV_COUNTERS    // CONFIGWORD 0x0018[0] // Uncomment for instr and cycle counters (won't fit on the ICEStick)
-//`define NRV_COUNTERS_64 // CONFIGWORD 0x0018[1] // ... and uncomment this one as well if you want 64-bit counters
-//`define NRV_RV32M       // CONFIGWORD 0x0018[2] // Uncomment for hardware mul and div support (RV32M instructions)
+`define NRV_COUNTERS    // CONFIGWORD 0x0018[0] // Uncomment for instr and cycle counters (won't fit on the ICEStick)
+`define NRV_COUNTERS_64 // CONFIGWORD 0x0018[1] // ... and uncomment this one as well if you want 64-bit counters
+`define NRV_RV32M       // CONFIGWORD 0x0018[2] // Uncomment for hardware mul and div support (RV32M instructions)
 
 /*
  * For the small ALU (that is, when not using RV32M),
  * comment-out if running out of LUTs (makes shifter faster, 
  * but uses 60-100 LUTs) (inspired by PICORV32). 
  */ 
-`define NRV_TWOSTAGE_SHIFTER 
+//`define NRV_TWOSTAGE_SHIFTER 
 
 /*************************************************************************************/
 // Makes it easier to detect typos !
@@ -101,7 +102,7 @@ module NrvMemoryInterface(
 
 
 			  
-  output [8:0] 	    IOaddress, // = address[10:2]
+  output [9:0] 	    IOaddress, // = address[10:2]
   output 	    IOwr,
   output 	    IOrd,
   input [31:0] 	    IOin, 
@@ -142,7 +143,7 @@ module NrvMemoryInterface(
    assign IOout     = in;
    assign IOwr      = (wr && isIO);
    assign IOrd      = (rd && isIO);
-   assign IOaddress = address[10:2];
+   assign IOaddress = address[11:2];
    
 endmodule
 
@@ -150,7 +151,7 @@ endmodule
 
 module NrvIO(
 
-    input [8:0]       address, 
+    input [9:0]       address, 
     input 	      wr,
     input 	      rd,
     input [31:0]      in, 
@@ -191,6 +192,14 @@ module NrvIO(
     output wire       spi_clk,
 `endif
 
+`ifdef NRV_IO_SPI_SDCARD
+    // SPI SDCard
+    output reg        sd_mosi,
+    input wire 	      sd_miso,
+    output reg 	      sd_cs_n,
+    output reg        sd_clk,
+`endif
+	     
     input 	      clk
 );
 
@@ -213,6 +222,9 @@ module NrvIO(
    localparam MAX2719_DAT_bit  = 7; // (write)led matrix data (16 bits)
 
    localparam SPI_FLASH_bit    = 8; // (write SPI address (24 bits) read: data (1 byte) + rdy (bit 8)
+
+   localparam SPI_SDCARD_bit   = 9; // write: bit 0: mosi  bit 1: clk   bit 2: csn
+                                    // read:  bit 0: miso
 
 
 `ifdef NRV_IO_LEDS
@@ -349,6 +361,14 @@ module NrvIO(
    end
 `endif
 
+   /********************* SPI flash reader *****************************/
+   
+`ifdef NRV_IO_SPI_SDCARD
+   initial sd_clk  = 1'b0;
+   initial sd_mosi = 1'b0;
+   initial sd_cs_n = 1'b1;
+`endif
+   
 
    /********************* Decoder for IO read **************************/
 
@@ -370,6 +390,9 @@ module NrvIO(
 `endif	
 `ifdef NRV_IO_SPI_FLASH
 	    | (address[SPI_FLASH_bit] ? {23'b0, spi_flash_busy, spi_flash_dat} : 32'b0)
+`endif
+`ifdef NRV_IO_SPI_SDCARD
+	    | (address[SPI_SDCARD_bit] ? {31'b0, sd_miso} : 32'b0)
 `endif
 	    ;
    end
@@ -416,6 +439,13 @@ module NrvIO(
 	      spi_cs_n <= 1'b0;
 	      spi_flash_cmd_addr <= {8'h03, in[23:0]};
 	      spi_flash_snd_bitcount <= 6'd32;
+	   end
+`endif
+`ifdef NRV_IO_SPI_SDCARD
+	   if(address[SPI_SDCARD_bit]) begin
+	      sd_mosi <= in[0];
+	      sd_clk  <= in[1];
+	      sd_cs_n <= in[2];
 	   end
 `endif	 
       end else begin
@@ -488,12 +518,38 @@ module femtosoc(
    output spi_mosi,
    input  spi_miso,
    output spi_cs_n,
+ `ifndef ULX3S	
+   // ULX3S has spi clk shared with ESP32, using USRMCLK (below)	
    output spi_clk,
+ `endif		
 `endif
+`ifdef NRV_IO_SPI_SDCARD
+   output sd_mosi,
+   input  sd_miso,
+   output sd_cs_n,
+   output sd_clk,
+`endif
+`ifdef ULX3S
+   output wifi_en,		
+`endif		
    input  RESET,
    input  pclk
 );
 
+`ifdef ULX3S
+   assign wifi_en = 1'b0;
+`endif		
+   
+`ifdef NRV_IO_SPI_FLASH
+//  assign sd_miso = 1'bZ;  (if declared inout)
+ `ifdef ULX3S
+   wire   spi_clk;
+   wire   tristate = 1'b0;
+   USRMCLK u1 (.USRMCLKI(spi_clk), .USRMCLKTS(tristate));
+ `endif   
+`endif
+
+   
   wire  clk;
 
   femtoPLL #(
@@ -510,6 +566,7 @@ module femtosoc(
   // http://svn.clifford.at/handicraft/2017/ice40bramdelay/README 
   reg [11:0] reset_cnt = 0;
   wire       reset = &reset_cnt;
+
    
 `ifdef NRV_NEGATIVE_RESET
    always @(posedge clk,negedge RESET) begin
@@ -537,7 +594,7 @@ module femtosoc(
   wire [31:0] IOout;
   wire        IOrd;
   wire        IOwr;
-  wire [8:0]  IOaddress;
+  wire [9:0]  IOaddress;
    
   
   NrvIO IO(
@@ -570,6 +627,12 @@ module femtosoc(
      .spi_miso(spi_miso),
      .spi_cs_n(spi_cs_n),
      .spi_clk(spi_clk),
+`endif
+`ifdef NRV_IO_SPI_SDCARD
+     .sd_mosi(sd_mosi),
+     .sd_miso(sd_miso),
+     .sd_cs_n(sd_cs_n),
+     .sd_clk(sd_clk),
 `endif
      .clk(clk)
   );

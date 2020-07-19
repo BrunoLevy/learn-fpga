@@ -18,7 +18,7 @@
 // is something else than an ICEStick), I recommend using a more efficient /
 // more complete RISC-V core (e.g., Claire Wolf's picorv32).
 
-// LUT-golfing par: 1198 LUTs (ICEStick, ICESTORM_LC)
+// LUT-golfing par: 1184 LUTs (ICEStick, ICESTORM_LC)
 // Tested with the following configuration:
 //   NRV_TWO_STAGE_SHIFTER=ON
 //   NRV_NEGATIVE_RESET=ON,
@@ -102,14 +102,15 @@ endmodule
 
 module NrvSmallALU #(
    parameter [0:0] TWOSTAGE_SHIFTER = 0 // optional twostage shifter, makes shifts faster
+		                        // (eats up 60 LUTs or so)
 )(
   input 	    clk, 
   input [31:0] 	    in1,
   input [31:0] 	    in2,
   input [2:0] 	    op,     // Operation
   input 	    opqual, // Operation qualification (+/-, Logical/Arithmetic)
-  output reg [31:0] out,    // ALU result. Latched if operation is a shift,mul,div,rem
-  output 	    busy,   // 1 if ALU is currently computing (that is, shift,mul,div,rem)
+  output reg [31:0] out,    // ALU result. Latched if operation is a shift
+  output 	    busy,   // 1 if ALU is currently computing (that is, shift)
   input 	    wr      // Raise to write ALU inputs and start computing
 );
 
@@ -187,7 +188,7 @@ endmodule
 /********************************* Large ALU **********************************/
 // Large version of the ALU
 // Implements the RV32IM instruction set, with MUL,DIV,REM
-// Includes a barrel shifter
+// Includes a barrel shifter (that shifts in 1 clock)
 
 module NrvLargeALU (
   input 	    clk, 
@@ -616,13 +617,14 @@ module FemtoRV32 #(
    input 	     clk,
 
    // Memory interface: using the same protocol as Claire Wolf's picoR32
-   output [31:0]     mem_addr,  // address bus, only ADDR_WIDTH bits are used
+   //                   (WIP: add mem_valid / mem_ready protocol)
+   output [31:0]     mem_addr, // address bus, only ADDR_WIDTH bits are used
    output reg [31:0] mem_wdata, // data to be written
    output reg [3:0]  mem_wstrb, // write mask for individual bytes (1 means write byte)   
    input [31:0]      mem_rdata, // input lines for both data and instr
    output reg 	     mem_instr, // active when reading instruction (and not when reading data)
    
-   input wire 	     reset,     // set to 0 to reset the processor
+   input wire 	     reset, // set to 0 to reset the processor
    output wire 	     error      // 1 if current instruction could not be decoded
 );
 

@@ -1,7 +1,10 @@
 /*
  * Reads data bytes stored in the SPI FLASH memory.
  * 1. Create a file "hello.txt" with "Hello, world !" in it.
- * 2. iceprog -o 1M foo.txt
+ * 2. On ICEstick: iceprog -o 1M hello.txt
+ *    On ULX3S:  cp hello.txt hello.omg
+ *               ujprog -j flash -f 1048576 hello.img
+ *   (using latest version of ujprog compiled from https://github.com/kost/fujprog)
  */
 
 #include <femtorv32.h>
