@@ -52,6 +52,11 @@ extern void print_dec(int val);
 extern void print_hex_digits(unsigned int val, int digits);
 extern void print_hex(unsigned int val);
 
+/* SDCard */
+int sd_init(); /* Return 0 on success, non-zero on failure */
+int sd_readsector(uint32_t sector, uint8_t* buffer, uint32_t sector_count); /* 1:success, 0:failure*/
+int sd_writesector(uint32_t sector, uint8_t* buffer, uint32_t sector_count); /* 1:success, 0:failure*/
+
 /* Font maps */
 extern uint8_t*  font_8x8;    /* 8 bytes per char. Each byte corresponds to a column.   */
 extern uint32_t* font_5x6;    /* 4 bytes per char. 5 columns of 6 bits. bit 31=shift.   */

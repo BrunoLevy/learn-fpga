@@ -67,7 +67,14 @@ int GL_putchar(int c) {
     } else if(c >= 'a' && c <= 'z') {
 	c = c - 'a' + 'A';
     }
-#endif    
+#endif
+    
+    if(c == '\r') {
+	if(cursor_X >= FONT_WIDTH) {
+	    cursor_X -= FONT_WIDTH;
+	}
+	return c;
+    }
     
     if(c == '\n') {
 	cursor_X = 0;

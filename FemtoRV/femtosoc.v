@@ -33,7 +33,8 @@
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
 // 6K max on the ICEstick
 // Do not forget the CONFIGWORD 0x0020 comment (FIRMWARE_WORDS depends on it)
-`define NRV_RAM 131072       // CONFIGWORD 0x0020 // You need this to run DHRYSTONE
+`define NRV_RAM 262144         // CONFIGWORD 0x0020 
+//`define NRV_RAM 131072       // CONFIGWORD 0x0020 // You need this to run DHRYSTONE
 //`define NRV_RAM 65536       // CONFIGWORD 0x0020
 //`define NRV_RAM 6144        // CONFIGWORD 0x0020
 //`define NRV_RAM 4096        // CONFIGWORD 0x0020
@@ -536,19 +537,22 @@ module femtosoc(
    input  pclk
 );
 
+// Deactivate the ESP32 so that it does not interfere with
+// the other devices (especially the SDCard).
 `ifdef ULX3S
    assign wifi_en = 1'b0;
 `endif		
-   
+
+// On the ULX3S, the CLK pin is multiplexed with the ESP32.
+// It can be accessed using the USRMCLK primitive of the ECP5
+// as follows.   
 `ifdef NRV_IO_SPI_FLASH
-//  assign sd_miso = 1'bZ;  (if declared inout)
  `ifdef ULX3S
    wire   spi_clk;
    wire   tristate = 1'b0;
    USRMCLK u1 (.USRMCLKI(spi_clk), .USRMCLKTS(tristate));
  `endif   
 `endif
-
    
   wire  clk;
 

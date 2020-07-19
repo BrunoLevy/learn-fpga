@@ -7,7 +7,9 @@
 void* memset(void* s, int c, size_t n) {
    uint8_t* p = (uint8_t*)s;
    for(size_t i=0; i<n; ++i) {
-      *p = (uint8_t)c;
-      p++;
+       asm("nop"); // Needed, because I think I've got a processor bug !!
+       *p = (uint8_t)c;
+       p++;
    }
 }
+
