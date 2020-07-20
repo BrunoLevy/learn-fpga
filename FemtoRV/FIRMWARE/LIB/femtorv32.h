@@ -148,4 +148,7 @@ extern void MAX2719(uint32_t address, uint32_t value);
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
 #define SGN(x)   (((x) > (0)) ? 1 : ((x) ? -1 : 0))
 
+#define USE_FILELIB_STDIO_COMPAT_NAMES
+#include <fat_io_lib/fat_filelib.h>
+
 #endif

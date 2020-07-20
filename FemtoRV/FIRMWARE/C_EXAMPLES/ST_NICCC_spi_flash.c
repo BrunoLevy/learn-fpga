@@ -1,28 +1,60 @@
 /*
  * Reading the ST-NICCC megademo data stored in
- * the SDCard and streaming it to polygons,
+ * the SPI flash and streaming it to polygons,
  * rendered on the OLED display using femtoGL.
  * 
  * femtosoc options (femtosoc.v):
  *   OLED display (NRV_IO_SSD1351)
- *   SDCard       (NRV_IO_SPI_SDCARD)
+ *   SPI flash    (NRV_IO_SPI_FLASH)
+ *   6K ram       
  * 
- * The polygon stream is a 640K file (DATA/scene1.bin), 
- * that needs to be stored on the SD card.
+ * The polygon stream is a 640K file, that needs
+ * to be stored in the SPI flash, using:
+ * ICEStick: iceprog -o 1M C_EXAMPLES/DATA/scene1.bin
+ * ULX3S:    cp C_EXAMPLES/DATA/scene1.bin scene1.img
+ *           ujprog -j flash -f 1048576 scene1.img
+ *   (using latest version of ujprog compiled from https://github.com/kost/fujprog)
  *
  * More details and links in C_EXAMPLES/DATA/notes.txt
+ *
+ * Demo compiles to 1118 4-bytes words RISC-V assembly
+ * code (I'd like to reduce it to 1024, to make it a
+ * 4K demo ! Anyway there is 640 Kb of polygon data in
+ * the SPI Flash, so that'd be cheating a bit...). 
  */
 
 #include <femtorv32.h>
 
-FILE* F = 0;
-int cur_spi = 0;
+/*
+ * I put the data stream starting from 1M offset,
+ * just to make sure it does not collide with
+ * FPGA wiring configuration ! (but FPGA configuration
+ * only takes a few tenth of kilobytes I think).
+ */
+uint32_t spi_addr = 1024*1024;
 
+/*
+ * SPI Flash is memory mapped in the IO space.
+ * Protocol to read one byte from the SPI Flash:
+ *    1) Loop until IO_IN(IO_SPI_FLASH) bit 8 (BUSY) 
+ *         is zero.
+ *    2) send address: IO_OUT(IO_SPI_FLASH, address)
+ *    3) Loop until IO_IN(IO_SPI_FLASH) bit 8 (BUSY) 
+ *         is zero. Read byte is [7:0]
+ */
+#define BUSY 256
 uint8_t next_spi_byte() {
-    uint8_t result;
-    fread(&result, 1, 1, F);
-    ++cur_spi;
-    return result;
+   int result = BUSY;
+   while(result & BUSY) {
+       result = IO_IN(IO_SPI_FLASH);
+   }
+   IO_OUT(IO_SPI_FLASH, spi_addr);
+   result = BUSY;
+   while(result & BUSY) {
+       result = IO_IN(IO_SPI_FLASH);
+   }
+   ++spi_addr;
+   return (uint8_t)(result & 255);
 }
 
 uint16_t next_spi_word() {
@@ -125,12 +157,10 @@ int read_frame() {
 	    break; // end of frame
 	}
 	if(poly_desc == 0xfe) {
-	   // Go to next 64kb block
-	   // (TODO: with fseek !)
-	   while(cur_spi & 65535) {
-	      next_spi_byte();
-	   }
-	   return 1; 
+	    // Go to next 64kb block
+	    spi_addr &= ~65535;
+	    spi_addr +=  65536;
+	    return 1; 
 	}
 	if(poly_desc == 0xfd) {
 	    return 0; // end of stream
@@ -155,38 +185,18 @@ int read_frame() {
 
 
 int main() {
-    GL_tty_init();
     GL_init();
     GL_clear();
 
-    if(sd_init()) {
-	printf("Could not initialize SDCard\n");
-	return -1;
-    }
-    printf("SDCard OK\n");
-    fl_init();
-    if(fl_attach_media((fn_diskio_read)sd_readsector, (fn_diskio_write)sd_writesector) != FAT_INIT_OK) {
-	printf("ERROR: Failed to init file system\n");
-	return -1;
-    }
-    printf("FileSystem OK\n");
-    fl_listdirectory("/");
-    
     wireframe = 0;
 
     for(;;) {
-        cur_spi = 0;
-	F = fopen("/scene1.bin","r");
-	if(!F) {
-	    printf("Could not open scene1.bin\n");
-	    return -1;
-	}
+	spi_addr = 1024*1024;    
 	GL_polygon_mode(wireframe ? GL_POLY_LINES: GL_POLY_FILL);	
 	while(read_frame()) {
 	    // delay(50); // If GL_clear() is uncommented, uncomment as well
 	                  // to reduce flickering.
 	}
 	wireframe = !wireframe;
-	fclose(F);
     }
 }

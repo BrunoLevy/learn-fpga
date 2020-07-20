@@ -648,7 +648,7 @@ module FemtoRV32 #(
    localparam LOAD_bit                 = 6;   
    localparam ERROR_bit                = 7;
    
-   reg [8:0] state = INITIAL;
+   reg [7:0] state = INITIAL;
 
    
    reg [ADDR_WIDTH-1:0] addressReg;

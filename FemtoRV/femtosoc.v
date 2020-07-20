@@ -24,7 +24,7 @@
 //`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
 `define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
-//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 `define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[4]  // Mapped IO, SPI SDCARD
 
 `define NRV_FREQ 60          // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick.
