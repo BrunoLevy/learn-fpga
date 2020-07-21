@@ -17,7 +17,7 @@ echo ======== NextPNR
 nextpnr-ecp5 --force --timing-allow-fail --json $PROJECTNAME.json --lpf ulx3s.lpf --textcfg $PROJECTNAME_out.config --85k --freq 25 --package CABGA381 $1 || exit
 
 echo ======== ecppack
-ecppack --svf-rowsize 100000 --svf $PROJECTNAME.svf $PROJECTNAME_out.config $PROJECTNAME.bit
+ecppack --compress --svf-rowsize 100000 --svf $PROJECTNAME.svf $PROJECTNAME_out.config $PROJECTNAME.bit
 
 echo ======== ujprog
 ujprog $PROJECTNAME.bit

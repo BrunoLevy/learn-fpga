@@ -171,7 +171,10 @@ int main() {
     }
     printf("FileSystem OK\n");
     fl_listdirectory("/");
-    
+
+
+    delay(1000);
+    GL_clear();
     wireframe = 0;
 
     for(;;) {

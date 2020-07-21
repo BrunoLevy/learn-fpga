@@ -102,7 +102,7 @@ endmodule
 
 module NrvSmallALU #(
    parameter [0:0] TWOSTAGE_SHIFTER = 0 // optional twostage shifter, makes shifts faster
-		                        // (eats up 60 LUTs or so)
+		                        // (but eats up 60 LUTs or so)
 )(
   input 	    clk, 
   input [31:0] 	    in1,
@@ -232,7 +232,7 @@ module NrvLargeALU (
    // multiplier, and doing sign extension or not according to
    // the signedness of the operands in instruction.
    // On the ECP5, yosys infers four 18x18 DSPs.
-   // For boards that don't have DSP blocks, we could use an
+   // For FPGAs that don't have DSP blocks, we could use an
    // iterative algorithm instead (e.g., the one in FIRMWARE/LIB/mul.s)
    wire               in1U = (op == 3'b011);
    wire               in2U = (op == 3'b010 || op == 3'b011);
@@ -389,6 +389,8 @@ module NrvDecoder(
     output wire [4:0] writeBackRegId,
     output reg 	      writeBackEn,
     output reg [3:0]  writeBackSel, // 0001: ALU  0010: PC+4  0100: RAM 1000: counters
+		                    // (could use 2 wires instead, but using 4 wires (1-hot encoding) 
+		                    //  reduces both LUT count and critical path in the end !)
     output wire [4:0] inRegId1,
     output wire [4:0] inRegId2,
     output reg 	      aluSel, // 0: force aluOp,aluQual to zero (ADD)  1: use aluOp,aluQual from instr field
@@ -401,6 +403,7 @@ module NrvDecoder(
     output reg 	      isStore,
     output reg 	      needWaitALU,
     output reg [2:0]  nextPCSel, // 001: PC+4  010: ALU  100: (predicate ? ALU : PC+4)
+		                 // (same as writeBackSel, 1-hot encoding)
     output reg [31:0] imm,
     output reg 	      error
 );
@@ -628,7 +631,9 @@ module FemtoRV32 #(
    output wire 	     error      // 1 if current instruction could not be decoded
 );
 
-
+   // The states, using 1-hot encoding (reduces
+   // both LUT count and critical path).
+   
    localparam INITIAL              = 8'b00000000;   
    localparam WAIT_INSTR           = 8'b00000001;
    localparam FETCH_INSTR          = 8'b00000010;
@@ -650,8 +655,11 @@ module FemtoRV32 #(
    
    reg [7:0] state = INITIAL;
 
-   
+   // The internal register that stores the current address,
+   // directly wired to the address bus.
    reg [ADDR_WIDTH-1:0] addressReg;
+
+   // The program counter.
    reg [ADDR_WIDTH-3:0] PC;
 
 `ifdef NRV_COUNTERS

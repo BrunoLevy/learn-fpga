@@ -1,4 +1,5 @@
 
+
 TODO: * ULX3S SDRAM
       * ULX3S sdcard, seems to be more or less the same interface as SPI Flash, cool !
       * ULX3S display
@@ -201,6 +202,12 @@ RISC-V notes:
 		  2) CS was combinatorially wired to busy, making it deactivating the chip too soon
 		     (on the fast clock). Replaced it with a latch, activated on write, and stopped
 		     on slow clock rising edge if not busy.
+
+             - SDCard reader: the fat access library was hanging. It
+                 was coming from the -O3 optimization flag, that is
+                 super-smart, and that recognizes clearing loops, replacing them with
+                 calls to memset(), including in the implementation of memset() ->
+		 infinite recursion !!
 
    DEBUGGING THE STATE MACHINE, lessons taken:
    

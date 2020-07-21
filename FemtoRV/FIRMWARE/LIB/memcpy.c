@@ -1,5 +1,12 @@
 #include <femtorv32.h>
 
+/* 
+ * Needed to prevent the compiler from recognizing memcpy in the
+ * body of memcpy and replacing it with a call to memcpy
+ * (infinite recursion) 
+ */ 
+#pragma GCC optimize ("no-tree-loop-distribute-patterns")
+
 void* memcpy(void * dst, void const * src, size_t len) {
    uint32_t * plDst = (uint32_t *) dst;
    uint32_t const * plSrc = (uint32_t const *) src;

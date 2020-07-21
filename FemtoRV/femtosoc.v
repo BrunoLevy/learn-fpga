@@ -48,7 +48,7 @@
  * comment-out if running out of LUTs (makes shifter faster, 
  * but uses 60-100 LUTs) (inspired by PICORV32). 
  */ 
-//`define NRV_TWOSTAGE_SHIFTER 
+`define NRV_TWOSTAGE_SHIFTER 
 
 /*************************************************************************************/
 // Makes it easier to detect typos !
