@@ -24,15 +24,17 @@
 //`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
 `define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
-`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
-`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[4]  // Mapped IO, SPI SDCARD
+//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
+`define NRV_IO_BUTTONS     // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
 
-`define NRV_FREQ 60          // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick.
+`define NRV_FREQ 80          // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick.
                                                   
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
 // 6K max on the ICEstick
 // Do not forget the CONFIGWORD 0x0020 comment (FIRMWARE_WORDS depends on it)
+//`define NRV_RAM 393216         // CONFIGWORD 0x0020 
 `define NRV_RAM 262144         // CONFIGWORD 0x0020 
 //`define NRV_RAM 131072       // CONFIGWORD 0x0020 // You need this to run DHRYSTONE
 //`define NRV_RAM 65536       // CONFIGWORD 0x0020
@@ -103,7 +105,7 @@ module NrvMemoryInterface(
 
 
 			  
-  output [9:0] 	    IOaddress, // = address[10:2]
+  output [10:0]     IOaddress, // = address[11:2]
   output 	    IOwr,
   output 	    IOrd,
   input [31:0] 	    IOin, 
@@ -144,7 +146,7 @@ module NrvMemoryInterface(
    assign IOout     = in;
    assign IOwr      = (wr && isIO);
    assign IOrd      = (rd && isIO);
-   assign IOaddress = address[11:2];
+   assign IOaddress = address[12:2];
    
 endmodule
 
@@ -152,7 +154,7 @@ endmodule
 
 module NrvIO(
 
-    input [9:0]       address, 
+    input [10:0]      address, 
     input 	      wr,
     input 	      rd,
     input [31:0]      in, 
@@ -200,7 +202,11 @@ module NrvIO(
     output reg 	      sd_cs_n,
     output reg        sd_clk,
 `endif
-	     
+
+`ifdef NRV_IO_BUTTONS
+    input wire[5:0]   buttons,
+`endif
+
     input 	      clk
 );
 
@@ -226,6 +232,9 @@ module NrvIO(
 
    localparam SPI_SDCARD_bit   = 9; // write: bit 0: mosi  bit 1: clk   bit 2: csn
                                     // read:  bit 0: miso
+
+   localparam BUTTONS_bit      = 10; // write: bit 0: mosi  bit 1: clk   bit 2: csn
+                                     // read:  bit 0: miso
 
 
 `ifdef NRV_IO_LEDS
@@ -395,6 +404,9 @@ module NrvIO(
 `ifdef NRV_IO_SPI_SDCARD
 	    | (address[SPI_SDCARD_bit] ? {31'b0, sd_miso} : 32'b0)
 `endif
+`ifdef NRV_IO_BUTTONS
+	    | (address[BUTTONS_bit] ? {27'b0, buttons} : 32'b0)
+`endif
 	    ;
    end
    
@@ -530,6 +542,9 @@ module femtosoc(
    output sd_cs_n,
    output sd_clk,
 `endif
+`ifdef NRV_IO_BUTTONS
+   input [5:0] buttons,
+`endif
 `ifdef ULX3S
    output wifi_en,		
 `endif		
@@ -598,7 +613,7 @@ module femtosoc(
   wire [31:0] IOout;
   wire        IOrd;
   wire        IOwr;
-  wire [9:0]  IOaddress;
+  wire [10:0] IOaddress;
    
   
   NrvIO IO(
@@ -637,6 +652,9 @@ module femtosoc(
      .sd_miso(sd_miso),
      .sd_cs_n(sd_cs_n),
      .sd_clk(sd_clk),
+`endif
+`ifdef NRV_IO_BUTTONS
+     .buttons(buttons),
 `endif
      .clk(clk)
   );

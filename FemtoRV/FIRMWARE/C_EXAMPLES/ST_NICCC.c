@@ -159,6 +159,8 @@ int main() {
     GL_init();
     GL_clear();
 
+    printf("ST-NICCC demo\n");
+    
     if(sd_init()) {
 	printf("Could not initialize SDCard\n");
 	return -1;
@@ -172,8 +174,8 @@ int main() {
     printf("FileSystem OK\n");
     fl_listdirectory("/");
 
-
-    delay(1000);
+    delay(3000);
+    GL_init();
     GL_clear();
     wireframe = 0;
 

@@ -36,7 +36,8 @@ SOURCES="femtorv32.s microwait.s mul.s div.s max2719.s ssd1351.s uart.s print.c 
 	 clz.c \
          $SINGLE_SRC $DOUBLE_SRC \
 	 $FAT_IO_SRC \
-         spi_sd.c \
+         spi_sd.c exec.c \
+         cycles.s \
 	 crt0.s"
 
 OBJECTS="femtorv32.o microwait.o mul.o div.o max2719.o ssd1351.o uart.o print.o printf.o \
@@ -47,7 +48,8 @@ OBJECTS="femtorv32.o microwait.o mul.o div.o max2719.o ssd1351.o uart.o print.o 
 	 clz.o \
          $SINGLE_OBJS $DOUBLE_OBJS \
 	 $FAT_IO_OBJS \
-         spi_sd.o"
+         spi_sd.o exec.o \
+         cycles.o"
 
 echo 'Compiling libfemtorv32'
 for i in `echo $SOURCES`

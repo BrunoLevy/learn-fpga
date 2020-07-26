@@ -5,6 +5,9 @@
 
 #include <femtorv32.h>
 
+// For now, does software bitbanging.
+// TODO: a hardware shift register, will be cleaner...
+
 #define MOSI_MASK 1
 #define CLK_MASK  2
 #define CSN_MASK  4
@@ -70,7 +73,7 @@ void spi_send (uint8_t d) {
     CK_H(); CLK_DELAY(); CK_L(); CLK_DELAY();
     if (d & 0x01) MOSI_H(); else MOSI_L();    // bit0 
     CK_H(); CLK_DELAY(); CK_L(); CLK_DELAY();
-    DLY_US(10);
+//  DLY_US(10);
 }
 
 uint8_t spi_receive () {
@@ -92,7 +95,7 @@ uint8_t spi_receive () {
     CK_H(); CLK_DELAY(); CK_L(); CLK_DELAY();
     r <<= 1; if (MISO()) r++;    // bit0 
     CK_H(); CLK_DELAY(); CK_L(); CLK_DELAY();
-    DLY_US(10);
+//  DLY_US(10);
     return r;
 }
 
@@ -173,7 +176,6 @@ uint8_t sd_send_command(uint8_t cmd, uint32_t arg) {
     int count = 0;
     while((response = spi_receive()) == 0xff) {
 	if(count > 500) {
-	    printf("> 500 tries\n");
             break;
 	}
 	++count;   
@@ -201,7 +203,7 @@ uint8_t sd_send_command(uint8_t cmd, uint32_t arg) {
     return response;
 }
 
-int sd_init() {
+int _sd_init() {
     int retries = 0;
     uint8_t response = 0xFF;
     uint8_t sd_version;
@@ -232,7 +234,6 @@ int sd_init() {
         }
     } 
     while(response != CMD_OK);
-//    printf("OK1\n");
 
     spi_send(0xff);
     spi_send(0xff);
@@ -251,8 +252,6 @@ int sd_init() {
             break;
         }
     } while(response != CMD_OK);
-//    printf("OK2  version = %d\n",sd_version);
-
    
     retries = 0;
     do {
@@ -266,7 +265,6 @@ int sd_init() {
 	  return -2;
        }
     } while(response != 0x00);
-//    printf("OK3\n");
 
     // Query card to see if it supports SDHC mode   
     if (sd_version == 2) {
@@ -281,9 +279,19 @@ int sd_init() {
        // Standard density only
        sdhc_card = 0;
     }
-//    printf("OK4  sdhc=%d\n",sdhc_card);
-    
     return 0;
+}
+
+int sd_init() {
+    int result = 0;
+    for(int retries=0; retries<10; ++retries) {
+	result = _sd_init();
+	if(result == 0) {
+	    return result;
+	}
+	delay(100);
+    }
+    return result;
 }
 
 int sd_readsector(uint32_t start_block, uint8_t *buffer, uint32_t sector_count) {

@@ -6,6 +6,6 @@
 # Configuration for larger boards (ULX3S, ECPC-EVN)
 ARCH=rv32im
 ABI=ilp32
-OPTIMIZE=-O3 
+OPTIMIZE=-O3
 
 

@@ -269,6 +269,18 @@ int main() {
 	}
     }
 
+    int MAX_ADDR = 0;
+    for(int i=0; i<RAM_SIZE; i++) {
+	if(OCC[i] != 0) {
+	    MAX_ADDR=i;
+	}
+    }
+	
+    {
+	FILE* f = fopen("firmware.exe","wb");
+	fwrite(RAM.data(), 1, MAX_ADDR+1, f);
+	fclose(f);
+    }
     
     std::cout << "Code size: "
 	      << max_address/4 << " words"

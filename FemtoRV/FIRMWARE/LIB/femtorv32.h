@@ -1,10 +1,11 @@
 #ifndef H__FEMTORV32__H
 #define H__FEMTORV32__H
 
-typedef unsigned char  uint8_t;
-typedef unsigned short uint16_t;
-typedef unsigned int   uint32_t;
-typedef unsigned int   size_t;
+typedef unsigned char          uint8_t;
+typedef unsigned short         uint16_t;
+typedef unsigned int           uint32_t;
+typedef unsigned long long int uint64_t;
+typedef unsigned int           size_t;
 
 /* Standard library */
 extern void exit(int);
@@ -20,13 +21,22 @@ void* memcpy(void *dest, const void *src, size_t n);
 char* strcpy(char *dest, const char *src);
 char* strncpy(char *dest, const char *src, size_t n);
 int   strcmp(const char *p1, const char *p2);
+size_t strlen(const char* p);
 
 /* Other functions */
+extern int random();
+
 extern void delay(int ms);     /* waits an (approximate) number of milliseconds. */
 extern void microwait(int ns); /* waits an (approximate) number of microseconds.  */
-extern int  random();
+extern uint64_t cycles(); /* gets the number of cycles since last reset (needs NRV_COUNTERS_64) */
 
 /* System */
+
+extern int exec(const char* filename); /* Executes a program from the SDCard. 
+					* Returns a non-zero number on error.
+					* does not return on success !
+					*/
+
 extern uint32_t* CONFIGWORDS;
 #define CONFIGWORD_PROC           0
 #define CONFIGWORD_PROC_FREQ      1
@@ -114,6 +124,7 @@ void GL_putchar_xy(int x, int y, char c);
 #define IO_LEDMTX_DATA  512   /* LED matrix data (write)	                        */
 #define IO_SPI_FLASH   1024
 #define IO_SPI_SDCARD  2048
+#define IO_BUTTONS     4096
 
 #define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
 #define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)
