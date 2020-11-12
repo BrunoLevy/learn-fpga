@@ -57,12 +57,12 @@ do
    if [[ $i == *.s ]]
    then
       echo '   Compiling asm source:' $i
-      riscv64-linux-gnu-as -march=$ARCH -mabi=$ABI $i -o `basename $i .s`.o
+      $RVAS -march=$ARCH -mabi=$ABI $i -o `basename $i .s`.o
    else
       if [[ $i == *.c ]] 
       then
          echo '   Compiling C source:' $i      
-         riscv64-linux-gnu-gcc-10 -w $OPTIMIZE -D_LIBC -Isysdeps/riscv/ -I. -fno-pic -march=$ARCH -mabi=$ABI -I. -fno-stack-protector -c $i
+         $RVGCC -w $OPTIMIZE -D_LIBC -Isysdeps/riscv/ -I. -fno-pic -march=$ARCH -mabi=$ABI -I. -fno-stack-protector -c $i
       fi
    fi
 done   

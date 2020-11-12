@@ -13,14 +13,14 @@ rm -f BUILD/firmware.o
 if [[ $1 == *.s ]]
 then
   echo "asm compile: " $1 
-  riscv64-linux-gnu-as -march=$ARCH -mabi=$ABI -o BUILD/firmware.o $1
+  $RVAS -march=$ARCH -mabi=$ABI -o BUILD/firmware.o $1
 else
    if [[ $1 == *.c ]] 
    then
       echo "C compile: " $1
       # This line so that we can examine produced assembly
-      riscv64-linux-gnu-gcc-10 $OPTIMIZE -fno-pic -march=$ARCH -mabi=$ABI -ILIB -S $1 -fno-stack-protector -o BUILD/firmware.s
-      riscv64-linux-gnu-gcc-10 $OPTIMIZE -fno-pic -march=$ARCH -mabi=$ABI -ILIB -c -fno-stack-protector -o BUILD/firmware.o $1
+      $RVGCC $OPTIMIZE -fno-pic -march=$ARCH -mabi=$ABI -ILIB -S $1 -fno-stack-protector -o BUILD/firmware.s
+      $RVGCC $OPTIMIZE -fno-pic -march=$ARCH -mabi=$ABI -ILIB -c -fno-stack-protector -o BUILD/firmware.o $1
    else
       echo "Invalid firmware source file:" $1
       echo "Specify one of the firmware source files in EXAMPLES (asm) or C_EXAMPLES (C)"
@@ -31,9 +31,10 @@ fi
 
 # Link
 # Note: seems that LIB/crt0.o is linked automatically (it is good, but I do not know why...)
-riscv64-linux-gnu-ld -m elf32lriscv_ilp32 -b elf32-littleriscv -Tfemtorv32.ld -o BUILD/firmware.elf BUILD/firmware.o -LLIB -lfemtorv32
+#$RVLD -m elf32lriscv_ilp32 -b elf32-littleriscv -Tfemtorv32.ld -o BUILD/firmware.elf BUILD/firmware.o -LLIB -lfemtorv32
+$RVLD -m elf32lriscv -b elf32-littleriscv -Tfemtorv32.ld -o BUILD/firmware.elf BUILD/firmware.o -LLIB -lfemtorv32
 # Dump hexadecimal content
-riscv64-linux-gnu-objcopy -O verilog BUILD/firmware.elf BUILD/firmware.objcopy.hex
+$RVOBJCOPY -O verilog BUILD/firmware.elf BUILD/firmware.objcopy.hex
 # Adapt hexadecimal content (32 bit words instead of individual bytes)
 (cd BUILD; rm firmware.hex; ../TOOLS/firmware_words)
 cp BUILD/firmware.hex .
@@ -41,5 +42,5 @@ cp BUILD/firmware.hex .
 echo "Generated firmware (arch=$ARCH, abi=$ABI, optimize=$OPTIMIZE)"
 
 ## Display assembly
-#riscv64-linux-gnu-objcopy -O binary BUILD/firmware.elf BUILD/firmware.bin
-#riscv64-linux-gnu-objdump -D -b binary -m riscv BUILD/firmware.bin 
+$RVOBJCOPY -O binary BUILD/firmware.elf BUILD/firmware.bin
+$RVOBJDUMP -D -b binary -m riscv BUILD/firmware.bin 
