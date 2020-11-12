@@ -42,5 +42,5 @@ cp BUILD/firmware.hex .
 echo "Generated firmware (arch=$ARCH, abi=$ABI, optimize=$OPTIMIZE)"
 
 ## Display assembly
-$RVOBJCOPY -O binary BUILD/firmware.elf BUILD/firmware.bin
-$RVOBJDUMP -D -b binary -m riscv BUILD/firmware.bin 
+#$RVOBJCOPY -O binary BUILD/firmware.elf BUILD/firmware.bin
+#$RVOBJDUMP -D -b binary -m riscv BUILD/firmware.bin 
