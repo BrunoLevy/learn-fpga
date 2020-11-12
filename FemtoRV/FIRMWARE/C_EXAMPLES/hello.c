@@ -1,7 +1,8 @@
 #include <femtorv32.h>
 
 int main() {
-   femtosoc_tty_init();
+   MAX2719_tty_init();
+   // femtosoc_tty_init();
    for(;;) {
       printf("Hello, world !!\n");
 //    getchar();

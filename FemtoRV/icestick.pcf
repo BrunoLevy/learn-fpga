@@ -15,9 +15,9 @@ set_io D5 95
 set_io TXD 8
 set_io RXD 9
 
-set_io ledmtx_DIN  60
-set_io ledmtx_CS   56
-set_io ledmtx_CLK  48
+set_io ledmtx_DIN  81
+set_io ledmtx_CS   80
+set_io ledmtx_CLK  79
 
 set_io spi_cs_n 71
 set_io spi_miso 68
