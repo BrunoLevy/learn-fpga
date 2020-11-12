@@ -1,5 +1,7 @@
 . ./config.sh
 
+mkdir -p BUILD
+
 # Compile lib
 (cd LIB; ./makeit.sh)
 
@@ -17,8 +19,8 @@ else
    then
       echo "C compile: " $1
       # This line so that we can examine produced assembly
-      riscv64-linux-gnu-gcc-10 $OPTIMIZE -fno-pic -march=$ARCH -mabi=$ABI -ILIB -S $1 -o BUILD/firmware.s
-      riscv64-linux-gnu-gcc-10 $OPTIMIZE -fno-pic -march=$ARCH -mabi=$ABI -ILIB -c -o BUILD/firmware.o $1
+      riscv64-linux-gnu-gcc-10 $OPTIMIZE -fno-pic -march=$ARCH -mabi=$ABI -ILIB -S $1 -fno-stack-protector -o BUILD/firmware.s
+      riscv64-linux-gnu-gcc-10 $OPTIMIZE -fno-pic -march=$ARCH -mabi=$ABI -ILIB -c -fno-stack-protector -o BUILD/firmware.o $1
    else
       echo "Invalid firmware source file:" $1
       echo "Specify one of the firmware source files in EXAMPLES (asm) or C_EXAMPLES (C)"

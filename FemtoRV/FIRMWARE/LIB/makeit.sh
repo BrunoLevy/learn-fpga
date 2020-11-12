@@ -62,7 +62,7 @@ do
       if [[ $i == *.c ]] 
       then
          echo '   Compiling C source:' $i      
-         riscv64-linux-gnu-gcc-10 -w $OPTIMIZE -D_LIBC -Isysdeps/riscv/ -I. -fno-pic -march=$ARCH -mabi=$ABI -I. -c $i 
+         riscv64-linux-gnu-gcc-10 -w $OPTIMIZE -D_LIBC -Isysdeps/riscv/ -I. -fno-pic -march=$ARCH -mabi=$ABI -I. -fno-stack-protector -c $i
       fi
    fi
 done   

@@ -125,11 +125,11 @@ int parse_verilog(const char* filename, SymTable& table) {
 		
 		if(bit != -1) {
 		    fprintf(stderr, "   CONFIG  %22s=%5d  @0x%lx[%d]\n",
-			    symname.c_str(), value, addr, bit
+			    symname.c_str(), value, (unsigned long int)addr, bit
 		    );
 		} else {
 		    fprintf(stderr, "   CONFIG  %22s=%5d  @0x%lx\n",
-			    symname.c_str(), value, addr
+			    symname.c_str(), value, (unsigned long int)addr
 		    );		    
 		}
 
