@@ -32,7 +32,7 @@ fi
 # Link
 # Note: seems that LIB/crt0.o is linked automatically (it is good, but I do not know why...)
 #$RVLD -m elf32lriscv_ilp32 -b elf32-littleriscv -Tfemtorv32.ld -o BUILD/firmware.elf BUILD/firmware.o -LLIB -lfemtorv32
-$RVLD -m elf32lriscv -b elf32-littleriscv -Tfemtorv32.ld -o BUILD/firmware.elf BUILD/firmware.o -LLIB -lfemtorv32
+$RVLD -m elf32lriscv -b elf32-littleriscv -Tfemtorv32.ld -o BUILD/firmware.elf BUILD/firmware.o -LLIB -lfemtorv32 $ADDITIONAL_LIB
 # Dump hexadecimal content
 $RVOBJCOPY -O verilog BUILD/firmware.elf BUILD/firmware.objcopy.hex
 # Adapt hexadecimal content (32 bit words instead of individual bytes)

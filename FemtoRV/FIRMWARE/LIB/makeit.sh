@@ -2,24 +2,6 @@
 
 . ../config.sh
 
-SINGLE_SRC="soft-fp/negsf2.c soft-fp/addsf3.c soft-fp/subsf3.c soft-fp/mulsf3.c soft-fp/divsf3.c soft-fp/eqsf2.c \
-	soft-fp/lesf2.c soft-fp/gesf2.c soft-fp/unordsf2.c soft-fp/fixsfsi.c soft-fp/fixunssfsi.c soft-fp/floatsisf.c soft-fp/fixsfdi.c \
-	soft-fp/fixunssfdi.c soft-fp/floatdisf.c soft-fp/floatunsisf.c soft-fp/floatundisf.c"
-
-DOUBLE_SRC="soft-fp/negdf2.c soft-fp/adddf3.c soft-fp/subdf3.c soft-fp/muldf3.c soft-fp/divdf3.c soft-fp/eqdf2.c \
-	soft-fp/ledf2.c soft-fp/gedf2.c soft-fp/unorddf2.c soft-fp/fixdfsi.c soft-fp/fixunsdfsi.c soft-fp/floatsidf.c soft-fp/fixdfdi.c \
-	soft-fp/fixunsdfdi.c soft-fp/floatdidf.c soft-fp/extendsfdf2.c soft-fp/truncdfsf2.c soft-fp/floatunsidf.c \
-	soft-fp/floatundidf.c"
-
-SINGLE_OBJS="negsf2.o addsf3.o subsf3.o mulsf3.o divsf3.o eqsf2.o \
-	lesf2.o gesf2.o unordsf2.o fixsfsi.o fixunssfsi.o floatsisf.o fixsfdi.o \
-	fixunssfdi.o floatdisf.o floatunsisf.o floatundisf.o"
-
-DOUBLE_OBJS="negdf2.o adddf3.o subdf3.o muldf3.o divdf3.o eqdf2.o \
-	ledf2.o gedf2.o unorddf2.o fixdfsi.o fixunsdfsi.o floatsidf.o fixdfdi.o \
-	fixunsdfdi.o floatdidf.o extendsfdf2.o truncdfsf2.o floatunsidf.o \
-	floatundidf.o"
-
 FAT_IO_SRC="fat_io_lib/fat_access.c fat_io_lib/fat_cache.c fat_io_lib/fat_filelib.c \
             fat_io_lib/fat_format.c fat_io_lib/fat_misc.c fat_io_lib/fat_string.c \
             fat_io_lib/fat_table.c fat_io_lib/fat_write.c"
@@ -34,7 +16,6 @@ SOURCES="femtorv32.s microwait.s mul.s div.s max2719.s ssd1351.s uart.s print.c 
          memset.c memcpy.c random.c strcpy.c strncpy.c strcmp.c strncmp.c strlen.c\
 	 tty_init.c max2719_text.c \
 	 clz.c \
-         $SINGLE_SRC $DOUBLE_SRC \
 	 $FAT_IO_SRC \
          spi_sd.c exec.c \
          cycles.s \
@@ -46,7 +27,6 @@ OBJECTS="femtorv32.o microwait.o mul.o div.o max2719.o ssd1351.o uart.o print.o 
          memset.o memcpy.o random.o strcpy.o strncpy.o strcmp.o strncmp.o strlen.o\
 	 tty_init.o max2719_text.o \
 	 clz.o \
-         $SINGLE_OBJS $DOUBLE_OBJS \
 	 $FAT_IO_OBJS \
          spi_sd.o exec.o \
          cycles.o"

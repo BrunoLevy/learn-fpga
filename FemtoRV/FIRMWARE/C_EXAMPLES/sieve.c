@@ -67,8 +67,7 @@ int main(void)
 	* Note: pulls the two fonts (eats up a subsequent part of the
 	* available 6 Kbs).
 	*/
-        MAX2719_tty_init();
-        //femtosoc_tty_init();
+        femtosoc_tty_init();
     
 	int idx = 1;
 	hash = 5381;

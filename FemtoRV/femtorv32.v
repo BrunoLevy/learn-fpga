@@ -143,9 +143,7 @@ module NrvSmallALU #(
 	3'b110: out = in1 | in2;                         // OR
 	3'b111: out = in1 & in2;                         // AND
 	
-	// We could generate the barrel shifter here, but doing so
-	// makes the critical path too long, so we keep a two-phase
-	// ALU instead.
+	// Shift operations, get result from the shifter
 	3'b001: out = ALUreg;                           // SLL	   
 	3'b101: out = ALUreg;                           // SRL/SRA
       endcase // case (op)
