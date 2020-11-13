@@ -170,16 +170,15 @@ vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* light
   if (depth>2 || !scene_intersect(orig, dir, spheres, nb_spheres, &point, &N, &material)) {
     return make_vec3(0.2, 0.7, 0.8); // background color
   }
-  return material.diffuse_color; 
-   
+
   vec3 reflect_dir = vec3_normalize(reflect(dir, N));
   vec3 refract_dir = vec3_normalize(refract(dir, N, material.refractive_index, 1)); 
-   // offset the original point to avoid occlusion by the object itself 
+  // offset the original point to avoid occlusion by the object itself 
   vec3 reflect_orig = vec3_dot(reflect_dir,N) < 0 ? vec3_sub(point,vec3_scale(1e-3,N)) : vec3_add(point,vec3_scale(1e-3,N)); 
   vec3 refract_orig = vec3_dot(refract_dir,N) < 0 ? vec3_sub(point,vec3_scale(1e-3,N)) : vec3_add(point,vec3_scale(1e-3,N));
   vec3 reflect_color = cast_ray(reflect_orig, reflect_dir, spheres, nb_spheres, lights, nb_lights, depth + 1);
   vec3 refract_color = cast_ray(refract_orig, refract_dir, spheres, nb_spheres, lights, nb_lights, depth + 1);
-   
+  
   float diffuse_light_intensity = 0, specular_light_intensity = 0;
   for (int i=0; i<nb_lights; i++) {
     vec3  light_dir = vec3_normalize(vec3_sub(lights[i].position,point));
@@ -192,15 +191,15 @@ vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* light
     if (scene_intersect(shadow_orig, light_dir, spheres, nb_spheres, &shadow_pt, &shadow_N, &tmpmaterial) &&
 	vec3_length(vec3_sub(shadow_pt,shadow_orig)) < light_distance
     ) continue ;
+    
     diffuse_light_intensity  += lights[i].intensity * max(0.f, vec3_dot(light_dir,N));
-    specular_light_intensity += powf(max(0.f, vec3_dot(vec3_neg(reflect(vec3_neg(light_dir), N)),dir)), material.specular_exponent)*lights[i].intensity;
+    // specular_light_intensity += powf(max(0.f, vec3_dot(vec3_neg(reflect(vec3_neg(light_dir), N)),dir)), material.specular_exponent)*lights[i].intensity;
   }
 
   vec3 result = vec3_scale(diffuse_light_intensity * material.albedo.x, material.diffuse_color);
   result = vec3_add(result, vec3_scale(specular_light_intensity * material.albedo.y, make_vec3(1,1,1)));
   result = vec3_add(result, vec3_scale(material.albedo.z, reflect_color));
   result = vec3_add(result, vec3_scale(material.albedo.w, refract_color));
-
   return result;
 }
 
@@ -218,14 +217,12 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
 	 float dir_y = -(j + 0.5) + height/2.;    // this flips the image at the same time
 	 float dir_z = -height/(2.*tan(fov/2.));
 	 vec3 C = cast_ray(make_vec3(0,0,0), vec3_normalize(make_vec3(dir_x, dir_y, dir_z)), spheres, nb_spheres, lights, nb_lights, 0);
-	 uint16_t rgb[3];
-	 rgb[0] = (uint16_t)(255.0f * max(0.f, min(1.f, C.x)));
-	 rgb[1] = (uint16_t)(255.0f * max(0.f, min(1.f, C.y)));
-	 rgb[2] = (uint16_t)(255.0f * max(0.f, min(1.f, C.z)));    
-	 uint16_t color = GL_RGB(rgb[0], rgb[1], rgb[2]);
-	 IO_OUT(IO_OLED_DATA,color >> 8);
+	 uint16_t R = (uint16_t)(255.0f * max(0.f, min(1.f, C.x))) >> 3;
+	 uint16_t G = (uint16_t)(255.0f * max(0.f, min(1.f, C.y))) >> 3;
+	 uint16_t B = (uint16_t)(255.0f * max(0.f, min(1.f, C.z))) >> 3;    
+	 IO_OUT(IO_OLED_DATA,(G>>2)|(R<<3));
 	 OLED_WAIT();
-	 IO_OUT(IO_OLED_DATA,color);
+	 IO_OUT(IO_OLED_DATA,B|(G << 6));
 	 OLED_WAIT();
       }
    }
