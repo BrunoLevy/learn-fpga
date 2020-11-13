@@ -35,9 +35,9 @@
 // 6K max on the ICEstick
 // Do not forget the CONFIGWORD 0x0020 comment (FIRMWARE_WORDS depends on it)
 //`define NRV_RAM 393216         // CONFIGWORD 0x0020 
-//`define NRV_RAM 262144         // CONFIGWORD 0x0020 
+`define NRV_RAM 262144         // CONFIGWORD 0x0020 
 //`define NRV_RAM 131072       // CONFIGWORD 0x0020 // You need this to run DHRYSTONE
-`define NRV_RAM 65536       // CONFIGWORD 0x0020
+//`define NRV_RAM 65536       // CONFIGWORD 0x0020
 //`define NRV_RAM 6144        // CONFIGWORD 0x0020
 //`define NRV_RAM 4096        // CONFIGWORD 0x0020
 
