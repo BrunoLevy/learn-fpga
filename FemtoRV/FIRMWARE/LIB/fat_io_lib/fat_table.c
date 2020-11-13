@@ -29,7 +29,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-#include <string.h>
+//#include <string.h>
 #include "fat_defs.h"
 #include "fat_access.h"
 #include "fat_table.h"
