@@ -1,5 +1,44 @@
-* create a "runtime library" with different modules (do not pay for
-  the OLED display code when it is not used).
-  
-* crt0.S:  
-  https://github.com/riscv/riscv-newlib/blob/riscv-newlib-2.5.0/libgloss/riscv/crt0.S#L12
+FemtoOS: embedded system
+
+Current state: quick and dirty !
+   standalone FIRMWARE/LIB
+   custom crt0.s
+   custom linker script
+   generates executable with __start at address 0
+   softfp and libm can be linked 
+
+Goal:
+   use riscv-gcc for embedded systems (newlib) "the right way"
+   step1: create linker script and crt0.s 
+          initialize gp as IO_BASE
+	  
+	  Test simple programs (blinker, OLED screen)
+	  
+	  Q: how newlib's stdio is initialized ? (putchar(), getchar() ?)
+	      A: https://stackoverflow.com/questions/55014043/how-do-you-implement-printf-in-gcc-from-newlib
+	         (implement read and write)
+
+	  Q: how newlib's heap is initialized ?  (sbrk() ?)
+
+          Rem: it seems that newlib uses the ECALL instruction (see libgloss/riscv in the sources)
+	     What is the core supposed to do with ECALL ? Call an interrupt or something ?
+	  
+	  Test whether malloc works
+	  Test whether C++ works
+	  
+   step2: create uart  -- Do we need interrupts ?
+   
+   step3: install commander.exe in low mem and user program in higher mem
+   step4: install commander.exe and common libs in low mem and user program in higher mem,
+          some kind of DLL: we generate a RAM image, and our EXE file will be just the higher part.
+
+References:
+   https://twilco.github.io/riscv-from-scratch/2019/03/10/riscv-from-scratch-1.html
+   https://twilco.github.io/riscv-from-scratch/2019/04/27/riscv-from-scratch-2.html
+   https://twilco.github.io/riscv-from-scratch/2019/07/08/riscv-from-scratch-3.html
+
+==================================
+FemtoUX: run Linux
+    Step 1: interrupts
+    Step 2: MMU (*much* simpler than I thought)
+    

@@ -14,45 +14,45 @@
 
 int spi_state = CSN_MASK;
 
-inline void CS_H() {
+static inline void CS_H() {
     spi_state |= CSN_MASK;
     IO_OUT(IO_SPI_SDCARD, spi_state);    
 }
 
-inline void CS_L() {
+static inline void CS_L() {
     spi_state &= ~CSN_MASK;
     IO_OUT(IO_SPI_SDCARD, spi_state);    
 }
 
-inline void CK_H() {
+static inline void CK_H() {
     spi_state |= CLK_MASK;
     IO_OUT(IO_SPI_SDCARD, spi_state);    
 }
 
-inline void CK_L() {
+static inline void CK_L() {
     spi_state &= ~CLK_MASK;
     IO_OUT(IO_SPI_SDCARD, spi_state);    
 }
 
-inline void MOSI_H() {
+static inline void MOSI_H() {
     spi_state |= MOSI_MASK;
     IO_OUT(IO_SPI_SDCARD, spi_state);    
 }
 
-inline void MOSI_L() {
+static inline void MOSI_L() {
     spi_state &= ~MOSI_MASK;
     IO_OUT(IO_SPI_SDCARD, spi_state);    
 }
 
-inline int MISO() {
+static inline int MISO() {
     return IO_IN(IO_SPI_SDCARD);
 }
 
-inline void CLK_DELAY() {
+static inline void CLK_DELAY() {
     microwait(1);
 }
 
-inline void DLY_US(int t) {
+static inline void DLY_US(int t) {
     microwait(t);
 }
 

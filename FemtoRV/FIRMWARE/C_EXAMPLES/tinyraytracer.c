@@ -2,54 +2,56 @@
 /* (and still in 256 lines exactly !!) */
 
 #include <math.h>
+#include <fenv.h>
 #include <femtorv32.h>
+
 
 /*******************************************************************/
 int __errno;
 
 typedef int BOOL;
 
-inline float max(float x, float y) { return x>y?x:y; }
-inline float min(float x, float y) { return x<y?x:y; }
+static inline float max(float x, float y) { return x>y?x:y; }
+static inline float min(float x, float y) { return x<y?x:y; }
 
 typedef struct { float x,y,z; }   vec3;
 typedef struct { float x,y,z,w; } vec4;
 
-inline vec3 make_vec3(float x, float y, float z) {
+static inline vec3 make_vec3(float x, float y, float z) {
   vec3 V;
   V.x = x; V.y = y; V.z = z;
   return V;
 }
 
-inline vec3 vec3_neg(vec3 V) {
+static inline vec3 vec3_neg(vec3 V) {
   return make_vec3(-V.x, -V.y, -V.z);
 }
 
-inline vec3 vec3_add(vec3 U, vec3 V) {
+static inline vec3 vec3_add(vec3 U, vec3 V) {
   return make_vec3(U.x+V.x, U.y+V.y, U.z+V.z);
 }
 
-inline vec3 vec3_sub(vec3 U, vec3 V) {
+static inline vec3 vec3_sub(vec3 U, vec3 V) {
   return make_vec3(U.x-V.x, U.y-V.y, U.z-V.z);
 }
 
-inline float vec3_dot(vec3 U, vec3 V) {
+static inline float vec3_dot(vec3 U, vec3 V) {
   return U.x*V.x+U.y*V.y+U.z*V.z;
 }
 
-inline vec3 vec3_scale(float s, vec3 U) {
+static inline vec3 vec3_scale(float s, vec3 U) {
   return make_vec3(s*U.x, s*U.y, s*U.z);
 }
 
-inline float vec3_length(vec3 U) {
+static inline float vec3_length(vec3 U) {
   return sqrtf(U.x*U.x+U.y*U.y+U.z*U.z);
 }
 
-inline vec3 vec3_normalize(vec3 U) {
+static inline vec3 vec3_normalize(vec3 U) {
   return vec3_scale(1.0f/vec3_length(U),U);
 }
 
-inline vec4 make_vec4(float x, float y, float z, float w) {
+static inline vec4 make_vec4(float x, float y, float z, float w) {
   vec4 V;
   V.x = x; V.y = y; V.z = z; V.w = w;
   return V;
@@ -164,11 +166,35 @@ BOOL scene_intersect(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, vec3*
   return min(spheres_dist, checkerboard_dist)<1000;
 }
 
+// It crashes when I call powf(), because it probably underflows, and I do not
+// know how to disable floating point exceptions.
+
+float my_pow(float x, float y) {
+   float result = x;
+   int Y = (int)y;
+   while(Y > 2) {
+      Y /= 2;
+      result *= result;
+      if(result < 1e-100 || result > 1e100) {
+	 return result;
+      }
+   }
+   while(Y > 1) {
+      Y--;
+      result *= x;
+      if(result < 1e-100 || result > 1e100) {
+	 return result;
+      }
+   }
+   return result;
+}
+
 vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* lights, int nb_lights, int depth /* =0 */) {
   vec3 point,N;
   Material material = make_Material_default();
-  if (depth>2 || !scene_intersect(orig, dir, spheres, nb_spheres, &point, &N, &material)) {
-    return make_vec3(0.2, 0.7, 0.8); // background color
+  if (depth>4 || !scene_intersect(orig, dir, spheres, nb_spheres, &point, &N, &material)) {
+    float s = 0.5*(dir.y + 1.0);
+    return vec3_add(vec3_scale(s,make_vec3(0.2, 0.7, 0.8)),vec3_scale(s,make_vec3(0.0, 0.0, 0.5)));
   }
 
   vec3 reflect_dir = vec3_normalize(reflect(dir, N));
@@ -193,7 +219,11 @@ vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* light
     ) continue ;
     
     diffuse_light_intensity  += lights[i].intensity * max(0.f, vec3_dot(light_dir,N));
-    // specular_light_intensity += powf(max(0.f, vec3_dot(vec3_neg(reflect(vec3_neg(light_dir), N)),dir)), material.specular_exponent)*lights[i].intensity;
+    float abc = max(0.f, vec3_dot(vec3_neg(reflect(vec3_neg(light_dir), N)),dir));
+    float def = material.specular_exponent;
+    if(abc > 0.0f && def > 0.0f) {
+       specular_light_intensity += my_pow(abc,def)*lights[i].intensity;
+    }
   }
 
   vec3 result = vec3_scale(diffuse_light_intensity * material.albedo.x, material.diffuse_color);
@@ -229,10 +259,13 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
 }
 
 int main() {
+   
+//  fedisableexcept(FE_ALL_EXCEPT); 
+   
     Material      ivory = make_Material(1.0, make_vec4(0.6,  0.3, 0.1, 0.0), make_vec3(0.4, 0.4, 0.3),   50.);
     Material      glass = make_Material(1.5, make_vec4(0.0,  0.5, 0.1, 0.8), make_vec3(0.6, 0.7, 0.8),  125.);
     Material red_rubber = make_Material(1.0, make_vec4(0.9,  0.1, 0.0, 0.0), make_vec3(0.3, 0.1, 0.1),   10.);
-    Material     mirror = make_Material(1.0, make_vec4(0.0, 10.0, 0.8, 0.0), make_vec3(1.0, 1.0, 1.0), 1425.);
+    Material     mirror = make_Material(1.0, make_vec4(0.0, 10.0, 0.8, 0.0), make_vec3(1.0, 1.0, 1.0),  142.);
 
     int nb_spheres = 4;
     Sphere spheres[4];
