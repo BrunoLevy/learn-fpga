@@ -1,3 +1,8 @@
+Rem: je viens de remplacer 'inline' par 'static inline' dans le driver
+de SDCard, vérifier si ça marche encore du coup...
+
+=========================================
+
 FemtoOS: embedded system
 
 Current state: quick and dirty !

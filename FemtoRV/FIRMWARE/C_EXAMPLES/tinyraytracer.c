@@ -1,13 +1,14 @@
 /* A port of Dmitry Sokolov's tiny raytracer to C and to FemtoRV32 */
-/* (and still in 256 lines exactly !!) */
+/* Needs the small OLED display (SSD1351)                          */
 
 #include <math.h>
 #include <fenv.h>
 #include <femtorv32.h>
 
-
 /*******************************************************************/
-int __errno;
+
+int __errno;  /* My quick-and-dirty compile script pulls libm and softp,
+	       * but still has an undefined __errno error.         */
 
 typedef int BOOL;
 
@@ -23,39 +24,19 @@ static inline vec3 make_vec3(float x, float y, float z) {
   return V;
 }
 
-static inline vec3 vec3_neg(vec3 V) {
-  return make_vec3(-V.x, -V.y, -V.z);
-}
-
-static inline vec3 vec3_add(vec3 U, vec3 V) {
-  return make_vec3(U.x+V.x, U.y+V.y, U.z+V.z);
-}
-
-static inline vec3 vec3_sub(vec3 U, vec3 V) {
-  return make_vec3(U.x-V.x, U.y-V.y, U.z-V.z);
-}
-
-static inline float vec3_dot(vec3 U, vec3 V) {
-  return U.x*V.x+U.y*V.y+U.z*V.z;
-}
-
-static inline vec3 vec3_scale(float s, vec3 U) {
-  return make_vec3(s*U.x, s*U.y, s*U.z);
-}
-
-static inline float vec3_length(vec3 U) {
-  return sqrtf(U.x*U.x+U.y*U.y+U.z*U.z);
-}
-
-static inline vec3 vec3_normalize(vec3 U) {
-  return vec3_scale(1.0f/vec3_length(U),U);
-}
-
 static inline vec4 make_vec4(float x, float y, float z, float w) {
   vec4 V;
   V.x = x; V.y = y; V.z = z; V.w = w;
   return V;
 }
+
+static inline vec3 vec3_neg(vec3 V)            { return make_vec3(-V.x, -V.y, -V.z); }
+static inline vec3 vec3_add(vec3 U, vec3 V)    { return make_vec3(U.x+V.x, U.y+V.y, U.z+V.z); }
+static inline vec3 vec3_sub(vec3 U, vec3 V)    { return make_vec3(U.x-V.x, U.y-V.y, U.z-V.z); }
+static inline float vec3_dot(vec3 U, vec3 V)   { return U.x*V.x+U.y*V.y+U.z*V.z; }
+static inline vec3 vec3_scale(float s, vec3 U) { return make_vec3(s*U.x, s*U.y, s*U.z); }
+static inline float vec3_length(vec3 U)        { return sqrtf(U.x*U.x+U.y*U.y+U.z*U.z); }
+static inline vec3 vec3_normalize(vec3 U)      { return vec3_scale(1.0f/vec3_length(U),U); }
 
 /*************************************************************************/
 
@@ -128,9 +109,7 @@ BOOL Sphere_ray_intersect(Sphere* S, vec3 orig, vec3 dir, float* t0) {
   return 1;
 }
 
-vec3 reflect(vec3 I, vec3 N) {
-  return vec3_sub(I, vec3_scale(2.f*vec3_dot(I,N),N));
-}
+vec3 reflect(vec3 I, vec3 N) { return vec3_sub(I, vec3_scale(2.f*vec3_dot(I,N),N)); }
 
 vec3 refract(vec3 I, vec3 N, float eta_t, float eta_i /* =1.f */) { // Snell's law
     float cosi = -max(-1.f, min(1.f, vec3_dot(I,N)));
@@ -166,22 +145,18 @@ BOOL scene_intersect(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, vec3*
   return min(spheres_dist, checkerboard_dist)<1000;
 }
 
-// It crashes when I call powf(), because it probably underflows, and I do not
-// know how to disable floating point exceptions.
-
+/* It crashes when I call powf(), because it probably underflows, and I do not know how to disable floating point exceptions. */
 float my_pow(float x, float y) {
    float result = x;
    int Y = (int)y;
    while(Y > 2) {
-      Y /= 2;
-      result *= result;
+      Y /= 2; result *= result;
       if(result < 1e-100 || result > 1e100) {
 	 return result;
       }
    }
    while(Y > 1) {
-      Y--;
-      result *= x;
+      Y--; result *= x;
       if(result < 1e-100 || result > 1e100) {
 	 return result;
       }
@@ -225,7 +200,6 @@ vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* light
        specular_light_intensity += my_pow(abc,def)*lights[i].intensity;
     }
   }
-
   vec3 result = vec3_scale(diffuse_light_intensity * material.albedo.x, material.diffuse_color);
   result = vec3_add(result, vec3_scale(specular_light_intensity * material.albedo.y, make_vec3(1,1,1)));
   result = vec3_add(result, vec3_scale(material.albedo.z, reflect_color));
@@ -234,10 +208,9 @@ vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* light
 }
 
 void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
-   const float fov      = M_PI/3.;
-   const int width = 128;
+   const float fov  = M_PI/3.;
+   const int width  = 128;
    const int height = 128;
-   
    GL_init();
    GL_clear();
    oled_write_window(0,0,127,127);
@@ -259,9 +232,6 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
 }
 
 int main() {
-   
-//  fedisableexcept(FE_ALL_EXCEPT); 
-   
     Material      ivory = make_Material(1.0, make_vec4(0.6,  0.3, 0.1, 0.0), make_vec3(0.4, 0.4, 0.3),   50.);
     Material      glass = make_Material(1.5, make_vec4(0.0,  0.5, 0.1, 0.8), make_vec3(0.6, 0.7, 0.8),  125.);
     Material red_rubber = make_Material(1.0, make_vec4(0.9,  0.1, 0.0, 0.0), make_vec3(0.3, 0.1, 0.1),   10.);
