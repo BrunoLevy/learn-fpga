@@ -2,13 +2,15 @@
 
 . ../config.sh
 
+#Uncomment if your riscv-gcc does not have a bundled libc/libgcc
+
 #MISSING_LIBC_SOURCES="missing/mul.S missing/div.S \
 #                      missing/memset.c missing/memcpy.c missing/random.c missing/strcpy.c missing/strncpy.c missing/strcmp.c missing/strncmp.c missing/strlen.c\
-# 	               missing/clz.c"
+#                      missing/clz.c"
 
 #MISSING_LIBC_OBJECTS="mul.o div.o print.o printf.o \
 #                      memset.o memcpy.o random.o strcpy.o strncpy.o strcmp.o strncmp.o strlen.o\
-#	               clz.o"
+#                      clz.o"
 
 SOURCES="print.c printf.c $MISSING_LIBC_SOURCES"
 OBJECTS="print.o printf.o $MISSING_LIBC_OBJECTS"
