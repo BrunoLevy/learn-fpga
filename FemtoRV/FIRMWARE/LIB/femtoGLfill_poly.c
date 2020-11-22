@@ -40,7 +40,7 @@ static int clip_H(
 	if(status != prev_status && status != 0 && prev_status != 0) {
 
 	    /*
-	     * Remember, femtorv32 does not have hardware mul,
+	     * Remember, femtorv32 does not always have hardware mul,
 	     * so we replace the following code with two switches
 	     * (a and b take values in -1,0,1, no need to mul).
 	     * int t_num   = -a*prev_x-b*prev_y-c;

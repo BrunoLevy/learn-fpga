@@ -22,8 +22,8 @@
  */
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 //`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
 //`define NRV_IO_BUTTONS     // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
@@ -38,8 +38,8 @@
 //`define NRV_RAM 262144         // CONFIGWORD 0x0020 
 //`define NRV_RAM 131072       // CONFIGWORD 0x0020 // You need this to run DHRYSTONE
 //`define NRV_RAM 65536       // CONFIGWORD 0x0020
-`define NRV_RAM 6144        // CONFIGWORD 0x0020
-//`define NRV_RAM 4096        // CONFIGWORD 0x0020
+//`define NRV_RAM 6144        // CONFIGWORD 0x0020
+`define NRV_RAM 4096        // CONFIGWORD 0x0020
 
 //`define NRV_COUNTERS    // CONFIGWORD 0x0018[0] // Uncomment for instr and cycle counters (won't fit on the ICEStick)
 //`define NRV_COUNTERS_64 // CONFIGWORD 0x0018[1] // ... and uncomment this one as well if you want 64-bit counters

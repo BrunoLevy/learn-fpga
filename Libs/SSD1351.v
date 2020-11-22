@@ -76,12 +76,12 @@ module SSD1351(
    // Divide internal frequency by 2 because
    // clock raising edges should be in the
    // middle of sent bits
-   reg [3:0] divider; // Trying to divide by 16 instead of 2
+   reg [1:0] divider;
    always @(posedge clk) begin
       divider <= divider + 1;
    end
-   wire internal_clk = (divider[3] == 1'b0);
-   wire send_clk     = (divider[3] == 1'b1);
+   wire internal_clk = (divider[1] == 1'b0);
+   wire send_clk     = (divider[1] == 1'b1);
    wire special      = (data[8:2] == 7'b0000000); // 1 if using one of the pseudo-commands
    
    // The timer for the two 0.5s initialization

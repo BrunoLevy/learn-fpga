@@ -16,16 +16,23 @@ module oled(
 );
 
    /*****************************************************************/
-   
+
+/*   
    wire clk;
    SB_PLL40_CORE #(
       .FEEDBACK_PATH("SIMPLE"),
       .PLLOUT_SELECT("GENCLK"),
       
       // 65 MHz  -> SPI operates at 33 MHz
-      .DIVR(4'b0000),
-      .DIVF(7'b1010110),
-      .DIVQ(3'b100),
+      // (note: see Libs/SSD1351.v, divider 4 bits...)
+       .DIVR(4'b0000),
+       .DIVF(7'b1010110),
+       .DIVQ(3'b100),
+
+      // 48 MHz  -> SPI operates at 24 MHz
+      //.DIVR(4'b0000),
+      //.DIVF(7'b0111111),
+      //.DIVQ(3'b101),
 
       .FILTER_RANGE(3'b001),
    ) pll (
@@ -34,6 +41,9 @@ module oled(
       .RESETB(1'b1),
       .BYPASS(1'b0)
    );
+*/
+
+   wire clk=pclk;
    
    /*****************************************************************/   
    
