@@ -1,3 +1,4 @@
+#include <femtostdlib.h>
 
 // Number of leading zero bits
 // (I do not know where the source of this function is, did not find

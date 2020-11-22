@@ -1,4 +1,4 @@
-#include <femtorv32.h>
+#include <femtostdlib.h>
 
 static int randomseed = 1;
 

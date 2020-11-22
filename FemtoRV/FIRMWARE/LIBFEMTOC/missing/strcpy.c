@@ -1,4 +1,4 @@
-#include <femtorv32.h>
+#include <femtostdlib.h>
 
 char *strcpy(char *dest, const char *src) {
    char* result = dest;

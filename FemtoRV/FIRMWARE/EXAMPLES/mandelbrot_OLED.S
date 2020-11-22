@@ -3,7 +3,7 @@
 # If you do not have the OLED display, use mandelbrot_terminal.s 
 # instead.
 
-.include "LIB/femtorv32.inc"
+.include "LIBFEMTORV32/femtorv32.inc"
 
 .equ mandel_shift, 10
 .equ mandel_mul,(1 << mandel_shift)	

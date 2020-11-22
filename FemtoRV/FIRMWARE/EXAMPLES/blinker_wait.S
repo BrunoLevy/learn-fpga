@@ -1,6 +1,6 @@
 # Blinker example, using a delay loop.
 
-.include "LIB/femtorv32.inc"
+.include "LIBFEMTORV32/femtorv32.inc"
 
 .globl main
 .type  main, @function

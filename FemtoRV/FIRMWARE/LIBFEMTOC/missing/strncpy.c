@@ -1,4 +1,4 @@
-#include <femtorv32.h>
+#include <femtostdlib.h>
 
 char* strncpy(char *dest, const char *src, size_t n) {
    size_t i;
