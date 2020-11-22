@@ -61,7 +61,9 @@ void show() {
 }
 
 int main() {
-   MAX2719_init();
+   MAX2719_tty_init();
+   printf("Game of Life ");
+   delay(1000);
    for(;;) {
       show();
       delay(100);
