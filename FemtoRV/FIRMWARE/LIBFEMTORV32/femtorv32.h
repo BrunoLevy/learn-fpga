@@ -63,7 +63,8 @@ extern uint16_t* font_3x5;    /* 2 bytes per char. 3 columns of 5 bits.         
 
 /* FemtoGL library */
 
-#define GL_RGB(R,G,B) ((((((R) & 0xF8) << 2) | ((G) & 0xF8)) << 6) | ((B) >> 3))
+/* Converts three R,G,B components (between 0 and 255) into a 16 bits color value for the OLED screen. */
+#define GL_RGB(R,G,B) ((((((R) & 0xF8) << 5) | ((G) & 0xF8)) << 3) | ((B) >> 3))
 
 extern uint16_t GL_fg;
 extern uint16_t GL_bg;

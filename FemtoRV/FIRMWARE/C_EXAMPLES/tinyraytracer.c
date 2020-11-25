@@ -220,12 +220,14 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
 	 float dir_y = -(j + 0.5) + height/2.;    // this flips the image at the same time
 	 float dir_z = -height/(2.*tan(fov/2.));
 	 vec3 C = cast_ray(make_vec3(0,0,0), vec3_normalize(make_vec3(dir_x, dir_y, dir_z)), spheres, nb_spheres, lights, nb_lights, 0);
-	 uint16_t R = (uint16_t)(255.0f * max(0.f, min(1.f, C.x))) >> 3;
-	 uint16_t G = (uint16_t)(255.0f * max(0.f, min(1.f, C.y))) >> 3;
-	 uint16_t B = (uint16_t)(255.0f * max(0.f, min(1.f, C.z))) >> 3;    
-	 IO_OUT(IO_OLED_DATA,(G>>2)|(R<<3));
-	 OLED_WAIT();
-	 IO_OUT(IO_OLED_DATA,B|(G << 6));
+	 uint16_t R = (uint16_t)(255.0f * max(0.f, min(1.f, C.x))); 
+	 uint16_t G = (uint16_t)(255.0f * max(0.f, min(1.f, C.y))); 
+	 uint16_t B = (uint16_t)(255.0f * max(0.f, min(1.f, C.z))); 
+	 
+	 uint16_t RGB = GL_RGB(R,G,B);
+	 IO_OUT(IO_OLED_DATA, RGB >> 8);
+	 OLED_WAIT();	 
+	 IO_OUT(IO_OLED_DATA, RGB);	 
 	 OLED_WAIT();
       }
    }

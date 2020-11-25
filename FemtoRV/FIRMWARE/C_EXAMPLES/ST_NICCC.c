@@ -158,23 +158,16 @@ int main() {
     GL_tty_init();
     GL_init();
     GL_clear();
-
     printf("ST-NICCC demo\n");
-    
     if(sd_init()) {
 	printf("Could not initialize SDCard\n");
 	return -1;
     }
-    printf("SDCard OK\n");
     fl_init();
     if(fl_attach_media((fn_diskio_read)sd_readsector, (fn_diskio_write)sd_writesector) != FAT_INIT_OK) {
 	printf("ERROR: Failed to init file system\n");
 	return -1;
     }
-    printf("FileSystem OK\n");
-    fl_listdirectory("/");
-
-    delay(3000);
     GL_init();
     GL_clear();
     wireframe = 0;

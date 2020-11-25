@@ -1,4 +1,5 @@
 #include <femtorv32.h>
+#include <femtostdlib.h>
 
 #define PATH_LEN 255
 
