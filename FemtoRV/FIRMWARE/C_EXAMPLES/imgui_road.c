@@ -29,13 +29,13 @@ void FX(ImVec2 a, ImVec2 b, ImVec2 d, float t) {
       float ss = 0.003f / s;
       float w = 2000 * ss * 160;
       float px = a.x + 160 + (f * ss * 160);
-      float py = 90 - (ss * (c * 2 - 2500) * 90);
+      float py = a.y + 30 - (ss * (c * 2 - 2500) * 90);
       bl = vec2(px - w, py);
       br = vec2(px + w, py);
       w = 1750 * ss * 160;
       bli = vec2(px - w, py);
       bri = vec2(px + w, py);
-      if (s != 300) {
+      if (s != 30) {
 	 bool j = fmodf(cz + s, 10) < 5;
 	 // Modifications as compared to original program: avoid overdraw and decompose
 	 // the entire image into independent polygons
