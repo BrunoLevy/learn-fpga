@@ -11,9 +11,10 @@ SOURCE_DIR=`dirname $1`
 echo "============>" Making $EXE_BASENAME
 (cd $SOURCE_DIR; make clean $EXE_BASENAME".hex" $EXE_BASENAME".exe")
 
-rm -f firmware.hex
+rm -f firmware.hex firmware.txt
 if [[ -f  $SOURCE_DIR"/"$EXE_BASENAME".hex" ]]; then
    cp $SOURCE_DIR"/"$EXE_BASENAME".hex" firmware.hex
+   echo "source:" $1 > firmware.txt
    # Display message with ARCH,ABI,OPTIMIZE (useful to know at that point)
    ARCH=`grep < makefile.inc '^ARCH='`
    ABI=`grep < makefile.inc '^ABI='`

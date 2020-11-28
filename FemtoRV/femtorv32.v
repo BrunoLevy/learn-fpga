@@ -1,7 +1,6 @@
-// femtorv32, a minimalistic RISC-V RV32I core
-//    (minus SYSTEM and FENCE that are not implemented)
-//
-//       Bruno Levy, May-June 2020
+// femtorv32, a minimalistic RISC-V RV32I core 
+//   (minus SYSTEM and FENCE that are not implemented)
+// Bruno Levy, May-June 2020
 //
 // Mission statement:
 //   - understand basics of FPGA and processor design
@@ -18,8 +17,7 @@
 // is something else than an ICEStick), I recommend using a more efficient /
 // more complete RISC-V core (e.g., Claire Wolf's picorv32).
 
-// LUT-golfing par: 1184 LUTs (ICEStick, ICESTORM_LC)
-// Tested with the following configuration:
+// LUT-golfing par: 1184 LUTs (ICEStick, ICESTORM_LC), tested with:
 //   NRV_TWO_STAGE_SHIFTER=ON
 //   NRV_NEGATIVE_RESET=ON,
 //   NRV_IO_LEDS=ON
@@ -1024,4 +1022,3 @@ module FemtoRV32 #(
   end   
    
 endmodule
-

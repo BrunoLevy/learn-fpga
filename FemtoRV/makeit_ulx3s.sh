@@ -3,7 +3,8 @@ VERILOGS="$PROJECTNAME.v"
 echo ======== Firmware
 if [ -e FIRMWARE/firmware.hex ]
 then
-    echo "Using existing FIRMWARE/firmware.hex image"
+    echo "Using FIRMWARE/firmware.hex"
+    cat FIRMWARE/firmware.txt
 else    
     echo "Missing FIRMWARE/firmware.hex"
     echo "Using FemtOS image (needs OLED screen) (FIRMWARE/EXAMPLES/commander.exe)"
