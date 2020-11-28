@@ -1,5 +1,3 @@
-include ../makefile.inc
-
 #Uncomment if not linking with riscv-gcc's libraries
 #
 #MISSING_OBJECTS=missing/mul.o missing/div.o \
@@ -14,9 +12,11 @@ include ../makefile.inc
 
 OBJECTS=print.o printf.o 
 
+all: libfemtoc.a
+
 libfemtoc.a: $(OBJECTS) $(MISSING_OBJECTS_WITH_DIR) 
 	$(RVAR) cq libfemtoc.a $(OBJECTS) $(MISSING_OBJECTS)
 	$(RVRANLIB) libfemtoc.a
 
-clean:
-	rm -f $(OBJECTS) $(MISSING_OBJECTS) libfemtoc.a
+include ../makefile.inc
+

@@ -1,4 +1,3 @@
-include ../makefile.inc
 
 FAT_IO_SRC=fat_io_lib/fat_access.c fat_io_lib/fat_cache.c fat_io_lib/fat_filelib.c \
             fat_io_lib/fat_format.c fat_io_lib/fat_misc.c fat_io_lib/fat_string.c \
@@ -18,9 +17,10 @@ OBJECTS=femtorv32.o microwait.o max2719.o ssd1351.o uart.o \
          spi_sd.o exec.o \
          cycles.o
 
+all: libfemtorv32.a
+
 libfemtorv32.a: $(OBJECTS) $(FAT_IO_OBJS_WITH_DIR) crt0.o
 	$(RVAR) cq libfemtorv32.a $(OBJECTS) $(FAT_IO_OBJS)
 	$(RVRANLIB) libfemtorv32.a
 
-clean:
-	rm -f $(OBJECTS) $(FAT_IO_OBJS) libfemtorv32.a
+include ../makefile.inc
