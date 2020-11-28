@@ -3,12 +3,12 @@ VERILOGS="$PROJECTNAME.v"
 echo ======== Firmware
 if [ -e FIRMWARE/firmware.hex ]
 then
-    (cd FIRMWARE/BUILD; rm firmware.hex; ../TOOLS/firmware_words; cp firmware.hex ../)    
+    echo "Using existing FIRMWARE/firmware.hex image"
 else    
     echo "Missing FIRMWARE/firmware.hex"
-    echo "Using default (FIRMWARE/EXAMPLES/mandelbrot_terminal.s)"
-    echo "To replace, cd FIRMWARE; ./make_firmware.sh EXAMPLES/....   or C_EXAMPLES/...."
-    (cd FIRMWARE; ./make_firmware.sh EXAMPLES/mandelbrot_terminal.s)
+    echo "Using FemtOS image (needs OLED screen) (FIRMWARE/EXAMPLES/commander.exe)"
+    echo "To replace, cd FIRMWARE; ./make_firmware.sh EXAMPLES/...."
+    (cd FIRMWARE; ./make_firmware.sh EXAMPLES/commander.exe)
 fi
 echo ======== Yosys
 yosys -DULX3S -q -p "synth_ecp5 -abc9 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
