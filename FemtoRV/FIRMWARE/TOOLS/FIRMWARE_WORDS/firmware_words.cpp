@@ -151,14 +151,15 @@ int parse_verilog(const char* filename, SymTable& table) {
 int main() {
     std::string firmware;
     std::ifstream in("firmware.rawhex");
-    std::ofstream out("firmware.hex");
-    std::ofstream out_occ("firmware_occupancy.hex");
    
     if(!in) {
 	std::cerr << "Could not open firmware.rawhex" << std::endl;
 	return 1;
     }
 
+    std::ofstream out("firmware.hex");
+    std::ofstream out_occ("firmware_occupancy.hex");
+   
     SymTable defines;
     std::cerr << "Generating FIRMWARE/firmware.hex" << std::endl;
     std::cerr << "   CONFIG: parsing femtosoc.v" << std::endl;
