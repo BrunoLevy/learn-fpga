@@ -1,5 +1,30 @@
 Rem: je viens de remplacer 'inline' par 'static inline' dans le driver
-de SDCard, vérifier si ça marche encore du coup...
+de SDCard, vérifier si ça marche encore du coup... -> OK
+
+=========================================
+
+Deux scripts de compilation à créer:
+1) make_firmware_baremetal.sh 
+   Pour créer l'image système, chargée à l'adresse 0, et dont le crt0.s initialise la pile.
+      - un crt0.S
+      - un script de linker femtorv32_OS.ld
+      
+
+2) make_firmware_program.sh
+   Une image logicielle à charger juste après l'OS
+      - un script de linker femtorv32_user_program.ld
+
+
+3) implanter les instructions "priviledged" niveau M
+   et implanter quelques appels systèmes (en particulier
+   open / read / write), en utilisant la bibliothèque 
+   de fonctions de @ultraembedded (Q: peut-on désactiver
+   le buffering ? Sinon on aura deux niveaux de buffering
+   avec les fonctions fread() / fwrite de la libc(), pas
+   dramatique mais ça gache un peu de RAM et on en a pas
+   tant que ça)
+
+4) une interruption timer et un mini noyau multitache.
 
 =========================================
 

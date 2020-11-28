@@ -150,12 +150,12 @@ int parse_verilog(const char* filename, SymTable& table) {
 
 int main() {
     std::string firmware;
-    std::ifstream in("firmware.objcopy.hex");
+    std::ifstream in("firmware.rawhex");
     std::ofstream out("firmware.hex");
     std::ofstream out_occ("firmware_occupancy.hex");
    
     if(!in) {
-	std::cerr << "Could not open firmware.objcopy.hex" << std::endl;
+	std::cerr << "Could not open firmware.rawhex" << std::endl;
 	return 1;
     }
 

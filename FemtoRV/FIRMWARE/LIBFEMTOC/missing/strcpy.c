@@ -1,4 +1,4 @@
-#include <femtostdlib.h>
+#include "../femtostdlib.h"
 
 char *strcpy(char *dest, const char *src) {
    char* result = dest;

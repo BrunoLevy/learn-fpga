@@ -234,8 +234,8 @@ module NrvLargeALU (
    // iterative algorithm instead (e.g., the one in FIRMWARE/LIB/mul.s)
    wire               in1U = (op == 3'b011);
    wire               in2U = (op == 3'b010 || op == 3'b011);
-   wire signed [33:0] in1E = {in1U ? 1'b0 : in1[31], in1};
-   wire signed [33:0] in2E = {in2U ? 1'b0 : in2[31], in2};
+   wire signed [32:0] in1E = {in1U ? 1'b0 : in1[31], in1}; // 33 bits: should be 32:0 rather than 33:0, to be checked
+   wire signed [32:0] in2E = {in2U ? 1'b0 : in2[31], in2};
    wire signed [63:0] times = in1E * in2E;
 
    always @(*) begin

@@ -1,4 +1,4 @@
-#include <femtostdlib.h>
+#include "../femtostdlib.h"
 
 int strcmp (const char *p1, const char *p2)  {
    const unsigned char *s1 = (const unsigned char *) p1;

@@ -1,4 +1,4 @@
-#include <femtostdlib.h>
+#include "../femtostdlib.h"
 
 static int randomseed = 1;
 

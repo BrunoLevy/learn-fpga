@@ -28,7 +28,7 @@
 .endm
 
 
-.include "LIBFEMTORV32/femtorv32.inc"
+.include "femtorv32.inc"
 .globl main
 .type  main, @function
 	
