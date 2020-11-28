@@ -148,148 +148,184 @@ int parse_verilog(const char* filename, SymTable& table) {
     return result;
 }
 
-int main() {
-    std::string firmware;
-    std::ifstream in("firmware.rawhex");
-   
-    if(!in) {
-	std::cerr << "Could not open firmware.rawhex" << std::endl;
-	return 1;
-    }
+int main(int argc, char** argv) {
 
-    std::ofstream out("firmware.hex");
-    std::ofstream out_occ("firmware_occupancy.hex");
-   
-    SymTable defines;
-    std::cerr << "Generating FIRMWARE/firmware.hex" << std::endl;
-    std::cerr << "   CONFIG: parsing femtosoc.v" << std::endl;
-    int RAM_SIZE = parse_verilog("../../femtosoc.v", defines);
-    if(RAM_SIZE == 0) {
-	std::cerr << "Did not find RAM size in femtosoc.v"
-		  << std::endl;
-	return 1;
-    }
-    RAM.assign(RAM_SIZE,0);
-    OCC.assign(RAM_SIZE,0);
+  bool cmdline_error = false;
 
-    int address = 0;
-    int lineno = 0;
-    int max_address = 0;
-    std::string line;
-    while(std::getline(in, line)) {
-	++lineno;
-        if(line[0] == '@') {
-	    sscanf(line.c_str()+1,"%x",&address);
-	} else {
-	   std::string charbytes;
-	   for(int i=0; i<line.length(); ++i) {
-	      if(line[i] != ' ' && std::isprint(line[i])) {
-		 charbytes.push_back(line[i]);
-	      }
-	   }
+  std::string in_rawhex_filename;
+  std::string in_verilog_filename;
+  std::string out_hex_filename;
+  std::string out_occ_filename;
+  std::string out_exe_filename;
+  
+  if(argc < 2) {
+    cmdline_error = true;
+  } else {
+    in_rawhex_filename = argv[1];
+  }
+  
+  for(int i=2; i<argc; i+=2) {
+    if(i+1 >= argc) {
+      cmdline_error = true;
+      break;
+    }
+    if(!strcmp(argv[i],"-verilog")) {
+      in_verilog_filename = argv[i+1]; 
+    } else if(!strcmp(argv[i],"-hex")) {
+      out_hex_filename = argv[i+1];       
+    } else if(!strcmp(argv[i],"-occ")) {
+      out_occ_filename = argv[i+1];             
+    } else if(!strcmp(argv[i],"-exe")) {
+      out_exe_filename = argv[i+1];                   
+    } else {
+      cmdline_error = true;
+      break;
+    }
+  }
 
-	   if(charbytes.size() % 2 != 0) {
-	       std::cerr << "Line : " << lineno << std::endl;
-	       std::cerr << " invalid number of characters"
-			 << std::endl;
-	       exit(-1);
-	   }
-
-	   int i = 0;
-	   while(i < charbytes.size()) {
-	       if(address >= RAM_SIZE) {
-		   std::cerr << "Line : " << lineno << std::endl;
-		   std::cerr << " RAM size exceeded"
-			     << std::endl;
-		   exit(-1);
-	       }
-	       if(OCC[address] != 0) {
-		   std::cerr << "Line : " << lineno << std::endl;
-		   std::cerr << " same RAM address written twice"
-			     << std::endl;
-		   exit(-1);
-	       }
-	       max_address = std::max(max_address, address);
-	       RAM[address] = string_to_byte(&charbytes[i]);
-	       OCC[address] = 255;
-	       i += 2;
-	       address++;
-	   }
-	}
-    }
-   
-    for(int i=0; i<defines.size(); ++i) {
-	int addr  = defines[i].address;
-	int value = defines[i].value;
-	int bit   = defines[i].bit;
-	if(addr + 4 >= RAM_SIZE) {
-	    std::cerr << defines[i].name << ": "
-		      << defines[i].address
-		      << " larger than RAM_SIZE(" << RAM_SIZE << ")"
-		      << std::endl;
-	    exit(-1);
-	}
-	/*
-	if(bit == -1) {
-	    std::cerr << "   CONFIG update RAM[" << addr << "]   , "
-		      << defines[i].name << " = " << value << std::endl;
-	} else {
-	    std::cerr << "   CONFIG update RAM[" << addr << "][" << bit 
-	              << "], "
-		      << defines[i].name << " = " << value << std::endl; 
-	}
-	*/
-	uint32_t* target = (uint32_t*)(&RAM[addr]);
-	if(bit == -1) {
-	    *target = value;
-	} else {
-	    *target |= (1 << bit);
-	}
-    }
-
-   
-    for(int i=0; i<RAM_SIZE; i+=4) {
-	out << byte_to_string(RAM[i+3])
-	    << byte_to_string(RAM[i+2])
-	    << byte_to_string(RAM[i+1])
-	    << byte_to_string(RAM[i])
-	    << " ";
-	if(((i/4+1) % 4) == 0) {
-	    out << std::endl;
-	}
-    }
-
-    for(int i=0; i<RAM_SIZE; i+=4) {
-	out_occ << byte_to_string(OCC[i+3])
-	        << byte_to_string(OCC[i+2])
-	        << byte_to_string(OCC[i+1])
-	        << byte_to_string(OCC[i])
-	        << " ";
-	if(((i/4+1) % 16) == 0) {
-	    out_occ << std::endl;
-	}
-    }
-
-    int MAX_ADDR = 0;
-    for(int i=0; i<RAM_SIZE; i++) {
-	if(OCC[i] != 0) {
-	    MAX_ADDR=i;
-	}
-    }
-	
-    {
-	FILE* f = fopen("firmware.exe","wb");
-	fwrite(RAM.data(), 1, MAX_ADDR+1, f);
-	fclose(f);
-    }
-    
-    std::cout << "Code size: "
-	      << max_address/4 << " words"
-	      << " ( total RAM size: "
-	      << (RAM_SIZE/4)
-	      << " words )"
+  if(cmdline_error) {
+    std::cerr << "usage: " << argv[0]
+	      << " input.rawhex <-verilog femtosoc.v> <-hex out.hex> <-occ out.occ> <-exe out.exe>"
 	      << std::endl;
-    std::cout << "Occupancy: " << (max_address*100) / RAM_SIZE
-	      << "%" << std::endl;
-    return 0;
+    return 1;
+  }
+  
+  std::string firmware;
+  std::ifstream in(in_rawhex_filename);
+   
+  if(!in) {
+    std::cerr << "Could not open " << in_rawhex_filename << std::endl;
+    return 1;
+  }
+
+   
+  SymTable defines;
+  std::cerr << "   CONFIG: parsing " << in_verilog_filename << std::endl;
+  int RAM_SIZE = parse_verilog(in_verilog_filename.c_str(), defines);
+  if(RAM_SIZE == 0) {
+    std::cerr << "Did not find RAM size in femtosoc.v"
+	      << std::endl;
+    return 1;
+  }
+  RAM.assign(RAM_SIZE,0);
+  OCC.assign(RAM_SIZE,0);
+
+  int address = 0;
+  int lineno = 0;
+  int max_address = 0;
+  std::string line;
+  while(std::getline(in, line)) {
+    ++lineno;
+    if(line[0] == '@') {
+      sscanf(line.c_str()+1,"%x",&address);
+    } else {
+      std::string charbytes;
+      for(int i=0; i<line.length(); ++i) {
+	if(line[i] != ' ' && std::isprint(line[i])) {
+	  charbytes.push_back(line[i]);
+	}
+      }
+
+      if(charbytes.size() % 2 != 0) {
+	std::cerr << "Line : " << lineno << std::endl;
+	std::cerr << " invalid number of characters"
+		  << std::endl;
+	exit(-1);
+      }
+
+      int i = 0;
+      while(i < charbytes.size()) {
+	if(address >= RAM_SIZE) {
+	  std::cerr << "Line : " << lineno << std::endl;
+	  std::cerr << " RAM size exceeded"
+		    << std::endl;
+	  exit(-1);
+	}
+	if(OCC[address] != 0) {
+	  std::cerr << "Line : " << lineno << std::endl;
+	  std::cerr << " same RAM address written twice"
+		    << std::endl;
+	  exit(-1);
+	}
+	max_address = std::max(max_address, address);
+	RAM[address] = string_to_byte(&charbytes[i]);
+	OCC[address] = 255;
+	i += 2;
+	address++;
+      }
+    }
+  }
+   
+  for(int i=0; i<defines.size(); ++i) {
+    int addr  = defines[i].address;
+    int value = defines[i].value;
+    int bit   = defines[i].bit;
+    if(addr + 4 >= RAM_SIZE) {
+      std::cerr << defines[i].name << ": "
+		<< defines[i].address
+		<< " larger than RAM_SIZE(" << RAM_SIZE << ")"
+		<< std::endl;
+      exit(-1);
+    }
+    uint32_t* target = (uint32_t*)(&RAM[addr]);
+    if(bit == -1) {
+      *target = value;
+    } else {
+      *target |= (1 << bit);
+    }
+  }
+
+  if(out_hex_filename != "") {
+    std::cerr << "   SAVE HEX: " << out_hex_filename << std::endl;    
+    std::ofstream out(out_hex_filename.c_str());
+    for(int i=0; i<RAM_SIZE; i+=4) {
+      out << byte_to_string(RAM[i+3])
+	  << byte_to_string(RAM[i+2])
+	  << byte_to_string(RAM[i+1])
+	  << byte_to_string(RAM[i])
+	  << " ";
+      if(((i/4+1) % 4) == 0) {
+	out << std::endl;
+      }
+    }
+  }
+
+  if(out_occ_filename != "") {
+    std::cerr << "   SAVE OCC: " << out_occ_filename << std::endl;        
+    std::ofstream out_occ(out_occ_filename.c_str());  
+    for(int i=0; i<RAM_SIZE; i+=4) {
+      out_occ << byte_to_string(OCC[i+3])
+	      << byte_to_string(OCC[i+2])
+	      << byte_to_string(OCC[i+1])
+	      << byte_to_string(OCC[i])
+	      << " ";
+      if(((i/4+1) % 16) == 0) {
+	out_occ << std::endl;
+      }
+    }
+  }
+
+  int MAX_ADDR = 0;
+  for(int i=0; i<RAM_SIZE; i++) {
+    if(OCC[i] != 0) {
+      MAX_ADDR=i;
+    }
+  }
+	
+  if(out_exe_filename != "") {
+    std::cerr << "   SAVE BIN: " << out_exe_filename << std::endl;
+    FILE* f = fopen(out_exe_filename.c_str(),"wb");
+    fwrite(RAM.data(), 1, MAX_ADDR+1, f);
+    fclose(f);
+  }
+    
+  std::cout << "Code size: "
+	    << max_address/4 << " words"
+	    << " ( total RAM size: "
+	    << (RAM_SIZE/4)
+	    << " words )"
+	    << std::endl;
+  std::cout << "Occupancy: " << (max_address*100) / RAM_SIZE
+	    << "%" << std::endl;
+  return 0;
 }
