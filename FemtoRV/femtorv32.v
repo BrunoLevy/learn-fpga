@@ -34,8 +34,7 @@
 //   NRV_RV32M=OFF
 //
 // Dhrystones test (tested on the ULX3S and ECPC-EVN):
-// With NRV_TWOSTAGE_SHIFTER: 3.904 CPI, 714 Dhrystones/s/MHz, 0.406 DMIPS/MHz
-// With NRV_BARREL_SHIFTER  : 3.854 CPI, 723 Dhrystones/s/MHz, 0.411 DMIPS/MHz
+// With NRV_BARREL_SHIFTER: 3.609 CPI, 1009 Dhrystones/s/MHz, 0.574 DMIPS/MHz
 
 `ifdef VERBOSE
   `define verbose(command) command

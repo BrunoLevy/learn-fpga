@@ -1,8 +1,8 @@
 
 
 echo "============> Compiling libs"
-(cd LIBFEMTORV32; make clean all) # Compile hardware support lib
-(cd LIBFEMTOC;    make clean all) # Compile lib with printf() replacement function
+(cd LIBFEMTORV32; make clean all > /dev/null) # Compile hardware support lib
+(cd LIBFEMTOC;    make clean all > /dev/null) # Compile lib with printf() replacement function
 # Note: I 'make clean' each time, because there is no much to recompile (and dependencies
 # are not specified)...
 
