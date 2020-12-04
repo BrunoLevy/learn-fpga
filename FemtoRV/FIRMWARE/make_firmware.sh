@@ -1,8 +1,9 @@
 
 
 echo "============> Compiling libs"
-(cd LIBFEMTORV32; make clean all > /dev/null) # Compile hardware support lib
-(cd LIBFEMTOC;    make clean all > /dev/null) # Compile lib with printf() replacement function
+(cd LIBFEMTORV32;  make clean all > /dev/null) # Compile hardware support lib
+(cd LIBFEMTOC;     make clean all > /dev/null) # Compile lib with printf() replacement function
+(cd CRT_BAREMETAL; make clean all > /dev/null) # Compile C runtime for baremetal 
 # Note: I 'make clean' each time, because there is no much to recompile (and dependencies
 # are not specified)...
 
@@ -12,7 +13,7 @@ echo "============>" Making $EXE_BASENAME
 (cd $SOURCE_DIR; make clean $EXE_BASENAME".hex" $EXE_BASENAME".exe")
 
 rm -f firmware.hex firmware.txt
-if [[ -f  $SOURCE_DIR"/"$EXE_BASENAME".hex" ]]; then
+if [ -f  $SOURCE_DIR"/"$EXE_BASENAME".hex" ]; then
    cp $SOURCE_DIR"/"$EXE_BASENAME".hex" firmware.hex
    echo "source:" $1 > firmware.txt
    # Display message with ARCH,ABI,OPTIMIZE (useful to know at that point)

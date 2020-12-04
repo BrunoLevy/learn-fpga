@@ -15,7 +15,7 @@
 #include <cstring>
 #include <cstdint>
 
-int RAM_SIZE;
+int RAM_SIZE = 0;
 std::vector<unsigned char> RAM;
 std::vector<unsigned char> OCC;
 
@@ -177,6 +177,8 @@ int main(int argc, char** argv) {
       out_occ_filename = argv[i+1];             
     } else if(!strcmp(argv[i],"-exe")) {
       out_exe_filename = argv[i+1];                   
+    } else if (!strcmp(argv[i],"-ram")) {
+      sscanf(argv[i+1],"%d",&RAM_SIZE);
     } else {
       cmdline_error = true;
       break;
@@ -200,13 +202,23 @@ int main(int argc, char** argv) {
 
    
   SymTable defines;
-  std::cerr << "   CONFIG: parsing " << in_verilog_filename << std::endl;
-  int RAM_SIZE = parse_verilog(in_verilog_filename.c_str(), defines);
+  if(in_verilog_filename != "") {
+    std::cerr << "   CONFIG: parsing " << in_verilog_filename << std::endl;
+    RAM_SIZE = parse_verilog(in_verilog_filename.c_str(), defines);
+    if(RAM_SIZE == 0) {
+      std::cerr << "Did not find RAM size in femtosoc.v"
+		<< std::endl;
+      return 1;
+    }
+  }
+
+
   if(RAM_SIZE == 0) {
-    std::cerr << "Did not find RAM size in femtosoc.v"
+    std::cerr << "RAM size not specified"
 	      << std::endl;
     return 1;
   }
+  
   RAM.assign(RAM_SIZE,0);
   OCC.assign(RAM_SIZE,0);
 

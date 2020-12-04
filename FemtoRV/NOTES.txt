@@ -47,6 +47,10 @@ TODO:
       * OLED SSD1351 does not work with @emard's SSD1351
 
 
+       Un emulateur en C++ par UltraEmbedded (permet de piger comment
+       implanter la gestion des interruptions et exceptions).
+      * https://github.com/ultraembedded/exactstep
+        (en particulier https://github.com/ultraembedded/exactstep/blob/master/cpu-rv32/rv32.cpp)
 
 DONE: 
       * DONE soft floating point routines: https://github.com/riscv/riscv-glibc/tree/riscv-glibc-2.29/soft-fp

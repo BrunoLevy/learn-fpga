@@ -669,7 +669,7 @@ int fl_attach_media(fn_diskio_read rd, fn_diskio_write wr)
         FAT_PRINTF(("FAT_FS: Error could not load FAT details (%d)!\r\n", res));
         return res;
     }
-
+   
     _filelib_valid = 1;
     return FAT_INIT_OK;
 }

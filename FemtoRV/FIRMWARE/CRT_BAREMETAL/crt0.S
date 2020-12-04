@@ -1,11 +1,15 @@
 .include "femtorv32.inc"
 
 .text
+#.section .init, "ax"
 .global _start
 .type _start, @function
 
 _start:
-     li gp,IO_BASE       #   Base address of memory-mapped IO 
+.option push
+.option norelax
+     li gp,IO_BASE       #   Base address of memory-mapped IO
+.option pop     
      la sp,FEMTOSOC_RAM  #   Read RAM size and initialize sp
      lw sp,0(sp)         # one position past the end of the RAM
      call main
@@ -15,7 +19,8 @@ _start:
 # extracted from femtosoc.v by firmware_words
 # (in FIRMWARE/TOOLS/FIRMWARE_WORDS/) and
 # implanted there when generating firmware.hex	
-	
+# Need to start at address 0x0024 (specified in femtosoc.v)
+
 .global FEMTORV32_PROC_CONFIG
 .global FEMTORV32_FREQ
 .global FEMTOSOC_RAM

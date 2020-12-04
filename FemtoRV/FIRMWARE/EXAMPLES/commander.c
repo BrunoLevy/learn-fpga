@@ -82,6 +82,7 @@ int main() {
     }
     printf("SDCard OK\n");
     fl_init();
+    printf("fl initialized OK\n");
     if(fl_attach_media((fn_diskio_read)sd_readsector, (fn_diskio_write)sd_writesector) != FAT_INIT_OK) {
 	printf("ERROR: Failed to init file system\n");
 	return -1;

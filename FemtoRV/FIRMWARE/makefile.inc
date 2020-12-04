@@ -42,6 +42,7 @@ RVRANLIB=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-ranlib
 # for a small subset of libc, see comments in LIBFEMTOC/Makefile. 
 RVGCC_LIB= $(RVTOOLCHAIN_LIB_DIR)/libc.a $(RVTOOLCHAIN_LIB_DIR)/libm.a $(RVTOOLCHAIN_GCC_LIB_DIR)/libgcc.a
 
+# My utility that converts hex files into a format understood by Verilog
 FIRMWARE_WORDS=$(FIRMWARE_DIR)/TOOLS/firmware_words
 
 ############################################################################################################
@@ -59,10 +60,6 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv
 .S.o: $<
 	$(RVAS) $(RVASFLAGS) $(RVUSERASFLAGS) $< -o $@ 
 
-#Rule to generate an ELF binary
-%.elf: %.o
-	$(RVLD)  -T$(FIRMWARE_DIR)/femtorv32.ld $< -o $@ -L$(FIRMWARE_DIR)/LIBFEMTORV32 -L$(FIRMWARE_DIR)/LIBFEMTOC -lfemtorv32 -lfemtoc $(RVGCC_LIB)
-
 #Rule to convert an ELF binary into a raw hex file (that cannot be directly imported in verilog files)
 %.rawhex: %.elf
 	$(RVOBJCOPY) -O verilog $< $@
@@ -70,12 +67,13 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv
 #Rule to convert a raw hex file into an hex file that can be directly imported in verilog files
 %.hex: %.rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
 	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../femtosoc.v -hex $@
+#	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram 262144 -hex $@
 
 #Rule to convert a raw hex file into an executable (flat binary file)
 %.exe: %.rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
 	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../femtosoc.v -exe $@
 
-.phony: root clean all
+.PHONY: root clean all
 
 root: all
 

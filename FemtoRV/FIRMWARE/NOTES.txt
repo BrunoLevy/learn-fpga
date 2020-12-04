@@ -9,6 +9,10 @@ Deux scripts de compilation à créer:
       - un crt0.S
       - un script de linker femtorv32_OS.ld
       
+   Pas réussi à faire un truc propre, et à ne pas linker avec le
+crt0.S du systeme. 
+
+
 
 2) make_firmware_program.sh
    Une image logicielle à charger juste après l'OS
@@ -28,7 +32,8 @@ Deux scripts de compilation à créer:
 
 =========================================
 
-Linker script:
+Linker script: https://github.com/twilco/riscv-from-scratch
+
 How to get default linker script:
 
 1) ~/Packages/riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6/bin/riscv64-unknown-elf-ld --verbose -m elf32lriscv -b elf32-littleriscv > linkscript.ld
