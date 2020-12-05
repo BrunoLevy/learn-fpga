@@ -29,6 +29,7 @@ Compile and install it:
         $ make
 	$ sudo make install
 
+
 IceStorm
 --------
 
@@ -52,6 +53,7 @@ Compile and install it:
         $ cd icestorm
         $ make -j 4
 	$ sudo make install
+
 
 NextPNR
 -------
