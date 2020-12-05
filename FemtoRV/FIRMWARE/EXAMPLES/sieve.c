@@ -66,9 +66,13 @@ int main(void)
 	* or led matrix, based on configured devices (in femtosoc.v).
 	* Note: pulls the two fonts (eats up a subsequent part of the
 	* available 6 Kbs).
+	*   To save code size, on the IceStick, you can use 
+	* instead MAX2719_tty_init() if you know you are 
+	* using the led matrix, or GL_tty_init() if you know you are 
+	* using the small OLED display.
 	*/
         femtosoc_tty_init();
-    
+   
 	int idx = 1;
 	hash = 5381;
 	print_prime(idx++, 2);
