@@ -4,7 +4,7 @@ FEMTORV32 / FEMTOSOC: a minimalistic RISC-V CPU
 _(and its SOC, everything fit on the IceStick < 1280 LUTs)_
  
 
-FEATURES
+Features
 --------
 
 - Implements the RV32I or RV32IM instruction set (minus FENCE and SYSTEM).
@@ -23,8 +23,8 @@ FEATURES
 - "femtOS" virtual output support: redirects printf() to UART, OLED screen (or led matrix, WIP).
 - many RISC-V assembly and C demo programs, including graphics for the OLED display.
 
-FEMTOSOC/FEMTORV32 configuration
---------------------------------
+Processor and SOC Configuration 
+-------------------------------
 
 - edit femtosoc.v and select the target board, amount of RAM and on-board devices:
 - target board: supports ICEstick, ULX3S, ECP5 evaluation board
@@ -38,7 +38,7 @@ FEMTOSOC/FEMTORV32 configuration
 - quantity of RAM
 - two-stage shifter (like in picorv32): makes shifts faster (but eats up around 60 luts)
 - (TODO: more detailed wiring explanations and details on
-     femtosoc.pcf / femtosoc.lpf, with photos for each device)
+     `femtosoc.pcf` / `femtosoc.lpf`, with photos for each device)
     
 On the ICEStick, do not activate everything simultaneously, it will not fit!
 Start by activating what you need with the minimum amount of RAM (4K),
@@ -57,9 +57,9 @@ Firmware
        select ARCH,ABI,OPTIMIZE according to target board
 - C RISC-V and ASM example programs are included in FIRMWARE/EXAMPLES and FIRMWARE/ASM_EXAMPLES
 - to compile a sample program:
-        cd FIRMWARE
-	./make_firmware.sh EXAMPLE/xxxxx.s   or ./make_firmware.sh C_EXAMPLE/xxxxx.c 
-  This will generate FIRMWARE/firmware.hex using the RISC-V GNU
+        `cd FIRMWARE`
+	`./make_firmware.sh EXAMPLE/xxxxx.S`   or `./make_firmware.sh C_EXAMPLE/xxxxx.c` 
+  This will generate `FIRMWARE/firmware.hex` using the RISC-V GNU
   toolchain and the bundled FIRMWARE/TOOLS/FIRMWARE_WORDS utility
    (that reorganizes hex file in words rather than bytes, as
    expected by $readmemh with my memory layout).
@@ -74,7 +74,7 @@ This will also send the bitstream to the device.
 UART
 ----
 
-if you configured the UART on the device, you can use ./start_terminal.sh to 
+if you configured the UART on the device, you can use `./start_terminal.sh` to 
 communicate with it through a terminal.
 You can use any terminal emulator (at 115200 bauds).
     
