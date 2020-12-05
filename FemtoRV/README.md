@@ -1,11 +1,11 @@
 FEMTORV32 / FEMTOSOC: a minimalistic RISC-V CPU 
 ===============================================
 
-(and companion SOC, that fit on the IceStick < 1280 LUTs)
+_(and its SOC, everything fit on the IceStick < 1280 LUTs)_
  
 
-1) FEATURES
------------
+FEATURES
+--------
 
 - Implements the RV32I or RV32IM instruction set (minus FENCE and SYSTEM).
 - Synthesis using the freeware tools (Yosys and nextpnr).    
@@ -23,8 +23,8 @@ FEMTORV32 / FEMTOSOC: a minimalistic RISC-V CPU
 - "femtOS" virtual output support: redirects printf() to UART, OLED screen (or led matrix, WIP).
 - many RISC-V assembly and C demo programs, including graphics for the OLED display.
 
-2) FEMTOSOC/FEMTORV32 configuration
------------------------------------
+FEMTOSOC/FEMTORV32 configuration
+--------------------------------
 
 - edit femtosoc.v and select the target board, amount of RAM and on-board devices:
 - target board: supports ICEstick, ULX3S, ECP5 evaluation board
@@ -50,8 +50,8 @@ if you activate the RESET button. I do not understand all the subtleties of VERI
 On the ICEStick, to wire the reset button, connect the pin (47 by default, can be changed in femtosoc.pcf)
 to +3.3V through a 1KOhm resistor, and to GND through a push button.
 
-3) FIRMWARE
------------
+Firmware
+--------
 
 - edit FIRMWARE/makefile.inc, specify RISC-V toolchain installation dir, and
        select ARCH,ABI,OPTIMIZE according to target board
@@ -65,14 +65,14 @@ to +3.3V through a 1KOhm resistor, and to GND through a push button.
    expected by $readmemh with my memory layout).
 - (TODO: include a Windows pre-compiled FIRMWARE_WORDS).
 
-4) SYNTHESIS
-------------
+Synthesis
+---------
 
 make ICESTICK or make ULX3S or make ECP5_EVN
 This will also send the bitstream to the device.
     
-5) UART
--------
+UART
+----
 
 if you configured the UART on the device, you can use ./start_terminal.sh to 
 communicate with it through a terminal.
