@@ -80,7 +80,7 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv
 %.exe: %.rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
 	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../femtosoc.v -exe $@
 
-.PHONY: root clean all
+.PHONY: root clean all get_riscv_toolchain
 
 root: all
 
