@@ -1,7 +1,7 @@
-# learn-fpga
+# learn-fpga 
 Learning FPGA, yosys, nextpnr, and RISC-V 
 
-This repository contains my little experiments with an IceStick and ULX3S, yosys and nextpnr, learning VERILOG design.
+Goals: provide teaching material for FPGAs, processor design and RISC-V.
 
 * FemtoRV: a minimalistic RISC-V CPU, and companion SOC, that fit on the IceStick (< 1280 LUTs) 
     - Implements the RV32I instruction set (minus FENCE and SYSTEM).
