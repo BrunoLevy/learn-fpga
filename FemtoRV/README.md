@@ -13,7 +13,7 @@ Features
       fun demos (graphics), equip students for approx. $40.
 - Disclaimer: I'm no FPGA expert, please feel free to comment, to
       give me some advice !
-- Runs at up to 80MHz on the ICEStick and 100 MHz on the ULX3S.
+- Runs at 80MHz on the ICEStick and on the ULX3S.
 - 6kb RAM (ICEStick) or 256kb (ULX3S)
 - optional memory-mapped IOs (UART, LEDs, OLed screen, SDCard). 
 - Firmware can be generated with gnu RISC-V toolsuite (script included), in C or in assembly.
