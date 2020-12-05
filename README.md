@@ -3,17 +3,12 @@ _Learning FPGA, yosys, nextpnr, and RISC-V_
 
 Mission statement: create teaching material for FPGAs, processor design and RISC-V, using around $40 per students.
 
-FemtoRV: a minimalistic RISC-V CPU, and companion SOC, that fit on the IceStick (< 1280 LUTs) 
----------------------------------------------------------------------------------------------
-- Implements the RV32I instruction set (minus FENCE and SYSTEM).
-- Runs at 80MHz. 4Kb - 6kb RAM, optional memory-mapped IOs (UART, LEDs, OLed screen).
-- Optional RV32IM instruction set (on ECP5).
-- Synthesis using the freeware tools (Yosys and nextpnr).
-- Firmware can be generated with gnu RISC-V toolsuite (script included), in C or in assembly.
-- SOC memory-mapped device drivers and hardware for UART, built-in LEDs, OLed display, led matrix.
-- femtolibC, femtoGL (everything fits in 4kb / 6kb).
-- "femtOS" virtual output support: redirects printf() to UART, OLED screen (or led matrix, WIP).
-- many RISC-V assembly and C demo programs, including graphics for the OLED display.
+FemtoRV: a minimalistic RISC-V CPU
+----------------------------------- 
+FemtoRV is a minimalistic RISC-V design, with easy-to-read Verilog sources (less than 1000 lines), directly written
+from the RISC-V specification. It includes a companion SOC, with drivers for an UART, a led matrix, a small OLED display,
+SPI RAM and SDCard. Its most basic configuration fits on the Lattice IceStick (< 1280 LUTs). It can be used for teaching
+processor design and RISC-V programming [Details here](FemtoRV/README.md). 
     
 Basic: more basic things I wrote during May 2020 - June 2020  
 ------------------------------------------------------------
