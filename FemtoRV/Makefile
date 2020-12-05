@@ -37,7 +37,9 @@ FIRMWARE/firmware.hex:
 
 terminal:
 	miniterm --dtr=0 /dev/ttyUSB1 115200   # exit: <ctrl> ]     install package : sudo apt-get install python3-serial
-#	screen /dev/ttyUSB1 115200             # exit: <ctrl> a \
+#	screen /dev/ttyUSB1 115200             # exit: <ctrl> a \   install package : sudo apt-get install screen
+
+
 
 #######################################################################################################################
 
