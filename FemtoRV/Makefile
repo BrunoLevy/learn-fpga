@@ -33,6 +33,8 @@ clean:
 FIRMWARE/firmware.hex:
 	(cd FIRMWARE; ./make_firmware.sh EXAMPLES/hello.c)
 
+#######################################################################################################################
+
 ICESTICK: ICESTICK.synth ICESTICK.prog
 
 ICESTICK.synth: FIRMWARE/firmware.hex
@@ -70,3 +72,5 @@ ECP5_EVN.synth: FIRMWARE/firmware.hex
 
 ECP5_EVN.prog:
 	openocd -f ecp5-evn.cfg -c "transport select jtag; init; svf $(PROJECTNAME).svf; exit"
+
+#######################################################################################################################
