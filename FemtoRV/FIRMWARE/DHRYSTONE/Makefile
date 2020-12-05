@@ -5,6 +5,6 @@ OBJECTS=dhry_1.o dhry_2.o stubs.o
 
 all: dhrystone.exe
 
-dhrystone.elf: $(OBJECTS)
+dhrystone.elf: $(OBJECTS) $(RV_BINARIES)
 	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/femtorv32.ld -o $@  $(OBJECTS) -L$(FIRMWARE_DIR)/LIBFEMTORV32 -L$(FIRMWARE_DIR)/LIBFEMTOC -L$(FIRMWARE_DIR)/CRT_BAREMETAL -lfemtorv32 -lfemtoc $(RVGCC_LIB)
 

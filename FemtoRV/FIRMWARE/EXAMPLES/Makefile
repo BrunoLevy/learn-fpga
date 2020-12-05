@@ -13,7 +13,7 @@ all:
 
 everything: $(ALL_PROGRAMS)
 
-%.elf: %.o
+%.elf: %.o $(RV_BINARIES)
 	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/femtorv32.ld $< -o $@ -L$(FIRMWARE_DIR)/CRT_BAREMETAL -L$(FIRMWARE_DIR)/LIBFEMTORV32 -L$(FIRMWARE_DIR)/LIBFEMTOC -lfemtorv32 -lfemtoc $(RVGCC_LIB)
 #	$(RVGCC) -ffreestanding -Wl,--gc-sections -nostartfiles -nostdlib -nodefaultlibs $(RVCFLAGS) -Wl,-T,$(FIRMWARE_DIR)/CRT_BAREMETAL/baremetal.ld $(FIRMWARE_DIR)/CRT_BAREMETAL/crt0.o $< -o $@ -L$(FIRMWARE_DIR)/LIBFEMTORV32 -L$(FIRMWARE_DIR)/LIBFEMTOC -lfemtorv32 -lfemtoc
 #	$(RVGCC) $(RVCFLAGS) -Wl,-T,$(FIRMWARE_DIR)/CRT_BAREMETAL/baremetal.ld -L$(FIRMWARE_DIR)/CRT_BAREMETAL $< -o $@ -L$(FIRMWARE_DIR)/LIBFEMTORV32 -L$(FIRMWARE_DIR)/LIBFEMTOC -lfemtorv32 -lfemtoc

@@ -2,7 +2,7 @@
 # Specify directories, toolchain and target architecture
 
 # Base directory of the firmware
-FIRMWARE_DIR=/home/blevy/Programming/learn-fpga/FemtoRV/FIRMWARE/
+FIRMWARE_DIR=/home/blevy/Programming/learn-fpga/FemtoRV/FIRMWARE
 
 # Configuration for larger boards (ULX3S, ECP5-EVN)
 #ARCH=rv32im
@@ -24,12 +24,15 @@ OPTIMIZE=-Os
 TOOLCHAIN_WEB=https://static.dev.sifive.com/dev-tools
 
 # Version of the RISCV toolchain to get
-TOOLCHAIN_VER=riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6
+#TOOLCHAIN_VER=riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6
+#TOOLCHAIN_GCC_VER=7.2.0
+TOOLCHAIN_VER=riscv64-unknown-elf-gcc-8.3.0-2020.04.0-x86_64-linux-ubuntu14
+TOOLCHAIN_GCC_VER=8.3.0
 
-RVTOOLCHAIN_DIR=$(FIRMWARE_DIR)/TOOLCHAIN/$(TOOLCHAIN_VER)/
+RVTOOLCHAIN_DIR=$(FIRMWARE_DIR)/TOOLCHAIN/$(TOOLCHAIN_VER)
 RVTOOLCHAIN_BIN_DIR=$(RVTOOLCHAIN_DIR)/bin
-RVTOOLCHAIN_LIB_DIR=$(RVTOOLCHAIN_DIR)/riscv64-unknown-elf/lib/$(ARCH)/ilp32/
-RVTOOLCHAIN_GCC_LIB_DIR=$(RVTOOLCHAIN_DIR)/lib/gcc/riscv64-unknown-elf/7.2.0/$(ARCH)/ilp32/
+RVTOOLCHAIN_LIB_DIR=$(RVTOOLCHAIN_DIR)/riscv64-unknown-elf/lib/$(ARCH)/ilp32
+RVTOOLCHAIN_GCC_LIB_DIR=$(RVTOOLCHAIN_DIR)/lib/gcc/riscv64-unknown-elf/$(TOOLCHAIN_GCC_VER)/$(ARCH)/ilp32
 RVTOOLCHAIN_BIN_PREFIX=riscv64-unknown-elf
 
 RVAS=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-as
