@@ -11,16 +11,17 @@ FIRMWARE_DIR=/home/blevy/Programming/learn-fpga/FemtoRV/FIRMWARE/
 RVTOOLCHAIN_DIR=/home/blevy/Packages/riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6/
 
 # Configuration for larger boards (ULX3S, ECP5-EVN)
-ARCH=rv32im
-ABI=ilp32
-OPTIMIZE=-O3
+#ARCH=rv32im
+#ABI=ilp32
+#OPTIMIZE=-O3
 
 # More minimalistic configurations (ICEStick, ICE40)
 # note: ICE40up5K could support rv32im but this requires some work
 #  since yosys does not (yet) infer DSP blocks for ICE40).
-#ARCH=rv32i
-#ABI=ilp32
-#OPTIMIZE=-Os # Optimize for size, we only have 6K of RAM !
+ARCH=rv32i
+ABI=ilp32
+OPTIMIZE=-Os
+          # Optimize for size, on the IceStick we only have 6K of RAM !
 
 # Normally you do not need to modify anything beyond this line.
 ############################################################################################################
@@ -78,7 +79,7 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv
 root: all
 
 clean:
-	rm -f *.o *.elf *.hex *rawhex *.exe
+	rm -f *.o *.elf *.hex *rawhex *.exe *~
 
 #Generating the conversion utility for hex files	
 $(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS/firmware_words.cpp

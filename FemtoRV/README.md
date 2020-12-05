@@ -43,8 +43,9 @@ On the ICEStick, to wire the reset button, connect the pin (47 by default, can b
 to +3.3V through a 1KOhm resistor, and to GND through a push button.
 
 3) FIRMWARE
-   - edit FIRMWARE/makefile.inc 
-   - asm RISC-V and C example programs are included in FIRMWARE/EXAMPLES and FIRMWARE/C_EXAMPLES
+   - edit FIRMWARE/makefile.inc, specify RISC-V toolchain installation dir, and
+       select ARCH,ABI,OPTIMIZE according to target board
+   - C RISC-V and ASM example programs are included in FIRMWARE/EXAMPLES and FIRMWARE/ASM_EXAMPLES
    - to compile a sample program:
         cd FIRMWARE
 	./make_firmware.sh EXAMPLE/xxxxx.s   or ./make_firmware.sh C_EXAMPLE/xxxxx.c 
@@ -52,16 +53,14 @@ to +3.3V through a 1KOhm resistor, and to GND through a push button.
      toolchain and the bundled FIRMWARE/TOOLS/FIRMWARE_WORDS utility
      (that reorganizes hex file in words rather than bytes, as
       expected by $readmemh with my memory layout).
-     You may need to edit the name of the RISC-V GNU tools in
-     make_firmware.sh and LIB/makeit.sh depending on your installation. 
-     I'm using the Linux Debian packages.
    - (TODO: include a Windows pre-compiled FIRMWARE_WORDS).
 
 4) SYNTHESIS:
-    use ./makeit_icestick.sh or ./makeit_ecp5_evn.sh depending on your board.
+    make ICESTICK or make ULX3S or make ECP5_EVN
     This will also send the bitstream to the device.
     
 5) UART:
-    use ./start.sh to communicate with the board through a terminal.
+    if you configured the UART on the device, you can use ./start_terminal.sh to 
+    communicate with it through a terminal.
     You can use any terminal emulator (at 115200 bauds).
     
