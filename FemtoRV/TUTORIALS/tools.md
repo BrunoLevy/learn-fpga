@@ -1,2 +1,0 @@
-Installing the tools
-====================
