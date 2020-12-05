@@ -35,6 +35,12 @@ FIRMWARE/firmware.hex:
 
 #######################################################################################################################
 
+terminal:
+	miniterm --dtr=0 /dev/ttyUSB1 115200   # exit: <ctrl> ]     install package : sudo apt-get install python3-serial
+#	screen /dev/ttyUSB1 115200             # exit: <ctrl> a \
+
+#######################################################################################################################
+
 ICESTICK: ICESTICK.synth ICESTICK.prog
 
 ICESTICK.synth: FIRMWARE/firmware.hex
