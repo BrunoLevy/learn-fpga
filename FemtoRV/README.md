@@ -3,6 +3,7 @@ FEMTORV32 / FEMTOSOC: a minimalistic RISC-V CPU
 
 _(and its SOC, everything fit on the IceStick < 1280 LUTs)_
  
+[Tutorials](TUTORIALS/README.md).
 
 Features
 --------
@@ -15,7 +16,6 @@ Features
       give me some advice !
 - Runs at 80MHz on the ICEStick and on the ULX3S.
 - 6kb RAM (ICEStick) or 256kb (ULX3S)
-- optional memory-mapped IOs (UART, LEDs, OLed screen, SDCard). 
 - Firmware can be generated with gnu RISC-V toolsuite (script included), in C or in assembly.
 - SOC memory-mapped device drivers and hardware for UART, built-in LEDs, OLed display, led matrix.
 - femtolibC, femtoGL (everything fits in 6kb).
