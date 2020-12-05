@@ -93,7 +93,19 @@ ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0660", GROUP="plugdev",
 
 Step 3: Configure femtosoc and femtorv32
 ========================================
-Time to edit `FemtoRV/femtosoc.v`. We will configure it as follows:
+Time to edit `FemtoRV/femtosoc.v`. This file lets you define what time
+of RISC-V processor you will create, and which device drivers in the
+associated system-on-chip. For now we activate the LEDs (for visual
+debugging) and the UART (to talk with the system through a
+terminal-over-USB connection). We use 6144 bytes of RAM. It is not 
+very much, but we cannot do more on the IceStick. You will see that
+with 6k of RAM, you can still program nice and interesting RISC-V
+demos. The file contains some `CONFIGWORD` commends that need to
+be kept: the firmware generation tool uses them to store the hardware
+configuration in some predefine memory areas. 
+
+
+We configure `FemtoRV/femtosoc.v` as follows:
 ```
 /*
  * Optional mapped IO devices
@@ -133,7 +145,18 @@ Time to edit `FemtoRV/femtosoc.v`. We will configure it as follows:
 
 Step 4: Configure firmware
 ==========================
-
+Now, edit `FemtoRV/FIRMWARE/makefile.inc`. You have two things to do,
+first indicate where the firmware sources are installed in the `FIRMWARE_DIR`
+variable. Second, chose the architecture, ABI and optimization flags
+as follows:
+```
+ARCH=rv32i
+ABI=ilp32
+OPTIMIZE=-Os
+```
+Remember, on the IceStick, we do not have enough LUTs to support
+hardware multiplications (M instruction set), and we only have 6k of RAM
+(then we optimize for size, memory is precious !).
 
 Step 5: Examples
 ================
