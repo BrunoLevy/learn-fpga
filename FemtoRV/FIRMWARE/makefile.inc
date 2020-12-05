@@ -4,12 +4,6 @@
 # Base directory of the firmware
 FIRMWARE_DIR=/home/blevy/Programming/learn-fpga/FemtoRV/FIRMWARE/
 
-# Directory where riscv toolchain is installed
-# (get it from: https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6.tar.gz)
-# Note: there exists two toolchains, one for Linux and one for
-# embedded systems, here we use the one for embedded systems: FemroRV32 does not support Linux (yet)
-RVTOOLCHAIN_DIR=/home/blevy/Packages/riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6/
-
 # Configuration for larger boards (ULX3S, ECP5-EVN)
 #ARCH=rv32im
 #ABI=ilp32
@@ -21,11 +15,18 @@ RVTOOLCHAIN_DIR=/home/blevy/Packages/riscv64-unknown-elf-gcc-20171231-x86_64-lin
 ARCH=rv32i
 ABI=ilp32
 OPTIMIZE=-Os
-          # Optimize for size, on the IceStick we only have 6K of RAM !
+# Optimize for size, on the IceStick we only have 6K of RAM !
 
 # Normally you do not need to modify anything beyond this line.
 ############################################################################################################
 
+# Website to get the RISCV toolchain
+TOOLCHAIN_WEB=https://static.dev.sifive.com/dev-tools
+
+# Version of the RISCV toolchain to get
+TOOLCHAIN_VER=riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6
+
+RVTOOLCHAIN_DIR=$(FIRMWARE_DIR)/TOOLCHAIN/$(TOOLCHAIN_VER)/
 RVTOOLCHAIN_BIN_DIR=$(RVTOOLCHAIN_DIR)/bin
 RVTOOLCHAIN_LIB_DIR=$(RVTOOLCHAIN_DIR)/riscv64-unknown-elf/lib/$(ARCH)/ilp32/
 RVTOOLCHAIN_GCC_LIB_DIR=$(RVTOOLCHAIN_DIR)/lib/gcc/riscv64-unknown-elf/7.2.0/$(ARCH)/ilp32/
@@ -38,6 +39,8 @@ RVOBJDUMP=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-objdump
 RVGCC=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-gcc
 RVAR=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-ar
 RVRANLIB=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-ranlib
+
+RV_BINARIES=$(RVAS) $(RVLD) $(RVOBJCOPY) $(RVOBJDUMP) $(RVGCC) $(RVAR) $(RVRANLIB)
 
 # Note: it is also possible to comment this line, and use replacement functions
 # for a small subset of libc, see comments in LIBFEMTOC/Makefile. 
@@ -54,15 +57,15 @@ RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) $(RVINCS)
 RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv
 
 #Rule to compile C objects
-.c.o: $<
+.c.o: $< $(RV_BINARIES)
 	$(RVGCC) $(RVCFLAGS) $(RVUSERCFLAGS) -c $<
 
 #Rule to compile ASM objects
-.S.o: $<
+.S.o: $< $(RV_BINARIES)
 	$(RVAS) $(RVASFLAGS) $(RVUSERASFLAGS) $< -o $@ 
 
 #Rule to convert an ELF binary into a raw hex file (that cannot be directly imported in verilog files)
-%.rawhex: %.elf
+%.rawhex: %.elf $(RV_BINARIES)
 	$(RVOBJCOPY) -O verilog $< $@
 	
 #Rule to convert a raw hex file into an hex file that can be directly imported in verilog files
@@ -84,3 +87,34 @@ clean:
 #Generating the conversion utility for hex files	
 $(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS/firmware_words.cpp
 	g++ $< -o $@
+
+##############################################################################################
+#RISCV toolchain, get it from the web, automatically
+
+$(RVAS):
+	make get_riscv_toolchain
+
+$(RVLD):
+	make get_riscv_toolchain
+
+$(RVOBJCOPY):
+	make get_riscv_toolchain
+
+$(RVOBJDUMP):
+	make get_riscv_toolchain
+
+$(RVGCC):
+	make get_riscv_toolchain
+
+$(RVAR):
+	make get_riscv_toolchain
+
+$(RVRANLIB):
+	make get_riscv_toolchain
+
+get_riscv_toolchain:
+	mkdir -p $(FIRMWARE_DIR)/TOOLCHAIN
+	@echo "Downloading and installing RISC-V toolchain in $(FIRMWARE_DIR)/TOOLCHAIN"
+	(cd $(FIRMWARE_DIR)/TOOLCHAIN; \
+	    wget $(TOOLCHAIN_WEB)/$(TOOLCHAIN_VER).tar.gz; \
+	    tar xfz $(TOOLCHAIN_VER).tar.gz)
