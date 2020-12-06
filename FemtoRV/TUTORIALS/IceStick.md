@@ -202,7 +202,7 @@ $make ICESTICK terminal
 ```
 
 There are several C and assembly programs you can play with (list below). To learn more about RISC-V assembly, you can
-read the manual [https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md](here).
+read the manual [here](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md).
 
 | Program                                | Description                                                    |
 |----------------------------------------|----------------------------------------------------------------|
