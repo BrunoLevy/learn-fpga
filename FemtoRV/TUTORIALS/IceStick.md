@@ -349,6 +349,8 @@ the screen. Note that the text-mode demos (`hello.c` and `sieve.c`)
 still work and now display text on the screen. There are other
 programs that you can play with:
 
+![](Images/IceStick_graphics.jpg)
+
 | Program                                | Description                                                    |
 |----------------------------------------|----------------------------------------------------------------|
 | `ASM_EXAMPLES/test_OLED.S`             | displays an animated pattern.                                  |
