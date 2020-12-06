@@ -225,14 +225,19 @@ in particular the [instruction
 set](file:///tmp/mozilla_blevy0/riscv-spec.pdf) and the [programmer's
 manual](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md).
 
+ASCII-art version of the Mandelbrot set, computed by a program in
+assembly (`ASM_EXAMPLES/mandelbrot_terminal.S`)
+![](Images/mandelbrot_terminal.gif)
+
 | Program                                | Description                                                    |
 |----------------------------------------|----------------------------------------------------------------|
 | `ASM_EXAMPLES/blinker_shift.S`         | the blinker program, using shifts                              |
 | `ASM_EXAMPLES/blinker_wait.S`          | the blinker program, using a delay loop                        |
 | `ASM_EXAMPLES/test_serial.S`           | reads characters from the serial over USB, and sends them back |
-| `ASM_EXAMPLES/mandelbrot_terminal.c`   | computes the Mandelbrot set and displays it in ASCII art       |
+| `ASM_EXAMPLES/mandelbrot_terminal.S`   | computes the Mandelbrot set and displays it in ASCII art       |
 | `EXAMPLES/hello.c`                     | displays a welcome message                                     |
 | `EXAMPLES/sieve.c`                     | computes prime numbers                                         |
+
 
 Examples with the LED matrix
 ============================
