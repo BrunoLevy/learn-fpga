@@ -172,7 +172,8 @@ hardware multiplications (M instruction set), and we only have 6k of RAM
 
 Step 5: Examples
 ================
-You can now compile the firmware, synthesize the design and send it to the device:
+You can now compile the firmware, synthesize the design and send it to
+the device. Plug the device in a USB port, then:
 ```
 $make ICESTICK
 ```
@@ -286,7 +287,7 @@ If you want to write your own program: in C, you first need
 to switch the display on using `MAX2719_init()`, then you can use
 the function `MAX2719(col,data)` where `col` in the column index in 1..8
 (and not 0..7 !!!), and data an 8-bit integer indicating which led
-should be lit. Take a look at `FIRMWARE/LIBFEMTORV32/max2719_text.c` 
+should be lit. Take a look at `FIRMWARE/EXAMPLES/life_led_matrix.c` 
 for reference.
 
 (TODO: fix everywhere in the sources, it should be MAX7219!!)
