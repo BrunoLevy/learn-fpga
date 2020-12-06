@@ -315,8 +315,8 @@ _(The black diagonal stripes are due to display refresh, they are not visible no
 | `EXAMPLES/demo_OLED.c`                       | demo of graphics functions(old chaps, remember EGAVGA.bgi ?).                    |
 | `EXAMPLES/test_font_OLED.c`                  | test font rendering.                                                             |
 | `EXAMPLES/sysconfig.c`                       | displays femtosoc and femtorv configurations.                                    |
-| Larger ones (that would not fit on IceStick) |                                                                                  |
------------------------------------------------|----------------------------------------------------------------------------------|
+|_Larger ones (that would not fit on IceStick)_|                                                                                  |
+|----------------------------------------------|----------------------------------------------------------------------------------|
 | `EXAMPLES/imgui_xxxx.c`                      | some ports from [ImGui challenge](https://github.com/ocornut/imgui/issues/3606). |
 | `EXAMPLES/tinyraytracer.c`                   | a port from [TinyRaytracer](https://github.com/ssloy/tinyraytracer).             |
 
