@@ -269,8 +269,15 @@ There are other examples that you can play with:
 | `ASM_EXAMPLES/test_led_matrix.S`       | display two images on the led matrix in ASM                    |
 | `EXAMPLES/life_led_matrix.c`           | Game of life on a 8x8 toroidal world                           |
 
+To compile one of them, it is still the same procedure, for instance:
+```
+$cd FIRMWARE
+$./make_firmware.sh EXAMPLES/life_led_matrix.c
+$cd ..
+$make ICESTICK
+```
 
-If you want to write your own programs, in a C program, you first need
+If you want to write your own program: in C, you first need
 to switch the display on using `MAX2719_init()`, then you can use
 the function `MAX2719(col,data)` where `col` in the column index in 1..8
 (and not 0..7 !!!), and data an 8-bit integer indicating which led
