@@ -3,6 +3,11 @@ IceStick Tutorial
 
 ![](Images/IceStick.jpg)
 
+This tutorial will show you how to install FPGA development tools,
+synthesize a RISC-V core, compile and install programs and run them
+on a IceStick. This lets you experience FPGA design and RISC-V using 
+one of the cheapest FPGA devices (around $40).
+
 Before starting, you will need to install the OpenSource FPGA
 development tools, Yosys (Verilog synthesis), IceStorm (tools for
 Lattice Ice40 FPGA), NextPNR (Place and Route). Although there 
@@ -220,8 +225,6 @@ manual](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md).
 
 Examples with the LED matrix
 ----------------------------
-
-![](Images/LedMatrix.jpg)
 
 ![](Images/IceStick_hello.gif)
 
