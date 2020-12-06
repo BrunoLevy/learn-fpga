@@ -146,3 +146,68 @@ module NrvRegisterFile(
 endmodule
 ```
 
+Step IV: the ALU and the predicates
+-----------------------------------
+
+The ALU is another simple element of the design. In the table Page 130 of
+the [RISC-V reference manual](file:///tmp/mozilla_blevy0/riscv-spec-20191213.pdf), we
+learn that there are 8 possible operations (some of them with two variants, ADD/SUB
+and SRL/SRA). So we can write the ALU as a combinatorial function, as follows:
+
+```
+module NrvSmallALU (
+  input 	    clk, 
+  input [31:0] 	    in1,
+  input [31:0] 	    in2,
+  input [2:0] 	    op,     // Operation
+  input 	    opqual, // Operation qualification (+/-, Logical/Arithmetic)
+  output reg [31:0] out     // ALU result. 
+);
+   always @(*) begin
+      case(op)
+        3'b000: out = opqual ? in1 - in2 : in1 + in2;                       // ADD/SUB
+        3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ;       // SLT
+        3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                          // SLTU
+	3'b100: out = in1 ^ in2;                                            // XOR
+	3'b110: out = in1 | in2;                                            // OR
+	3'b111: out = in1 & in2;                                            // AND
+        3'b001: out = in1 << in2[4:0];                                      // SLL
+        3'b101: out = $signed({opqual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
+      endcase 
+   end
+endmodule
+```
+
+Well, doing so is not very good, because the _barrel shifter_ generated for SLL and SRL/SRA eats up many LUTs,
+so it is possible to have an internal register in the ALU, that will shift one position at each clock tick, and
+a `busy` signal asserted when the ALU is computed. There is also in FemtoRV32 a trick (suggested by @mecrisp) to
+factor the addition/subtraction/comparison in a single adder. But for now, let us just imagine that the ALU is
+as above.
+
+We need another component, that resembles an ALU, but that just compares two values to implement
+the branch instructions:
+
+```
+module NrvPredicate(
+   input [31:0] in1,
+   input [31:0] in2,
+   input [2:0]  op, // Operation
+   output reg   out
+);
+   always @(*) begin
+      (* parallel_case, full_case *)	 
+      case(op)
+        3'b000: out = (in1 == in2);                   // BEQ
+        3'b001: out = (in1 != in2);                   // BNE
+        3'b100: out = ($signed(in1) < $signed(in2));  // BLT
+        3'b101: out = ($signed(in1) >= $signed(in2)); // BGE
+        3'b110: out = (in1 < in2);                    // BLTU
+        3'b111: out = (in1 >= in2);                   // BGEU
+	default: out = 1'bx; // don't care...
+      endcase
+   end 
+endmodule
+```
+
+Same thing here, the comparison can be factored in a single adder as suggested by @mecrisp (see FemtoRV32 source),
+but we will ignore that for now.
