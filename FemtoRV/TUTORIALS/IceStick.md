@@ -365,8 +365,8 @@ _(The black diagonal stripes are due to display refresh, they are not visible no
 | `EXAMPLES/test_font_OLED.c`            | test font rendering.                                           |
 | `EXAMPLES/sysconfig.c`                 | displays femtosoc and femtorv configurations.                  |
 
-The LIBFEMTORV32 library includes some basic font rendering, 2D polygon clipping and 2D polygon filling routines. It also includes
-basic font rendering. Everything fits in the available 6kbytes of memory ! 
+The LIBFEMTORV32 library includes some basic font rendering, 2D polygon clipping and 2D polygon filling routines. 
+Everything fits in the available 6kbytes of memory ! 
 
 Storing stuff on the SPI Flash
 ------------------------------
@@ -374,16 +374,18 @@ Storing stuff on the SPI Flash
 Is it all we can do with an IceStick ? No we can do more !
 Let us see how to port a [Y2K demo called
 ST-NICCC](http://www.pouet.net/prod.php?which=1251). Such 3D graphics
-cannot be rendered in real time (and the 8 MHz 68000 of the Atari ST
-could not either !), so it does render a precomputed stream of 2D
-polygons stored in a file. The file weights 640Kb, and remember we only
+cannot be rendered in real time by our femto-machine 
+(and the 8 MHz 68000 of the Atari ST could not either !), 
+so it does render a precomputed stream of 2D
+polygons stored in a file. The file weights 640Kb, and remember, we only
 have 6Kb, so what can we do ? It would be possible to wire a SDCard
 adapter and store the file there, but there is much better: the
 IceStick stores the configuration of the FPGA in a flash memory, and
 there is plenty of unused room in it: _if it does not fit in one chip,
-we can put it in another chip !_. This flash memory is a tiny 8-legged
+we can overflow in the neighborhing chip !_. This flash memory is a tiny 8-legged
 chip, that talks to the external world using a serial protocol (SPI).
-You need to activate another driver in `femtosoc.v`, as follows:
+To allow our femtorv32 processor to communicate with it, you need to activate 
+another driver in `femtosoc.v`, as follows:
 
 ```
 /*
