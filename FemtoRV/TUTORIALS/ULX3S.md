@@ -335,7 +335,7 @@ has a SDCard reader, why not using it ? Would be great to be able to
 directly put executables on a SDCard and select programs using a
 simple GUI. Let's do that ! Here is a (very crappy) OS that lets you
 select and run programs from a SDCard. It is made possible by
-@ultraembedded's [fat io lib](https://github.com/ultraembedded/fat_io_lib), 
+@ultraembedded's [fat io lib](https://github.com/ultraembedded/fat_io_lib),
 a wonderful piece of software that lets you read files from a
 fat-formatted medium.
 
@@ -381,6 +381,34 @@ To compile all the examples, `make everything` in the `EXAMPLES`
 directory. Note: do not copy too many programs on an SDCard,
 `commander` display will not work if directory does not fit on
 a single screen (to be fixed).
+
+File access on the SDCard
+=========================
+
+Once again, @ultraembedded's [fat io
+lib](https://github.com/ultraembedded/fat_io_lib) is really an awesome
+piece of software. In a couple of `.c` files, it provides a
+self-contained library and implementations of `fopen()`, `fread()`,
+`fwrite()` and `fclose()`. Let us see how to use that to port a 
+[Y2K demo called ST-NICCC](http://www.pouet.net/prod.php?which=1251).
+The demo uses a precomputed stream of 2D polygons stored in a file.
+To generate the demo, first copy the file `FIRMWARE/EXAMPLES/DATA/scene1.bin` 
+(from the original ST-NICCC demo) to the SDCard. Then generate the
+executable:
+```
+$ cd FIRMWARE/EXAMPLES
+$ make ST_NICCC.exe
+```
+then copy `ST_NICCC.exe` to the SDCard, insert the SDCard in the ULX3S
+and restart it.
+
+_Note: there is also a version `ST_NICCC_spi_flash.c` that reads data
+from the SPI Flash (the same component that stores the FPGA
+configuration in which there is sufficient room to store additional
+data). It is used by the IceStick version._
+
+Epilogue
+========
 
 MORE TO COME / TO BE CONTINUED (with a cleaner FemtOS, priviledged instructions, system calls,
 floating-point instructions, VGA output, PS/2 mouse and keyboard,
