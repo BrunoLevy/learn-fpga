@@ -414,3 +414,11 @@ $ ./make_firmware.sh EXAMPLES/ST_NICCC_spi_flash.c
 $ cd ..
 $ make ICESTICK
 ```
+
+Now if you want to go further, there may be ways of mapping the SPI
+flash in the memory space of the processor and directly running code 
+from there, this would considerably enhance the possibilities. This
+requires more work on the memory controller in femtosoc and femtorv.
+An easier way to go further is to get an ULX3S. It costs a bit more
+($130) but it is worth the price (the on-board ECP5 FPGA is HUGE as
+compared to the one of the IceStick).
