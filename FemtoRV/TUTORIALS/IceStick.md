@@ -226,8 +226,38 @@ manual](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md).
 Examples with the LED matrix
 ----------------------------
 ![](Images/LedMatrix_on_IceStick.jpg)
+For more fun, you can add an 8x8 led matrix. It is cheap (less than
+$1) and easy to find (just google search `max7219 8x8 led matrix`).
+Make sure pin labels (CLK,CS,DIN,GND,VCC) correspond to the image, then
+insert it in the J2 connector of the IceStik as shown on the image.
 
+###FemtoSOC configuration
+Now we need to activate hardware support for the led matrix (and
+deactivate the UART). To do that, configure devices in `FemtoRV/femtosoc.v` as follows:
+```
+/*
+ * Optional mapped IO devices
+ */
+`define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+//`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
+//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+//`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
+//`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
+```
+(TODO: fix typo in sources everywhere, it is MAX7219, not MAX2719)
+
+###Hello world
 ![](Images/IceStick_hello.gif)
+
+Now you can compile the `hello world` program:
+```
+$cd FIRMWARE
+$./make_firmware.sh EXAMPLES/hello.c
+$cd ..
+$make ICESTICK
+```
 
 Examples with the OLED screen
 ------------------------------
