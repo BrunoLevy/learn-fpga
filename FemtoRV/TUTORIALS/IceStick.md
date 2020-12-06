@@ -1,6 +1,8 @@
 IceStick Tutorial
 =================
 
+![](Images/IceStick.jpg)
+
 Before starting, you will need to install the OpenSource FPGA
 development tools, Yosys (Verilog synthesis), IceStorm (tools for
 Lattice Ice40 FPGA), NextPNR (Place and Route). Although there 
@@ -201,8 +203,11 @@ $cd ..
 $make ICESTICK terminal
 ```
 
-There are several C and assembly programs you can play with (list below). To learn more about RISC-V assembly, you can
-read the manual [here](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md).
+There are several C and assembly programs you can play with (list below). To learn more about RISC-V assembly,
+see the [RISC-V specifications](https://riscv.org/technical/specifications/), 
+in particular the [instruction
+set](file:///tmp/mozilla_blevy0/riscv-spec.pdf) and the [programmer's
+manual](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md).
 
 | Program                                | Description                                                    |
 |----------------------------------------|----------------------------------------------------------------|
@@ -215,6 +220,10 @@ read the manual [here](https://github.com/riscv/riscv-asm-manual/blob/master/ris
 
 Examples with the LED matrix
 ----------------------------
+
+![](Images/LedMatrix.jpg)
+
+![](Images/IceStick_hello.gif)
 
 Examples with the OLED screen
 ------------------------------
