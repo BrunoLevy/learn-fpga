@@ -88,7 +88,7 @@ clean:
 	rm -f *.o *.elf *.hex *rawhex *.exe *~
 
 #Generating the conversion utility for hex files	
-$(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS/firmware_words.cpp
+$(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS_SRC/firmware_words.cpp
 	g++ $< -o $@
 
 ##############################################################################################
