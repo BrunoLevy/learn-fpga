@@ -301,6 +301,7 @@ still work and now display text on the screen. There are other
 programs that you can play with:
 
 ![](Images/IceStick_graphics.jpg)
+![](Images/ULX3S_demos.jpg)
 _(The black diagonal stripes are due to display refresh, they are not visible normally)._
 
 | Program                                      | Description                                                                      |
