@@ -305,4 +305,7 @@ for reference.
 
 Examples with the OLED screen
 =============================
+![](Images/SSD1351_on_IceStick.jpg)
+
+
 (to be continued)
