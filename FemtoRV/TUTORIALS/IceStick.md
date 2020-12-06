@@ -187,7 +187,7 @@ $make terminal
 To exit, press `<ctrl> ]` (python-3-serial/miniterm), or `<ctrl> a` then '\' (screen).
 
 Examples with the serial terminal (UART)
-----------------------------------------
+========================================
 The directories `FIRMWARE/EXAMPLES` and `FIRMWARE/ASM_EXAMPLES` contain programs in C and assembly
 that you can run on the device. On the IceStick, only those that use 6K or less will work (list below).
 
@@ -224,14 +224,15 @@ manual](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md).
 | `EXAMPLES/sieve.c`                     | computes prime numbers                                         |
 
 Examples with the LED matrix
-----------------------------
+============================
 ![](Images/LedMatrix_on_IceStick.jpg)
 For more fun, you can add an 8x8 led matrix. It is cheap (less than
 $1) and easy to find (just google search `max7219 8x8 led matrix`).
 Make sure pin labels (CLK,CS,DIN,GND,VCC) correspond to the image, then
 insert it in the J2 connector of the IceStik as shown on the image.
 
-###FemtoSOC configuration
+FemtoSOC configuration
+----------------------
 Now we need to activate hardware support for the led matrix (and
 deactivate the UART). To do that, configure devices in `FemtoRV/femtosoc.v` as follows:
 ```
@@ -248,7 +249,6 @@ deactivate the UART). To do that, configure devices in `FemtoRV/femtosoc.v` as f
 ```
 (TODO: fix typo in sources everywhere, it is MAX7219, not MAX2719)
 
-###Hello world
 ![](Images/IceStick_hello.gif)
 
 Now you can compile the `hello world` program:
@@ -258,7 +258,28 @@ $./make_firmware.sh EXAMPLES/hello.c
 $cd ..
 $make ICESTICK
 ```
+When the led matrix is configured, `printf()` is automatically
+redirected the scroller display routine. The `sieve.c` program will
+also behave like that.
+
+There are other examples that you can play with:
+
+| Program                                | Description                                                    |
+|----------------------------------------|----------------------------------------------------------------|
+| `ASM_EXAMPLES/test_led_matrix.S`       | display two images on the led matrix in ASM                    |
+| `EXAMPLES/life_led_matrix.c`           | Game of life on a 8x8 toroidal world                           |
+
+
+If you want to write your own programs, in a C program, you first need
+to switch the display on using `MAX2719_init()`, then you can use
+the function `MAX2719(col,data)` where `col` in the column index in 1..8
+(and not 0..7 !!!), and data an 8-bit integer indicating which led
+should be lit. Take a look at `FIRMWARE/LIBFEMTORV32/max2719_text.c` 
+for reference.
+
+(TODO: fix everywhere in the sources, it should be MAX7219!!)
+
 
 Examples with the OLED screen
-------------------------------
-
+=============================
+(to be continued)
