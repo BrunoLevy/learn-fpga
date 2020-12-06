@@ -3,7 +3,8 @@ _Learning FPGA, yosys, nextpnr, and RISC-V_
 
 Mission statement: create teaching material for FPGAs, processor design and RISC-V, using around $40 per students.
 
-![](FemtoRV/TUTORIALS/Images/IceStick_hello.gif){:height="50%" width="50%"}
+![](FemtoRV/TUTORIALS/Images/IceStick_hello.gif)
+
 FemtoRV: a minimalistic RISC-V CPU
 ----------------------------------- 
 FemtoRV is a minimalistic RISC-V design, with easy-to-read Verilog sources (less than 1000 lines), directly written
