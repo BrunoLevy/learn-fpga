@@ -274,3 +274,96 @@ vary a bit, refer to this table:
 |  GND                  | Ground               |                                     |
              
 
+Now configure `FemtoRV/femtosoc.v` as follows:
+```
+/*
+ * Optional mapped IO devices
+ */
+`define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+//`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
+`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+//`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
+`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
+```
+
+Let us compile a test program:
+```
+$ cd FIRMWARE
+$ ./make_firmware.sh EXAMPLES/test_OLED.c
+$ cd ..
+$ make ULX3S
+```
+If everything goes well, you will see an animated colored pattern on
+the screen. Note that the text-mode demos (`hello.c` and `sieve.c`)
+still work and now display text on the screen. There are other
+programs that you can play with:
+
+![](Images/IceStick_graphics.jpg)
+_(The black diagonal stripes are due to display refresh, they are not visible normally)._
+
+| Program                                | Description                                                    |
+|----------------------------------------|----------------------------------------------------------------|
+| `ASM_EXAMPLES/test_OLED.S`             | displays an animated pattern.                                  |
+| `ASM_EXAMPLES/mandelbrot_OLED.S`       | displays the Mandelbrot set.                                   |
+| `EXAMPLES/cube_OLED.c`                 | displays a rotating 3D cube.                                   |
+| `EXAMPLES/mandelbrot_OLED.c`           | displays the Mandelbrot set (C version).                       |
+| `EXAMPLES/riscv_logo_OLED.c`           | a rotozoom with the RISCV logo (back to the 90's).             |
+| `EXAMPLES/spirograph_OLED.c`           | rotating squares.                                              |
+| `EXAMPLES/test_OLED.c`                 | displays an animated pattern (C version).                      |
+| `EXAMPLES/demo_OLED.c`                 | demo of graphics functions(old chaps, remember EGAVGA.bgi ?).  |
+| `EXAMPLES/test_font_OLED.c`            | test font rendering.                                           |
+| `EXAMPLES/sysconfig.c`                 | displays femtosoc and femtorv configurations.                  |
+
+The LIBFEMTORV32 library includes some basic font rendering, 2D polygon clipping and 2D polygon filling routines. 
+Everything fits in the available 6kbytes of memory ! 
+
+FemtOS
+======
+
+It is a pain to synthethize and flash each time you just want to
+change the firmware. There is a command to replace the BRAM
+initialization in the bitstream, but there is even better ! The ULX3S
+has a SDCard reader, why not using it ? Would be great to be able to 
+directly put executables on a SDCard and select programs using a
+simple GUI. Let's do that !
+
+First, you need to activate the hardware driver for the SDCard in `FemtoRV/femtosoc.v`:
+```
+/*
+ * Optional mapped IO devices
+ */
+`define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+//`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
+`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
+`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
+```
+
+Then, compile `commander`, that is `FemtOS`'s component that can
+select and launch programs from a SDCard:
+
+```
+$ cd FIRMWARE
+$ ./make_firmware.sh EXAMPLES/commander.c
+$ cd ..
+$ make ULX3S_synth ULX3S_prog_flash
+```
+(we synthethize then send the generated bitstream to the ULX3S's flash
+so that it will not be lost when the device is switched off)
+
+
+Then you can compile a couple of programs:
+```
+$ cd FIRMWARE/EXAMPLES
+$ make commander.exe sieve.exe mandelbrot_OLED.exe
+```
+
+Copy `commander.exe`,`sieve.exe` and `mandelbrot_OLED.exe` to a
+FAT-formatted SDCard. Unplug the ULX3S from the USB, 
+insert the SDCard into it and replug it into the USB. The up and
+down buttons let you select the program, and the right button starts it.
+
