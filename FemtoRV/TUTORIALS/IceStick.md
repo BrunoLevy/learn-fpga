@@ -8,10 +8,10 @@ synthesize a RISC-V core, compile and install programs and run them
 on a IceStick. This lets you experience FPGA design and RISC-V using 
 one of the cheapest FPGA devices (around $40).
 
-Note: the following instructions are for Linux (I'm using Ubuntu). It 
+_Note: the following instructions are for Linux (I'm using Ubuntu). It 
 is probably possible to make everything work under Windows, but this 
 will require porting the Makefiles. If somebody volunteers, it would 
-be cool, please send a pull request !
+be cool, please send a pull request !_
 
 Before starting, you will need to install the OpenSource FPGA
 development tools, Yosys (Verilog synthesis), IceStorm (tools for
@@ -23,7 +23,7 @@ evolve.
 Step 0: install FemtoRV
 =======================
 ```
-$git clone https://github.com/BrunoLevy/learn-fpga.git
+$ git clone https://github.com/BrunoLevy/learn-fpga.git
 ```
 
 Step 1: install FPGA development tools
@@ -110,7 +110,7 @@ ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0660", GROUP="plugdev",
 
 Step 3: Configure femtosoc and femtorv32
 ========================================
-Time to edit `FemtoRV/femtosoc.v`. This file lets you define what type
+Time to edit `learn-fpga/FemtoRV/femtosoc.v`. This file lets you define what type
 of RISC-V processor you will create, and which device drivers in the
 associated system-on-chip. For now we activate the LEDs (for visual
 debugging) and the UART (to talk with the system through a
@@ -119,7 +119,7 @@ very much, but we cannot do more on the IceStick. You will see that
 with 6k of RAM, you can still program nice and interesting RISC-V
 demos. The file contains some `CONFIGWORD` commands that need to
 be kept: the firmware generation tool uses them to store the hardware
-configuration in some predefine memory areas. 
+configuration in some predefined memory areas. 
 
 
 We configure `FemtoRV/femtosoc.v` as follows (we keep unused options as commented-out lines):
@@ -195,7 +195,7 @@ $make terminal
 ```
 (if you installed `screen` instead of `python3-serial`, edit `Makefile` before accordingly).
 
-To exit, press `<ctrl> ]` (python-3-serial/miniterm), or `<ctrl> a` then '\' (screen).
+To exit, press `<ctrl> ]` (python-3-serial/miniterm), or `<ctrl> a` then '\\' (screen).
 
 Examples with the serial terminal (UART)
 ========================================
@@ -270,7 +270,7 @@ $cd ..
 $make ICESTICK
 ```
 When the led matrix is configured, `printf()` is automatically
-redirected the scroller display routine. The `sieve.c` program will
+redirected to the scroller display routine. The `sieve.c` program will
 also behave like that.
 
 There are other examples that you can play with:
@@ -290,7 +290,7 @@ $make ICESTICK
 
 If you want to write your own program: in C, you first need
 to switch the display on using `MAX2719_init()`, then you can use
-the function `MAX2719(col,data)` where `col` in the column index in 1..8
+the function `MAX2719(col,data)` where `col` is the column index in 1..8
 (and not 0..7 !!!), and data an 8-bit integer indicating which led
 should be lit. Take a look at `FIRMWARE/EXAMPLES/life_led_matrix.c` 
 for reference.
