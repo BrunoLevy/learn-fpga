@@ -211,3 +211,8 @@ endmodule
 
 Same thing here, the comparison can be factored in a single adder as suggested by @mecrisp (see FemtoRV32 source),
 but we will ignore that for now.
+
+Step V: the instruction decoder
+-------------------------------
+
+TO BE CONTINUED.
