@@ -195,7 +195,6 @@ module NrvPredicate(
    output reg   out
 );
    always @(*) begin
-      (* parallel_case, full_case *)	 
       case(op)
         3'b000: out = (in1 == in2);                   // BEQ
         3'b001: out = (in1 != in2);                   // BNE
