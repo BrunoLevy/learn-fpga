@@ -307,5 +307,42 @@ Examples with the OLED screen
 =============================
 ![](Images/SSD1351_on_IceStick.jpg)
 
+With its 64 pixels, our led matrix is somewhat limited and lacks
+colors... Let us generate more fancy graphics. For this, you will need a
+_SSD1351 128x128 oled display_. It costs around $15 (there exists
+cheaper screens, such as 240x240 IPS screens driven by the ST7789, but
+they really do not look as good, and they are not compatible, believe me
+the SSD1351 is worth the price). Make sure you get one of good quality 
+(if it costs less than $5 then I'd be suspicious, some users reported 
+failures with such low-cost versions). Got mine from Waveshare. Those
+from Adafruit were reported to work as well.
 
-(to be continued)
+These little screens need 7 wires. The good news is that no soldering
+is needed, just get a 2x6 pins connector such as the one on the image,
+connect the wires as shown to the connector, then the connector to the
+IceStick. If the colors of the wires do not match, use the schematic
+on the right to know wich wire goes where. 
+
+Now you need to reconfigure `femtosoc.v` as follows:
+```
+/*
+ * Optional mapped IO devices
+ */
+`define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+//`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
+`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+//`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
+//`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
+```
+
+Let us compile a test program:
+```
+$ cd FIRMWARE
+$ ./make_firmware.sh EXAMPLES/test_OLED.c
+$ cd ..
+$ make ICESTICK
+```
+If everything goes well, you will see an animated colored pattern on
+the screen.
