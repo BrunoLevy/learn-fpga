@@ -345,4 +345,19 @@ $ cd ..
 $ make ICESTICK
 ```
 If everything goes well, you will see an animated colored pattern on
-the screen.
+the screen. Note that the text-mode demos (`hello.c` and `sieve.c`)
+still work and now display text on the screen. There are other
+programs that you can play with:
+
+| Program                                | Description                                                    |
+|----------------------------------------|----------------------------------------------------------------|
+| `ASM_EXAMPLES/test_OLED.S`             | displays an animated pattern.                                  |
+| `ASM_EXAMPLES/mandelbrot_OLED.S`       | displays the Mandelbrot set.                                   |
+| `EXAMPLES/cube_OLED.c`                 | displays a rotating 3D cube.                                   |
+| `EXAMPLES/mandelbrot_OLED.c`           | displays the Mandelbrot set (C version).                       |
+| `EXAMPLES/riscv_logo_OLED.c`           | a rotozoom with the RISCV logo (back to the 90's).             |
+| `EXAMPLES/riscv_logo_OLED.c`           | a rotozoom with the RISCV logo (back to the 90's).             |
+| `EXAMPLES/spirograph_OLED.c`           | rotating squares.                                              |
+| `EXAMPLES/test_OLED.c`                 | displays an animated pattern (C version).                      |
+| `EXAMPLES/sysconfig.c`                 | displays femtosoc and femtorv configurations                   |
+
