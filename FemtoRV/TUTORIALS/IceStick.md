@@ -15,6 +15,11 @@ exists some precompiled packages, I highly recommend to get fresh
 source versions from the repository, because the tools quickly 
 evolve.
 
+Step 0: install FemtoRV
+=======================
+```
+$git clone https://github.com/BrunoLevy/learn-fpga.git
+```
 
 Step 1: install FPGA development tools
 ======================================
