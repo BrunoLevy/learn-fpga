@@ -356,7 +356,6 @@ programs that you can play with:
 | `EXAMPLES/cube_OLED.c`                 | displays a rotating 3D cube.                                   |
 | `EXAMPLES/mandelbrot_OLED.c`           | displays the Mandelbrot set (C version).                       |
 | `EXAMPLES/riscv_logo_OLED.c`           | a rotozoom with the RISCV logo (back to the 90's).             |
-| `EXAMPLES/riscv_logo_OLED.c`           | a rotozoom with the RISCV logo (back to the 90's).             |
 | `EXAMPLES/spirograph_OLED.c`           | rotating squares.                                              |
 | `EXAMPLES/test_OLED.c`                 | displays an animated pattern (C version).                      |
 | `EXAMPLES/sysconfig.c`                 | displays femtosoc and femtorv configurations                   |
