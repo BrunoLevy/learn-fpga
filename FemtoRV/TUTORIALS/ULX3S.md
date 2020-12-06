@@ -331,7 +331,11 @@ change the firmware. There is a command to replace the BRAM
 initialization in the bitstream, but there is even better ! The ULX3S
 has a SDCard reader, why not using it ? Would be great to be able to 
 directly put executables on a SDCard and select programs using a
-simple GUI. Let's do that !
+simple GUI. Let's do that ! Here is a (very crappy) OS that lets you
+select and run programs from a SDCard. It is made possible by
+@ultraembedded's [fat io lib](https://github.com/ultraembedded/fat_io_lib), 
+a wonderful piece of software that lets you read files from a
+fat-formatted medium.
 
 First, you need to activate the hardware driver for the SDCard in `FemtoRV/femtosoc.v`:
 ```
