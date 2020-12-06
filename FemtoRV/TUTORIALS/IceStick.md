@@ -225,6 +225,7 @@ manual](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md).
 
 Examples with the LED matrix
 ----------------------------
+![](Images/LedMatrix_on_IceStick.jpg)
 
 ![](Images/IceStick_hello.gif)
 
