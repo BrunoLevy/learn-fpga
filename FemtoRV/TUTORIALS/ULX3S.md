@@ -303,22 +303,22 @@ programs that you can play with:
 ![](Images/IceStick_graphics.jpg)
 _(The black diagonal stripes are due to display refresh, they are not visible normally)._
 
-| Program                                | Description                                                    |
-|----------------------------------------|----------------------------------------------------------------|
-| `ASM_EXAMPLES/test_OLED.S`             | displays an animated pattern.                                  |
-| `ASM_EXAMPLES/mandelbrot_OLED.S`       | displays the Mandelbrot set.                                   |
-| `EXAMPLES/cube_OLED.c`                 | displays a rotating 3D cube.                                   |
-| `EXAMPLES/mandelbrot_OLED.c`           | displays the Mandelbrot set (C version).                       |
-| `EXAMPLES/riscv_logo_OLED.c`           | a rotozoom with the RISCV logo (back to the 90's).             |
-| `EXAMPLES/spirograph_OLED.c`           | rotating squares.                                              |
-| `EXAMPLES/test_OLED.c`                 | displays an animated pattern (C version).                      |
-| `EXAMPLES/demo_OLED.c`                 | demo of graphics functions(old chaps, remember EGAVGA.bgi ?).  |
-| `EXAMPLES/test_font_OLED.c`            | test font rendering.                                           |
-| `EXAMPLES/sysconfig.c`                 | displays femtosoc and femtorv configurations.                  |
-| Larger ones (that would not fit on IceStick) |                                                          |
------------------------------------------------------------------------------------------------------------
-| `EXAMPLES/imgui_xxxx.c`                | some ports from [ImGui challenge](https://github.com/ocornut/imgui/issues/3606). |
-| `EXAMPLES/tinyraytracer.c`             | a port from [TinyRaytracer](https://github.com/ssloy/tinyraytracer).             |
+| Program                                      | Description                                                                      |
+|----------------------------------------------|----------------------------------------------------------------------------------|
+| `ASM_EXAMPLES/test_OLED.S`                   | displays an animated pattern.                                                    |
+| `ASM_EXAMPLES/mandelbrot_OLED.S`             | displays the Mandelbrot set.                                                     |
+| `EXAMPLES/cube_OLED.c`                       | displays a rotating 3D cube.                                                     |
+| `EXAMPLES/mandelbrot_OLED.c`                 | displays the Mandelbrot set (C version).                                         |
+| `EXAMPLES/riscv_logo_OLED.c`                 | a rotozoom with the RISCV logo (back to the 90's).                               |
+| `EXAMPLES/spirograph_OLED.c`                 | rotating squares.                                                                |
+| `EXAMPLES/test_OLED.c`                       | displays an animated pattern (C version).                                        |
+| `EXAMPLES/demo_OLED.c`                       | demo of graphics functions(old chaps, remember EGAVGA.bgi ?).                    |
+| `EXAMPLES/test_font_OLED.c`                  | test font rendering.                                                             |
+| `EXAMPLES/sysconfig.c`                       | displays femtosoc and femtorv configurations.                                    |
+| Larger ones (that would not fit on IceStick) |                                                                                  |
+-----------------------------------------------|----------------------------------------------------------------------------------|
+| `EXAMPLES/imgui_xxxx.c`                      | some ports from [ImGui challenge](https://github.com/ocornut/imgui/issues/3606). |
+| `EXAMPLES/tinyraytracer.c`                   | a port from [TinyRaytracer](https://github.com/ssloy/tinyraytracer).             |
 
 The LIBFEMTORV32 library includes some basic font rendering, 2D polygon clipping and 2D polygon filling routines. 
 Everything fits in the available 6kbytes of memory ! 
