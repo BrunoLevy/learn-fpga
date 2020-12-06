@@ -318,10 +318,12 @@ _(The black diagonal stripes are due to display refresh, they are not visible no
 |                                              |                                                                                  |
 |_Larger ones (that would not fit on IceStick)_|                                                                                  |
 | `EXAMPLES/imgui_xxxx.c`                      | some ports from [ImGui challenge](https://github.com/ocornut/imgui/issues/3606). |
+| `EXAMPLES/mandelbrot_float_OLED.c`           | displays the Mandelbrot set (floating-point version, using gcc's software FP).   |
 | `EXAMPLES/tinyraytracer.c`                   | a port from [TinyRaytracer](https://github.com/ssloy/tinyraytracer).             |
 
 The LIBFEMTORV32 library includes some basic font rendering, 2D polygon clipping and 2D polygon filling routines. 
-Everything fits in the available 6kbytes of memory ! 
+Everything fits in the available 6kbytes of memory ! The larger program use floating point arithmetics, implemented 
+in software in gcc's libraries (there will be one day a hardware FPU for femtorv32, maybe...).
 
 FemtOS
 ======
@@ -358,7 +360,7 @@ select and launch programs from a SDCard:
 $ cd FIRMWARE
 $ ./make_firmware.sh EXAMPLES/commander.c
 $ cd ..
-$ make ULX3S_synth ULX3S_prog_flash
+$ make ULX3S.synth ULX3S.prog_flash
 ```
 (we synthethize then send the generated bitstream to the ULX3S's flash
 so that it will not be lost when the device is switched off)
