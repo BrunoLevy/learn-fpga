@@ -193,7 +193,8 @@ To see the output, you need to connect to it (using the terminal emulator):
 ```
 $make terminal
 ```
-(if you installed `screen` instead of `python3-serial`, edit `Makefile` before accordingly).
+(if you installed `screen` instead of `python3-serial`, edit
+`Makefile` before accordingly. You may need also to change there ttyUSBnnn).
 
 To exit, press `<ctrl> ]` (python-3-serial/miniterm), or `<ctrl> a` then '\\' (screen).
 

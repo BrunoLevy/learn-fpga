@@ -137,10 +137,10 @@ We configure `FemtoRV/femtosoc.v` as follows (we keep unused options as commente
  */
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 `define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
-`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
+//`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
 `define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
 
 `define NRV_FREQ 80        // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick.
@@ -198,7 +198,8 @@ To see the output, you need to connect to it (using the terminal emulator):
 ```
 $make terminal
 ```
-(if you installed `screen` instead of `python3-serial`, edit `Makefile` before accordingly).
+(if you installed `screen` instead of `python3-serial`, edit
+`Makefile` before accordingly. You may need also to change there ttyUSBnnn).
 
 To exit, press `<ctrl> ]` (python-3-serial/miniterm), or `<ctrl> a` then '\\' (screen).
 
@@ -242,4 +243,34 @@ assembly (`ASM_EXAMPLES/mandelbrot_terminal.S`)
 | `ASM_EXAMPLES/mandelbrot_terminal.S`   | computes the Mandelbrot set and displays it in ASCII art       |
 | `EXAMPLES/hello.c`                     | displays a welcome message                                     |
 | `EXAMPLES/sieve.c`                     | computes prime numbers                                         |
+
+Examples with the OLED screen
+=============================
+![](Images/SSD1351_on_ULX3S.jpg)
+
+Let us generate fancy graphics. For this, you will need a
+_SSD1351 128x128 oled display_. It costs around $15 (there exists
+cheaper screens, such as 240x240 IPS screens driven by the ST7789, but
+they really do not look as good, and they are not compatible, believe me
+the SSD1351 is worth the price). Make sure you get one of good quality 
+(if it costs less than $5 then I'd be suspicious, some users reported 
+failures with such low-cost versions). Got mine from Waveshare. Those
+from Adafruit were reported to work as well.
+
+These little screens need 7 wires. You will need to solder a 7 pins
+header on the ULX3S (or ask a skilled friend, which is what I did,
+thank you @ssloy !!!). Then, connect the wires according to the names
+on the ULX3S and the names on the display. Note that the pin names may
+vary a bit, refer to this table:
+
+| pin name on the ULX3S | pin description      | other possible names on the display |
+|-----------------------|----------------------|-------------------------------------|
+|  CS                   | Chip Select          |                                     |
+|  DC                   | Data/Command         |                                     |
+|  RES                  | Reset                | RST                                 |
+|  SDA                  | Data                 | DIN                                 |
+|  SCL                  | Clock                | CLK                                 |
+|  VCC                  | +3.3V                |                                     |
+|  GND                  | Ground               |                                     |
+             
 
