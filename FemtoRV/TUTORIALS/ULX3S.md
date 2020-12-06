@@ -379,3 +379,7 @@ To compile all the examples, `make everything` in the `EXAMPLES`
 directory. Note: do not copy too many programs on an SDCard,
 `commander` display will not work if directory does not fit on
 a single screen (to be fixed).
+
+MORE TO COME / TO BE CONTINUED (with a cleaner FemtOS, priviledged instructions, system calls,
+floating-point instructions, VGA output, PS/2 mouse and keyboard,
+ImGui port...)
