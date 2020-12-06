@@ -171,16 +171,47 @@ install a terminal emulator:
 $sudo apt-get install python3-serial
 ```
 (or `sudo apt-get install screen`, both work).
-To see it, you need to connect a terminal emulator to it:
+To see the output, you need to connect to it (using the terminal emulator):
 ```
 $make terminal
 ```
-(if you installed `screen`, edit `Makefile` accordingly).
+(if you installed `screen` instead of `python3-serial`, edit `Makefile` before accordingly).
 
 To exit, press `<ctrl> ]` (python-3-serial/miniterm), or `<ctrl> a` then '\' (screen).
 
 Examples with the serial terminal (UART)
 ----------------------------------------
+The directories `FIRMWARE/EXAMPLES` and `FIRMWARE/ASM_EXAMPLES` contain programs in C and assembly
+that you can run on the device. On the IceStick, only those that use 6K or less will work (list below).
+
+To compile a program:
+```
+$cd FIRMWARE
+$./make_firmware.sh EXAMPLES/NNNN.c
+```
+or:
+```
+$cd FIRMWARE
+$./make_firmware.sh ASM_EXAMPLES/NNNN.c
+```
+
+Then send it to the device and connect to the device using the terminal emulator:
+```
+$cd ..
+$make ICESTICK terminal
+```
+
+There are several C and assembly programs you can play with (list below). To learn more about RISC-V assembly, you can
+read the manual [https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md](here).
+
+| Program                                | Description                                                    |
+|----------------------------------------|----------------------------------------------------------------|
+| `ASM_EXAMPLES/blinker_shift.S`         | the blinker program, using shifts                              |
+| `ASM_EXAMPLES/blinker_wait.S`          | the blinker program, using a delay loop                        |
+| `ASM_EXAMPLES/test_serial.S`           | reads characters from the serial over USB, and sends them back |
+| `ASM_EXAMPLES/mandelbrot_terminal.c`   | computes the Mandelbrot set and displays it in ASCII art       |
+| `EXAMPLES/hello.c`                     | displays a welcome message                                     |
+| `EXAMPLES/sieve.c`                     | computes prime numbers                                         |
 
 Examples with the LED matrix
 ----------------------------
