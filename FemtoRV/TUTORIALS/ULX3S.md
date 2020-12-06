@@ -315,6 +315,10 @@ _(The black diagonal stripes are due to display refresh, they are not visible no
 | `EXAMPLES/demo_OLED.c`                 | demo of graphics functions(old chaps, remember EGAVGA.bgi ?).  |
 | `EXAMPLES/test_font_OLED.c`            | test font rendering.                                           |
 | `EXAMPLES/sysconfig.c`                 | displays femtosoc and femtorv configurations.                  |
+| Larger ones (that would not fit on IceStick) |                                                          |
+-----------------------------------------------------------------------------------------------------------
+| `EXAMPLES/imgui_xxxx.c`                | some ports from [ImGui challenge](https://github.com/ocornut/imgui/issues/3606). |
+| `EXAMPLES/tinyraytracer.c`             | a port from [TinyRaytracer](https://github.com/ssloy/tinyraytracer).             |
 
 The LIBFEMTORV32 library includes some basic font rendering, 2D polygon clipping and 2D polygon filling routines. 
 Everything fits in the available 6kbytes of memory ! 
@@ -367,3 +371,7 @@ FAT-formatted SDCard. Unplug the ULX3S from the USB,
 insert the SDCard into it and replug it into the USB. The up and
 down buttons let you select the program, and the right button starts it.
 
+To compile all the examples, `make everything` in the `EXAMPLES`
+directory. Note: do not copy too many programs on an SDCard,
+`commander` display will not work if directory does not fit on
+a single screen (to be fixed).
