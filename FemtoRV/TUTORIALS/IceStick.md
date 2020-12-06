@@ -8,6 +8,11 @@ synthesize a RISC-V core, compile and install programs and run them
 on a IceStick. This lets you experience FPGA design and RISC-V using 
 one of the cheapest FPGA devices (around $40).
 
+Note: the following instructions are for Linux (I'm using Ubuntu). It 
+is probably possible to make everything work under Windows, but this 
+will require porting the Makefiles. If somebody volunteers, it would 
+be cool, please send a pull request !
+
 Before starting, you will need to install the OpenSource FPGA
 development tools, Yosys (Verilog synthesis), IceStorm (tools for
 Lattice Ice40 FPGA), NextPNR (Place and Route). Although there 
