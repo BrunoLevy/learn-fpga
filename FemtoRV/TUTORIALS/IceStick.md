@@ -350,6 +350,7 @@ still work and now display text on the screen. There are other
 programs that you can play with:
 
 ![](Images/IceStick_graphics.jpg)
+_(The black diagonal stripes are due to display refresh, they are not visible normally)._
 
 | Program                                | Description                                                    |
 |----------------------------------------|----------------------------------------------------------------|
@@ -360,5 +361,56 @@ programs that you can play with:
 | `EXAMPLES/riscv_logo_OLED.c`           | a rotozoom with the RISCV logo (back to the 90's).             |
 | `EXAMPLES/spirograph_OLED.c`           | rotating squares.                                              |
 | `EXAMPLES/test_OLED.c`                 | displays an animated pattern (C version).                      |
-| `EXAMPLES/sysconfig.c`                 | displays femtosoc and femtorv configurations                   |
+| `EXAMPLES/demo_OLED.c`                 | demo of graphics functions(old chaps, remember EGAVGA.bgi ?).  |
+| `EXAMPLES/test_font_OLED.c`            | test font rendering.                                           |
+| `EXAMPLES/sysconfig.c`                 | displays femtosoc and femtorv configurations.                  |
 
+The LIBFEMTORV32 library includes some basic font rendering, 2D polygon clipping and 2D polygon filling routines. It also includes
+basic font rendering. Everything fits in the available 6kbytes of memory ! 
+
+Storing stuff on the SPI Flash
+------------------------------
+
+Is it all we can do with an IceStick ? No we can do more !
+Let us see how to port a [Y2K demo called
+ST-NICCC](http://www.pouet.net/prod.php?which=1251). Such 3D graphics
+cannot be rendered in real time (and the 8 MHz 68000 of the Atari ST
+could not either !), so it does render a precomputed stream of 2D
+polygons stored in a file. The file weights 640Kb, and remember we only
+have 6Kb, so what can we do ? It would be possible to wire a SDCard
+adapter and store the file there, but there is much better: the
+IceStick stores the configuration of the FPGA in a flash memory, and
+there is plenty of unused room in it: _if it does not fit in one chip,
+we can put it in another chip !_. This flash memory is a tiny 8-legged
+chip, that talks to the external world using a serial protocol (SPI).
+You need to activate another driver in `femtosoc.v`, as follows:
+
+```
+/*
+ * Optional mapped IO devices
+ */
+`define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+//`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
+`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
+//`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
+//`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
+```
+
+Then, you need to copy the data to the SPI flash:
+```
+$ iceprog -o 1M FIRMWARE/EXAMPLES/DATA/scene1.bin
+```
+This copies the data starting from a 1Mbytes offset (the lower
+addresses are used to store the configuration of the FPGA, so do not
+overwrite them). The data file `scene1.bin` is the original one, taken
+from the ST_NICCC demo.
+
+Now you can compile the demo program and send it to the IceStick:
+```
+$ cd FIRMWARE
+$ ./make_firmware.sh EXAMPLES/ST_NICCC_spi_flash.c
+$ cd ..
+$ make ICESTICK
+```
