@@ -26,21 +26,25 @@ this kernel will be compliant with the norm. This means standard tools
 (compiler, assembler, linker) will be able to generate code for this
 kernel. Then I started reading Chapter 2 (page 13 to page 30). Seeing
 also the table page 130, there are in fact only 11 different
-instrutions !
+instrutions ! (I say for instance that an AND, an OR, an ADD ... are
+the same instruction, the operation is just an additional parameter).
+Now we just try to have an idea of the overall picture,
+no need to dive into the details for now. Let's take a look at these
+11 instructions:
 
-|opcode    | description                |
-|----------|----------------------------|
-| branch   | 6 variants                 |
-| ALU reg  | 10 variants                |
-| ALU imm  | 9 variants (3 shifts)      |
-| load     | 5 variants                 |
-| store    | 3 variants                 |
-| `LUI`    | load upper immediate       |
-| `AUIPC`  | add upper immediate to PC  |
-| `JAL`    | jump and link              |
-| `JALR`   | jump and link register     |
-| `FENCE`  | I'll skip this one         |
-| `SYSTEM` | I'll skup this one         |
+| instruction | description                |
+|-------------|----------------------------|
+| branch      | 6 variants                 |
+| ALU reg     | 10 variants                |
+| ALU imm     | 9 variants (3 shifts)      |
+| load        | 5 variants                 |
+| store       | 3 variants                 |
+| `LUI`       | load upper immediate       |
+| `AUIPC`     | add upper immediate to PC  |
+| `JAL`       | jump and link              |
+| `JALR`      | jump and link register     |
+| `FENCE`     | I'll skip this one         |
+| `SYSTEM`    | I'll skup this one         |
 
 
 - The 6 branch variants are conditional jumps, that depend on a test
@@ -59,21 +63,27 @@ may skip their description in a first read, you just need to know
 that they are used to implement unconditional jumps, function calls
 memory ordering, system calls and breaks):
 
-`LUI` (load upper immediate) is used to load the upper 20 bits of a constant. The lower
+    - `LUI` (load upper immediate) is used to load the upper 20 bits of a constant. The lower
 bits can then be set using `ADDI` or `ORI`. At first sight it may
 seem weird that we need two instructions to load a 32 bit constant
 in a register, but in fact it is a smart choice, because all
 instructions are 32-bit long. 
 
-`AUIPC` (add upper immediate to PC) adds a constant to the current program counter and places the 
+    - `AUIPC` (add upper immediate to PC) adds a constant to the current program counter and places the 
 result in a register. It is meant to be used in combination with 
 `JALR` to reach a 32-bit PC-relative address.
 
-`JAL` (jump and link) adds an offset to the PC and stores the address
+    - `JAL` (jump and link) adds an offset to the PC and stores the address
 of the instruction following the jump in a register. It can be used to
 implement function calls. 'JALR' does the same thing, but adds the
 offset to a register. 
 
-`FENCE` and `SYSTEMS` are used to implement memory ordering in
+    - `FENCE` and `SYSTEMS` are used to implement memory ordering in
 multicore systems, and system calls/breaks respectively.
+
+To summarize, we got branches (conditional jumps), ALU operations,
+load and store, and a couple of special instructions used to implement
+unconditional jumps and function calls. There are also two functions
+for memory ordering and system calls (but we will ignore these two
+ones for now). 
 
