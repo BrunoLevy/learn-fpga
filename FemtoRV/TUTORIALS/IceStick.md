@@ -417,6 +417,8 @@ $ cd ..
 $ make ICESTICK
 ```
 
+![](Images/ST_NICCC_on_IceStick.gif)
+
 Now if you want to go further, there may be ways of mapping the SPI
 flash in the memory space of the processor and directly running code 
 from there, this would considerably enhance the possibilities. This
