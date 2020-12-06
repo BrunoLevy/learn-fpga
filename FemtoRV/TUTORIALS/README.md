@@ -1,5 +1,5 @@
 FemtoRV32 Tutorials
 ===================
 
-- IceSTICK tutorial
-- ULX3S tutorial
+- [IceSTICK tutorial](IceStick.md)
+- [ULX3S tutorial](ULX3S.md)
