@@ -27,11 +27,11 @@ from the bit pattern of the current instruction. OK let's see how this
 can be translated into something that understands RISC-V instructions.
 
 
-Step II: the RV32I instrution set
----------------------------------
+Step II: the RV32I instruction set
+----------------------------------
 
 Another important source of information is of course the 
-[RISC-V reference manual](file:///tmp/mozilla_blevy0/riscv-spec-20191213.pdf).
+[RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
 There you learn that there are several flavors of the RISC-V standard.
 Let us start from the simplest one (RV32I, that is, 32 bits base integer 
 instruction set). Then we will see how to add things, one thing at a
@@ -150,7 +150,8 @@ Step IV: the ALU and the predicates
 -----------------------------------
 
 The ALU is another simple element of the design. In the table Page 130 of
-the [RISC-V reference manual](file:///tmp/mozilla_blevy0/riscv-spec-20191213.pdf), we
+the [RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf),
+we
 learn that there are 8 possible operations (some of them with two variants, ADD/SUB
 and SRL/SRA). So we can write the ALU as a combinatorial function, as follows:
 
