@@ -105,7 +105,7 @@ ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0660", GROUP="plugdev",
 
 Step 3: Configure femtosoc and femtorv32
 ========================================
-Time to edit `FemtoRV/femtosoc.v`. This file lets you define what time
+Time to edit `FemtoRV/femtosoc.v`. This file lets you define what type
 of RISC-V processor you will create, and which device drivers in the
 associated system-on-chip. For now we activate the LEDs (for visual
 debugging) and the UART (to talk with the system through a
