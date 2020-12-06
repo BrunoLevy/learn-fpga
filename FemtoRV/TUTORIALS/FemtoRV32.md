@@ -9,11 +9,26 @@ verilog and processor design. FemtoRV32 is a super-simple design,
 it is too basic (no pipeline), but it may be useful to somebody who
 wants to quickly understand the general principles._
 
+
+Step I: general understanding on processor design
+-------------------------------------------------
+
 To understand processor design, the first thing that I have read was
 [this answer](https://stackoverflow.com/questions/51592244/implementation-of-simple-microprocessor-using-verilog/51621153#51621153)
 on Stackoverflow. There are too nice things with this answer:
 - it does to the essential, and keeps nothing else than what's essential
 - the taken example is a RISC processor, that shares several similarities with RISC-V
+
+What we learn there is that there will be a _register file_, that will
+read two values from two registers and optionally write-back one.
+There will be an _ALU_, that will compute an operation on two values.
+There will be also a _decoder_, that will generate all required internal signals
+from the bit pattern of the current instruction. OK let's see how this
+can be translated into something that understands RISC-V instructions.
+
+
+Step II: the RV32I instrution set
+---------------------------------
 
 Another important source of information is of course the 
 [RISC-V reference manual](file:///tmp/mozilla_blevy0/riscv-spec-20191213.pdf).
@@ -44,7 +59,7 @@ no need to dive into the details for now. Let's take a look at these
 | `JAL`       | jump and link              |
 | `JALR`      | jump and link register     |
 | `FENCE`     | I'll skip this one         |
-| `SYSTEM`    | I'll skup this one         |
+| `SYSTEM`    | I'll skip this one         |
 
 
 - The 6 branch variants are conditional jumps, that depend on a test
@@ -85,5 +100,49 @@ To summarize, we got branches (conditional jumps), ALU operations,
 load and store, and a couple of special instructions used to implement
 unconditional jumps and function calls. There are also two functions
 for memory ordering and system calls (but we will ignore these two
-ones for now). 
+ones for now). OK, in fact only 9 instructions then, it seems doable...
+At this point, I do not understand everything, so I'll start from what
+I think to be the simplest part.
+
+Step III: the register file
+---------------------------
+
+Following the [stackoverflow answer](https://stackoverflow.com/questions/51592244/implementation-of-simple-microprocessor-using-verilog/51621153#51621153),
+at each clock tick, our register file will read two register values
+and optionally write one. In addition, we learn from the RISC-V
+specification that there is a special register `zero`, that returns always 0 when read, and 
+that ignores what is written to it. Clearly we could do tests and
+subtract 1 to register IDs, but this would eat-up many LUTS. Reading Claire Wolf's 
+[PicoRV32 sources](https://github.com/cliffordwolf/picorv32), we see
+there is a smarter way, by negating the register index. There is
+another gotcha: we need to read two registers (for instance, the two
+operands of an ALU operation). Normally we would need two cycles, but if
+we _duplicate_ the entire register file, we can do that in a single
+cycle. Here is the Verilog implementation of the register file:
+
+```
+module NrvRegisterFile(
+  input 	    clk, 
+  input [31:0] 	    in,        // Data for write back register
+  input [4:0] 	    inRegId,   // Register to write back to
+  input 	    inEn,      // Enable register write back
+  input [4:0] 	    outRegId1, // Register number for out1
+  input [4:0] 	    outRegId2, // Register number for out2
+  output reg [31:0] out1,      // Data out 1, available one clock after outRegId1 is set
+  output reg [31:0] out2       // Data out 2, available one clock after outRegId2 is set
+);
+   reg [31:0]  bank1 [30:0];
+   reg [31:0]  bank2 [30:0];
+   always @(posedge clk) begin
+      if (inEn) begin
+	 if(inRegId != 0) begin 
+	    bank1[~inRegId] <= in;
+	    bank2[~inRegId] <= in;
+	 end	  
+      end 
+      out1 <= bank1[~outRegId1];
+      out2 <= bank2[~outRegId2];
+   end 
+endmodule
+```
 
