@@ -248,19 +248,21 @@ extract the operation or test code (bits `[14:12]`). Another important thing is 
 We learn there that there are several types of instructions. To understand what it means, let's get back to Chapter 2, page 16.
 The different instruction types correspond to the way _immediate values_ are encoded in them.
 
-| Instr. type | Description                                    | Immediate value |
-|-------------|------------------------------------------------|-----------------|
-| `R-type`    | register-register ALU ops. [more on this here](https://www.youtube.com/watch?v=pVWtI0426mU) | - |
-| `I-type`    | register-immediate integer ALU ops and `JALR`. |  |
-| `S-type`    | register-immediate shift ALU ops.              |  |
-| `B-type`    | branch ops.                                    |  |
-| `U-type`    | `LUI`,`AUIPC`                                  |  |
-| `J-type`    | `JAL`                                          |  |
+| Instr. type | Description                                    | Immediate value encoding                             |
+|-------------|------------------------------------------------|------------------------------------------------------|
+| `R-type`    | register-register ALU ops. [more on this here](https://www.youtube.com/watch?v=pVWtI0426mU) | None    |
+| `I-type`    | register-immediate integer ALU ops and `JALR`. | 12 bits, sign expansion                              |
+| `S-type`    | store                                          | 12 bits, sign expansion                              |
+| `B-type`    | branch                                         | 12 bits, sign expansion, upper `[31:1]` (bit 0 is 0) |
+| `U-type`    | `LUI`,`AUIPC`                                  | 20 bits, upper `31:12` (bits `[11:0]` are 0)         |
+| `J-type`    | `JAL`                                          | 12 bits, sign expansion, upper `[31:1]` (bit 0 is 0) |
 
+Note that `I-type` and `S-type` encode the same type of values (but they are taken from different parts of `instr`).
+Same thing for `B-type` and `J-type`.
 
 We will need to reconstruct the immediate values from their bits in the instruction word. To do that, the table in Fig. 2.4,
 Page 17 of [RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf)
-hels a lot (gives for each immediate format where each bit comes from). It can be directly translated in Verilog as follows:
+helps a lot (gives for each immediate format where each bit comes from). It can be directly translated in Verilog as follows:
 ```
    wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
    wire [31:0] Simm = {{21{instr[31]}}, instr[30:25], instr[11:7]};
