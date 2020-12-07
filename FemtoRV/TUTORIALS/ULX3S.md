@@ -402,12 +402,14 @@ $ cd FIRMWARE/EXAMPLES
 $ make ST_NICCC.exe
 ```
 then copy `ST_NICCC.exe` to the SDCard, insert the SDCard in the ULX3S
-and restart it.
+and restart it, then select `ST_NICCC.exe` using the up/down buttons and
+start it using the right button.
 
 _Note: there is also a version `ST_NICCC_spi_flash.c` that reads data
 from the SPI Flash (the same component that stores the FPGA
 configuration in which there is sufficient room to store additional
-data). It is used by the IceStick version._
+data). It is used by the IceStick version. It works also on the ULX3S
+(see instructions in the source)._
 
 Epilogue
 ========

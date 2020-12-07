@@ -90,7 +90,7 @@ result in a register. It is meant to be used in combination with
 
     - `JAL` (jump and link) adds an offset to the PC and stores the address
 of the instruction following the jump in a register. It can be used to
-implement function calls. 'JALR' does the same thing, but adds the
+implement function calls. `JALR` does the same thing, but adds the
 offset to a register. 
 
     - `FENCE` and `SYSTEMS` are used to implement memory ordering in
@@ -236,5 +236,23 @@ but we will ignore that for now._
 
 Step V: the instruction decoder
 -------------------------------
+
+At this point, we got a register file, that can store and retreive values, we got an ALU that can apply operations
+to values, and we got predicates that can test values. The instruction of the processor will be fetched from memory.
+Each instruction is a 32-bits word. We need now to define the hardware component that will decide what to do with the
+registers and with the ALU, based on the instruction. The main reference is again the table in page 130 of the
+[RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
+We know already that there will be a switch statement based on the opcode (bits `[6:0]`). We know already that we will
+extract the operation or test code (bits `[14:12]`). Another important thing is the little table on the top of page 130.
+We learn there that there are several types of instructions. Let us further analyze them:
+
+| Instr. type | Description |
+|-------------|-------------|
+| `R-type`    | register-register ALU ops. No immediate value. [more on this here](https://www.youtube.com/watch?v=pVWtI0426mU) |
+| `I-type`    |             |
+| `S-type`    |             |
+| `B-type`    |             |
+| `U-type`    |             |
+| `J-type`    |             |
 
 TO BE CONTINUED.
