@@ -105,7 +105,7 @@ sudo cp ulx3s-bin/usb-jtag/linux-amd64/ujprog /usr/local/bin
 
 Step 2: Configure USB rules
 ===========================
-We need to let normal users program the IceStick through USB. This
+We need to let normal users program the ULX3S through USB. This
 can be done by creating in `/etc/udev/rules.d` a file `80-fpga-ulx3s.rules`
 with the following content:
 ```
@@ -123,9 +123,11 @@ Time to edit `learn-fpga/FemtoRV/femtosoc.v`. This file lets you define what typ
 of RISC-V processor you will create, and which device drivers in the
 associated system-on-chip. For now we activate the LEDs (for visual
 debugging) and the UART (to talk with the system through a
-terminal-over-USB connection). We use 6144 bytes of RAM. It is not 
-very much, but we cannot do more on the IceStick. You will see that
-with 6k of RAM, you can still program nice and interesting RISC-V
+terminal-over-USB connection). We use 256 Kbytes of RAM. It is not 
+very much, but for now I'm not able to use the DRAM on the ULX3S
+(but plan to integrate @sylefeb's SLICE memory controller).
+You will see that
+with 256kb of RAM, you can still program nice and interesting RISC-V
 demos. The file contains some `CONFIGWORD` commands that need to
 be kept: the firmware generation tool uses them to store the hardware
 configuration in some predefined memory areas. 
@@ -207,7 +209,7 @@ To exit, press `<ctrl> ]` (python-3-serial/miniterm), or `<ctrl> a` then '\\' (s
 Examples with the serial terminal (UART)
 ========================================
 The directories `FIRMWARE/EXAMPLES` and `FIRMWARE/ASM_EXAMPLES` contain programs in C and assembly
-that you can run on the device. On the IceStick, only those that use 6K or less will work (list below).
+that you can run on the device. 
 
 To compile a program:
 ```
@@ -223,7 +225,7 @@ $./make_firmware.sh ASM_EXAMPLES/NNNN.c
 Then send it to the device and connect to the device using the terminal emulator:
 ```
 $cd ..
-$make ICESTICK terminal
+$make ULX3S terminal
 ```
 
 There are several C and assembly programs you can play with (list below). To learn more about RISC-V assembly,

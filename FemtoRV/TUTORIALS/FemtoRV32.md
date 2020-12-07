@@ -5,9 +5,11 @@ FemtoRV32 Design: from zero to I,II,III,IV ... RISC-V
 
 _During the first confinement in March 2020, I grabbed an IceStick
 just before getting stuck at home, with the idea in mind to learn
-verilog and processor design. FemtoRV32 is a super-simple design,
-it is too basic (no pipeline), but it may be useful to somebody who
-wants to quickly understand the general principles._
+verilog and processor design. I came out with FemtoRV32, a super-simple design.
+It is too basic (no pipeline), but it may be useful to somebody who
+wants to quickly understand the general principles. This document
+is written from my curated notes, keeping the order in which I
+understood different things and how they mesh together._
 
 
 Step I: general understanding on processor design
@@ -23,7 +25,9 @@ What we learn there is that there will be a _register file_, that will
 read two values from two registers and optionally write-back one.
 There will be an _ALU_, that will compute an operation on two values.
 There will be also a _decoder_, that will generate all required internal signals
-from the bit pattern of the current instruction. OK let's see how this
+from the bit pattern of the current instruction. I recomment you take a deep look
+at it, and do some schematics on your own to have all the general ideas in mind
+before going further. OK let's see how this
 can be translated into something that understands RISC-V instructions.
 
 
@@ -162,7 +166,8 @@ Let us now take a look at the table in page 130 of the
 This table is very useful: it indicates how the 32 bits of an instruction are used to encode the parameters of the instruction.
 The 7 least significant bits `[6:0]` are used to encode the instruction. Later we will need a component (_instruction decoder_)
 with a `switch` statement based on these bits. Now you also see why I'm saying that in fact there are only 11 different
-instructions. In the table, we see also where the source and destination register indices (`rs1,rd2,rd`) are encoded, as well as
+instructions, because there are only 11 different opcodes.
+In the table, we see also where the source and destination register indices (`rs1,rd2,rd`) are encoded, as well as
 the immediate values (`imm`). We will talk about that later. For now, let us focus on what varies in the register-immediate
 ALU instructions (code `0010011`) and the register-register ALU instructions (code `0110011`). Seeing the table,
 it will be possible to get the 3-bits `op` from the bits `[14:12]` of the instruction. The 1-bit `opqual` that discriminates
@@ -303,6 +308,7 @@ _distillation_. What is really nice in the ISA is:
 - the weird instructions `LUI`,`AUIPC`,`JAL`,`JALR` can be combined to implement higher-level tasks
    (load 32-bit constant in register, jump to arbitrary address, function calls). Their existence is
    justified by the fact it makes the design easier. Then assembly programmer's life is made easier by
-   _pseudo-instructions_.
+   _pseudo-instructions_ `CALL`, `RET`, ... See [risc-v assembly manual](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md), the
+   two tables at the end of the page.
 
 TO BE CONTINUED.
