@@ -33,11 +33,15 @@ write-back one.
 There will be an _ALU_, that will compute an operation on two values.
 
 There will be also a _decoder_, that will generate all required internal signals
-from the bit pattern of the current instruction. I recomment you take a deep look
-at it, and do some schematics on your own to have all the general ideas in mind
-before going further. OK let's see how this
-can be translated into something that understands RISC-V instructions.
+from the bit pattern of the current instruction. 
 
+I recommend you take a deep look at 
+[this reference](https://stackoverflow.com/questions/51592244/implementation-of-simple-microprocessor-using-verilog/51621153#51621153), 
+and do some schematics on your own to have all the general ideas in mind
+before going further. 
+
+OK let's see how this
+can be translated into something that understands RISC-V instructions.
 
 Step II: the RV32I instruction set
 ----------------------------------
