@@ -59,26 +59,26 @@ Now we just try to have an idea of the overall picture,
 no need to dive into the details for now. Let's take a look at these
 11 instructions:
 
-| instruction | description                                        |
-|-------------|----------------------------------------------------|
-| branch      | conditional jump, 6 variants                       |
-| ALU reg     | reg op reg -> reg, 10 variants                     |
-| ALU imm     | reg op imm -> reg, 9 variants (including 3 shifts) |
-| load        | mem -> reg, 5 variants                             |
-| store       | reg -> mem, 3 variants                             |
-| `LUI`       | load upper immediate                               |
-| `AUIPC`     | add upper immediate to PC                          |
-| `JAL`       | jump and link                                      |
-| `JALR`      | jump and link register                             |
-| `FENCE`     | I'll skip this one                                 |
-| `SYSTEM`    | I'll skip this one                                 |
+| instruction | description                                          | algo                            |
+|-------------|------------------------------------------------------|---------------------------------|
+| branch      | conditional jump, 6 variants                         | `if(reg OP reg) PC<-PC+imm`     |
+| ALU reg     | Three-registers ALU ops, 10 variants                 | `reg <- reg OP reg`             |
+| ALU imm     | Two-registers ALU ops, 9 variants                    | `reg <- reg OP imm`             |
+| load        | Memory-to-register, 5 variants                       | `reg <- mem[reg + imm]`         |
+| store       | Register-to-memory, 3 variants                       | `mem[reg+imm] <- reg`           |
+| `LUI`       | load upper immediate                                 | `reg <- (im << 12)`             |
+| `AUIPC`     | add upper immediate to PC                            | `reg <- PC+(im << 12)`          |
+| `JAL`       | jump and link                                        | `reg <- PC+4 ; PC <- PC+imm`    |
+| `JALR`      | jump and link register                               | `reg <- PC+4 ; PC <- PC+reg+imm`|
+| `FENCE`     | memory-ordering for multicores (skipped for now)     |                                 |
+| `SYSTEM`    | system calls, breakpoints (skipped for now)          |                                 |
 
 
 - The 6 branch variants are conditional jumps, that depend on a test
 on two registers. 
 
-- ALU operations can be of the form `register op register -> register`
-or `register op immediate -> register`
+- ALU operations can be of the form `register OP register -> register`
+or `register OP immediate -> register`
 
 - Then we have load and store, that can operate
 on bytes, on 16 bit values (called half-words) or 32 bit values
@@ -115,7 +115,8 @@ unconditional jumps and function calls. There are also two functions
 for memory ordering and system calls (but we will ignore these two
 ones for now). OK, in fact only 9 instructions then, it seems doable...
 At this point, I had not understood everything, so I'll start from what
-I think to be the simplest part.
+I think to be the simplest parts (register file and ALU), then we will
+see the instruction decoder and how things are interconnected.
 
 Step III: the register file
 ---------------------------
@@ -155,7 +156,7 @@ endmodule
 We need to read two registers (for instance, the two
 operands of an ALU operation). Normally we would need two cycles, but if
 we _duplicate_ the entire register file, we can do that in a single
-cycle.
+cycle (this is why there is `bank1` and `bank2`).
 
 _In fact if you take a look at `femtorv32.v`, it is slightly different:
 there is a smarter way of treating register `zero`, taken from
