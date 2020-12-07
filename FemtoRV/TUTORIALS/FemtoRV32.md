@@ -21,9 +21,17 @@ on Stackoverflow. There are two nice things with this answer:
 - it goes to the essential, and keeps nothing else than what's essential
 - the taken example is a RISC processor, that shares several similarities with RISC-V
 
-What we learn there is that there will be a _register file_, that will
-read two values from two registers and optionally write-back one.
+What we learn there is that there will be a _register file_, that stores
+the so-called _general-purpose_ registers. By general-purpose, we mean 
+that each time an instruction reads a register, it can be any of them, 
+and each time an instruction writes a register, it can be any of them 
+(unlike the x86 that has _specialized_ registers). To implement the
+most general instruction (`register OP register -> register`), the 
+register file will read two registers at each cycle, and optionally 
+write-back one.
+
 There will be an _ALU_, that will compute an operation on two values.
+
 There will be also a _decoder_, that will generate all required internal signals
 from the bit pattern of the current instruction. I recomment you take a deep look
 at it, and do some schematics on your own to have all the general ideas in mind
@@ -51,31 +59,32 @@ Now we just try to have an idea of the overall picture,
 no need to dive into the details for now. Let's take a look at these
 11 instructions:
 
-| instruction | description                |
-|-------------|----------------------------|
-| branch      | 6 variants                 |
-| ALU reg     | 10 variants                |
-| ALU imm     | 9 variants (3 shifts)      |
-| load        | 5 variants                 |
-| store       | 3 variants                 |
-| `LUI`       | load upper immediate       |
-| `AUIPC`     | add upper immediate to PC  |
-| `JAL`       | jump and link              |
-| `JALR`      | jump and link register     |
-| `FENCE`     | I'll skip this one         |
-| `SYSTEM`    | I'll skip this one         |
+| instruction | description                                        |
+|-------------|----------------------------------------------------|
+| branch      | conditional jump, 6 variants                       |
+| ALU reg     | reg op reg -> reg, 10 variants                     |
+| ALU imm     | reg op imm -> reg, 9 variants (including 3 shifts) |
+| load        | mem -> reg, 5 variants                             |
+| store       | reg -> mem, 3 variants                             |
+| `LUI`       | load upper immediate                               |
+| `AUIPC`     | add upper immediate to PC                          |
+| `JAL`       | jump and link                                      |
+| `JALR`      | jump and link register                             |
+| `FENCE`     | I'll skip this one                                 |
+| `SYSTEM`    | I'll skip this one                                 |
 
 
 - The 6 branch variants are conditional jumps, that depend on a test
 on two registers. 
 
-- ALU operations can be of the form register op register -> register 
-or register op immediate -> register
+- ALU operations can be of the form `register op register -> register`
+or `register op immediate -> register`
 
 - Then we have load and store, that can operate
 on bytes, on 16 bit values (called half-words) or 32 bit values
 (called words). In addition byte and half-word loads can do sign
-expansion.
+expansion. The source/target address is obtained by adding an 
+immediate offset to the content of a register.
 
 - The remaining instructions are more special (one
 may skip their description in a first read, you just need to know
