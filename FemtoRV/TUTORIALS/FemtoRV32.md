@@ -177,13 +177,12 @@ This table is very useful: it indicates how the 32 bits of an instruction are us
 The 7 least significant bits `[6:0]` are used to encode the instruction. Later we will need a component (_instruction decoder_)
 with a `switch` statement based on these bits. Now you also see why I'm saying that in fact there are only 11 different
 instructions, because there are only 11 different opcodes.
-In the table, we see also where the source and destination register indices (`rs1,rd2,rd`) are encoded, as well as
+In the table, we see also where the source and destination register indices (`rs1,rd1,rd`) are encoded, as well as
 the immediate values (`imm`). We will talk about that later. For now, let us focus on what varies in the register-immediate
 ALU instructions (code `0010011`) and the register-register ALU instructions (code `0110011`). Seeing the table,
 it will be possible to get the 3-bits `op` from the bits `[14:12]` of the instruction. The 1-bit `opqual` that discriminates
 `ADD/SUB` and `SRLI/SRAI` (shift _logical_ immediate / shift _arithmetic_ immediate) correspond to the bit `30` of the
-instruction. So we can write the ALU as a combinatorial function. Here is a _simplified_ version
-of the ALU:
+instruction. So we can write the ALU as a combinatorial function. Here is a _simplified_ version of the ALU:
 
 ```
 module NrvSmallALU (
@@ -320,5 +319,19 @@ _distillation_. What is really nice in the ISA is:
    justified by the fact it makes the design easier. Then assembly programmer's life is made easier by
    _pseudo-instructions_ `CALL`, `RET`, ... See [risc-v assembly manual](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md), the
    two tables at the end of the page.
+
+Put differently, to appreciate the elegance of the RISC-V ISA, imagine that your mission is to _invent it_. The constraints are:
+- fixed instruction length (32 bits)
+- source and destination registers always encoded at the same position
+- whenever there is sign-extension, it should be done from the same bit
+- it should be simple to load an arbitrary 32-bits immediate value in a register
+- it should be simple to jump to arbitrary memory locations
+- it should be simple to implement function calls
+Then you understand why there are many different immediate formats. For instance, if you consider a `reg <- reg OP imm` operation, since there is only
+one source register, as compared to a `reg <- reg OP reg` instruction, it frees 5 bits that can be used to contribute to the immediate value (and extend
+its dynamic range). Now the rationale behind `LUI`,`AUIPC`,`JAL` and `JALR` is to give a set of functions that can be combined to load arbitrary 32-bit
+values in register, or to jump to arbitrary locations in memory, or to implement the function call protocol as simply as possible. Considering the
+constraints, the taken choices (that seemed weird to me in the first place) perfectly make sense. In addition, with the taken choices, the 
+instruction decoder is pretty simple and has a low logical depth.
 
 TO BE CONTINUED.
