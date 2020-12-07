@@ -370,16 +370,17 @@ instructions, load and store). We will start from a very simple
 design, that only supports a linear execution flow, then enrich it
 step by step.
 
-TO BE CONTINUED.
-
 Step VI: Linear execution flow, `reg <- reg OP reg` ALU instructions
 --------------------------------------------------------------------
+![](Images/FemtoRV32_design_1.jpg)
 
 Step VII: Linear execution flow, adding `reg <- reg OP imm` ALU instructions
 ----------------------------------------------------------------------------
+![](Images/FemtoRV32_design_2.jpg)
 
 Step VIII: Adding the branch instructions
 -----------------------------------------
+![](Images/FemtoRV32_design_3.jpg)
 
 Step IX: Adding the weird instructions `LUI`, `AUIPC`, `JAL`, `JALR`
 --------------------------------------------------------------------
