@@ -75,8 +75,8 @@ expansion.
 
 - The remaining instructions are more special (one
 may skip their description in a first read, you just need to know
-that they are used to implement unconditional jumps, function calls
-memory ordering, system calls and breaks):
+that they are used to implement unconditional jumps, function calls,
+memory ordering for multicores, system calls and breaks):
 
     - `LUI` (load upper immediate) is used to load the upper 20 bits of a constant. The lower
 bits can then be set using `ADDI` or `ORI`. At first sight it may
@@ -101,7 +101,7 @@ load and store, and a couple of special instructions used to implement
 unconditional jumps and function calls. There are also two functions
 for memory ordering and system calls (but we will ignore these two
 ones for now). OK, in fact only 9 instructions then, it seems doable...
-At this point, I do not understand everything, so I'll start from what
+At this point, I had not understood everything, so I'll start from what
 I think to be the simplest part.
 
 Step III: the register file
@@ -111,14 +111,7 @@ Following the [stackoverflow answer](https://stackoverflow.com/questions/5159224
 at each clock tick, our register file will read two register values
 and optionally write one. In addition, we learn from the RISC-V
 specification that there is a special register `zero`, that returns always 0 when read, and 
-that ignores what is written to it. Clearly we could do tests and
-subtract 1 to register IDs, but this would eat-up many LUTS. Reading Claire Wolf's 
-[PicoRV32 sources](https://github.com/cliffordwolf/picorv32), we see
-there is a smarter way, by negating the register index. There is
-another gotcha: we need to read two registers (for instance, the two
-operands of an ALU operation). Normally we would need two cycles, but if
-we _duplicate_ the entire register file, we can do that in a single
-cycle. Here is the Verilog implementation of the register file:
+that ignores what is written to it. Here is a _simplified_ version of the register file:
 
 ```
 module NrvRegisterFile(
@@ -131,20 +124,30 @@ module NrvRegisterFile(
   output reg [31:0] out1,      // Data out 1, available one clock after outRegId1 is set
   output reg [31:0] out2       // Data out 2, available one clock after outRegId2 is set
 );
-   reg [31:0]  bank1 [30:0];
-   reg [31:0]  bank2 [30:0];
+   reg [31:0]  bank1 [31:0];
+   reg [31:0]  bank2 [31:0];
    always @(posedge clk) begin
       if (inEn) begin
 	 if(inRegId != 0) begin 
-	    bank1[~inRegId] <= in;
-	    bank2[~inRegId] <= in;
+	    bank1[inRegId] <= in;
+	    bank2[inRegId] <= in;
 	 end	  
       end 
-      out1 <= bank1[~outRegId1];
-      out2 <= bank2[~outRegId2];
+      out1 <= bank1[outRegId1];
+      out2 <= bank2[outRegId2];
    end 
 endmodule
 ```
+
+We need to read two registers (for instance, the two
+operands of an ALU operation). Normally we would need two cycles, but if
+we _duplicate_ the entire register file, we can do that in a single
+cycle.
+
+_In fact if you take a look at `femtorv32.v`, it is slightly different:
+there is a smarter way of treating register `zero`, taken from
+Claire Wolf's [PicoRV32 sources](https://github.com/cliffordwolf/picorv32), by
+negating the register index._ 
 
 Step IV: the ALU and the predicates
 -----------------------------------
@@ -153,11 +156,22 @@ The ALU is another simple element of the design. In the table Page 130 of
 the [RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf),
 we
 learn that there are 8 possible operations (some of them with two variants, ADD/SUB
-and SRL/SRA). So we can write the ALU as a combinatorial function, as follows:
+and SRL/SRA).
+Let us now take a look at the table in page 130 of the
+[RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
+This table is very useful: it indicates how the 32 bits of an instruction are used to encode the parameters of the instruction.
+The 7 least significant bits `[6:0]` are used to encode the instruction. Later we will need a component (_instruction decoder_)
+with a `switch` statement based on these bits. Now you also see why I'm saying that in fact there are only 11 different
+instructions. In the table, we see also where the source and destination register indices (`rs1,rd2,rd`) are encoded, as well as
+the immediate values (`imm`). We will talk about that later. For now, let us focus on what varies in the register-immediate
+ALU instructions (code `0010011`) and the register-register ALU instructions (code `0110011`). Seeing the table,
+it will be possible to get the 3-bits `op` from the bits `[14:12]` of the instruction. The 1-bit `opqual` that discriminates
+`ADD/SUB` and `SRLI/SRAI` (shift _logical_ immediate / shift _arithmetic_ immediate) correspond to the bit `30` of the
+instruction. So we can write the ALU as a combinatorial function. Here is a _simplified_ version
+of the ALU:
 
 ```
 module NrvSmallALU (
-  input 	    clk, 
   input [31:0] 	    in1,
   input [31:0] 	    in2,
   input [2:0] 	    op,     // Operation
@@ -179,20 +193,25 @@ module NrvSmallALU (
 endmodule
 ```
 
-Well, doing so is not very good, because the _barrel shifter_ generated for SLL and SRL/SRA eats up many LUTs,
+The ALU takes as input two 32-bit values `in1` and `in2`, the operation `op`,`opqual` and returns
+the result.
+
+_Well, doing so is not very good, because the _barrel shifter_ generated for SLL and SRL/SRA eats up many LUTs,
 so it is possible to have an internal register in the ALU, that will shift one position at each clock tick, and
 a `busy` signal asserted when the ALU is computed. There is also in FemtoRV32 a trick (suggested by @mecrisp) to
 factor the addition/subtraction/comparison in a single adder. But for now, let us just imagine that the ALU is
-as above.
+as above._
 
-We need another component, that resembles an ALU, but that just compares two values to implement
-the branch instructions:
+Let us get back to the table Page 130 of
+the [RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
+There are also 6 branch instructions (code `1100011`) with a varying part in bits `[14:12]` that indicates the test. To implement
+these tests, we need another component, that resembles an ALU, but that just compares two values:
 
 ```
 module NrvPredicate(
    input [31:0] in1,
    input [31:0] in2,
-   input [2:0]  op, // Operation
+   input [2:0]  op, 
    output reg   out
 );
    always @(*) begin
@@ -209,8 +228,11 @@ module NrvPredicate(
 endmodule
 ```
 
-Same thing here, the comparison can be factored in a single adder as suggested by @mecrisp (see FemtoRV32 source),
-but we will ignore that for now.
+It takes as input two 32-bit values `in1` and `in2`, the test `op` and outputs a single bit, indicating the
+result of the test.
+
+_Same thing here, the comparison can be factored in a single adder as suggested by @mecrisp (see FemtoRV32 source),
+but we will ignore that for now._
 
 Step V: the instruction decoder
 -------------------------------

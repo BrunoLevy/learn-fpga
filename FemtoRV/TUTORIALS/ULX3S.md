@@ -8,9 +8,10 @@ synthesize a RISC-V core, compile and install programs and run them
 on a UX3S.
 
 _Note: the following instructions are for Linux (I'm using Ubuntu). It 
-is probably possible to make everything work under Windows, but this 
-will require porting the Makefiles. If somebody volunteers, it would 
-be cool, please send a pull request !_
+is possible to make everything work under Windows using WSL,
+@gojimmypi reported a success (with the IceStick)!
+Expecting some pull requests,
+instructions will follow shortly.__
 
 Before starting, you will need to install the OpenSource FPGA
 development tools, Yosys (Verilog synthesis), Trellis (tools for
