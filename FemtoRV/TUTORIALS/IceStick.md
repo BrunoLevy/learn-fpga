@@ -12,7 +12,7 @@ _Note: the following instructions are for Linux (I'm using Ubuntu). It
 is possible to make everything work under Windows using WSL,
 @gojimmypi reported a success !
 Expecting some pull requests, instructions will
-follow shortly.__
+follow shortly._
 
 Before starting, you will need to install the OpenSource FPGA
 development tools, Yosys (Verilog synthesis), IceStorm (tools for

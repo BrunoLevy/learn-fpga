@@ -59,20 +59,19 @@ Now we just try to have an idea of the overall picture,
 no need to dive into the details for now. Let's take a look at these
 11 instructions:
 
-| instruction | description                                          | algo                            |
-|-------------|------------------------------------------------------|---------------------------------|
-| branch      | conditional jump, 6 variants                         | `if(reg OP reg) PC<-PC+imm`     |
-| ALU reg     | Three-registers ALU ops, 10 variants                 | `reg <- reg OP reg`             |
-| ALU imm     | Two-registers ALU ops, 9 variants                    | `reg <- reg OP imm`             |
-| load        | Memory-to-register, 5 variants                       | `reg <- mem[reg + imm]`         |
-| store       | Register-to-memory, 3 variants                       | `mem[reg+imm] <- reg`           |
-| `LUI`       | load upper immediate                                 | `reg <- (im << 12)`             |
-| `AUIPC`     | add upper immediate to PC                            | `reg <- PC+(im << 12)`          |
-| `JAL`       | jump and link                                        | `reg <- PC+4 ; PC <- PC+imm`    |
-| `JALR`      | jump and link register                               | `reg <- PC+4 ; PC <- PC+reg+imm`|
-| `FENCE`     | memory-ordering for multicores (skipped for now)     |                                 |
-| `SYSTEM`    | system calls, breakpoints (skipped for now)          |                                 |
-
+| instruction | description                          | algo                                 |
+|-------------|--------------------------------------|--------------------------------------|
+| branch      | conditional jump, 6 variants         | `if(reg OP reg) PC<-PC+imm`          |
+| ALU reg     | Three-registers ALU ops, 10 variants | `reg <- reg OP reg`                  |
+| ALU imm     | Two-registers ALU ops, 9 variants    | `reg <- reg OP imm`                  |
+| load        | Memory-to-register, 5 variants       | `reg <- mem[reg + imm]`              |
+| store       | Register-to-memory, 3 variants       | `mem[reg+imm] <- reg`                |
+| `LUI`       | load upper immediate                 | `reg <- (im << 12)`                  |
+| `AUIPC`     | add upper immediate to PC            | `reg <- PC+(im << 12)`               |
+| `JAL`       | jump and link                        | `reg <- PC+4 ; PC <- PC+imm`         |
+| `JALR`      | jump and link register               | `reg <- PC+4 ; PC <- reg+imm`        |
+| `FENCE`     | memory-ordering for multicores       | (not detailed here, skipped for now) |
+| `SYSTEM`    | system calls, breakpoints            | (not detailed here, skipped for now) |
 
 - The 6 branch variants are conditional jumps, that depend on a test
 on two registers. 
@@ -342,21 +341,49 @@ Put differently, to appreciate the elegance of the RISC-V ISA, imagine that your
 - it should be simple to jump to arbitrary memory locations (but may take several instructions)
 - it should be simple to implement function calls (but may take several instructions)
 
-Then you understand why there are many different immediate formats. For instance, consider `JAL`, that does not have a source register,
-as compared to `JALR` that has one. Both take an immediate value, but `JAL` has 5 more bits available to store it, since it does not need
-to encode the source register. The slightest available bit is used to extend the dynamic range of the immediates. This explains both the
-multiple immediate formats and the fact that they are assembled from multiple pieces of `instr`, slaloming between the three fixed 5-bits
-register encodings, that are there or not depending on the cases.
+Then you understand why there are many different immediate
+formats. For instance, consider `JAL`, that does not have a source
+register, as compared to `JALR` that has one. Both take an immediate
+value, but `JAL` has 5 more bits available to store it, since it does
+not need to encode the source register. The slightest available bit is
+used to extend the dynamic range of the immediates. This explains both
+the multiple immediate formats and the fact that they are assembled
+from multiple pieces of `instr`, slaloming between the three fixed
+5-bits register encodings, that are there or not depending on the
+cases.
 
-Now the rationale behind the weird instructions `LUI`,`AUIPC`,`JAL` and `JALR` is to give a set of functions that can be combined to load arbitrary 32-bit
-values in register, or to jump to arbitrary locations in memory, or to implement the function call protocol as simply as possible. Considering the
-constraints, the taken choices (that seemed weird to me in the first place) perfectly make sense. In addition, with the taken choices, the 
-instruction decoder is pretty simple and has a low logical depth. Besides the 7-bits instruction decoder, it is mostly wires drawn from the bits of `instr`,
-and duplication of the sign-extended bit 31 to form the immediate values. 
+Now the rationale behind the weird instructions `LUI`,`AUIPC`,`JAL`
+and `JALR` is to give a set of functions that can be combined to load
+arbitrary 32-bit values in register, or to jump to arbitrary locations
+in memory, or to implement the function call protocol as simply as
+possible. Considering the constraints, the taken choices (that seemed
+weird to me in the first place) perfectly make sense. In addition,
+with the taken choices, the instruction decoder is pretty simple and
+has a low logical depth. Besides the 7-bits instruction decoder, it
+mostly consists of a set of wires drawn from the bits of `instr`, and
+duplication of the sign-extended bit 31 to form the immediate values.
 
-
-Step VI: putting everything together
-------------------------------------
-
+OK, now that we see more or less the overall picture, we can now
+create the hardware for interpreting the 9 different instructions
+(register-register ALU, register-immediate ALU, branch, the 4 weird
+instructions, load and store). We will start from a very simple
+design, that only supports a linear execution flow, then enrich it
+step by step.
 
 TO BE CONTINUED.
+
+Step VI: Linear execution flow, `reg <- reg OP reg` ALU instructions
+--------------------------------------------------------------------
+
+Step VII: Linear execution flow, adding `reg <- reg OP imm` ALU instructions
+----------------------------------------------------------------------------
+
+Step VIII: Adding the branch instructions
+-----------------------------------------
+
+Step IX: Adding the weird instructions `LUI`, `AUIPC`, `JAL`, `JALR`
+--------------------------------------------------------------------
+
+Step X: Adding load and store instructions
+------------------------------------------
+
