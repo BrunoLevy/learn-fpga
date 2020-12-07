@@ -303,13 +303,27 @@ helps a lot (gives for each immediate format where each bit comes from). It can 
    wire [31:0] Uimm = {instr[31], instr[30:12], {12{1'b0}}};
 ```
 
+Sidebar: the elegance of RISC-V
+-------------------------------
+
+This paragraph may be skipped, it just contains my own impressions and reflexions on the RISC-V instruction set, inspired by the
+comments and Q&A in italics in the
+[RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
+
 At this point, I realized what an _instruction set architecture_ means: it is for sure a specification of _what bit pattern does what_
-(Instruction Set) and it is also at the same time driven by how this will be translated into wires (Architecture).
+(Instruction Set) and it is also at the same time driven by how this will be translated into wires (Architecture). An ISA is not
+_abstract_, it is _independent_ on an implementation, but it is strongly designed with implementation in mind ! While the 
+pipeline, branch prediction unit, multiple execution units, caches may differ in different implementations, the instruction decoder
+is probably very similar in all implementations.
+
 There were things that seemed really weird to me
 in the first place: all these immediate format variants, the fact that immediate values are scrambled in different bits of `instr`,
 and the weird instructions `LUI`,`AUIPC`,`JAL`,`JALR`. When writing the instruction decoder, you better understand the reasons. The
-ISA is really smart, and the result of a long evolution (there were RISC-I, RISC-II, ... before). It seems to me the result of a 
-_distillation_. What is really nice in the ISA is:
+ISA is really smart, and is the result of a long evolution (there were RISC-I, RISC-II, ... before). It seems to me the result of a 
+_distillation_. Now, in 2020, many things were tested in terms of ISA, and this one seems to have benefited from all the previous
+attempts, taking the good choices and avoiding the suboptimal ones. 
+
+What is really nice in the ISA is:
 - instruction size is fixed. Makes things really easier. _(there are extension with varying instrution length, but at least the core
   instruction set is simple)_;
 - `rs1`,`rs2`,`rd` are always encoded by the same bits of `instr`;
@@ -324,14 +338,25 @@ Put differently, to appreciate the elegance of the RISC-V ISA, imagine that your
 - fixed instruction length (32 bits)
 - source and destination registers always encoded at the same position
 - whenever there is sign-extension, it should be done from the same bit
-- it should be simple to load an arbitrary 32-bits immediate value in a register
-- it should be simple to jump to arbitrary memory locations
-- it should be simple to implement function calls
-Then you understand why there are many different immediate formats. For instance, if you consider a `reg <- reg OP imm` operation, since there is only
-one source register, as compared to a `reg <- reg OP reg` instruction, it frees 5 bits that can be used to contribute to the immediate value (and extend
-its dynamic range). Now the rationale behind `LUI`,`AUIPC`,`JAL` and `JALR` is to give a set of functions that can be combined to load arbitrary 32-bit
+- it should be simple to load an arbitrary 32-bits immediate value in a register (but may take several instructions)
+- it should be simple to jump to arbitrary memory locations (but may take several instructions)
+- it should be simple to implement function calls (but may take several instructions)
+
+Then you understand why there are many different immediate formats. For instance, consider `JAL`, that does not have a source register,
+as compared to `JALR` that has one. Both take an immediate value, but `JAL` has 5 more bits available to store it, since it does not need
+to encode the source register. The slightest available bit is used to extend the dynamic range of the immediates. This explains both the
+multiple immediate formats and the fact that they are assembled from multiple pieces of `instr`, slaloming between the three fixed 5-bits
+register encodings, that are there or not depending on the cases.
+
+Now the rationale behind the weird instructions `LUI`,`AUIPC`,`JAL` and `JALR` is to give a set of functions that can be combined to load arbitrary 32-bit
 values in register, or to jump to arbitrary locations in memory, or to implement the function call protocol as simply as possible. Considering the
 constraints, the taken choices (that seemed weird to me in the first place) perfectly make sense. In addition, with the taken choices, the 
-instruction decoder is pretty simple and has a low logical depth.
+instruction decoder is pretty simple and has a low logical depth. Besides the 7-bits instruction decoder, it is mostly wires drawn from the bits of `instr`,
+and duplication of the sign-extended bit 31 to form the immediate values. 
+
+
+Step VI: putting everything together
+------------------------------------
+
 
 TO BE CONTINUED.
