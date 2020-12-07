@@ -245,7 +245,7 @@ registers and with the ALU, based on the instruction. The main reference is agai
 [RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
 We know already that there will be a switch statement based on the opcode (bits `[6:0]`):
 ```
-   wire[5:0] opcode = instr[6:0];
+   wire[6:0] opcode = instr[6:0];
 ```
 
 We also know already that we will need to extract the ALU operation/branch test (bits `[14:12]`):
