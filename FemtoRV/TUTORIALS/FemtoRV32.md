@@ -243,8 +243,26 @@ let's say the current instruction is stored in a 32-bits register called `instr`
 Each instruction is a 32-bits word. We need now to define the hardware component that will decide what to do with the
 registers and with the ALU, based on the instruction. The main reference is again the table in page 130 of the
 [RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
-We know already that there will be a switch statement based on the opcode (bits `[6:0]`). We know already that we will
-extract the operation or test code (bits `[14:12]`). Another important thing is the little table on the top of page 130.
+We know already that there will be a switch statement based on the opcode (bits `[6:0]`):
+```
+   wire[5:0] opcode = instr[6:0];
+```
+
+We also know already that we will need to extract the ALU operation/branch test (bits `[14:12]`):
+```
+   wire [2:0] op = instr[14:12];
+```
+
+There are operations that manipulate registers. They take one (`rs1`) or two (`rs1`,`rs2`) source registers and store the
+result in the destination register (`rd`). Still in the same table, we can see that always the same bits of `instr` are
+used to encore `rs1` (`[19:15]`), `rs2` (`[24:20]`) and `rd` (`[11:7]`), so we can write some verilog for that:
+```
+   wire [4:0] rd  = instr[11:7];
+   wire [4:0] rs1 = instr[19:15];
+   wire [4:0] rs2 = instr[24:20];
+```
+
+Another important thing is the little table on the top of page 130.
 We learn there that there are several types of instructions. To understand what it means, let's get back to Chapter 2, page 16.
 The different instruction types correspond to the way _immediate values_ are encoded in them.
 
@@ -270,5 +288,21 @@ helps a lot (gives for each immediate format where each bit comes from). It can 
    wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};   
    wire [31:0] Uimm = {instr[31], instr[30:12], {12{1'b0}}};
 ```
+
+At this point, I realized what an _instruction set architecture_ means: it is for sure a specification of _what bit pattern does what_
+(Instruction Set) and it is also at the same time driven by how this will be translated into wires (Architecture).
+There were things that seemed really weird to me
+in the first place: all these immediate format variants, the fact that immediate values are scrambled in different bits of `instr`,
+and the weird instructions `LUI`,`AUIPC`,`JAL`,`JALR`. When writing the instruction decoder, you better understand the reasons. The
+ISA is really smart, and the result of a long evolution (there were RISC-I, RISC-II, ... before). It seems to me the result of a 
+_distillation_. What is really nice in the ISA is:
+- instruction size is fixed. Makes things really easier. _(there are extension with varying instrution length, but at least the core
+  instruction set is simple)_;
+- `rs1`,`rs2`,`rd` are always encoded by the same bits of `instr`;
+- the immediate formats that need to do sign expansion do it from the same bit (`instr[31]`);
+- the weird instructions `LUI`,`AUIPC`,`JAL`,`JALR` can be combined to implement higher-level tasks
+   (load 32-bit constant in register, jump to arbitrary address, function calls). Their existence is
+   justified by the fact it makes the design easier. Then assembly programmer's life is made easier by
+   _pseudo-instructions_.
 
 TO BE CONTINUED.
