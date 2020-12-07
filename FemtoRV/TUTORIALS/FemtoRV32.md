@@ -238,21 +238,35 @@ Step V: the instruction decoder
 -------------------------------
 
 At this point, we got a register file, that can store and retreive values, we got an ALU that can apply operations
-to values, and we got predicates that can test values. The instruction of the processor will be fetched from memory.
+to values, and we got predicates that can test values. The instruction of the processor will be fetched from memory,
+let's say the current instruction is stored in a 32-bits register called `instr`.
 Each instruction is a 32-bits word. We need now to define the hardware component that will decide what to do with the
 registers and with the ALU, based on the instruction. The main reference is again the table in page 130 of the
 [RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
 We know already that there will be a switch statement based on the opcode (bits `[6:0]`). We know already that we will
 extract the operation or test code (bits `[14:12]`). Another important thing is the little table on the top of page 130.
-We learn there that there are several types of instructions. Let us further analyze them:
+We learn there that there are several types of instructions. To understand what it means, let's get back to Chapter 2, page 16.
+The different instruction types correspond to the way _immediate values_ are encoded in them.
 
-| Instr. type | Description |
-|-------------|-------------|
-| `R-type`    | register-register ALU ops. No immediate value. [more on this here](https://www.youtube.com/watch?v=pVWtI0426mU) |
-| `I-type`    |             |
-| `S-type`    |             |
-| `B-type`    |             |
-| `U-type`    |             |
-| `J-type`    |             |
+| Instr. type | Description                                    | Immediate value |
+|-------------|------------------------------------------------|-----------------|
+| `R-type`    | register-register ALU ops. [more on this here](https://www.youtube.com/watch?v=pVWtI0426mU) | - |
+| `I-type`    | register-immediate integer ALU ops and `JALR`. |  |
+| `S-type`    | register-immediate shift ALU ops.              |  |
+| `B-type`    | branch ops.                                    |  |
+| `U-type`    | `LUI`,`AUIPC`                                  |  |
+| `J-type`    | `JAL`                                          |  |
+
+
+We will need to reconstruct the immediate values from their bits in the instruction word. To do that, the table in Fig. 2.4,
+Page 17 of [RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf)
+hels a lot (gives for each immediate format where each bit comes from). It can be directly translated in Verilog as follows:
+```
+   wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
+   wire [31:0] Simm = {{21{instr[31]}}, instr[30:25], instr[11:7]};
+   wire [31:0] Bimm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
+   wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};   
+   wire [31:0] Uimm = {instr[31], instr[30:12], {12{1'b0}}};
+```
 
 TO BE CONTINUED.
