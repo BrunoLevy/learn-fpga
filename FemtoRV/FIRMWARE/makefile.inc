@@ -85,7 +85,7 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv
 root: all
 
 clean:
-	rm -f *.o *.elf *.hex *rawhex *.exe *~
+	rm -f *.o *.elf *.hex *rawhex *.exe *~ *.a
 
 #Generating the conversion utility for hex files	
 $(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS_SRC/firmware_words.cpp
