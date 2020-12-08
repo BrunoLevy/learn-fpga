@@ -488,8 +488,9 @@ register file, that selects between the output of the ALU and `PC+4`. These two 
 are depicted on the full schematic (at the beginning and in the next section).
 
 It is time to take a look at the (almost complete) instruction decoder. It looks
-complicated, but it is nothing more than a big combinatorial function. Note that
-`load` and `store` are not there yet.
+complicated, but it is nothing more than a big combinatorial function, written as
+a big `switch` statement that generates all the signals for the 7 different instructions
+(`load` and `store` are not there yet, will see them in the next section). 
 
 ```
 module NrvDecoder(
@@ -529,7 +530,7 @@ module NrvDecoder(
 
    // The rest of instruction decoding, for the following signals:
    // writeBackEn
-   // writeBackSel   0001: ALU  0010: PC+4 0100: RAM 1000: counters
+   // writeBackSel   0001: ALU  0010: PC+4 (note: there will be also 0100:RAM and also 1000:counters (not covered in this tutorial))
    // inRegId1Sel    0: zero   1: regId
    // aluInSel1      0: reg    1: PC 
    // aluInSel2      0: reg    1: imm
@@ -538,10 +539,10 @@ module NrvDecoder(
    // nextPCSel      001: PC+4  010: ALU   100: (pred ? ALU : PC+4)
    // imm (select one of Iimm,Simm,Bimm,Jimm,Uimm)
 
-   // We need to distingish shifts for two reasons:
-   //  - We need to wait for ALU when it is a shift
-   //  - For ALU ops with immediates, aluQual is 0, except
-   //    for shifts (then it is instr[30]).
+   // We need to distingish shifts, because
+   //   for ALU ops with immediates, aluQual is 0, except
+   //   for shifts (then it is instr[30]). Had a hard time
+   //   debugging / understanding that.
    wire aluOpIsShift = (aluOp == 3'b001) || (aluOp == 3'b101);
    
    always @(*) begin
