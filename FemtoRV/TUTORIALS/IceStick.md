@@ -427,4 +427,6 @@ from there, this would considerably enhance the possibilities. This
 requires more work on the memory controller in femtosoc and femtorv.
 An easier way to go further is to get an ULX3S. It costs a bit more
 ($130) but it is worth the price (the on-board ECP5 FPGA is HUGE as
-compared to the one of the IceStick).
+compared to the one of the IceStick). Now time to read the
+[ULX3S tutorial](ULX3S.md) !
+
