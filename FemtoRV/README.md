@@ -23,3 +23,14 @@ Features
 - "femtOS" virtual output support: redirects printf() to UART, OLED screen (or led matrix, WIP).
 - many RISC-V assembly and C demo programs, including graphics for the OLED display.
 
+Performance (dhrystones test)
+-----------------------------
+
+|Configuration                            | CPI   | Dhrystones/s/MHz | DMIPS/MHz |
+|-----------------------------------------|-------|------------------|-----------|
+|FemroRV32 with RV32I and simple shifter  | 3.663 |      580         |   0.330   |
+|FemroRV32 with RV32I and 2-stage shifter | 3.587 |      592         |   0.336   |
+|FemroRV32 with RV32I and barrel shifter  | 3.478 |      611         |   0.347   |
+|FemroRV32 with RV32IM and barrel shifter | 3.692 |      1024        |   0.582   |
+
+
