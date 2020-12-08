@@ -1,6 +1,8 @@
 Episode IX: Adding the weird instructions `LUI`, `AUIPC`, `JAL`, `JALR`
 --------------------------------------------------------------------
 
+![](Images/FemtoRV32_design.jpg)
+
 In fact, these instructions are not that complicated. Let us see again what they are summposed
 to do:
 
@@ -20,7 +22,7 @@ register is replaced by `zero`, and we add 0 to the imm. It is a bit convoluted,
 changes / adds minimal complexity to the previous design. Now consider `JAL` and `JALR`, they need
 to write back `PC+4` to the register file. For that, we add a mux to the write back input of the
 register file, that selects between the output of the ALU and `PC+4`. These two modifications
-are depicted on the full schematic (at the beginning and in the next section).
+are depicted on the schematic above (that also has the circuitry for load and store, that we ignore for now). 
 
 It is time to take a look at the (almost complete) instruction decoder. It looks
 complicated, but it is nothing more than a big combinatorial function, written as
