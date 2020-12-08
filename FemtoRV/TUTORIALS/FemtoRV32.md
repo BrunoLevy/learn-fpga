@@ -454,6 +454,8 @@ when your own processor starts executing risc-v code compiled by the
 gnu assembly, even if it is only blinking a couple of LEDs, it is a
 fantastic experience !
 
+TODO: changes in the state machine.
+
 TODO: restore the designs, assembly programs, test bench.
 
 Now we are 6 instructions away from a complete RV32I processor (minus
