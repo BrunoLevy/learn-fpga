@@ -3,7 +3,7 @@ Episode IX: Adding the weird instructions `LUI`, `AUIPC`, `JAL`, `JALR`
 
 ![](Images/FemtoRV32_design_4.jpg)
 
-In fact, these instructions are not that complicated. Let us see again what they are summposed
+In fact, these instructions are not that complicated. Let us see again what they are supposed
 to do:
 
 | instruction | description                          | algo                                 |
@@ -27,7 +27,19 @@ are depicted on the schematic above.
 It is time to take a look at the (almost complete) instruction decoder. It looks
 complicated, but it is nothing more than a big combinatorial function, written as
 a big `switch` statement that generates all the signals for the 7 different instructions
-(`load` and `store` are not there yet, will see them in the next section). Note that the
+(`load` and `store` are not there yet, will see them in the next
+section). Before seeing the VERILOG source for the instruction decoder, 
+let us take a look at a die shot of a 6502 (a very common 8-bit processor in the 80's):
+
+[](https://fr.wikipedia.org/wiki/MOS_Technology_6502#/media/Fichier:BreakNES_MOS_6502.jpg)
+
+The instruction decoder is the grid-like structure on the top of the
+image. Horizontally, you have the 8 bits and negated 8 bits of the currently decoded
+instruction, and vertically, all the `ANDs` computed between these bits 
+(each 'dot' on the grid corresponds to an `AND`), then these vertical lines are 
+combined with `ORs` to form the internal signals of the processor.
+
+Note that the
 signals that select among more than two sources use one wire per source (for instance,
 selecting among 4 sources is 0001, 0010, 0100, 1000). This so-called _one hot encoding_
 may sound stupid since we could use instead (00, 01, 10, 11), but in fact doing so
