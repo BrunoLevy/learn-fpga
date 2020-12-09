@@ -3,7 +3,10 @@ FEMTORV32 / FEMTOSOC: a minimalistic RISC-V CPU
 
 _(Everything fit on the IceStick < 1280 LUTs)_
  
-See instructions in the [Tutorials](TUTORIALS/README.md).
+Quick links: 
+- [IceStick tutorial](TUTORIALS/IceStick.md)
+- [ULX3S tutorial](TUTORIALS/ULX3S.md)
+- [FemtoRV32 design notes](TUTORIALS/FemtoRV32.md)
 
 Features
 --------
