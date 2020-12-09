@@ -188,7 +188,7 @@ Step 5: Examples
 You can now compile the firmware, synthesize the design and send it to
 the device. Plug the device in a USB port, then:
 ```
-$make ICESTICK
+$make ULX3S
 ```
 The first time you run it, it will download RISC-V development tools (takes a while).
 The default firmware outputs a welcome message to the terminal-over-USB port. First,
