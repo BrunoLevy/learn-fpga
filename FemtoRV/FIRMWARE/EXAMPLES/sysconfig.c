@@ -16,7 +16,7 @@ void show_config() {
    printf("  LEDs     [%c]\n",  devices & CONFIGWORD_DEVICE_LEDS      ? '*' : ' ');
    printf("  UART     [%c]\n",  devices & CONFIGWORD_DEVICE_UART      ? '*' : ' ');
    printf("  OLED     [%c]\n",  devices & CONFIGWORD_DEVICE_SSD1351   ? '*' : ' ');
-   printf("  LedMtx   [%c]\n",  devices & CONFIGWORD_DEVICE_MAX2719   ? '*' : ' ');
+   printf("  LedMtx   [%c]\n",  devices & CONFIGWORD_DEVICE_MAX7219   ? '*' : ' ');
    printf("  SPIFlash [%c]\n",  devices & CONFIGWORD_DEVICE_SPI_FLASH ? '*' : ' ');
    printf("\n");
 }

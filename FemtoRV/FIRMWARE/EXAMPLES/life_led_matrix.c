@@ -46,7 +46,7 @@ void next() {
 
 void show() {
    for(int i=0; i<8; ++i) {
-      MAX2719(
+      MAX7219(
 	      i+1,
 	       buff1[i][0]       |
 	      (buff1[i][1] << 1) |
@@ -61,7 +61,7 @@ void show() {
 }
 
 int main() {
-   MAX2719_tty_init();
+   MAX7219_tty_init();
    printf("Game of Life ");
    delay(1000);
    for(;;) {

@@ -7,7 +7,7 @@ int main() {
     * Note: pulls the two fonts (eats up a subsequent part of the
     * available 6 Kbs).
     *   To save code size, on the IceStick, you can use 
-    * instead MAX2719_tty_init() if you know you are 
+    * instead MAX7219_tty_init() if you know you are 
     * using the led matrix, or GL_tty_init() if you know you are 
     * using the small OLED display.
     */

@@ -131,7 +131,7 @@ We configure `FemtoRV/femtosoc.v` as follows (we keep unused options as commente
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 `define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
 //`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-//`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+//`define NRV_IO_MAX7219      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 //`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
 //`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
@@ -260,12 +260,11 @@ deactivate the UART). To do that, configure devices in `FemtoRV/femtosoc.v` as f
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
 //`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+`define NRV_IO_MAX7219      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 //`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
 //`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
 ```
-(TODO: fix typo in sources everywhere, it is MAX7219, not MAX2719)
 
 ![](Images/IceStick_hello.gif)
 
@@ -296,14 +295,11 @@ $make ICESTICK
 ```
 
 If you want to write your own program: in C, you first need
-to switch the display on using `MAX2719_init()`, then you can use
-the function `MAX2719(col,data)` where `col` is the column index in 1..8
+to switch the display on using `MAX7219_init()`, then you can use
+the function `MAX7219(col,data)` where `col` is the column index in 1..8
 (and not 0..7 !!!), and data an 8-bit integer indicating which led
 should be lit. Take a look at `FIRMWARE/EXAMPLES/life_led_matrix.c` 
 for reference.
-
-(TODO: fix everywhere in the sources, it should be MAX7219!!)
-
 
 Examples with the OLED screen
 =============================
@@ -333,7 +329,7 @@ Now you need to reconfigure `femtosoc.v` as follows:
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
 `define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-//`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+//`define NRV_IO_MAX7219      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 //`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
 //`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
@@ -396,7 +392,7 @@ another driver in `femtosoc.v`, as follows:
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
 `define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-//`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+//`define NRV_IO_MAX7219      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 `define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 //`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
 //`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons

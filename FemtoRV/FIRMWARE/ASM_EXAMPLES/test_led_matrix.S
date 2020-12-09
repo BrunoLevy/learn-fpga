@@ -5,13 +5,13 @@
 
 main:   add sp,sp,-4
         sw ra, 0(sp)
-        call MAX2719_init
+        call MAX7219_init
 anim:   la a0,face1data
-	call MAX2719_image
+	call MAX7219_image
 	li a0, 500
         call delay
 	la a0,face2data
-	call MAX2719_image
+	call MAX7219_image
 	li a0,500
 	call delay
 	j anim
@@ -20,7 +20,7 @@ anim:   la a0,face1data
 	add sp,sp,4
 	ret
 
-MAX2719_image:
+MAX7219_image:
         add sp,sp,-4
         sw ra, 0(sp)
         li s0,1
@@ -28,7 +28,7 @@ MAX2719_image:
         li s2,9
 MAXil:  mv a0,s0
         lbu a1,0(s1)
-	call MAX2719
+	call MAX7219
 	add s0,s0,1
 	add s1,s1,1
 	bne s0,s2,MAXil

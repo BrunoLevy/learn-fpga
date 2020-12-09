@@ -35,7 +35,7 @@ extern uint32_t* CONFIGWORDS;
 #define CONFIGWORD_DEVICE_LEDS      1
 #define CONFIGWORD_DEVICE_UART      2
 #define CONFIGWORD_DEVICE_SSD1351   4
-#define CONFIGWORD_DEVICE_MAX2719   8
+#define CONFIGWORD_DEVICE_MAX7219   8
 #define CONFIGWORD_DEVICE_SPI_FLASH 16
 #define CONFIGWORD_DEVICE_SPI_SDCARD 32
 
@@ -93,7 +93,7 @@ void femtosoc_tty_init();     /* Initializes tty (putchar()) based on present de
 			       * Note: pulls all fonts (eats up a consequent part of the
 			       * available 6Kb... Do not use systematically.
 			       */
-void MAX2719_tty_init();      /* Initializes led matrix and redirects output to it.     */
+void MAX7219_tty_init();      /* Initializes led matrix and redirects output to it.     */
 void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */
 void GL_tty_goto_xy(int X, int Y);
 int  GL_putchar(int c);
@@ -141,9 +141,9 @@ extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
  */
 #define OLED_WAIT() oled_wait()
 
-/* MAX2719 led matrix */
-extern void MAX2719_init();
-extern void MAX2719(uint32_t address, uint32_t value);
+/* MAX7219 led matrix */
+extern void MAX7219_init();
+extern void MAX7219(uint32_t address, uint32_t value);
 
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))

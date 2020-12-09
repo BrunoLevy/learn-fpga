@@ -22,8 +22,8 @@
  */
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-//`define NRV_IO_MAX2719      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+`define NRV_IO_MAX7219      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 //`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
 //`define NRV_IO_BUTTONS     // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
@@ -180,11 +180,11 @@ module NrvIO(
     output 	      TXD,
 `endif
 
-`ifdef NRV_IO_MAX2719
+`ifdef NRV_IO_MAX7219
     // Led matrix
-    output 	      MAX2719_DIN, 
-    output 	      MAX2719_CS, 
-    output 	      MAX2719_CLK,
+    output 	      MAX7219_DIN, 
+    output 	      MAX7219_CS, 
+    output 	      MAX7219_CLK,
 `endif
 
 `ifdef NRV_IO_SPI_FLASH
@@ -225,8 +225,8 @@ module NrvIO(
    localparam UART_CNTL_bit    = 4; // (read) busy (bit 9), data ready (bit 8)
    localparam UART_DAT_bit     = 5; // (read/write) received data / data to send (8 bits)
    
-   localparam MAX2719_CNTL_bit = 6; // (read) led matrix LSB: busy
-   localparam MAX2719_DAT_bit  = 7; // (write)led matrix data (16 bits)
+   localparam MAX7219_CNTL_bit = 6; // (read) led matrix LSB: busy
+   localparam MAX7219_DAT_bit  = 7; // (write)led matrix data (16 bits)
 
    localparam SPI_FLASH_bit    = 8; // (write SPI address (24 bits) read: data (1 byte) + rdy (bit 8)
 
@@ -332,22 +332,22 @@ module NrvIO(
 
 `endif   
 
-   /********************** MAX2719 led matrix driver *******************/
+   /********************** MAX7219 led matrix driver *******************/
    
-`ifdef NRV_IO_MAX2719
-   reg [2:0]  MAX2719_divider;
+`ifdef NRV_IO_MAX7219
+   reg [2:0]  MAX7219_divider;
    always @(posedge clk) begin
-      MAX2719_divider <= MAX2719_divider + 1;
+      MAX7219_divider <= MAX7219_divider + 1;
    end
    // clk=60MHz, slow_clk=60/8 MHz (max = 10 MHz)
-   wire       MAX2719_slow_clk = (MAX2719_divider == 3'b000);
-   reg[4:0]   MAX2719_bitcount; // 0 means idle
-   reg[15:0]  MAX2719_shifter;
+   wire       MAX7219_slow_clk = (MAX7219_divider == 3'b000);
+   reg[4:0]   MAX7219_bitcount; // 0 means idle
+   reg[15:0]  MAX7219_shifter;
 
-   assign MAX2719_DIN  = MAX2719_shifter[15];
-   wire MAX2719_sending = |MAX2719_bitcount;
-   assign MAX2719_CS  = !MAX2719_sending;
-   assign MAX2719_CLK = MAX2719_sending && MAX2719_slow_clk;
+   assign MAX7219_DIN  = MAX7219_shifter[15];
+   wire MAX7219_sending = |MAX7219_bitcount;
+   assign MAX7219_CS  = !MAX7219_sending;
+   assign MAX7219_CLK = MAX7219_sending && MAX7219_slow_clk;
 `endif   
 
    /********************* SPI flash reader *****************************/
@@ -395,8 +395,8 @@ module NrvIO(
 	    | (address[UART_DAT_bit] ? serial_rx_data_latched : 32'b0)	      
 
 `endif	    
-`ifdef NRV_IO_MAX2719
-	    | (address[MAX2719_CNTL_bit] ? {31'b0, MAX2719_sending} : 32'b0)
+`ifdef NRV_IO_MAX7219
+	    | (address[MAX7219_CNTL_bit] ? {31'b0, MAX7219_sending} : 32'b0)
 `endif	
 `ifdef NRV_IO_SPI_FLASH
 	    | (address[SPI_FLASH_bit] ? {23'b0, spi_flash_busy, spi_flash_dat} : 32'b0)
@@ -441,10 +441,10 @@ module NrvIO(
 	      SSD1351_CS  <= 1'b1;
 	   end
 `endif 
-`ifdef NRV_IO_MAX2719
-	   if(address[MAX2719_DAT_bit]) begin
-	      MAX2719_shifter <= in[15:0];
-	      MAX2719_bitcount <= 16;
+`ifdef NRV_IO_MAX7219
+	   if(address[MAX7219_DAT_bit]) begin
+	      MAX7219_shifter <= in[15:0];
+	      MAX7219_bitcount <= 16;
 	   end
 `endif
 `ifdef NRV_IO_SPI_FLASH
@@ -494,10 +494,10 @@ module NrvIO(
 	    spi_cs_n <= 1'b1;
 	 end
 `endif	 
-`ifdef NRV_IO_MAX2719
-	 if(MAX2719_sending &&  MAX2719_slow_clk) begin
-            MAX2719_bitcount <= MAX2719_bitcount - 5'd1;
-            MAX2719_shifter <= {MAX2719_shifter[14:0], 1'b0};
+`ifdef NRV_IO_MAX7219
+	 if(MAX7219_sending &&  MAX7219_slow_clk) begin
+            MAX7219_bitcount <= MAX7219_bitcount - 5'd1;
+            MAX7219_shifter <= {MAX7219_shifter[14:0], 1'b0};
 	 end
 `endif
      end	 
@@ -524,7 +524,7 @@ module femtosoc(
    input  RXD,
    output TXD,
 `endif	      
-`ifdef NRV_IO_MAX2719	   
+`ifdef NRV_IO_MAX7219	   
    output ledmtx_DIN, ledmtx_CS, ledmtx_CLK,
 `endif
 `ifdef NRV_IO_SPI_FLASH
@@ -636,10 +636,10 @@ module femtosoc(
      .RXD(RXD),
      .TXD(TXD),
 `endif	   
-`ifdef NRV_IO_MAX2719	   
-     .MAX2719_DIN(ledmtx_DIN),
-     .MAX2719_CS(ledmtx_CS),
-     .MAX2719_CLK(ledmtx_CLK),
+`ifdef NRV_IO_MAX7219	   
+     .MAX7219_DIN(ledmtx_DIN),
+     .MAX7219_CS(ledmtx_CS),
+     .MAX7219_CLK(ledmtx_CLK),
 `endif
 `ifdef NRV_IO_SPI_FLASH
      .spi_mosi(spi_mosi),
