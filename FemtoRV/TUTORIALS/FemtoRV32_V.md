@@ -59,8 +59,8 @@ generated, in a big `switch` statement.
 Sidebar: the elegance of RISC-V
 -------------------------------
 
-This paragraph may be skipped, it just contains my own impressions and reflexions on the RISC-V instruction set, inspired by the
-comments and Q&A in italics in the
+This paragraph may be [skipped](FemtoRV32_VI.md), 
+it just contains my own impressions and reflexions on the RISC-V instruction set, inspired by the comments and Q&A in italics in the
 [RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
 
 At this point, I realized what an _instruction set architecture_ means: it is for sure a specification of _what bit pattern does what_
@@ -71,7 +71,7 @@ is probably very similar in all implementations.
 
 There were things that seemed really weird to me
 in the first place: all these immediate format variants, the fact that immediate values are scrambled in different bits of `instr`,
-and the weird instructions `LUI`,`AUIPC`,`JAL`,`JALR`. When writing the instruction decoder, you better understand the reasons. The
+the `zero` register, and the weird instructions `LUI`,`AUIPC`,`JAL`,`JALR`. When writing the instruction decoder, you better understand the reasons. The
 ISA is really smart, and is the result of a long evolution (there were RISC-I, RISC-II, ... before). It seems to me the result of a 
 _distillation_. Now, in 2020, many things were tested in terms of ISA, and this one seems to have benefited from all the previous
 attempts, taking the good choices and avoiding the suboptimal ones. 
@@ -85,10 +85,14 @@ What is really nice in the ISA is:
    (load 32-bit constant in register, jump to arbitrary address, function calls). Their existence is
    justified by the fact it makes the design easier. Then assembly programmer's life is made easier by
    _pseudo-instructions_ `CALL`, `RET`, ... See [risc-v assembly manual](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md), the
-   two tables at the end of the page.
+   two tables at the end of the page. Same thing for tests/branch instructions obtained by swapping parameters (e.g. `a < b <=> b > a`
+   etc...), there are pseudo-instructions that do the job for you.
 
-Put differently, to appreciate the elegance of the RISC-V ISA, imagine that your mission is to _invent it_. The constraints are:
+Put differently, to appreciate the elegance of the RISC-V ISA, imagine
+that your mission is to _invent it_. That is, invent both the set of
+instructions and the way they are encoded as bit patterns. The constraints are:
 - fixed instruction length (32 bits)
+- as simple as possible: the ultimate sophistication is simplicity [Leonardo da Vinci] !!
 - source and destination registers always encoded at the same position
 - whenever there is sign-extension, it should be done from the same bit
 - it should be simple to load an arbitrary 32-bits immediate value in a register (but may take several instructions)
@@ -116,6 +120,13 @@ with the taken choices, the instruction decoder is pretty simple and
 has a low logical depth. Besides the 7-bits instruction decoder, it
 mostly consists of a set of wires drawn from the bits of `instr`, and
 duplication of the sign-extended bit 31 to form the immediate values.
+
+Before moving forward, I'd like to say a word about the `zero` register.
+I think it is really a smart move. With it, you do not need a `MOV rd rs` 
+instruction (just `ADD rd rs zero`), you do not need a `NOP` 
+instruction (`ADD zero zero zero`), and all the branch variants can
+compare with `zero` ! I think that `zero` is a great invention, not as great
+as `0`, but really makes the instruction set more compact.
 
 OK, now that we see more or less the overall picture, we can now
 create the hardware for interpreting the 9 different instructions
