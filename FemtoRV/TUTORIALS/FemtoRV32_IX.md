@@ -31,7 +31,7 @@ a big `switch` statement that generates all the signals for the 7 different inst
 section). Before seeing the VERILOG source for the instruction decoder, 
 let us take a look at a die shot of a 6502 (a very common 8-bit processor in the 80's):
 
-[](https://fr.wikipedia.org/wiki/MOS_Technology_6502#/media/Fichier:BreakNES_MOS_6502.jpg)
+![](https://fr.wikipedia.org/wiki/MOS_Technology_6502#/media/Fichier:BreakNES_MOS_6502.jpg)
 
 The instruction decoder is the grid-like structure on the top of the
 image. Horizontally, you have the 8 bits and negated 8 bits of the currently decoded
