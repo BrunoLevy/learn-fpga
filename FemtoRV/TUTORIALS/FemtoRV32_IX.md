@@ -33,13 +33,15 @@ let us take a look at a floor plan of a 6502 (a very common 8-bit processor in t
 
 ![](Images/6502.jpg)
 
+The image is taken from wikipedia. See also the [visual6502 project](http://www.visual6502.org/), lots of information there.
+It is a good idea to take a look at designs of processors from the 80's, because they are simple enough.
 The instruction decoder is the grid-like structure on the top of the
 image. Horizontally, you have the 8 bits and negated 8 bits of the currently decoded
 instruction, and vertically, all the `ANDs` computed between these bits 
 (each 'dot' on the grid corresponds to an `AND`), then these vertical lines are 
-combined with `ORs` to form the internal signals of the processor.
+combined with `ORs` to form the internal signals of the processor. 
 
-Note that the
+Let us get back to our RISC-V processor. Note that the
 signals that select among more than two sources use one wire per source (for instance,
 selecting among 4 sources is 0001, 0010, 0100, 1000). This so-called _one hot encoding_
 may sound stupid since we could use instead (00, 01, 10, 11), but in fact doing so
