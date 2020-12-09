@@ -1,7 +1,7 @@
 Episode IX: Adding the weird instructions `LUI`, `AUIPC`, `JAL`, `JALR`
 --------------------------------------------------------------------
 
-![](Images/FemtoRV32_design.jpg)
+![](Images/FemtoRV32_design_4.jpg)
 
 In fact, these instructions are not that complicated. Let us see again what they are summposed
 to do:
@@ -16,13 +16,13 @@ to do:
 Consider first the right-hand side of the affectations. We need to compute additions between the
 `PC` and immediates. To do that, we already have the two muxes for the input of the ALU, so we
 are done. In fact, `LUI` requires a special treatment, since it directly copies the immediate
-value to a register. It can be easily done by and-gating the selection of the the second register
+value to a register. It can be easily done by and-gating the selection of the second register
 (`sel2`) with an additional `regId1Sel` signal from the decoder. If this signal is 0, then this
 register is replaced by `zero`, and we add 0 to the imm. It is a bit convoluted, but makes minimal
 changes / adds minimal complexity to the previous design. Now consider `JAL` and `JALR`, they need
 to write back `PC+4` to the register file. For that, we add a mux to the write back input of the
 register file, that selects between the output of the ALU and `PC+4`. These two modifications
-are depicted on the schematic above (that also has the circuitry for load and store, that we ignore for now). 
+are depicted on the schematic above.
 
 It is time to take a look at the (almost complete) instruction decoder. It looks
 complicated, but it is nothing more than a big combinatorial function, written as

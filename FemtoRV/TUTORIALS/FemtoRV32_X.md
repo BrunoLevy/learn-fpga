@@ -26,8 +26,13 @@ instruction decoder. We are generating two additional signals `isLoad` and `isSt
 	   end
 ```
 
-Everything is connected as shown in this schematic. There is a new _memory access subsystem_. To make things easy, we are
-going to use different wires for reading and for writing data. 
+Everything is connected as shown in this schematic. There is a new _memory access subsystem_.
+The mux for register write back has a new path (read mem data). Then
+we just need to draw two wires, one from the second register output to
+the written mem data, and another one from the ALU output to the mem
+address. Note that we use different wires for reading (read mem data)
+and for writing (write mem data). We use two single-directional data buses 
+instead of a single bidirectional data bus.
 
 ![](Images/FemtoRV32_design.jpg)
 
