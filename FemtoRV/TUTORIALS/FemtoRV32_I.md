@@ -3,10 +3,11 @@ Episode I: general understanding on processor design
 
 To understand processor design, the first thing that I have read was
 [this answer](https://stackoverflow.com/questions/51592244/implementation-of-simple-microprocessor-using-verilog/51621153#51621153)
-on Stackoverflow, that I found inspiring.
+on Stackoverflow, that I found inspiring. There is also [this article](http://www.fpgacpu.org/papers/xsoc-series-drafts.pdf) suggested by @mithro.
 For a complete course, I highly recommend [this one from the MIT](http://web.mit.edu/6.111/www/f2016/), it also
-gives the principles for going much further than what I've done here (pipelines etc...). For
-Verilog basics and syntax, I read _Verilog by example by Blaine C. Readler_, it is also short and to the point. 
+gives the principles for going much further than what I've done here (pipelines etc...).
+
+For Verilog basics and syntax, I read _Verilog by example by Blaine C. Readler_, it is also short and to the point. 
 
 There are two nice things with the Stackoverflow answer:
 - it goes to the essential, and keeps nothing else than what's essential
