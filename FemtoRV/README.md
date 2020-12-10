@@ -37,3 +37,23 @@ Performance (Dhrystones test)
 |FemroRV32 with RV32IM and barrel shifter | 3.692 |      1024        |   0.582   |
 
 _last line (RV32IM) using ECP5 DSP blocs_
+
+LUT count (FemtoRV32 + FemtoSOC)
+--------------------------------
+
+On IceStick: 1174 LUTs with the following `femtosoc.v` configuration:
+
+| Parameter            | value |
+|----------------------|-------|
+| NRV_TWO_STAGE_SHIFTER| ON    |
+| NRV_NEGATIVE_RESET   | OFF   |
+| NRV_IO_LEDS          | ON    |
+| NRV_IO_UART          | ON    |
+| NRV_IO_SSD1351       | OFF   |
+| NRV_IO_MAX7219       | OFF   |
+| NRV_IO_SPI_FLASH     | OFF   |
+| NRV_FREQ             | 80    |
+| NRV_RAM              | 6144  |
+| NRV_COUNTERS         | OFF   |
+| NRV_COUNTERS_64      | OFF   |
+| NRV_RV32M            | OFF   |

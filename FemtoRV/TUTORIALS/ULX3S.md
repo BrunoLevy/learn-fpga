@@ -119,7 +119,7 @@ ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", \
 
 Step 3: Configure femtosoc and femtorv32
 ========================================
-Time to edit `learn-fpga/FemtoRV/femtosoc.v`. This file lets you define what type
+Time to edit `learn-fpga/FemtoRV/RTL/femtosoc.v`. This file lets you define what type
 of RISC-V processor you will create, and which device drivers in the
 associated system-on-chip. For now we activate the LEDs (for visual
 debugging) and the UART (to talk with the system through a
@@ -133,7 +133,7 @@ be kept: the firmware generation tool uses them to store the hardware
 configuration in some predefined memory areas. 
 
 
-We configure `FemtoRV/femtosoc.v` as follows (we keep unused options as commented-out lines):
+We configure `FemtoRV/RTL/femtosoc.v` as follows (we keep unused options as commented-out lines):
 ```
 /*
  * Optional mapped IO devices
@@ -277,7 +277,7 @@ vary a bit, refer to this table:
 |  GND                  | Ground               |                                     |
              
 
-Now configure `FemtoRV/femtosoc.v` as follows:
+Now configure `FemtoRV/RTL/femtosoc.v` as follows:
 ```
 /*
  * Optional mapped IO devices
@@ -326,8 +326,10 @@ _(The black diagonal stripes are due to display refresh, they are not visible no
 | `EXAMPLES/tinyraytracer.c`                   | a port from [TinyRaytracer](https://github.com/ssloy/tinyraytracer).             |
 
 The LIBFEMTORV32 library includes some basic font rendering, 2D polygon clipping and 2D polygon filling routines. 
-Everything fits in the available 6kbytes of memory ! The larger programs use floating point arithmetics, implemented 
-in software in gcc's libraries (there will be one day a hardware FPU for femtorv32, maybe...).
+For most of the programs, everything fits in the available 6kbytes of memory ! 
+The larger programs use floating point arithmetics, implemented 
+in software in gcc's libraries (there will be one day a hardware FPU
+for femtorv32, maybe...). 
 
 FemtOS
 ======
@@ -343,7 +345,8 @@ select and run programs from a SDCard. It is made possible by
 a wonderful piece of software that lets you read files from a
 fat-formatted medium.
 
-First, you need to activate the hardware driver for the SDCard in `FemtoRV/femtosoc.v`:
+First, you need to activate the hardware driver for the SDCard in 
+`FemtoRV/RTL/femtosoc.v`:
 ```
 /*
  * Optional mapped IO devices
@@ -375,6 +378,7 @@ Then you can compile a couple of programs:
 $ cd FIRMWARE/EXAMPLES
 $ make commander.exe sieve.exe mandelbrot_OLED.exe
 ```
+(it works for all programs in `EXAMPLES` and in `ASM_EXAMPLES`).
 
 Copy `commander.exe`,`sieve.exe` and `mandelbrot_OLED.exe` to a
 FAT-formatted SDCard. Unplug the ULX3S from the USB, 
