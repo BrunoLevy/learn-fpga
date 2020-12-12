@@ -36,11 +36,12 @@
   `define bench(command)
 `endif
 
-`include "register_file.v"
-`include "small_alu.v"
-`include "large_alu.v"
-`include "branch_predicates.v"
-`include "decoder.v"
+`include "register_file.v"     
+`include "small_alu.v"             // Used on IceStick, RV32I   
+`include "large_alu.v"             // For larger FPGAs, RV32IM
+`include "branch_predicates.v"     // Tests for branch instructions
+`include "decoder.v"               // The instruction decoder
+`include "aligned_memory_access.v" // Read/write bytes, hwords and words from memory
 
 /********************* Nrv processor *******************************/
 
@@ -219,37 +220,35 @@ module FemtoRV32 #(
       end
    endgenerate
       
-   // LOAD: decode datain based on type and address
+   // LOAD: a small combinatorial circuit that realigns 
+   // and sign-expands mem_rdata based 
+   // on width (aluOp[1:0]), signed/unsigned flag (aluOp[2])
+   // and the two LSBs of the address. 
+   wire [31:0] LOAD_mem_rdata_aligned;
+   NrvLoadFromMemory load_from_mem(
+       .mem_rdata(mem_rdata),        // Raw data read from mem
+       .addr_LSBs(mem_addr[1:0]),    // The two LSBs of the address
+       .width(aluOp[1:0]),           // Data width: 00:byte 01:hword 10:word
+       .is_unsigned(aluOp[2]),       // signed/unsigned flag
+       .data(LOAD_mem_rdata_aligned) // Data ready to be sent to register				   
+   );
+
+   // STORE: a small combinatorial circuit that realigns
+   // data to be written based on width and the two LSBs
+   // of the address.
+   // When a STORE instruction is executed, the data to be stored to
+   // mem is available from the second register (regOut2) and the
+   // address where to store it is the output of the ALU (aluOut).
+   wire [31:0] STORE_mem_wdata;
+   wire [3:0]  STORE_mem_wstrb;
+   NrvStoreToMemory store_to_mem(
+       .data(regOut2),              // Data to be sent, out of register
+       .addr_LSBs(aluOut[1:0]),     // The two LSBs of the address 
+       .width(aluOp[1:0]),          // Data width: 00:byte 01:hword 10:word
+       .mem_wdata(STORE_mem_wdata), // Realigned data to be sent to memory
+       .mem_wstrb(STORE_mem_wstrb)  // Data write mask			 
+   );
    
-   reg [31:0] decodedDataIn;   
-   reg [15:0]  mem_rdata_H;
-   reg [7:0]   mem_rdata_B;
-
-   always @(*) begin
-      (* parallel_case, full_case *)            
-      case(mem_addr[1])
-	1'b0: mem_rdata_H = mem_rdata[15:0];
-	1'b1: mem_rdata_H = mem_rdata[31:16];
-      endcase 
-      
-      (* parallel_case, full_case *)            
-      case(mem_addr[1:0])
-	2'b00: mem_rdata_B = mem_rdata[7:0];
-	2'b01: mem_rdata_B = mem_rdata[15:8];
-	2'b10: mem_rdata_B = mem_rdata[23:16];
-	2'b11: mem_rdata_B = mem_rdata[31:24];
-      endcase 
-
-      // aluop[1:0] contains data size (00: byte, 01: half word, 10: word)
-      // aluop[2] sign expansion toggle (0 = sign expansion, 1 = no sign expansion)
-      (* parallel_case, full_case *)      
-      case(aluOp[1:0])
-	2'b00: decodedDataIn = {{24{aluOp[2]?1'b0:mem_rdata_B[7]}},mem_rdata_B};
-	2'b01: decodedDataIn = {{16{aluOp[2]?1'b0:mem_rdata_H[15]}},mem_rdata_H};
-	default: decodedDataIn = mem_rdata;
-      endcase
-   end
-
 `ifdef NRV_COUNTERS
    reg [31:0] counter;
    always @(*) begin
@@ -274,7 +273,7 @@ module FemtoRV32 #(
       case(1'b1)
 	writeBackSel[0]: writeBackData = aluOut;
 	writeBackSel[1]: writeBackData = {PCplus4, 2'b00};
-	writeBackSel[2]: writeBackData = decodedDataIn;
+	writeBackSel[2]: writeBackData = LOAD_mem_rdata_aligned;
 `ifdef NRV_COUNTERS
 	writeBackSel[3]: writeBackData = counter;	
 `endif
@@ -367,48 +366,8 @@ module FemtoRV32 #(
 	   end else if(isStore) begin
 	      state <= USE_PREFETCHED_INSTR; // Data will be written in USE_PREFETCHED_INSTR
 	      PC <= PCplus4;
-	      case(aluOp[1:0])
-		2'b00: begin
-		   case(aluOut[1:0]) // Address is now in aluOut (and not in mem_address yet !!)
-		     2'b00: begin
-			mem_wstrb <= 4'b0001;
-			mem_wdata <= {24'bxxxxxxxxxxxxxxxxxxxxxxxx,regOut2[7:0]};
-		     end
-		     2'b01: begin
-			mem_wstrb <= 4'b0010;
-			mem_wdata <= {16'bxxxxxxxxxxxxxxxx,regOut2[7:0],8'bxxxxxxxx};
-		     end
-		     2'b10: begin
-			mem_wstrb <= 4'b0100;
-			mem_wdata <= {8'bxxxxxxxx,regOut2[7:0],16'bxxxxxxxxxxxxxxxx};
-		     end
-		     2'b11: begin
-			mem_wstrb <= 4'b1000;
-			mem_wdata <= {regOut2[7:0],24'bxxxxxxxxxxxxxxxxxxxxxxxx};
-		     end
-		   endcase
-		end
-		2'b01: begin
-		   case(aluOut[1]) // Address is now in aluOut (and not in mem_address yet !!)
-		     1'b0: begin
-			mem_wstrb <= 4'b0011;
-			mem_wdata <= {16'bxxxxxxxxxxxxxxxx,regOut2[15:0]};
-		     end
-		     1'b1: begin
-			mem_wstrb <= 4'b1100;
-			mem_wdata <= {regOut2[15:0],16'bxxxxxxxxxxxxxxxx};
-		     end
-		   endcase
-		end
-		2'b10: begin
-		   mem_wstrb <= 4'b1111;
-		   mem_wdata <= regOut2;
-		end
-		default: begin
-		   mem_wstrb <= 4'bxxxx;
-		   mem_wdata <= 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
-		end
-	      endcase 
+	      mem_wstrb <= STORE_mem_wstrb;
+	      mem_wdata <= STORE_mem_wdata;
 	   end else begin 
 	      (* parallel_case, full_case *)
 	      case(1'b1)
