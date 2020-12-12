@@ -1,0 +1,16 @@
+*~
+*.o
+*.a
+*.exe
+*.elf
+*.asc
+*.bin
+*.bit
+*.json
+*.svf
+*.timings
+*_out.config
+*.000
+*.hex
+FemtoRV/FIRMWARE/TOOLCHAIN/
+FemtoRV/FIRMWARE/TOOLS/firmware_words
