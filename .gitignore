@@ -12,5 +12,6 @@
 *_out.config
 *.000
 *.hex
+FemtoRV/FIRMWARE/firmware.txt
 FemtoRV/FIRMWARE/TOOLCHAIN/
 FemtoRV/FIRMWARE/TOOLS/firmware_words
