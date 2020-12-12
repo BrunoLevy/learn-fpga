@@ -111,7 +111,7 @@ ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0660", GROUP="plugdev",
 
 Step 3: Configure femtosoc and femtorv32
 ========================================
-Time to edit `learn-fpga/FemtoRV/RTL/femtosoc.v`. This file lets you define what type
+Time to edit `learn-fpga/FemtoRV/RTL/femtosoc_config.v`. This file lets you define what type
 of RISC-V processor you will create, and which device drivers in the
 associated system-on-chip. For now we activate the LEDs (for visual
 debugging) and the UART (to talk with the system through a
@@ -123,7 +123,7 @@ be kept: the firmware generation tool uses them to store the hardware
 configuration in some predefined memory areas. 
 
 
-We configure `FemtoRV/RTL/femtosoc.v` as follows (we keep unused options as commented-out lines):
+We configure `FemtoRV/RTL/femtosoc_config.v` as follows (we keep unused options as commented-out lines):
 ```
 /*
  * Optional mapped IO devices
@@ -252,7 +252,7 @@ insert it in the J2 connector of the IceStik as shown on the image.
 FemtoSOC configuration
 ----------------------
 Now we need to activate hardware support for the led matrix (and
-deactivate the UART). To do that, configure devices in `FemtoRV/RTL/femtosoc.v` as follows:
+deactivate the UART). To do that, configure devices in `FemtoRV/RTL/femtosoc_config.v` as follows:
 ```
 /*
  * Optional mapped IO devices
@@ -321,7 +321,7 @@ connect the wires as shown to the connector, then the connector to the
 IceStick. If the colors of the wires do not match, use the schematic
 on the right to know wich wire goes where. 
 
-Now you need to reconfigure `femtosoc.v` as follows:
+Now you need to reconfigure `femtosoc_config.v` as follows:
 ```
 /*
  * Optional mapped IO devices
@@ -383,7 +383,7 @@ there is plenty of unused room in it: _if it does not fit in one chip,
 we can overflow in the neighborhing chip !_. This flash memory is a tiny 8-legged
 chip, that talks to the external world using a serial protocol (SPI).
 To allow our femtorv32 processor to communicate with it, you need to activate 
-another driver in `FemtoRV/RT/femtosoc.v`, as follows:
+another driver in `FemtoRV/RTL/femtosoc_config.v`, as follows:
 
 ```
 /*

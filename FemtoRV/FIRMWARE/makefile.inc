@@ -73,12 +73,12 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv
 	
 #Rule to convert a raw hex file into an hex file that can be directly imported in verilog files
 %.hex: %.rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
-	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc.v -hex $@
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc_config.v -hex $@
 #	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram 262144 -hex $@
 
 #Rule to convert a raw hex file into an executable (flat binary file)
 %.exe: %.rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
-	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc.v -exe $@
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc_config.v -exe $@
 
 .PHONY: root clean all get_riscv_toolchain
 

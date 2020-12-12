@@ -72,7 +72,7 @@ int main(void)
 	* using the small OLED display.
 	*/
         femtosoc_tty_init();
-   
+
 	int idx = 1;
 	hash = 5381;
 	print_prime(idx++, 2);

@@ -119,7 +119,7 @@ ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", \
 
 Step 3: Configure femtosoc and femtorv32
 ========================================
-Time to edit `learn-fpga/FemtoRV/RTL/femtosoc.v`. This file lets you define what type
+Time to edit `learn-fpga/FemtoRV/RTL/femtosoc_config.v`. This file lets you define what type
 of RISC-V processor you will create, and which device drivers in the
 associated system-on-chip. For now we activate the LEDs (for visual
 debugging) and the UART (to talk with the system through a
@@ -133,7 +133,7 @@ be kept: the firmware generation tool uses them to store the hardware
 configuration in some predefined memory areas. 
 
 
-We configure `FemtoRV/RTL/femtosoc.v` as follows (we keep unused options as commented-out lines):
+We configure `FemtoRV/RTL/femtosoc_config.v` as follows (we keep unused options as commented-out lines):
 ```
 /*
  * Optional mapped IO devices
@@ -277,7 +277,7 @@ vary a bit, refer to this table:
 |  GND                  | Ground               |                                     |
              
 
-Now configure `FemtoRV/RTL/femtosoc.v` as follows:
+Now configure `FemtoRV/RTL/femtosoc_config.v` as follows:
 ```
 /*
  * Optional mapped IO devices
@@ -346,7 +346,7 @@ a wonderful piece of software that lets you read files from a
 fat-formatted medium.
 
 First, you need to activate the hardware driver for the SDCard in 
-`FemtoRV/RTL/femtosoc.v`:
+`FemtoRV/RTL/femtosoc_config.v`:
 ```
 /*
  * Optional mapped IO devices

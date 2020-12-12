@@ -1,3 +1,4 @@
+/****************** The 31 registers (plus zero) ***************************/
 
 module NrvRegisterFile(
   input 	    clk, 
