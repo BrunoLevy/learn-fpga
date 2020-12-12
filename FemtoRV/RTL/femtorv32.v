@@ -288,23 +288,6 @@ module FemtoRV32 #(
    );
 
    /*************************************************************************/
-   // Performance counters (TODO: merge with other counters code block above?)
-/*   
-`ifdef NRV_COUNTERS
-   always @(posedge clk) begin
-      if(!reset) begin	    
-	 counter_instret <= 0;
-	 counter_cycle   <= 0;
-      end else begin
-	 counter_cycle <= counter_cycle+1;
-	 if(state[FETCH_REGS_bit]) begin
-	    counter_instret <= counter_instret+1;
-	 end
-      end
-   end
-`endif
-*/
-   /*************************************************************************/
    // And finally, the state machine
    
    always @(posedge clk) begin
