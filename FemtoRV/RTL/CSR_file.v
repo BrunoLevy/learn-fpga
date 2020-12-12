@@ -2,15 +2,14 @@
 
 // For now we only implement some readonly CSRs
 
-module NrvCSRRegisterFile(
+module NrvControlStatusRegisterFile(
    input wire clk,          // clock
    input wire instr_cnt,    // asserted once per instruction retired
-   input wire reset,	    // reset counters, CSRs to default value		  
-   input wire [11:0]  CSR,  // 12-bits CSR ID
+   input wire reset,	    // resets CSRs to default value (aclive low)
+   input wire [11:0] CSRid,  // 12-bits CSR ID
    output reg [31:0] rdata, // read CSR value
    output reg	     error  // set to 1 if invalid CSR ID		  
 );
-
 
 `ifdef NRV_COUNTERS
  `ifdef NRV_COUNTERS_64   
@@ -34,9 +33,9 @@ module NrvCSRRegisterFile(
 `endif
 
 always @(*) begin
+   error = 1'b0;
    (* parallel_case, full_case *)
-   case(CSR) begin
-      error = 1'b0;
+   case(CSRid) 
 `ifdef NRV_COUNTERS
       12'b110000000000: rdata = counter_cycle[31:0];    // CYCLE
       12'b110000000001: rdata = counter_cycle[31:0];    // TIME (returns CYCLE)
@@ -51,7 +50,7 @@ always @(*) begin
 	 rdata = {32{1'bx}};
 	 error = 1'b1;
       end
-   end
+   endcase
 end   
    
 endmodule   
