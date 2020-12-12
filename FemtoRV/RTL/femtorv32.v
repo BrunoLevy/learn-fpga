@@ -2,22 +2,7 @@
 //   (minus SYSTEM and FENCE that are not implemented)
 // Bruno Levy, May-June 2020
 //
-// Mission statement:
-//   - understand basics of FPGA and processor design
-//   - learn about RISC-V
-//   - create a RISC-V design that is easy to understand (and that
-//       I'm able to re-read, re-understand later)
-//   - create a RISC-V design that can be used on the cheapest /
-//       smallest FPGAs (ICEStick) and that can be programmed in
-//       assembly and C using the GNU RISC-V toolchain
-//
-//   Note: femtorv32 is meant to be used for educational purposes,
-// targeting legibility of the design and minimal LUT footprint.
-//  For other usages, if your FPGA has more than 1380 LUTs (that means,
-// is something else than an ICEStick), I recommend using a more efficient /
-// more complete RISC-V core (e.g., Claire Wolf's picorv32).
-//
-// Dhrystones and LUT-golfing par: see README.md
+// For more information, see README.md
 
 
 `ifdef VERBOSE
@@ -133,6 +118,8 @@ module FemtoRV32 #(
    wire 	 isStore;        // guess what, true if instr is a store
    wire          decoderError;   // true if instr does not correspond to any known instr
 
+   /**************************************************************************************************/
+   
    // The instruction decoder, that reads the current instruction 
    // and generates all the signals from it. It is in fact just a
    // big combinatorial function.
@@ -158,6 +145,7 @@ module FemtoRV32 #(
      .error(decoderError)     		     
    );
 
+   /**************************************************************************************************/   
    // Maybe not necessary, but I'd rather latch this one,
    // if this one glitches, then it will break everything...
    reg error_latched;
@@ -166,7 +154,8 @@ module FemtoRV32 #(
    wire [31:0] aluOut;
    wire        aluBusy;
    wire	       writeBack = (state[EXECUTE_bit] && writeBackEn) || state[WAIT_ALU_OR_DATA_bit];
-   
+
+   /**************************************************************************************************/      
    // The register file. At each cycle, it can read two
    // registers (available at next cycle) and write one.
    reg  [31:0] writeBackData;
@@ -183,10 +172,12 @@ module FemtoRV32 #(
     .out2(regOut2) 
    );
 
+   /**************************************************************************************************/         
    // The ALU, partly combinatorial, partly state (for shifts).
    wire [31:0] aluIn1 = aluInSel1 ? {PC, 2'b00} : regOut1;
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
-   
+
+   // Select the ALU based on RV32M (use large ALU) or plain RV32I (use small ALU)
    generate
       if(RV32M) begin
          NrvLargeALU alu(
@@ -219,7 +210,15 @@ module FemtoRV32 #(
          );
       end
    endgenerate
-      
+   
+   /****************************************************************************/
+
+   // Memory only does 32-bit aligned accesses. Internally we have two small
+   // circuits (one for LOAD and one for STORE) that shift and adapt data
+   // according to data type (byte, halfword, word) and memory alignment (addr[1:0]).
+   // In addition, it does sign-expansion (when loading a signed byte to a word for
+   // instance).
+   
    // LOAD: a small combinatorial circuit that realigns 
    // and sign-expands mem_rdata based 
    // on width (aluOp[1:0]), signed/unsigned flag (aluOp[2])
@@ -239,15 +238,20 @@ module FemtoRV32 #(
    // When a STORE instruction is executed, the data to be stored to
    // mem is available from the second register (regOut2) and the
    // address where to store it is the output of the ALU (aluOut).
-   wire [31:0] STORE_mem_wdata;
-   wire [3:0]  STORE_mem_wstrb;
    NrvStoreToMemory store_to_mem(
        .data(regOut2),              // Data to be sent, out of register
        .addr_LSBs(aluOut[1:0]),     // The two LSBs of the address 
        .width(aluOp[1:0]),          // Data width: 00:byte 01:hword 10:word
-       .mem_wdata(STORE_mem_wdata), // Realigned data to be sent to memory
-       .mem_wstrb(STORE_mem_wstrb)  // Data write mask			 
+       .mem_wdata(mem_wdata),       // Realigned data to be sent to memory
+       .mem_wstrb(mem_wstrb),       // Data write mask
+       .wr_enable(state[USE_PREFETCHED_INSTR_bit] && isStore)
+         // NOTE: memory write are done during the USE_PREFETCHED_INSTR state,
+         // Can't be done during EXECUTE (would be better), because mem_addr
+         // (needed) is updated at the end of EXECUTE.
    );
+   
+   /*************************************************************************/
+   // Performance counters.
    
 `ifdef NRV_COUNTERS
    reg [31:0] counter;
@@ -266,8 +270,10 @@ module FemtoRV32 #(
       endcase 
    end
 `endif   
-   
+
+   /*************************************************************************/
    // The value written back to the register file.
+   
    always @(*) begin
       (* parallel_case, full_case *)
       case(1'b1)
@@ -280,7 +286,9 @@ module FemtoRV32 #(
       endcase
    end
 
-   // The predicate for conditional branches. 
+   /*************************************************************************/
+   // The predicate for conditional branches.
+   
    wire predOut;
    NrvPredicate pred(
     .in1(regOut1),
@@ -289,6 +297,9 @@ module FemtoRV32 #(
     .out(predOut)		    
    );
 
+   /*************************************************************************/
+   // Performance counters (TODO: merge with other counters code block above?)
+   
 `ifdef NRV_COUNTERS
    always @(posedge clk) begin
       if(!reset) begin	    
@@ -302,13 +313,15 @@ module FemtoRV32 #(
       end
    end
 `endif
+
+   /*************************************************************************/
+   // And finally, the state machine
    
    always @(posedge clk) begin
       `verbose($display("state = %h",state));
       if(!reset) begin
 	 state <= INITIAL;
 	 mem_instr <= 1'b1;
-	 mem_wstrb <= 4'b0000;
 	 addressReg <= 0;
 	 PC <= 0;
       end else
@@ -333,13 +346,16 @@ module FemtoRV32 #(
 	   state <= FETCH_REGS;
 	end
 	state[USE_PREFETCHED_INSTR_bit]: begin
-	   `verbose($display("USE_PREFETCHED_INSTR"));	   
+	   `verbose($display("USE_PREFETCHED_INSTR"));
+	   // for linear execution flow, the prefetched isntr (nextInstr)
+	   // can be used.
 	   instr <= nextInstr;
 	   // update instr address so that next instr is fetched during
 	   // decode (and ready if there was no jump or branch)
-	   addressReg <= {PCplus4, 2'b00}; 
+	   addressReg <= {PCplus4, 2'b00};
+	   // In addition, STORE instructions write to memory here.
+	   // (see NrvStoreToMemory store_to_mem at beginning of file).
 	   state <= FETCH_REGS;
-	   mem_wstrb <= 4'b0000;
 	end
 	state[FETCH_REGS_bit]: begin
 	   // instr was just updated -> input register ids also
@@ -363,11 +379,6 @@ module FemtoRV32 #(
 	      state <= LOAD;
 	      PC <= PCplus4;
 	      mem_instr <= 1'b0;
-	   end else if(isStore) begin
-	      state <= USE_PREFETCHED_INSTR; // Data will be written in USE_PREFETCHED_INSTR
-	      PC <= PCplus4;
-	      mem_wstrb <= STORE_mem_wstrb;
-	      mem_wdata <= STORE_mem_wdata;
 	   end else begin 
 	      (* parallel_case, full_case *)
 	      case(1'b1)

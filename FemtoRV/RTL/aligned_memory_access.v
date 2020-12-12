@@ -5,12 +5,16 @@
  * input data, input data width and the two least significant bits of the addr
  */ 
 module NrvStoreToMemory(
-			input wire [31:0]  data,      // data to be written, from register
-			input wire [1:0]   addr_LSBs, // the two LSBs of the memory address
-			input wire [1:0]   width,     // 00:byte 01:half-word 10:word
-			output reg [31:0] mem_wdata,  // realigned data to be sent to memory
-			output reg [3:0]  mem_wstrb   // 4-bit write mask			
+			input wire [31:0] data,      // data to be written, from register
+			input wire [1:0]  addr_LSBs, // the two LSBs of the memory address
+			input wire [1:0]  width,     // 00:byte 01:half-word 10:word
+			input wire wr_enable,        // write enable
+			output reg [31:0] mem_wdata, // realigned data to be sent to memory
+			output wire [3:0] mem_wstrb  // 4-bit write mask			
 			);
+
+   reg [3:0] mem_wstrb_i;
+   
    always @(*) begin   
       (* parallel_case, full_case *)   
       case(width)
@@ -18,20 +22,20 @@ module NrvStoreToMemory(
 	   (* parallel_case, full_case *)            	   
 	   case(addr_LSBs) 
 	     2'b00: begin
-		mem_wstrb = 4'b0001;
-		mem_wdata = {24'bxxxxxxxxxxxxxxxxxxxxxxxx,data[7:0]};
+		mem_wstrb_i = 4'b0001;
+		mem_wdata   = {24'bxxxxxxxxxxxxxxxxxxxxxxxx,data[7:0]};
 	     end
 	     2'b01: begin
-		mem_wstrb = 4'b0010;
-		mem_wdata = {16'bxxxxxxxxxxxxxxxx,data[7:0],8'bxxxxxxxx};
+		mem_wstrb_i = 4'b0010;
+		mem_wdata   = {16'bxxxxxxxxxxxxxxxx,data[7:0],8'bxxxxxxxx};
 	     end
 	     2'b10: begin
-		mem_wstrb = 4'b0100;
-		mem_wdata = {8'bxxxxxxxx,data[7:0],16'bxxxxxxxxxxxxxxxx};
+		mem_wstrb_i = 4'b0100;
+		mem_wdata   = {8'bxxxxxxxx,data[7:0],16'bxxxxxxxxxxxxxxxx};
 	     end
 	     2'b11: begin
-		mem_wstrb = 4'b1000;
-		mem_wdata = {data[7:0],24'bxxxxxxxxxxxxxxxxxxxxxxxx};
+		mem_wstrb_i = 4'b1000;
+		mem_wdata   = {data[7:0],24'bxxxxxxxxxxxxxxxxxxxxxxxx};
 	     end
 	   endcase
 	end
@@ -39,25 +43,26 @@ module NrvStoreToMemory(
 	   (* parallel_case, full_case *)            	   	   
 	   case(addr_LSBs[1]) 
 	     1'b0: begin
-		mem_wstrb = 4'b0011;
-		mem_wdata = {16'bxxxxxxxxxxxxxxxx,data[15:0]};
+		mem_wstrb_i = 4'b0011;
+		mem_wdata   = {16'bxxxxxxxxxxxxxxxx,data[15:0]};
 	     end
 	     1'b1: begin
-		mem_wstrb = 4'b1100;
-		mem_wdata = {data[15:0],16'bxxxxxxxxxxxxxxxx};
+		mem_wstrb_i = 4'b1100;
+		mem_wdata   = {data[15:0],16'bxxxxxxxxxxxxxxxx};
 	     end
 	   endcase
 	end 
 	2'b10: begin
-	   mem_wstrb = 4'b1111;
-	   mem_wdata = data;
+	   mem_wstrb_i = 4'b1111;
+	   mem_wdata   = data;
 	end
 	default: begin
-	   mem_wstrb = 4'bxxxx;
-	   mem_wdata = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
+	   mem_wstrb_i = 4'bxxxx;
+	   mem_wdata   = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
 	end
       endcase 
-   end
+   end 
+   assign mem_wstrb = {4{wr_enable}} & mem_wstrb_i;
 endmodule  
 
 /*************************************************************************/
