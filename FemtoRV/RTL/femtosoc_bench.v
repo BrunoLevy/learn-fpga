@@ -13,7 +13,7 @@
 `define NRV_IO_LEDS
 
 `define BENCH
-//`define VERBOSE // Uncomment to have detailed log traces of all states
+`define VERBOSE // Uncomment to have detailed log traces of all states
 `include "femtosoc.v"
 
 module femtoRV32_bench();

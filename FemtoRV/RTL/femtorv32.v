@@ -6,6 +6,7 @@
 
 /*******************************************************************/
 
+`include "utils.v"                 // Utilities, macros for debugging
 `include "register_file.v"         // The 31 general-purpose registers
 `include "small_alu.v"             // Used on IceStick, RV32I   
 `include "large_alu.v"             // For larger FPGAs, RV32IM
@@ -13,24 +14,6 @@
 `include "decoder.v"               // The instruction decoder
 `include "aligned_memory_access.v" // Read/write bytes, hwords and words from memory
 `include "CSR_file.v"              // (Optional) Control and Status registers 
-
-/********************* Utilities, macros for debugging *************/
-
-`ifdef VERBOSE
-  `define verbose(command) command
-`else
-  `define verbose(command)
-`endif
-
-`ifdef BENCH
- `ifdef QUIET
-  `define bench(command) 
- `else
-  `define bench(command) command
- `endif
-`else
-  `define bench(command)
-`endif
 
 /********************* Nrv processor *******************************/
 
@@ -324,29 +307,29 @@ module FemtoRV32 #(
 `endif
    
    // And now the state machine
+
+`define show_state(state) `verbose($display("    %s",state))
    
    always @(posedge clk) begin
-//    `verbose($display("state = %h",state));
       if(!reset) begin	
-//	 `verbose($display("RESET")); 
 	 state <= INITIAL;
 	 addressReg <= 0;
 	 PC <= 0;
       end else
       case(1'b1)
 	(state == 0): begin
-	   `verbose($display("INITIAL"));
+	   `show_state("initial");
 	   state <= WAIT_INSTR;
 	end
 	state[WAIT_INSTR_bit]: begin
-	   `verbose($display("WAIT_INSTR"));
+	   `show_state("wait_instr");
 	   // this state to give enough time to fetch the 
 	   // instruction. Used for jumps and taken branches (and 
 	   // when fetching the first instruction). 
 	   state <= FETCH_INSTR;
 	end
 	state[FETCH_INSTR_bit]: begin
-	   `verbose($display("FETCH_INSTR"));	   
+	   `show_state("fetch_instr");	   
 	   instr <= mem_rdata;
 	   // update instr address so that next instr is fetched during
 	   // decode (and ready if there was no jump or branch)
@@ -354,7 +337,7 @@ module FemtoRV32 #(
 	   state <= FETCH_REGS;
 	end
 	state[USE_PREFETCHED_INSTR_bit]: begin
-	   `verbose($display("USE_PREFETCHED_INSTR"));
+	   `show_state("use_prefetched_instr");	   	   
 	   // for linear execution flow, the prefetched isntr (nextInstr)
 	   // can be used.
 	   instr <= nextInstr;
@@ -366,14 +349,14 @@ module FemtoRV32 #(
 	   state <= FETCH_REGS;
 	end
 	state[FETCH_REGS_bit]: begin
-	   `verbose($display("FETCH_REGS"));
+	   `show_state("fetch_regs");	   	   	   
 	   // instr was just updated -> input register ids also
 	   // input registers available at next cycle 
 	   state <= EXECUTE;
 	   error_latched <= decoderError;
 	end
 	state[EXECUTE_bit]: begin
-	   `verbose($display("EXECUTE"));
+	   `show_state("execute");
 	   
 	   // input registers are read, aluOut is up to date
 	   
@@ -413,20 +396,20 @@ module FemtoRV32 #(
 	   end 
 	end
 	state[LOAD_bit]: begin
-	   `verbose($display("LOAD"));
+	   `show_state("load");	   
 	   // data address (aluOut) was just updated
 	   // data ready at next cycle
 	   // we go to WAIT_ALU_OR_DATA to write back read data
 	   state <= WAIT_ALU_OR_DATA;
 	end
 	state[WAIT_ALU_OR_DATA_bit]: begin
-	   `verbose($display("WAIT_ALU_OR_DATA"));	   
+	   `show_state("wait_alu_or_data");	   
 	   // - If ALU is still busy, continue to wait.
 	   // - register writeback is active
 	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED_INSTR;
 	end
 	state[ERROR_bit]: begin
-	   `bench($display("ERROR"));
+	   `bench($display("ERROR"));	   	   	   
            state <= ERROR;
 	end
 	default: begin
@@ -435,5 +418,29 @@ module FemtoRV32 #(
 	end
       endcase
   end   
+
+/*********************************************************************/
+
+`define show_opcode(opcode) `verbose($display("%x: %s",{PC,2'b00},opcode))
+   
+`ifdef BENCH
+   always @(posedge clk) begin
+      if(state[FETCH_REGS_bit]) begin
+	 case(instr[6:0])
+	   7'b0110111: `show_opcode("LUI");
+	   7'b0010111: `show_opcode("AUIPC");
+	   7'b1101111: `show_opcode("JAL");
+	   7'b1100111: `show_opcode("JALR");
+	   7'b1100011: `show_opcode("BRANCH");
+	   7'b0010011: `show_opcode("ALU reg imm");
+	   7'b0110011: `show_opcode("ALU reg reg");
+	   7'b0000011: `show_opcode("LOAD");
+	   7'b0100011: `show_opcode("STORE");
+	   7'b0001111: `show_opcode("FENCE");
+	   7'b1110011: `show_opcode("SYSTEM");
+	 endcase // case (instr[6:0])
+      end // if (state[EXECUTE_bit])
+   end
+`endif
    
 endmodule
