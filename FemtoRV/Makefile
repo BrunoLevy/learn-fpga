@@ -26,7 +26,7 @@ all:
 
 
 clean:
-	rm -f *.timings *.asc *.bin *.bit *config *.json *.svf *~
+	rm -f *.timings *.asc *.bin *.bit *config *.json *.svf *~ *.vvp
 
 #######################################################################################################################
 
@@ -84,7 +84,7 @@ ECP5_EVN.prog:
 #######################################################################################################################
 
 testbench:
-	(cd RTL; iverilog femtosoc_bench.v -o ../femtosoc_bench)
-	vvp femtosoc_bench
+	(cd RTL; iverilog femtosoc_bench.v -o ../femtosoc_bench.vvp)
+	vvp femtosoc_bench.vvp
 
 #######################################################################################################################
