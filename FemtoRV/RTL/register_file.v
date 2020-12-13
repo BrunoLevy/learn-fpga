@@ -27,8 +27,6 @@ module NrvRegisterFile(
       end 
       // Test bench does not seem to understand that
       // oob access in reg array is supposed to return 0.
-      // TODO: test whether it is also required by the
-      // IceStick version (does not seem to be the case).
 `ifdef BENCH	 
       out1 <= (outRegId1 == 0) ? 0 : bank1[~outRegId1];
       out2 <= (outRegId2 == 0) ? 0 : bank2[~outRegId2];

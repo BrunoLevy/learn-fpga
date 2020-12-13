@@ -233,16 +233,14 @@ module FemtoRV32 #(
    // When a STORE instruction is executed, the data to be stored to
    // mem is available from the second register (regOut2) and the
    // address where to store it is the output of the ALU (aluOut).
+   wire mem_wenable;   
    NrvStoreToMemory store_to_mem(
-       .data(regOut2),              // Data to be sent, out of register
-       .addr_LSBs(aluOut[1:0]),     // The two LSBs of the address 
-       .width(aluOp[1:0]),          // Data width: 00:byte 01:hword 10:word
-       .mem_wdata(mem_wdata),       // Realigned data to be sent to memory
-       .mem_wstrb(mem_wstrb),       // Data write mask
-       .wr_enable(state[USE_PREFETCHED_INSTR_bit] && isStore)
-         // NOTE: memory write are done during the USE_PREFETCHED_INSTR state,
-         // Can't be done during EXECUTE (would be better), because mem_addr
-         // (needed) is updated at the end of EXECUTE.
+       .data(regOut2),          // Data to be sent, out of register
+       .addr_LSBs(aluOut[1:0]), // The two LSBs of the address 
+       .width(aluOp[1:0]),      // Data width: 00:byte 01:hword 10:word
+       .mem_wdata(mem_wdata),   // Realigned data to be sent to memory
+       .mem_wstrb(mem_wstrb),   // Write mask for the 4 bytes
+       .wr_enable(mem_wenable)  // Write enable (and-ed with write mask)
    );
    
    /*************************************************************************/
@@ -289,8 +287,11 @@ module FemtoRV32 #(
    );
 
    /*************************************************************************/
-   // And finally, the state machine
+   // And finally, everything that concerns the state machine
 
+   // First, the internal signals that are determined combinatorially from
+   // state and other signals.
+   
    // The internal signal that enables register write-back
    assign writeBack = (state[EXECUTE_bit] && writeBackEn) || state[WAIT_ALU_OR_DATA_bit];
 
@@ -298,6 +299,13 @@ module FemtoRV32 #(
    // right before the LOAD state. To allow execution from IO-mapped devices, it
    // will be necessary to also enable it before instruction fetch.
    assign mem_rstrb = (state[EXECUTE_bit] && isLoad);
+
+   // NOTE: memory write are done during the USE_PREFETCHED_INSTR state,
+   // Can't be done during EXECUTE (would be better), because mem_addr
+   // (needed) is updated at the end of EXECUTE.
+   assign mem_wenable = (state[USE_PREFETCHED_INSTR_bit] && isStore);
+
+   // And now the state machine
    
    always @(posedge clk) begin
       `verbose($display("state = %h",state));
@@ -323,7 +331,7 @@ module FemtoRV32 #(
 	   instr <= mem_rdata;
 	   // update instr address so that next instr is fetched during
 	   // decode (and ready if there was no jump or branch)
-	   addressReg <= {PCplus4, 2'b00}; 
+	   addressReg <= {PCplus4, 2'b00};
 	   state <= FETCH_REGS;
 	end
 	state[USE_PREFETCHED_INSTR_bit]: begin
@@ -347,9 +355,9 @@ module FemtoRV32 #(
 	state[EXECUTE_bit]: begin
 	   // input registers are read, aluOut is up to date
 	   
-	   // Lookahead instr.
+	   // Looked-ahead instr.
 	   nextInstr <= mem_rdata;
-
+	   
 	   // Needed for LOAD,STORE,jump,branch
 	   // (in other cases it will be ignored)
 	   addressReg <= aluOut; 
