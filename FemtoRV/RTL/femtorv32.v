@@ -52,29 +52,6 @@ module FemtoRV32 #(
    output wire 	     error  // 1 if current instruction could not be decoded
 );
 
-   // The states, using 1-hot encoding (reduces
-   // both LUT count and critical path).
-   
-   localparam INITIAL              = 8'b00000000;   
-   localparam WAIT_INSTR           = 8'b00000001;
-   localparam FETCH_INSTR          = 8'b00000010;
-   localparam USE_PREFETCHED_INSTR = 8'b00000100;
-   localparam FETCH_REGS           = 8'b00001000;
-   localparam EXECUTE              = 8'b00010000;
-   localparam WAIT_ALU_OR_DATA     = 8'b00100000;
-   localparam LOAD                 = 8'b01000000;
-   localparam ERROR                = 8'b10000000;
-
-   localparam WAIT_INSTR_bit           = 0;
-   localparam FETCH_INSTR_bit          = 1;
-   localparam USE_PREFETCHED_INSTR_bit = 2;
-   localparam FETCH_REGS_bit           = 3;
-   localparam EXECUTE_bit              = 4;
-   localparam WAIT_ALU_OR_DATA_bit     = 5;
-   localparam LOAD_bit                 = 6;   
-   localparam ERROR_bit                = 7;
-   
-   reg [7:0] state = INITIAL;
 
    // The internal register that stores the current address,
    // directly wired to the address bus.
@@ -169,6 +146,7 @@ module FemtoRV32 #(
    // The ALU, partly combinatorial, partly state (for shifts).
    wire [31:0] aluOut;
    wire        aluBusy;
+   wire        alu_wenable;
    wire [31:0] aluIn1 = aluInSel1 ? {PC, 2'b00} : regOut1;
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
 
@@ -183,7 +161,7 @@ module FemtoRV32 #(
             .opqual(aluQual & aluSel),
             .opM(aluM),	 
             .out(aluOut),
-            .wr(state[EXECUTE_bit]), 
+            .wr(alu_wenable), 
             .busy(aluBusy)	      
          );
       end else begin 
@@ -200,7 +178,7 @@ module FemtoRV32 #(
             .op(aluOp & {3{aluSel}}),
             .opqual(aluQual & aluSel),
             .out(aluOut),
-            .wr(state[EXECUTE_bit]), 
+            .wr(alu_wenable), 
             .busy(aluBusy)	      
          );
       end
@@ -248,9 +226,10 @@ module FemtoRV32 #(
    
 `ifdef NRV_CSR
    wire [31:0] CSR_rdata;
+   wire        instr_retired;
    NrvControlStatusRegisterFile CSR(
       .clk(clk),                         // for counting cycles
-      .instr_cnt(state[FETCH_REGS_bit]), // for counting retired instructions
+      .instr_cnt(instr_retired), // for counting retired instructions
       .reset(reset),                     // reset all CSRs to default value
       .CSRid(instr[31:20]),              // CSR Id, extracted from instr				    
       .rdata(CSR_rdata)                  // Read CSR value
@@ -287,9 +266,34 @@ module FemtoRV32 #(
    );
 
    /*************************************************************************/
-   // And finally, everything that concerns the state machine
+   // And, last but not least, the state machine.
+   /*************************************************************************/
 
-   // First, the internal signals that are determined combinatorially from
+   // The states, using 1-hot encoding (reduces
+   // both LUT count and critical path).
+   
+   localparam INITIAL              = 8'b00000000;   
+   localparam WAIT_INSTR           = 8'b00000001;
+   localparam FETCH_INSTR          = 8'b00000010;
+   localparam USE_PREFETCHED_INSTR = 8'b00000100;
+   localparam FETCH_REGS           = 8'b00001000;
+   localparam EXECUTE              = 8'b00010000;
+   localparam WAIT_ALU_OR_DATA     = 8'b00100000;
+   localparam LOAD                 = 8'b01000000;
+   localparam ERROR                = 8'b10000000;
+
+   localparam WAIT_INSTR_bit           = 0;
+   localparam FETCH_INSTR_bit          = 1;
+   localparam USE_PREFETCHED_INSTR_bit = 2;
+   localparam FETCH_REGS_bit           = 3;
+   localparam EXECUTE_bit              = 4;
+   localparam WAIT_ALU_OR_DATA_bit     = 5;
+   localparam LOAD_bit                 = 6;   
+   localparam ERROR_bit                = 7;
+   
+   reg [7:0] state = INITIAL;
+   
+   // the internal signals that are determined combinatorially from
    // state and other signals.
    
    // The internal signal that enables register write-back
@@ -305,6 +309,17 @@ module FemtoRV32 #(
    // (needed) is updated at the end of EXECUTE.
    assign mem_wenable = (state[USE_PREFETCHED_INSTR_bit] && isStore);
 
+   // alu_wenable starts computation in the ALU (for functions that
+   // require several cycles).
+   assign alu_wenable = (state[EXECUTE_bit]);
+
+   // instr_retired is asserted during one cycle for each
+   // retired instructions. It is used to update the instruction
+   // counter 'instret' in the control and status registers
+`ifdef NRV_CSR   
+   assign instr_retired = state[FETCH_REGS_bit];
+`endif
+   
    // And now the state machine
    
    always @(posedge clk) begin
