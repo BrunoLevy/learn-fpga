@@ -221,6 +221,11 @@ module NrvIO(
       SSD1351_CS  = 1'b1;
    end
 
+ `ifdef BENCH // Seems that iverilog does not like this usage of generate.
+   reg[1:0] SSD1351_slow_cnt;
+   localparam SSD1351_cnt_bit = 1;
+   localparam SSD1351_cnt_max = 2'b11;
+ `else   
    generate
       if(`NRV_FREQ <= 60) begin
 	 reg SSD1351_slow_cnt;
@@ -232,6 +237,7 @@ module NrvIO(
 	 localparam SSD1351_cnt_max = 2'b11;
       end
    endgenerate
+ `endif
       
    // Currently sent bit, 1-based index
    // (0000 config. corresponds to idle)
@@ -379,8 +385,7 @@ module NrvIO(
 `ifdef NRV_IO_LEDS	   
 	   if(address[LEDs_bit]) begin
 	      LEDs <= in[3:0];
-	      `bench($display("************************** LEDs = %b", in[3:0]));
-	      `bench($display(" in = %h  %d  %b  \'%c\'", in, $signed(in),in,in));
+	      `bench($display("****************** LEDs = %b  0x%h %d", in[3:0],in,$signed(in)));
 	   end
 `endif
 `ifdef NRV_IO_SSD1351	   
@@ -642,7 +647,7 @@ module femtosoc(
     .IOout(IOin),
     .IOrd(IOrd),
     .IOwr(IOwr),
-    .IOaddress(IOaddress),
+    .IOaddress(IOaddress)
   );
 
   FemtoRV32 #(

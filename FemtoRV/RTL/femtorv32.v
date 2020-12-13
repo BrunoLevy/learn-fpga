@@ -42,13 +42,13 @@ module FemtoRV32 #(
 
    // Memory interface: using the same protocol as Claire Wolf's picoR32
    //                   (WIP: add mem_valid / mem_ready protocol)
-   output [31:0]     mem_addr,  // address bus, only ADDR_WIDTH bits are used
-   output reg [31:0] mem_wdata, // data to be written
-   output reg [3:0]  mem_wmask, // write mask for individual bytes (1 means write byte)   
-   input [31:0]      mem_rdata, // input lines for both data and instr
-   output wire 	     mem_rstrb, // active to initiate memory read
-   input wire 	     mem_rbusy, // asserted if memory is busy reading value
-   input wire        mem_wbusy, // asserted if memory is busy writing value
+   output [31:0]      mem_addr,  // address bus, only ADDR_WIDTH bits are used
+   output wire [31:0] mem_wdata, // data to be written
+   output wire [3:0]  mem_wmask, // write mask for individual bytes (1 means write byte)   
+   input [31:0]       mem_rdata, // input lines for both data and instr
+   output wire 	      mem_rstrb, // active to initiate memory read
+   input wire 	      mem_rbusy, // asserted if memory is busy reading value
+   input wire         mem_wbusy, // asserted if memory is busy writing value
    
    input wire 	     reset, // set to 0 to reset the processor
    output wire 	     error  // 1 if current instruction could not be decoded
@@ -169,9 +169,9 @@ module FemtoRV32 #(
       end else begin 
          NrvSmallALU #(
 `ifdef NRV_TWOSTAGE_SHIFTER	      
-          .TWOSTAGE_SHIFTER(1),
+          .TWOSTAGE_SHIFTER(1)
 `else
-          .TWOSTAGE_SHIFTER(0),	      
+          .TWOSTAGE_SHIFTER(0)	      
 `endif
          ) alu(
             .clk(clk),	      
@@ -326,8 +326,9 @@ module FemtoRV32 #(
    // And now the state machine
    
    always @(posedge clk) begin
-      `verbose($display("state = %h",state));
-      if(!reset) begin
+//    `verbose($display("state = %h",state));
+      if(!reset) begin	
+//	 `verbose($display("RESET")); 
 	 state <= INITIAL;
 	 addressReg <= 0;
 	 PC <= 0;
@@ -338,10 +339,10 @@ module FemtoRV32 #(
 	   state <= WAIT_INSTR;
 	end
 	state[WAIT_INSTR_bit]: begin
+	   `verbose($display("WAIT_INSTR"));
 	   // this state to give enough time to fetch the 
 	   // instruction. Used for jumps and taken branches (and 
 	   // when fetching the first instruction). 
-	   `verbose($display("WAIT_INSTR"));
 	   state <= FETCH_INSTR;
 	end
 	state[FETCH_INSTR_bit]: begin
@@ -365,12 +366,15 @@ module FemtoRV32 #(
 	   state <= FETCH_REGS;
 	end
 	state[FETCH_REGS_bit]: begin
+	   `verbose($display("FETCH_REGS"));
 	   // instr was just updated -> input register ids also
 	   // input registers available at next cycle 
 	   state <= EXECUTE;
 	   error_latched <= decoderError;
 	end
 	state[EXECUTE_bit]: begin
+	   `verbose($display("EXECUTE"));
+	   
 	   // input registers are read, aluOut is up to date
 	   
 	   // Looked-ahead instr.

@@ -9,11 +9,13 @@
 # code is zero.	
 .global exit
 .type  exit, @function
-exit:   mv t0, a0
-	li a0, 100
-	sw t0, IO_LEDS(gp)
-	bnez t0, exit
-exitl:	li t0, 1
+exit:   
+	sw a0, IO_LEDS(gp) # display exit code
+exitl1:   	
+	bnez a0, exitl1    # if exit code is non-0, loop.
+exitl:
+	li a0, 100         # for delay if spinning leds
+	li t0, 1
 	sw t0, IO_LEDS(gp)
 	call delay
 	li t0, 2

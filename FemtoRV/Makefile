@@ -16,7 +16,7 @@ YOSYS_ECP5_EVN_OPT=-DECP5_EVN -q -p "synth_ecp5 -top $(PROJECTNAME) -json $(PROJ
 NEXTPNR_ECP5_EVN_OPT=--force --json $(PROJECTNAME).json --lpf ecp5_evn.lpf \
                      --textcfg $(PROJECTNAME)_out.config --um5g-85k --freq 50 --package CABGA381
 
-.PHONY: all clean \
+.PHONY: all clean testbench \
         ULX3S    ULX3S.synth    ULX3S.prog    ULX3S.prog_flash \
         ECP5_EVN ECP5_EVN.synth ECP5_EVN.prog                  \
         ICESTICK ICESTICK.synth ICESTICK.prog
@@ -80,5 +80,11 @@ ECP5_EVN.synth: FIRMWARE/firmware.hex
 
 ECP5_EVN.prog:
 	openocd -f ecp5-evn.cfg -c "transport select jtag; init; svf $(PROJECTNAME).svf; exit"
+
+#######################################################################################################################
+
+testbench:
+	(cd RTL; iverilog femtosoc_bench.v -o ../femtosoc_bench)
+	vvp femtosoc_bench
 
 #######################################################################################################################

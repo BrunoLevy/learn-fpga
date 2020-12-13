@@ -20,6 +20,5 @@ end:	li a0, 15      # main() return value, all leds lit
 show:   srli t0,t1,18
 	sw t0,IO_LEDS(gp)
 	ret
-	
 
 
