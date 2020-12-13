@@ -229,7 +229,7 @@ module FemtoRV32 #(
    wire        instr_retired;
    NrvControlStatusRegisterFile CSR(
       .clk(clk),                         // for counting cycles
-      .instr_cnt(instr_retired), // for counting retired instructions
+      .instr_cnt(instr_retired),         // for counting retired instructions
       .reset(reset),                     // reset all CSRs to default value
       .CSRid(instr[31:20]),              // CSR Id, extracted from instr				    
       .rdata(CSR_rdata)                  // Read CSR value
@@ -307,6 +307,7 @@ module FemtoRV32 #(
    // NOTE: memory write are done during the USE_PREFETCHED_INSTR state,
    // Can't be done during EXECUTE (would be better), because mem_addr
    // (needed) is updated at the end of EXECUTE.
+   // See also how load_from_mem and store_to_mem are wired.
    assign mem_wenable = (state[USE_PREFETCHED_INSTR_bit] && isStore);
 
    // alu_wenable starts computation in the ALU (for functions that

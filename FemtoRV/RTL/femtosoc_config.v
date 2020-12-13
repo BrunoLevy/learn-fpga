@@ -15,7 +15,8 @@
 
 
 /************************* Frequency ********************************************************************************/
-`define NRV_FREQ 75        // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80 MHz on the ICEStick.
+`define NRV_FREQ 75        // CONFIGWORD 0x001C // Frequency in MHz. Can overclock it up to 80 MHz on the ICEStick.
+                                                // Yosys says OK between 40MHz and 50MHz. Experimentally 75 MHz seems OK.
 
 /************************* RAM **************************************************************************************/
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
