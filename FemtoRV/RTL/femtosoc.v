@@ -57,13 +57,15 @@ module NrvMemoryInterface(
   input 	    rd, // read strobe
   input [31:0] 	    in, // data to be written
   output reg [31:0] out, // read data
+  output wire	    rdBusy, // asserted if mem or IO is busy reading 
+  output wire	    wrBusy, // asserted if mem or IO is busy writing			  
 			  
   // Interface with mapped IO devices			  
   output [10:0]     IOaddress, // = address[11:2]
-  output 	    IOwr,
-  output 	    IOrd,
-  input [31:0] 	    IOin, 
-  output [31:0]     IOout,
+  output 	    IOwr,      // IO devices write strobe
+  output 	    IOrd,      // IO devices read strobe
+  input [31:0] 	    IOin,      // data to be written to IO
+  output [31:0]     IOout      // data read from IO
 );
 
    wire             isIO   = address[22];
@@ -74,9 +76,22 @@ module NrvMemoryInterface(
    wire             wrRAM = wr && !isIO;
 
    reg [31:0] RAM[(`NRV_RAM/4)-1:0];
-
    reg [31:0] out_RAM;
 
+   // A flip-flop to have the one clock delay
+   // before memory read and memory data available.
+   reg RAM_read_delay;
+   always @(posedge clk) begin
+      if(rd) begin
+	 RAM_read_delay <= 1;
+      end else begin
+	 RAM_read_delay <= 0;
+      end
+   end
+
+   assign rdBusy = RAM_read_delay;
+   assign wrBusy = 0;
+   
    initial begin
       $readmemh("FIRMWARE/firmware.hex",RAM); // Read the firmware from the generated hex file.
    end

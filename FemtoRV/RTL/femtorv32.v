@@ -183,7 +183,7 @@ module FemtoRV32 #(
             .opqual(aluQual & aluSel),
             .opM(aluM),	 
             .out(aluOut),
-            .wr(state == EXECUTE), 
+            .wr(state[EXECUTE_bit]), 
             .busy(aluBusy)	      
          );
       end else begin 
@@ -200,7 +200,7 @@ module FemtoRV32 #(
             .op(aluOp & {3{aluSel}}),
             .opqual(aluQual & aluSel),
             .out(aluOut),
-            .wr(state == EXECUTE), 
+            .wr(state[EXECUTE_bit]), 
             .busy(aluBusy)	      
          );
       end
