@@ -625,6 +625,9 @@ module femtosoc(
   wire [31:0] dataOut;
   wire        dataRd;
   wire [3:0]  dataWrByteMask;
+  wire        mem_rbusy;
+  wire        mem_wbusy;
+ 
    
   NrvMemoryInterface Memory(
     .clk(clk),
@@ -633,6 +636,8 @@ module femtosoc(
     .out(dataIn),
     .rd(dataRd),
     .wrByteMask(dataWrByteMask),
+    .rdBusy(mem_rbusy),
+    .wrBusy(mem_wbusy),			    
     .IOin(IOout),
     .IOout(IOin),
     .IOrd(IOrd),
@@ -654,6 +659,8 @@ module femtosoc(
     .mem_wmask(dataWrByteMask),
     .mem_rdata(dataIn),
     .mem_rstrb(dataRd),
+    .mem_rbusy(mem_rbusy),
+    .mem_wbusy(mem_wbusy),	      
     .reset(reset),
     .error(error)
   );

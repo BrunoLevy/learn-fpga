@@ -47,6 +47,8 @@ module FemtoRV32 #(
    output reg [3:0]  mem_wmask, // write mask for individual bytes (1 means write byte)   
    input [31:0]      mem_rdata, // input lines for both data and instr
    output wire 	     mem_rstrb, // active to initiate memory read
+   input wire 	     mem_rbusy, // asserted if memory is busy reading value
+   input wire        mem_wbusy, // asserted if memory is busy writing value
    
    input wire 	     reset, // set to 0 to reset the processor
    output wire 	     error  // 1 if current instruction could not be decoded
