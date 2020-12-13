@@ -44,7 +44,7 @@ module FemtoRV32 #(
    //                   (WIP: add mem_valid / mem_ready protocol)
    output [31:0]     mem_addr,  // address bus, only ADDR_WIDTH bits are used
    output reg [31:0] mem_wdata, // data to be written
-   output reg [3:0]  mem_wstrb, // write mask for individual bytes (1 means write byte)   
+   output reg [3:0]  mem_wmask, // write mask for individual bytes (1 means write byte)   
    input [31:0]      mem_rdata, // input lines for both data and instr
    output wire 	     mem_rstrb, // active to initiate memory read
    
@@ -238,9 +238,9 @@ module FemtoRV32 #(
        .data(regOut2),          // Data to be sent, out of register
        .addr_LSBs(aluOut[1:0]), // The two LSBs of the address 
        .width(aluOp[1:0]),      // Data width: 00:byte 01:hword 10:word
-       .mem_wdata(mem_wdata),   // Realigned data to be sent to memory
-       .mem_wstrb(mem_wstrb),   // Write mask for the 4 bytes
-       .wr_enable(mem_wenable)  // Write enable (and-ed with write mask)
+       .mem_wdata(mem_wdata),   // Shifted data to be sent to memory
+       .mem_wmask(mem_wmask),   // Write mask for the 4 bytes
+       .wr_enable(mem_wenable)  // Write enable ('anded' with write mask)
    );
    
    /*************************************************************************/

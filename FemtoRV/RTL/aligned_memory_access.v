@@ -10,10 +10,10 @@ module NrvStoreToMemory(
 			input wire [1:0]  width,     // 00:byte 01:half-word 10:word
 			input wire wr_enable,        // write enable
 			output reg [31:0] mem_wdata, // realigned data to be sent to memory
-			output wire [3:0] mem_wstrb  // 4-bit write mask			
+			output wire [3:0] mem_wmask  // 4-bit write mask			
 			);
 
-   reg [3:0] mem_wstrb_i;
+   reg [3:0] mem_wmask_i;
    
    always @(*) begin   
       (* parallel_case, full_case *)   
@@ -22,19 +22,19 @@ module NrvStoreToMemory(
 	   (* parallel_case, full_case *)            	   
 	   case(addr_LSBs) 
 	     2'b00: begin
-		mem_wstrb_i = 4'b0001;
+		mem_wmask_i = 4'b0001;
 		mem_wdata   = {24'bxxxxxxxxxxxxxxxxxxxxxxxx,data[7:0]};
 	     end
 	     2'b01: begin
-		mem_wstrb_i = 4'b0010;
+		mem_wmask_i = 4'b0010;
 		mem_wdata   = {16'bxxxxxxxxxxxxxxxx,data[7:0],8'bxxxxxxxx};
 	     end
 	     2'b10: begin
-		mem_wstrb_i = 4'b0100;
+		mem_wmask_i = 4'b0100;
 		mem_wdata   = {8'bxxxxxxxx,data[7:0],16'bxxxxxxxxxxxxxxxx};
 	     end
 	     2'b11: begin
-		mem_wstrb_i = 4'b1000;
+		mem_wmask_i = 4'b1000;
 		mem_wdata   = {data[7:0],24'bxxxxxxxxxxxxxxxxxxxxxxxx};
 	     end
 	   endcase
@@ -43,26 +43,26 @@ module NrvStoreToMemory(
 	   (* parallel_case, full_case *)            	   	   
 	   case(addr_LSBs[1]) 
 	     1'b0: begin
-		mem_wstrb_i = 4'b0011;
+		mem_wmask_i = 4'b0011;
 		mem_wdata   = {16'bxxxxxxxxxxxxxxxx,data[15:0]};
 	     end
 	     1'b1: begin
-		mem_wstrb_i = 4'b1100;
+		mem_wmask_i = 4'b1100;
 		mem_wdata   = {data[15:0],16'bxxxxxxxxxxxxxxxx};
 	     end
 	   endcase
 	end 
 	2'b10: begin
-	   mem_wstrb_i = 4'b1111;
+	   mem_wmask_i = 4'b1111;
 	   mem_wdata   = data;
 	end
 	default: begin
-	   mem_wstrb_i = 4'bxxxx;
+	   mem_wmask_i = 4'bxxxx;
 	   mem_wdata   = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
 	end
       endcase 
    end 
-   assign mem_wstrb = {4{wr_enable}} & mem_wstrb_i;
+   assign mem_wmask = {4{wr_enable}} & mem_wmask_i;
 endmodule  
 
 /*************************************************************************/

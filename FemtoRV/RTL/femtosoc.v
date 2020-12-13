@@ -50,16 +50,15 @@
 //   address[23]   (future) SPI page (1-hot)
 
 module NrvMemoryInterface(
+  // Interface with processor			  
   input 	    clk,
   input [23:0] 	    address, 
-  input [3:0] 	    wrByteMask,
-  input 	    rd,
-  input [31:0] 	    in,
-  output reg [31:0] out,
-  output 	    ready, 
-
-
+  input [3:0] 	    wrByteMask, 
+  input 	    rd, // read strobe
+  input [31:0] 	    in, // data to be written
+  output reg [31:0] out, // read data
 			  
+  // Interface with mapped IO devices			  
   output [10:0]     IOaddress, // = address[11:2]
   output 	    IOwr,
   output 	    IOrd,
@@ -637,7 +636,7 @@ module femtosoc(
     .clk(clk),			
     .mem_addr(address),
     .mem_wdata(dataOut),
-    .mem_wstrb(dataWrByteMask),
+    .mem_wmask(dataWrByteMask),
     .mem_rdata(dataIn),
     .mem_rstrb(dataRd),
     .reset(reset),
