@@ -226,14 +226,7 @@ module NrvIO(
    wire     SSD1351_sending = (SSD1351_bitcount != 0);
 
    assign SSD1351_DIN = SSD1351_shifter[7];
-
-   // Normally SSD1351_sending should not be tested here, it should work with
-   // SSD1351_CLK = SSD1351_slow_clk, but without testing SSD1351_sending,
-   // test_OLED.s, test_OLED.c and mandelbrot_OLED.s do not work, whereas the
-   // other C OLED demos work (why ? To be understood...)
-   // ... -> seems to be OK now with the new clocking (one clock delay after CS 
-   // going low).
-   assign SSD1351_CLK = SSD1351_slow_cnt[SSD1351_cnt_bit]; //  && !SSD1351_CS; // && SSD1351_sending;
+   assign SSD1351_CLK = SSD1351_slow_cnt[SSD1351_cnt_bit]; 
 
    always @(posedge clk) begin
       SSD1351_slow_cnt <= SSD1351_slow_cnt + 1;
@@ -616,7 +609,7 @@ module femtosoc(
    
   wire [31:0] dataIn;
   wire [31:0] dataOut;
-  wire        instrRd;
+  wire        dataRd;
   wire [3:0]  dataWrByteMask;
    
   NrvMemoryInterface Memory(
@@ -624,7 +617,7 @@ module femtosoc(
     .address(address[23:0]),
     .in(dataOut),
     .out(dataIn),
-    .rd(!instrRd),
+    .rd(dataRd),
     .wrByteMask(dataWrByteMask),
     .IOin(IOout),
     .IOout(IOin),
@@ -646,7 +639,7 @@ module femtosoc(
     .mem_wdata(dataOut),
     .mem_wstrb(dataWrByteMask),
     .mem_rdata(dataIn),
-    .mem_instr(instrRd),
+    .mem_rstrb(dataRd),
     .reset(reset),
     .error(error)
   );

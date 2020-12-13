@@ -130,7 +130,7 @@ EHXPLLL #(
 
 `elsif ICE40
 
-   // Use DIVF and DIVQ values from icepll -o freq
+   // Use DIVF and DIVQ values from 'icepll -i 12 -o freq'
    generate
       case(freq)
         100: begin
@@ -168,6 +168,10 @@ EHXPLLL #(
 	60: begin
 	   parameter DIVF = 7'b1001111;
            parameter DIVQ = 3'b100;
+	end
+	45: begin
+	   parameter DIVF = 7'b0111011;
+	   parameter DIVQ = 3'b100;
 	end
 	40: begin
 	   parameter DIVF = 7'b0110100;

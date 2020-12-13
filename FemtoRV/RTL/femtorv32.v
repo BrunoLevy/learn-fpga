@@ -42,11 +42,11 @@ module FemtoRV32 #(
 
    // Memory interface: using the same protocol as Claire Wolf's picoR32
    //                   (WIP: add mem_valid / mem_ready protocol)
-   output [31:0]     mem_addr, // address bus, only ADDR_WIDTH bits are used
+   output [31:0]     mem_addr,  // address bus, only ADDR_WIDTH bits are used
    output reg [31:0] mem_wdata, // data to be written
    output reg [3:0]  mem_wstrb, // write mask for individual bytes (1 means write byte)   
    input [31:0]      mem_rdata, // input lines for both data and instr
-   output reg 	     mem_instr, // active when reading instruction (and not when reading data)
+   output wire 	     mem_rstrb, // active to initiate memory read
    
    input wire 	     reset, // set to 0 to reset the processor
    output wire 	     error  // 1 if current instruction could not be decoded
@@ -149,7 +149,8 @@ module FemtoRV32 #(
    /**************************************************************************************************/      
    // The register file. At each cycle, it can read two
    // registers (available at next cycle) and write one.
-   wire	       writeBack = (state[EXECUTE_bit] && writeBackEn) || state[WAIT_ALU_OR_DATA_bit];
+   wire writeBack;
+
    reg  [31:0] writeBackData;
    wire [31:0] regOut1;
    wire [31:0] regOut2;   
@@ -289,12 +290,19 @@ module FemtoRV32 #(
 
    /*************************************************************************/
    // And finally, the state machine
+
+   // The internal signal that enables register write-back
+   assign writeBack = (state[EXECUTE_bit] && writeBackEn) || state[WAIT_ALU_OR_DATA_bit];
+
+   // The memory-read signal. It is only needed for IO, hence it is only enabled
+   // right before the LOAD state. To allow execution from IO-mapped devices, it
+   // will be necessary to also enable it before instruction fetch.
+   assign mem_rstrb = (state[EXECUTE_bit] && isLoad);
    
    always @(posedge clk) begin
       `verbose($display("state = %h",state));
       if(!reset) begin
 	 state <= INITIAL;
-	 mem_instr <= 1'b1;
 	 addressReg <= 0;
 	 PC <= 0;
       end else
@@ -351,7 +359,6 @@ module FemtoRV32 #(
 	   end else if(isLoad) begin
 	      state <= LOAD;
 	      PC <= PCplus4;
-	      mem_instr <= 1'b0;
 	   end else begin 
 	      (* parallel_case, full_case *)
 	      case(1'b1)
@@ -381,7 +388,6 @@ module FemtoRV32 #(
 	   // data ready at next cycle
 	   // we go to WAIT_ALU_OR_DATA to write back read data
 	   state <= WAIT_ALU_OR_DATA;
-	   mem_instr <= 1'b1;
 	end
 	state[WAIT_ALU_OR_DATA_bit]: begin
 	   `verbose($display("WAIT_ALU_OR_DATA"));	   
