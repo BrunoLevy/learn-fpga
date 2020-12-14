@@ -113,8 +113,8 @@ module FemtoRV32 #(
    /**************************************************************************************************/      
    // The register file. At each cycle, it can read two
    // registers (available at next cycle) and write one.
-   wire writeBack;
-
+   
+   wire writeBack; // asserted if register write back is done.
    reg  [31:0] writeBackData;
    wire [31:0] regOut1;
    wire [31:0] regOut2;   
@@ -291,9 +291,6 @@ module FemtoRV32 #(
    // will be necessary to also enable it before instruction fetch.
    assign mem_rstrb = (state[EXECUTE_bit] && isLoad);
 
-   // NOTE: memory write are done during the USE_PREFETCHED_INSTR state,
-   // Can't be done during EXECUTE (would be better), because mem_addr
-   // (needed) is updated at the end of EXECUTE.
    // See also how load_from_mem and store_to_mem are wired.
    assign mem_wenable = state[STORE_bit];
 
@@ -308,6 +305,7 @@ module FemtoRV32 #(
    assign instr_retired = state[FETCH_REGS_bit];
 `endif
 
+   // when asserted, next PC is updated from ALU (instead of PC+4)
    wire jump_or_take_branch = isJump || (isBranch && predOut);
        
    // And now the state machine
@@ -338,16 +336,19 @@ module FemtoRV32 #(
 	state[FETCH_INSTR_bit]: begin
 	   `show_state("fetch_instr");	   
 	   instr <= mem_rdata;
-	   // update instr address so that next instr is fetched during
-	   // decode (and ready if there was no jump or branch)
+	   // Prepare instruction prefetch (lookahead)
+	   //  (fetched during FETCH_REGS, ready in EXECUTE)	   
 	   addressReg <= {PCplus4, 2'b00};
 	   state <= FETCH_REGS;
 	end
 	
 	state[FETCH_REGS_bit]: begin
-	   `show_state("fetch_regs");	   	   	   
-	   // instr was just updated -> input register ids also
-	   // input registers available at next cycle 
+	   `show_state("fetch_regs");
+	   // 1) instr was just updated -> input register ids also
+	   //      input registers available at next cycle
+	   // 2) prefetch next instr, at PC+4 (addressReg is set
+	   //      by all transitions that land here)
+	   // 3) latch decoder error flag
 	   state <= EXECUTE;
 	   error_latched <= decoderError;
 	end
@@ -356,10 +357,7 @@ module FemtoRV32 #(
 	   `show_state("execute");
 	   
 	   nextInstr <= mem_rdata; // Looked-ahead instr.
-	   // Needed for LOAD,STORE,jump,branch
-	   // (in other cases it will be ignored)
-	   addressReg <= aluOut; 
-
+	   addressReg <= aluOut;   // Needed for LOAD,STORE,jump,branch
 	   PC <= PCplus4;
 	   
 	   (* parallel_case, full_case *)	   
@@ -372,11 +370,12 @@ module FemtoRV32 #(
 		PC <= aluOut[31:2];
 		state <= WAIT_INSTR;
 	     end
-	     default: begin
-		instr <= mem_rdata;
-		addressReg <= {PC + 2'b10, 2'b00};
-		state <= FETCH_REGS;
-		PC <= PCplus4;
+	     default: begin // Linear execution flow
+		instr <= mem_rdata;  // Use looked-ahead instr.
+		// Prepare instruction prefetch (lookahead)
+		//  (fetched during FETCH_REGS, ready in EXECUTE)	   
+		addressReg <= {PC + 2'b10, 2'b00}; // Look-ahead: PC+8
+		state <= FETCH_REGS; // 2 cycles per instruction
 	     end
 	   endcase
 	end 
@@ -391,15 +390,14 @@ module FemtoRV32 #(
 	
 	state[STORE_bit]: begin
 	   `show_state("store");	   	   
-	   // for linear execution flow, the prefetched isntr (nextInstr)
-	   // can be used.
+	   // Linear exec flow -> we use the prefetched isntr (nextInstr)
 	   instr <= nextInstr;
-	   // update instr address so that next instr is fetched during
-	   // decode (and ready if there was no jump or branch)
+	   // Prepare instruction prefetch (lookahead)
+	   //  (fetched during FETCH_REGS, ready in EXECUTE)	   
 	   addressReg <= {PCplus4, 2'b00};
-	   // In addition, STORE instructions write to memory here.
-	   // (see NrvStoreToMemory store_to_mem at beginning of file).
 	   state <= FETCH_REGS;
+	   // Note: data is written to memory by 'NrvStoreToMemory store_to_mem'
+	   // (see beginning of file).
 	end
 
 	state[WAIT_ALU_OR_DATA_bit]: begin
@@ -407,7 +405,10 @@ module FemtoRV32 #(
 	   // - If ALU is still busy, continue to wait.
 	   // - register writeback is active
 	   if(!aluBusy) begin
+	      // Linear exec flow -> we use the prefetched isntr (nextInstr)	      
 	      instr <= nextInstr;
+	      // Prepare instruction prefetch (lookahead)
+	      //  (fetched during FETCH_REGS, ready in EXECUTE)	   
 	      addressReg <= {PCplus4, 2'b00};
 	      state <= FETCH_REGS;
 	   end
