@@ -2,7 +2,13 @@
 //   (minus SYSTEM and FENCE that are not implemented)
 // Bruno Levy, May-June 2020
 //
-// For more information, see README.md
+// drop-in replacement of femtorv32, 
+// does 3 CPIs (cycles per instructions) in linear execution flow
+// (two be compared with 2 CPIs with femtorv32.v),
+// saves 20-50 LUTs
+// in femtosoc.v, replace  `include "femtorv32.v"     
+//                 with    `include "mini_femtorv32.v"
+
 
 /*******************************************************************/
 
@@ -75,8 +81,8 @@ module FemtoRV32 #(
    wire          needWaitALU;    // asserted if instruction uses at least one additional phase in ALU
    wire 	 isLoad;         // guess what
    wire 	 isStore;        // guess what
-   wire          isBranch;       // guess what
    wire          isJump;         // guess what
+   wire          isBranch;       // guess what
    wire          decoderError;   // true if instr does not correspond to any known instr
 
    // The instruction decoder, that reads the current instruction 
@@ -262,23 +268,23 @@ module FemtoRV32 #(
    localparam INITIAL              = 8'b00000000;   
    localparam WAIT_INSTR           = 8'b00000001;
    localparam FETCH_INSTR          = 8'b00000010;
-   localparam FETCH_REGS           = 8'b00000100;
-   localparam EXECUTE              = 8'b00001000;
-   localparam WAIT_ALU_OR_DATA     = 8'b00010000;
-   localparam LOAD                 = 8'b00100000;
-   localparam STORE                = 8'b01000000;   
+   localparam USE_PREFETCHED_INSTR = 8'b00000100;
+   localparam FETCH_REGS           = 8'b00001000;
+   localparam EXECUTE              = 8'b00010000;
+   localparam WAIT_ALU_OR_DATA     = 8'b00100000;
+   localparam LOAD                 = 8'b01000000;
    localparam ERROR                = 8'b10000000;
 
    localparam WAIT_INSTR_bit           = 0;
    localparam FETCH_INSTR_bit          = 1;
-   localparam FETCH_REGS_bit           = 2;
-   localparam EXECUTE_bit              = 3;
-   localparam WAIT_ALU_OR_DATA_bit     = 4;
-   localparam LOAD_bit                 = 5;
-   localparam STORE_bit                = 6;      
+   localparam USE_PREFETCHED_INSTR_bit = 2;
+   localparam FETCH_REGS_bit           = 3;
+   localparam EXECUTE_bit              = 4;
+   localparam WAIT_ALU_OR_DATA_bit     = 5;
+   localparam LOAD_bit                 = 6;   
    localparam ERROR_bit                = 7;
    
-   reg [8:0] state = INITIAL;
+   reg [7:0] state = INITIAL;
    
    // the internal signals that are determined combinatorially from
    // state and other signals.
@@ -295,11 +301,11 @@ module FemtoRV32 #(
    // Can't be done during EXECUTE (would be better), because mem_addr
    // (needed) is updated at the end of EXECUTE.
    // See also how load_from_mem and store_to_mem are wired.
-   assign mem_wenable = state[STORE_bit];
+   assign mem_wenable = (state[USE_PREFETCHED_INSTR_bit] && isStore);
 
    // alu_wenable starts computation in the ALU (for functions that
    // require several cycles).
-   assign alu_wenable = state[EXECUTE_bit];
+   assign alu_wenable = (state[EXECUTE_bit]);
 
    // instr_retired is asserted during one cycle for each
    // retired instructions. It is used to update the instruction
@@ -307,9 +313,7 @@ module FemtoRV32 #(
 `ifdef NRV_CSR   
    assign instr_retired = state[FETCH_REGS_bit];
 `endif
-
-   wire jump_or_take_branch = isJump || (isBranch && predOut);
-       
+   
    // And now the state machine
 
 `define show_state(state) `verbose($display("    %s",state))
@@ -320,13 +324,11 @@ module FemtoRV32 #(
 	 addressReg <= 0;
 	 PC <= 0;
       end else
-
       case(1'b1)
 	(state == 0): begin
 	   `show_state("initial");
 	   state <= WAIT_INSTR;
 	end
-	
 	state[WAIT_INSTR_bit]: begin
 	   `show_state("wait_instr");
 	   // this state to give enough time to fetch the 
@@ -334,7 +336,6 @@ module FemtoRV32 #(
 	   // when fetching the first instruction). 
 	   state <= FETCH_INSTR;
 	end
-	
 	state[FETCH_INSTR_bit]: begin
 	   `show_state("fetch_instr");	   
 	   instr <= mem_rdata;
@@ -343,54 +344,8 @@ module FemtoRV32 #(
 	   addressReg <= {PCplus4, 2'b00};
 	   state <= FETCH_REGS;
 	end
-	
-	state[FETCH_REGS_bit]: begin
-	   `show_state("fetch_regs");	   	   	   
-	   // instr was just updated -> input register ids also
-	   // input registers available at next cycle 
-	   state <= EXECUTE;
-	   error_latched <= decoderError;
-	end
-	
-	state[EXECUTE_bit]: begin
-	   `show_state("execute");
-	   
-	   nextInstr <= mem_rdata; // Looked-ahead instr.
-	   // Needed for LOAD,STORE,jump,branch
-	   // (in other cases it will be ignored)
-	   addressReg <= aluOut; 
-
-	   PC <= PCplus4;
-	   
-	   (* parallel_case, full_case *)	   
-	   case (1'b1)
-	     error_latched: state <= ERROR;
-	     isLoad:        state <= LOAD;
-	     isStore:       state <= STORE;
-	     needWaitALU:   state <= WAIT_ALU_OR_DATA;	     
-	     jump_or_take_branch: begin
-		PC <= aluOut[31:2];
-		state <= WAIT_INSTR;
-	     end
-	     default: begin
-		instr <= mem_rdata;
-		addressReg <= {PC + 2'b10, 2'b00};
-		state <= FETCH_REGS;
-		PC <= PCplus4;
-	     end
-	   endcase
-	end 
-	
-	state[LOAD_bit]: begin
-	   `show_state("load");	   
-	   // data address (aluOut) was just updated
-	   // data ready at next cycle
-	   // we go to WAIT_ALU_OR_DATA to write back read data
-	   state <= WAIT_ALU_OR_DATA;
-	end
-	
-	state[STORE_bit]: begin
-	   `show_state("store");	   	   
+	state[USE_PREFETCHED_INSTR_bit]: begin
+	   `show_state("use_prefetched_instr");	   	   
 	   // for linear execution flow, the prefetched isntr (nextInstr)
 	   // can be used.
 	   instr <= nextInstr;
@@ -401,23 +356,70 @@ module FemtoRV32 #(
 	   // (see NrvStoreToMemory store_to_mem at beginning of file).
 	   state <= FETCH_REGS;
 	end
-
+	state[FETCH_REGS_bit]: begin
+	   `show_state("fetch_regs");	   	   	   
+	   // instr was just updated -> input register ids also
+	   // input registers available at next cycle 
+	   state <= EXECUTE;
+	   error_latched <= decoderError;
+	end
+	state[EXECUTE_bit]: begin
+	   `show_state("execute");
+	   
+	   // input registers are read, aluOut is up to date
+	   
+	   // Looked-ahead instr.
+	   nextInstr <= mem_rdata;
+	   
+	   // Needed for LOAD,STORE,jump,branch
+	   // (in other cases it will be ignored)
+	   addressReg <= aluOut; 
+	   
+	   if(error_latched) begin
+	      state <= ERROR;
+	   end else if(isLoad) begin
+	      state <= LOAD;
+	      PC <= PCplus4;
+	   end else begin 
+	      (* parallel_case, full_case *)
+	      case(1'b1)
+		isJump: begin 
+		   PC <= aluOut[31:2];
+		   state <= WAIT_INSTR;
+		end
+		isBranch: begin 
+		   if(predOut) begin
+		      PC <= aluOut[31:2];
+		      state <= WAIT_INSTR;
+		   end else begin
+		      PC <= PCplus4;
+		      state <= USE_PREFETCHED_INSTR;
+		   end
+		end
+		default: begin // linear execution flow
+		   PC <= PCplus4;
+		   state <= needWaitALU ? WAIT_ALU_OR_DATA : USE_PREFETCHED_INSTR;
+		end		   
+	      endcase 
+	   end 
+	end
+	state[LOAD_bit]: begin
+	   `show_state("load");	   
+	   // data address (aluOut) was just updated
+	   // data ready at next cycle
+	   // we go to WAIT_ALU_OR_DATA to write back read data
+	   state <= WAIT_ALU_OR_DATA;
+	end
 	state[WAIT_ALU_OR_DATA_bit]: begin
 	   `show_state("wait_alu_or_data");	   
 	   // - If ALU is still busy, continue to wait.
 	   // - register writeback is active
-	   if(!aluBusy) begin
-	      instr <= nextInstr;
-	      addressReg <= {PCplus4, 2'b00};
-	      state <= FETCH_REGS;
-	   end
+	   state <= aluBusy ? WAIT_ALU_OR_DATA : USE_PREFETCHED_INSTR;
 	end
-	
 	state[ERROR_bit]: begin
 	   `bench($display("ERROR"));	   	   	   
            state <= ERROR;
 	end
-	
 	default: begin
 	   `bench($display("UNKNOWN STATE"));	   	   	   
 	   state <= ERROR;

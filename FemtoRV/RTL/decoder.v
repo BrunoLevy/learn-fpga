@@ -17,9 +17,9 @@ module NrvDecoder(
     output reg 	      aluM, // Asserted if operation is an RV32M operation
     output reg 	      isLoad,
     output reg 	      isStore,
+    output reg        isBranch,
+    output reg        isJump,
     output reg 	      needWaitALU,
-    output reg [2:0]  nextPCSel, // 001: PC+4  010: ALU  100: (predicate ? ALU : PC+4)
-		                 // (same as writeBackSel, 1-hot encoding)
     output reg [31:0] imm,
     output reg 	      error
 );
@@ -82,10 +82,11 @@ module NrvDecoder(
    always @(*) begin
 
        error = 1'b0;
-       nextPCSel = 3'b001;  // default: PC <- PC+4
        inRegId1Sel = 1'b1; // reg 1 Id from instr
        isLoad = 1'b0;
        isStore = 1'b0;
+       isBranch = 1'b0;
+       isJump = 1'b0;
        aluQual = 1'b0;
        needWaitALU = 1'b0;
        aluM    = 1'b0;
@@ -119,7 +120,7 @@ module NrvDecoder(
 	      aluInSel1 = 1'b1;       // ALU source 1 = PC	      
 	      aluInSel2 = 1'b1;       // ALU source 2 = imm
 	      aluSel = 1'b0;          // ALU op = ADD
-	      nextPCSel = 3'b010;     // PC <- ALU	      
+	      isJump = 1'b1;          // PC <- ALU
 	      imm = Jimm;             // imm format = J
 	   end
 	 
@@ -129,7 +130,7 @@ module NrvDecoder(
 	      aluInSel1 = 1'b0;       // ALU source 1 = reg	      
 	      aluInSel2 = 1'b1;       // ALU source 2 = imm
 	      aluSel = 1'b0;          // ALU op = ADD
-	      nextPCSel = 3'b010;     // PC <- ALU	      
+	      isJump = 1'b1;          // PC <- ALU	      
 	      imm = Iimm;             // imm format = I
 	   end
 	 
@@ -139,7 +140,7 @@ module NrvDecoder(
 	      aluInSel1 = 1'b1;       // ALU source 1 : PC
 	      aluInSel2 = 1'b1;       // ALU source 2 : imm
 	      aluSel = 1'b0;          // ALU op = ADD
-	      nextPCSel = 3'b100;     // PC <- pred ? ALU : PC+4	       
+	      isBranch = 1'b1;        // PC <- pred ? ALU : PC+4	       
 	      imm = Bimm;             // imm format = B
 	   end
 	   
@@ -219,7 +220,6 @@ module NrvDecoder(
 	      aluInSel1 = 1'bx;      
 	      aluInSel2 = 1'bx;      
 	      aluSel = 1'bx;      
-	      nextPCSel = 3'bxxx;  
 	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
 	   end
        endcase

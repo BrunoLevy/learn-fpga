@@ -1,9 +1,10 @@
 /********************* Instruction decoder *******************************/
-/* A drop-in replacement of the instruction decoder, meant to further    */
-/* reduce LUT count by not checking for errors.                          */
-/* Optimized by @mecrisp                                                 */
-/* in femtorv32.v, replace `include "decoder.v"                          */
-/*                 with    `include "mini_decoder.v"                     */
+// A drop-in replacement of the instruction decoder, meant to further    
+// reduce LUT count by not checking for errors.                          
+// Optimized by @mecrisp                                                 
+// in femtorv32.v, replace `include "decoder.v"                          
+//                 with    `include "mini_decoder.v"                     
+// (does not seem to save many LUTs with my version of YOSYS, but it depends).
 
 module NrvDecoder(
     input wire [31:0] instr,
@@ -19,14 +20,14 @@ module NrvDecoder(
     output reg 	      aluInSel2, // 0: reg  1: imm
     output [2:0]      aluOp,
     output reg 	      aluQual,
-    output wire	      aluM, // Asserted if operation is an RV32M operation
+    output wire       aluM, // Asserted if operation is an RV32M operation
     output reg 	      isLoad,
     output reg 	      isStore,
+    output reg 	      isJump,
+    output reg        isBranch,		  
     output reg 	      needWaitALU,
-    output reg [2:0]  nextPCSel, // 001: PC+4  010: ALU  100: (predicate ? ALU : PC+4)
-		                 // (same as writeBackSel, 1-hot encoding)
     output reg [31:0] imm,
-    output wire	      error
+    output wire       error
 );
 
    assign error = 1'b0; // We do not check for errors in the MiniDecoder.
@@ -66,10 +67,11 @@ module NrvDecoder(
 
    always @(*) begin
 
-       nextPCSel = 3'b001; // default: PC <- PC+4
        inRegId1Sel = 1'b1; // reg 1 Id from instr
        isLoad = 1'b0;
        isStore = 1'b0;
+       isJump  = 1'b0;
+       isBranch = 1'b0;
        aluQual = 1'b0;
        needWaitALU = 1'b0;
 
@@ -102,7 +104,7 @@ module NrvDecoder(
 	      aluInSel1 = 1'b1;       // ALU source 1 = PC
 	      aluInSel2 = 1'b1;       // ALU source 2 = imm
 	      aluSel = 1'b0;          // ALU op = ADD
-	      nextPCSel = 3'b010;     // PC <- ALU
+	      isJump = 1'b1;          // PC <- ALU
 	      imm = Jimm;             // imm format = J
 	   end
 
@@ -112,7 +114,7 @@ module NrvDecoder(
 	      aluInSel1 = 1'b0;       // ALU source 1 = reg
 	      aluInSel2 = 1'b1;       // ALU source 2 = imm
 	      aluSel = 1'b0;          // ALU op = ADD
-	      nextPCSel = 3'b010;     // PC <- ALU
+	      isJump = 1'b1;          // PC <- ALU
 	      imm = Iimm;             // imm format = I
 	   end
 
@@ -122,7 +124,7 @@ module NrvDecoder(
 	      aluInSel1 = 1'b1;       // ALU source 1 : PC
 	      aluInSel2 = 1'b1;       // ALU source 2 : imm
 	      aluSel = 1'b0;          // ALU op = ADD
-	      nextPCSel = 3'b100;     // PC <- pred ? ALU : PC+4
+	      isBranch = 1'b1;        // PC <- pred ? ALU : PC+4
 	      imm = Bimm;             // imm format = B
 	   end
 
@@ -176,7 +178,6 @@ module NrvDecoder(
 	      aluInSel1 = 1'bx;
 	      aluInSel2 = 1'bx;
 	      aluSel = 1'bx;
-	      nextPCSel = 3'bxxx;
 	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
 	   end
        endcase

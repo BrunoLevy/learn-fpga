@@ -82,7 +82,7 @@ module NrvMemoryInterface(
    // before memory read and memory data available.
    reg RAM_read_delay;
    always @(posedge clk) begin
-      if(rd) begin
+      if(rd && !isIO) begin
 	 RAM_read_delay <= 1;
       end else begin
 	 RAM_read_delay <= 0;

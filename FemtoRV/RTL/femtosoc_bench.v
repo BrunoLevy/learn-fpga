@@ -31,7 +31,7 @@ module femtoRV32_bench();
 
    integer i;
    initial begin
-      for(i=0; i<100000; i++) begin
+      for(i=0; i<500000; i++) begin
 	 #10 pclk = 0;
 	 #10 pclk = 1;
       end
