@@ -192,7 +192,7 @@ module FemtoRV32 #(
        .addr_LSBs(mem_addr[1:0]),    // The two LSBs of the address
        .width(aluOp[1:0]),           // Data width: 00:byte 01:hword 10:word
        .is_unsigned(aluOp[2]),       // signed/unsigned flag
-       .data(LOAD_mem_rdata_aligned) // Data ready to be sent to register				   
+       .data(LOAD_mem_rdata_aligned) // Data ready to be sent to register
    );
 
    // STORE: a small combinatorial circuit that realigns
@@ -221,7 +221,7 @@ module FemtoRV32 #(
       .clk(clk),                         // for counting cycles
       .instr_cnt(instr_retired),         // for counting retired instructions
       .reset(reset),                     // reset all CSRs to default value
-      .CSRid(instr[31:20]),              // CSR Id, extracted from instr				    
+      .CSRid(instr[31:20]),              // CSR Id, extracted from instr
       .rdata(CSR_rdata)                  // Read CSR value
       // TODO: test for errors (.error)
    );
@@ -293,7 +293,7 @@ module FemtoRV32 #(
    // The memory-read signal. It is only needed for IO, hence it is only enabled
    // right before the LOAD state. To allow execution from IO-mapped devices, it
    // will be necessary to also enable it before instruction fetch.
-   assign mem_rstrb = (state[EXECUTE_bit] && isLoad);
+   assign mem_rstrb = (state[LOAD_bit] && isLoad);
 
    // See also how load_from_mem and store_to_mem are wired.
    assign mem_wenable = state[STORE_bit];
