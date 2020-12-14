@@ -293,7 +293,7 @@ module FemtoRV32 #(
    // The memory-read signal. It is only needed for IO, hence it is only enabled
    // right before the LOAD state. To allow execution from IO-mapped devices, it
    // will be necessary to also enable it before instruction fetch.
-   assign mem_rstrb = (state[LOAD_bit] && isLoad);
+   assign mem_rstrb = state[LOAD_bit];
 
    // See also how load_from_mem and store_to_mem are wired.
    assign mem_wenable = state[STORE_bit];

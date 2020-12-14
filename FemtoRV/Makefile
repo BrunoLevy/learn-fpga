@@ -51,6 +51,10 @@ ICESTICK.synth: FIRMWARE/firmware.hex
 	icetime -p icestick.pcf -P tq144 -r $(PROJECTNAME).timings -d hx1k -t $(PROJECTNAME).asc
 	icepack $(PROJECTNAME).asc $(PROJECTNAME).bin
 
+ICESTICK.show: FIRMWARE/firmware.hex
+	yosys $(YOSYS_ICESTICK_OPT) $(VERILOGS)
+	nextpnr-ice40 $(NEXTPNR_ICESTICK_OPT) --gui
+
 ICESTICK.prog:
 	iceprog $(PROJECTNAME).bin
 
@@ -62,6 +66,10 @@ ULX3S.synth: FIRMWARE/firmware.hex
 	yosys $(YOSYS_ULX3S_OPT) $(VERILOGS)
 	nextpnr-ecp5 $(NEXTPNR_ULX3S_OPT)
 	ecppack --compress --svf-rowsize 100000 --svf $(PROJECTNAME).svf $(PROJECTNAME)_out.config $(PROJECTNAME).bit
+
+ULX3S.show: FIRMWARE/firmware.hex
+	yosys $(YOSYS_ULX3S_OPT) $(VERILOGS)
+	nextpnr-ecp5 $(NEXTPNR_ULX3S_OPT) --gui
 
 ULX3S.prog: # program once (lost if device restarted)
 	ujprog $(PROJECTNAME).bit           
