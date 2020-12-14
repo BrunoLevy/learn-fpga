@@ -427,6 +427,6 @@ compared to the one of the IceStick). Now time to read the
 [ULX3S tutorial](ULX3S.md) !
 
 ![](Images/ICE40HX1K_and_ECP5.png)
-To give you an idea, this image shows our core, installed on a
+_To give you an idea, this image shows our core, installed on a
 ICE40HX1K (that equips the IceStick) and on an ECP5 85K (that equips
-the ULX3S). Plenty of room on the ULX3S !!
+the ULX3S). Plenty of room on the ULX3S !_
