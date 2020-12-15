@@ -191,8 +191,7 @@ module NrvIO(
    localparam SPI_SDCARD_bit   = 9; // write: bit 0: mosi  bit 1: clk   bit 2: csn
                                     // read:  bit 0: miso
 
-   localparam BUTTONS_bit      = 10; // write: bit 0: mosi  bit 1: clk   bit 2: csn
-                                     // read:  bit 0: miso
+   localparam BUTTONS_bit      = 10; // read: buttons state
 
 
 `ifdef NRV_IO_LEDS
