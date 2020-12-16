@@ -5,16 +5,16 @@
 FIRMWARE_DIR=/home/blevy/Programming/learn-fpga/FemtoRV/FIRMWARE
 
 # Configuration for larger boards (ULX3S, ECP5-EVN)
-ARCH=rv32im
-ABI=ilp32
-OPTIMIZE=-O3
+#ARCH=rv32im
+#ABI=ilp32
+#OPTIMIZE=-O3
 
 # More minimalistic configurations (ICEStick, ICE40)
 # note: ICE40up5K could support rv32im but this requires some work
 #  since yosys does not (yet) infer DSP blocks for ICE40).
-#ARCH=rv32i
-#ABI=ilp32
-#OPTIMIZE=-Os
+ARCH=rv32i
+ABI=ilp32
+OPTIMIZE=-Os
 # Optimize for size, on the IceStick we only have 6K of RAM !
 
 # Normally you do not need to modify anything beyond this line.
