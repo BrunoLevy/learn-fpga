@@ -14,8 +14,11 @@ module NrvSmallALU #(
   input 	    opqual, // Operation qualification (+/-, Logical/Arithmetic)
   output reg [31:0] out,    // ALU result. Latched if operation is a shift
   output 	    busy,   // 1 if ALU is currently computing (that is, shift)
-  input 	    wr      // Raise to write ALU inputs and start computing
+  input 	    wr,     // Raise to write ALU inputs and start computing
+  output wire [31:0] AplusB // Direct access to the adder, used by address computation
 );
+
+   assign AplusB = in1 + in2;
 
    reg [31:0] ALUreg;          // The internal register of the ALU, used by shifts.
    reg [4:0]  shamt = 0;       // current shift amount.
@@ -36,10 +39,11 @@ module NrvSmallALU #(
    wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
    wire        LTU = minus[32];
 
+
    always @(*) begin
       (* parallel_case, full_case *)
       case(op)
-	3'b000: out = opqual ? minus[31:0] : in1 + in2;  // ADD/SUB
+	3'b000: out = opqual ? minus[31:0] : AplusB;     // ADD/SUB
 	3'b010: out = LT ;                               // SLT
 	3'b011: out = LTU;                               // SLTU
 	3'b100: out = in1 ^ in2;                         // XOR

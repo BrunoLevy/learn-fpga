@@ -135,6 +135,7 @@ module FemtoRV32 #(
    /***************************************************************************/
    // The ALU, partly combinatorial, partly state (for shifts).
    wire [31:0] aluOut;
+   wire [31:0] aluAplusB;   
    wire        aluBusy;
    wire        alu_wenable;
    wire [31:0] aluIn1 = aluInSel1 ? {PC, 2'b00} : regOut1;
@@ -147,10 +148,11 @@ module FemtoRV32 #(
             .clk(clk),	      
             .in1(aluIn1),
             .in2(aluIn2),
-            .op(aluOp & {3{aluSel}}),
-            .opqual(aluQual & aluSel),
+            .op(aluOp),
+            .opqual(aluQual),
             .opM(aluM),	 
             .out(aluOut),
+	    .AplusB(aluAplusB),
             .wr(alu_wenable), 
             .busy(aluBusy)	      
          );
@@ -165,9 +167,10 @@ module FemtoRV32 #(
             .clk(clk),	      
             .in1(aluIn1),
             .in2(aluIn2),
-            .op(aluOp & {3{aluSel}}),
-            .opqual(aluQual & aluSel),
+            .op(aluOp),
+            .opqual(aluQual),
             .out(aluOut),
+	    .AplusB(aluAplusB),	    
             .wr(alu_wenable), 
             .busy(aluBusy)	      
          );
@@ -204,7 +207,7 @@ module FemtoRV32 #(
    wire mem_wenable;   
    NrvStoreToMemory store_to_mem(
        .data(regOut2),          // Data to be sent, out of register
-       .addr_LSBs(aluOut[1:0]), // The two LSBs of the address 
+       .addr_LSBs(aluAplusB[1:0]), // The two LSBs of the address
        .width(aluOp[1:0]),      // Data width: 00:byte 01:hword 10:word
        .mem_wdata(mem_wdata),   // Shifted data to be sent to memory
        .mem_wmask(mem_wmask),   // Write mask for the 4 bytes
@@ -235,7 +238,8 @@ module FemtoRV32 #(
    always @(*) begin
       (* parallel_case, full_case *)
       case(1'b1)
-	writeBackSel[0]: writeBackData = aluOut;
+	(writeBackSel[0] & aluSel): writeBackData = aluOut;
+	(writeBackSel[0] & !aluSel): writeBackData = aluAplusB;	
 	writeBackSel[1]: writeBackData = {PCplus4, 2'b00};
 	writeBackSel[2]: writeBackData = LOAD_mem_rdata_aligned;
 `ifdef NRV_CSR
@@ -354,8 +358,8 @@ module FemtoRV32 #(
 	// Does 1-cycle ALU ops, or handles jump/branch, or transitions to waitALU, load, store
 	//    If linear execution flow, update instr with lookahead and prepare next lookahead	
 	state[EXECUTE_bit]: begin
-	   nextInstr <= mem_rdata; // Looked-ahead instr.
-	   addressReg <= aluOut;   // Needed for LOAD,STORE,jump,branch
+	   nextInstr <= mem_rdata;  // Looked-ahead instr.
+	   addressReg <= aluAplusB; // Needed for LOAD,STORE,jump,branch
 	   PC <= PCplus4;
 	   
 	   (* parallel_case, full_case *)	   
@@ -365,7 +369,7 @@ module FemtoRV32 #(
 	     isStore:       state <= STORE;
 	     needWaitALU:   state <= WAIT_ALU_OR_DATA;	     
 	     jump_or_take_branch: begin
-		PC <= aluOut[31:2];
+		PC <= aluAplusB[31:2];
 		state <= WAIT_INSTR;
 	     end
 	     default: begin // Linear execution flow, use lookahead, prepare next lookahead
