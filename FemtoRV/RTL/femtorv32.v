@@ -426,8 +426,8 @@ module FemtoRV32 #(
    
 `ifdef BENCH
    always @(posedge clk) begin
-      case 1'b1:
-	(state == 0): 	             `show_state("initial");
+      case(1'b1)
+	(state == 0): begin end	      // `show_state("initial");
 	state[WAIT_INSTR_bit]:       `show_state("wait_instr");
 	state[FETCH_INSTR_bit]:      `show_state("fetch_instr");
 	state[FETCH_REGS_bit]:       `show_state("fetch_regs");

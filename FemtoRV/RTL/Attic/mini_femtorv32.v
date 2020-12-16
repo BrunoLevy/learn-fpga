@@ -8,6 +8,8 @@
 // saves 20-50 LUTs
 // in femtosoc.v, replace  `include "femtorv32.v"     
 //                 with    `include "mini_femtorv32.v"
+//
+// NOTE: the structure of the decoder has changed, *** NEEDS TO BE ADAPTED ***
 
 
 /*******************************************************************/
