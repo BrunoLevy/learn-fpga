@@ -313,8 +313,6 @@ module FemtoRV32 #(
    wire jump_or_take_branch = isJump || (isBranch && predOut);
        
    // And now the state machine
-
-`define show_state(state) `verbose($display("    %s",state))
    
    always @(posedge clk) begin
       if(!reset) begin	
@@ -324,42 +322,38 @@ module FemtoRV32 #(
       end else
 
       case(1'b1)
-	(state == 0): begin
-	   `show_state("initial");
-	   state <= WAIT_INSTR;
-	end
+
+        // *********************************************************************
+        // Initial state
+	(state == INITIAL):     state <= WAIT_INSTR;
 	
-	state[WAIT_INSTR_bit]: begin
-	   `show_state("wait_instr");
-	   // this state to give enough time to fetch the 
-	   // instruction. Used for jumps and taken branches (and 
-	   // when fetching the first instruction). 
-	   state <= FETCH_INSTR;
-	end
-	
+        // *********************************************************************	
+	// Additional wait state for instruction fetch. 
+	// Required by jumps and taken branch.	
+	state[WAIT_INSTR_bit]:  state <= FETCH_INSTR; 
+
+        // *********************************************************************
+        // Fetch instr and prepare instr lookahead
+	//   (instr lookahead is fetched during FETCH_REGS and ready in EXECUTE)	   
 	state[FETCH_INSTR_bit]: begin
-	   `show_state("fetch_instr");	   
 	   instr <= mem_rdata;
-	   // Prepare instruction prefetch (lookahead)
-	   //  (fetched during FETCH_REGS, ready in EXECUTE)	   
 	   addressReg <= {PCplus4, 2'b00};
 	   state <= FETCH_REGS;
 	end
-	
+
+        // *********************************************************************
+        // 1) Fetch registers (instr is ready, as well as register ids)
+	// 2) Prefetch next instr, at PC+4 (addressReg is set by all transitions that land here)
+	// 3) Latch decoder error flag
 	state[FETCH_REGS_bit]: begin
-	   `show_state("fetch_regs");
-	   // 1) instr was just updated -> input register ids also
-	   //      input registers available at next cycle
-	   // 2) prefetch next instr, at PC+4 (addressReg is set
-	   //      by all transitions that land here)
-	   // 3) latch decoder error flag
 	   state <= EXECUTE;
 	   error_latched <= decoderError;
 	end
 	
+        // *********************************************************************	
+	// Does 1-cycle ALU ops, or handles jump/branch, or transitions to waitALU, load, store
+	//    If linear execution flow, update instr with lookahead and prepare next lookahead	
 	state[EXECUTE_bit]: begin
-	   `show_state("execute");
-	   
 	   nextInstr <= mem_rdata; // Looked-ahead instr.
 	   addressReg <= aluOut;   // Needed for LOAD,STORE,jump,branch
 	   PC <= PCplus4;
@@ -374,68 +368,66 @@ module FemtoRV32 #(
 		PC <= aluOut[31:2];
 		state <= WAIT_INSTR;
 	     end
-	     default: begin // Linear execution flow
+	     default: begin // Linear execution flow, use lookahead, prepare next lookahead
 		instr <= mem_rdata;  // Use looked-ahead instr.
-		// Prepare instruction prefetch (lookahead)
-		//  (fetched during FETCH_REGS, ready in EXECUTE)	   
-		addressReg <= {PC + 2'b10, 2'b00}; // Look-ahead: PC+8
-		state <= FETCH_REGS; // 2 cycles per instruction
+		addressReg <= {PC + 2'b10, 2'b00}; // Look-ahead: PC+8 (PC not updated yet)
+		state <= FETCH_REGS; // Cool, linear exec flow takes 2 CPIs !
 	     end
 	   endcase
 	end 
-	
-	state[LOAD_bit]: begin
-	   `show_state("load");	   
-	   // data address (aluOut) was just updated
-	   // data ready at next cycle
-	   // we go to WAIT_ALU_OR_DATA to write back read data
-	   state <= WAIT_ALU_OR_DATA;
-	end
-	
+
+        // *********************************************************************
+        // wait-state for data fetch (LOAD): 
+	//    data address (aluOut) was set by EXECUTE, data ready at next cycle (WAIT_ALU_OR_DATA)
+	state[LOAD_bit]: state <= WAIT_ALU_OR_DATA;
+
+        // *********************************************************************
+        // Data is written to memory by 'NrvStoreToMemory store_to_mem' (see beginning of file)
+	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[STORE_bit]: begin
-	   `show_state("store");	   	   
-	   // Linear exec flow -> we use the prefetched isntr (nextInstr)
 	   instr <= nextInstr;
-	   // Prepare instruction prefetch (lookahead)
-	   //  (fetched during FETCH_REGS, ready in EXECUTE)	   
 	   addressReg <= {PCplus4, 2'b00};
 	   state <= FETCH_REGS;
-	   // Note: data is written to memory by 'NrvStoreToMemory store_to_mem'
-	   // (see beginning of file).
 	end
 
+        // *********************************************************************
+        // Used by LOAD and by multi-cycle ALU instr (shifts and RV32M ops), writeback from ALU or memory
+	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[WAIT_ALU_OR_DATA_bit]: begin
-	   `show_state("wait_alu_or_data");	   
-	   // - If ALU is still busy, continue to wait.
-	   // - register writeback is active
 	   if(!aluBusy) begin
-	      // Linear exec flow -> we use the prefetched isntr (nextInstr)
 	      instr <= nextInstr;
-	      // Prepare instruction prefetch (lookahead)
-	      //  (fetched during FETCH_REGS, ready in EXECUTE)	   
 	      addressReg <= {PCplus4, 2'b00};
 	      state <= FETCH_REGS;
 	   end
 	end
+
+//	state[ERROR_bit]: state <= ERROR;
+	default:          state <= ERROR;
 	
-	state[ERROR_bit]: begin
-	   `bench($display("ERROR"));	   	   	   
-           state <= ERROR;
-	end
-	
-	default: begin
-	   `bench($display("UNKNOWN STATE"));	   	   	   
-	   state <= ERROR;
-	end
       endcase
   end   
 
 /*********************************************************************/
+// Debugging, test-bench
 
+`define show_state(state)   `verbose($display("    %s",state))
 `define show_opcode(opcode) `verbose($display("%x: %s",{PC,2'b00},opcode))
    
 `ifdef BENCH
    always @(posedge clk) begin
+      case 1'b1:
+	(state == 0): 	             `show_state("initial");
+	state[WAIT_INSTR_bit]:       `show_state("wait_instr");
+	state[FETCH_INSTR_bit]:      `show_state("fetch_instr");
+	state[FETCH_REGS_bit]:       `show_state("fetch_regs");
+	state[EXECUTE_bit]:          `show_state("execute");
+	state[LOAD_bit]:             `show_state("load");	   
+	state[STORE_bit]:            `show_state("store");
+	state[WAIT_ALU_OR_DATA_bit]: `show_state("wait_alu_or_data");
+	state[ERROR_bit]:   	     `bench($display("ERROR"));	   	   	   
+	default:  	             `bench($display("UNKNOWN STATE"));	   	   	   
+      endcase
+   
       if(state[FETCH_REGS_bit]) begin
 	 case(instr[6:0])
 	   7'b0110111: `show_opcode("LUI");
