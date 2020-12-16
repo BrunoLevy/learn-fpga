@@ -3,7 +3,7 @@
 module NrvDecoder(
     input wire [31:0] instr,
     output wire [4:0] writeBackRegId,
-    output reg 	      writeBackEn,
+    output reg	      writeBackEn,
 		  
     output reg 	      writeBackALU,
     output reg 	      writeBackPCplus4,
