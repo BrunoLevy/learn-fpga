@@ -3,7 +3,7 @@
 module NrvPredicate(
    input [31:0] in1,
    input [31:0] in2,
-   input [2:0]  op, // Operation
+   input [2:0]  func, 
    output reg   out
 );
 
@@ -12,7 +12,7 @@ module NrvPredicate(
    // NOTE: if you read swapforth/J1 source, J1's st0,st1 are inverted 
    // as compared to in1,in2 (st0<->in2  st1<->in1)
    // Equivalent code:
-   // case(op)
+   // case(func)
    //   3'b000: out = (in1 == in2);                   // BEQ
    //   3'b001: out = (in1 != in2);                   // BNE
    //   3'b100: out = ($signed(in1) < $signed(in2));  // BLT
@@ -28,7 +28,7 @@ module NrvPredicate(
       
    always @(*) begin
       (* parallel_case, full_case *)	 
-      case(op)
+      case(func)
         3'b000: out =  EQ;   // BEQ
         3'b001: out = !EQ;   // BNE
         3'b100: out =  LT;   // BLT

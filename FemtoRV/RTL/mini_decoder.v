@@ -5,6 +5,7 @@
 // in femtorv32.v, replace `include "decoder.v"                          
 //                 with    `include "mini_decoder.v"                     
 // (does not seem to save many LUTs with my version of YOSYS, but it depends).
+// NOTE: the structure of the decoder has changed, *** NEEDS TO BE ADAPTED ***
 
 module NrvDecoder(
     input wire [31:0] instr,

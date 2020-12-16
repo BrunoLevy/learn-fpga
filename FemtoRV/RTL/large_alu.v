@@ -7,9 +7,9 @@ module NrvLargeALU (
   input 	     clk, 
   input [31:0] 	     in1,
   input [31:0] 	     in2,
-  input [2:0] 	     op,     // Operation
-  input 	     opqual, // Operation qualification (+/-, Logical/Arithmetic)
-  input              opM,    // Asserted if operation is an RV32M operation
+  input [2:0] 	     func,     // Operation
+  input 	     funcQual, // Operation qualification (+/-, Logical/Arithmetic)
+  input              funcM,    // Asserted if operation is an RV32M operation
   output reg [31:0]  out,    // ALU result. Latched if operation is a shift,mul,div,rem
   output 	     busy,   // 1 if ALU is currently computing (that is, shift,mul,div,rem)
   input 	     wr,     // Raise to write ALU inputs and start computing
@@ -27,15 +27,15 @@ module NrvLargeALU (
    reg [31:0] 	      quotient_msk;
    reg 		      outsign;
 
-   assign busy = opM && |quotient_msk; // ALU is busy if a DIV or REM operation is running.
+   assign busy = funcM && |quotient_msk; // ALU is busy if a DIV or REM operation is running.
       
    // Implementation suggested by Matthias Koch, uses a single 33 bits 
    // subtract for all the tests, as in swapforth/J1.
    // NOTE: if you read swapforth/J1 source,
    //   J1's st0,st1 are inverted as compared to in1,in2 (st0<->in2  st1<->in1)
    // Equivalent code:
-   // case(op) 
-   //    3'b000: out = opqual ? in1 - in2 : in1 + in2;                 // ADD/SUB
+   // case(func) 
+   //    3'b000: out = funcQual ? in1 - in2 : in1 + in2;                 // ADD/SUB
    //    3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ; // SLT
    //    3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                    // SLTU
    //    ...
@@ -50,15 +50,15 @@ module NrvLargeALU (
    // On the ECP5, yosys infers four 18x18 DSPs.
    // For FPGAs that don't have DSP blocks, we could use an
    // iterative algorithm instead (e.g., the one in FIRMWARE/LIB/mul.s)
-   wire               in1U = (op == 3'b011);
-   wire               in2U = (op == 3'b010 || op == 3'b011);
+   wire               in1U = (func == 3'b011);
+   wire               in2U = (func == 3'b010 || func == 3'b011);
    wire signed [32:0] in1E = {in1U ? 1'b0 : in1[31], in1}; // 33 bits: should be 32:0 rather than 33:0, to be checked
    wire signed [32:0] in2E = {in2U ? 1'b0 : in2[31], in2};
    wire signed [63:0] times = in1E * in2E;
 
    always @(*) begin
-      if(opM) begin
-	 case(op)
+      if(funcM) begin
+	 case(func)
 	   3'b000: out <= ALUreg;                           // MUL
 	   3'b001: out <= ALUreg;                           // MULH
 	   3'b010: out <= ALUreg;                           // MULHSU
@@ -70,8 +70,8 @@ module NrvLargeALU (
 	 endcase
       end else begin
 	 (* parallel_case, full_case *)
-	 case(op)
-           3'b000: out = opqual ? minus[31:0] : AplusB;     // ADD/SUB
+	 case(func)
+           3'b000: out = funcQual ? minus[31:0] : AplusB;     // ADD/SUB
            3'b010: out = LT ;                               // SLT
            3'b011: out = LTU;                               // SLTU
            3'b100: out = in1 ^ in2;                         // XOR
@@ -83,7 +83,7 @@ module NrvLargeALU (
 	   // ALU instead.
            3'b001: out = ALUreg;                           // SLL	   
            3'b101: out = ALUreg;                           // SRL/SRA
-	 endcase // case (op)
+	 endcase // case (func)
       end
    end 
 
@@ -93,9 +93,9 @@ module NrvLargeALU (
       /* verilator lint_off WIDTH */
       /* verilator lint_off CASEINCOMPLETE */
 
-      if(opM) begin
+      if(funcM) begin
 	 if(wr) begin 
-	    case(op)
+	    case(func)
 	      3'b000: ALUreg <= times[31:0];  // MUL
 	      3'b001: ALUreg <= times[63:32]; // MULH
 	      3'b010: ALUreg <= times[63:32]; // MULHSU
@@ -133,7 +133,7 @@ module NrvLargeALU (
 		 quotient <= 0;
 		 quotient_msk <= 1 << 31;
 	      end
-	    endcase // case (op)
+	    endcase // case (func)
 	 end else begin // if (wr)
 	    // The division algorithm is here.
 	    // On exit, divisor is the remainder.
@@ -145,9 +145,9 @@ module NrvLargeALU (
 	    quotient_msk <= quotient_msk >> 1;
 	 end
       end else if(wr) begin // Barrel shifter, latched to reduce combinatorial depth.
-	 case(op)
+	 case(func)
 	   3'b001: ALUreg <= in1 << in2[4:0];                                      // SLL	   
-	   3'b101: ALUreg <= $signed({opqual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
+	   3'b101: ALUreg <= $signed({funcQual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
 	 endcase 
       end 
       /* verilator lint_on WIDTH */

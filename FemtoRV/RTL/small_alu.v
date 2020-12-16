@@ -10,8 +10,8 @@ module NrvSmallALU #(
   input 	    clk, 
   input [31:0] 	    in1,
   input [31:0] 	    in2,
-  input [2:0] 	    op,     // Operation
-  input 	    opqual, // Operation qualification (+/-, Logical/Arithmetic)
+  input [2:0] 	    func,     // Operation
+  input 	    funcQual, // Operation qualification (+/-, Logical/Arithmetic)
   output reg [31:0] out,    // ALU result. Latched if operation is a shift
   output 	    busy,   // 1 if ALU is currently computing (that is, shift)
   input 	    wr,     // Raise to write ALU inputs and start computing
@@ -29,8 +29,8 @@ module NrvSmallALU #(
    // NOTE: if you read swapforth/J1 source,
    //   J1's st0,st1 are inverted as compared to in1,in2 (st0<->in2  st1<->in1)
    // Equivalent code:
-   // case(op) 
-   //    3'b000: out = opqual ? in1 - in2 : in1 + in2;                 // ADD/SUB
+   // case(func) 
+   //    3'b000: out = funcQual ? in1 - in2 : in1 + in2;                 // ADD/SUB
    //    3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ; // SLT
    //    3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                    // SLTU
    //    ...
@@ -42,8 +42,8 @@ module NrvSmallALU #(
 
    always @(*) begin
       (* parallel_case, full_case *)
-      case(op)
-	3'b000: out = opqual ? minus[31:0] : AplusB;     // ADD/SUB
+      case(func)
+	3'b000: out = funcQual ? minus[31:0] : AplusB;     // ADD/SUB
 	3'b010: out = LT ;                               // SLT
 	3'b011: out = LTU;                               // SLTU
 	3'b100: out = in1 ^ in2;                         // XOR
@@ -53,7 +53,7 @@ module NrvSmallALU #(
 	// Shift operations, get result from the shifter
 	3'b001: out = ALUreg;                           // SLL	   
 	3'b101: out = ALUreg;                           // SRL/SRA
-      endcase // case (op)
+      endcase // case (func)
    end
    
    always @(posedge clk) begin
@@ -62,24 +62,24 @@ module NrvSmallALU #(
       /* verilator lint_off CASEINCOMPLETE */
 
       if(wr) begin
-	 case(op)
+	 case(func)
 	   3'b001: begin ALUreg <= in1; shamt <= in2[4:0]; end // SLL	   
 	   3'b101: begin ALUreg <= in1; shamt <= in2[4:0]; end // SRL/SRA
 	 endcase 
       end else begin
 	 if (TWOSTAGE_SHIFTER && shamt > 4) begin
 	    shamt <= shamt - 4;
-	    case(op)
+	    case(func)
 	      3'b001: ALUreg <= ALUreg << 4;                               // SLL
-	      3'b101: ALUreg <= opqual ? {{4{ALUreg[31]}}, ALUreg[31:4]} : // SRL/SRA 
+	      3'b101: ALUreg <= funcQual ? {{4{ALUreg[31]}}, ALUreg[31:4]} : // SRL/SRA 
                                          { 4'b0000,        ALUreg[31:4]} ; 
 	    endcase 
 	 end else  
 	   if (shamt != 0) begin
 	      shamt <= shamt - 1;
-	      case(op)
+	      case(func)
 		3'b001: ALUreg <= ALUreg << 1;                          // SLL
-		3'b101: ALUreg <= opqual ? {ALUreg[31], ALUreg[31:1]} : // SRL/SRA 
+		3'b101: ALUreg <= funcQual ? {ALUreg[31], ALUreg[31:1]} : // SRL/SRA 
 				           {1'b0,       ALUreg[31:1]} ; 
 	      endcase 
 	   end
