@@ -128,19 +128,6 @@ extern void oled1(uint32_t cmd, uint32_t arg1);
 extern void oled2(uint32_t cmd, uint32_t arg1, uint32_t arg2);
 extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
 
-/* faster version of oled_wait() */
-/* (12 cycles, this is the time needed by the SSR1350 driver to consume one byte) */
-//#define OLED_WAIT()				\
-//    asm("nop");     \
-//    asm("nop");     \
-//    asm("nop");     \
-//    asm("nop");     
-
-/* 
- * We will use this one if we increase clock freq (this one really waits for the driver)
- */
-#define OLED_WAIT() oled_wait()
-
 /* MAX7219 led matrix */
 extern void MAX7219_init();
 extern void MAX7219(uint32_t address, uint32_t value);
@@ -148,7 +135,6 @@ extern void MAX7219(uint32_t address, uint32_t value);
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
 #define SGN(x)   (((x) > (0)) ? 1 : ((x) ? -1 : 0))
-
 
 #define USE_FILELIB_STDIO_COMPAT_NAMES
 #define FAT_INLINE inline
