@@ -110,7 +110,7 @@ void GL_putchar_xy(int x, int y, char c);
 #define IO_OLED_DATA    32    /* OLED display data. Only 8 LSBs used.                   */
 #define IO_UART_CNTL    64    /* USB UART RX control. busy (bit 9), data ready (bit 8)  */
 #define IO_UART_DATA    128   /* USB UART RX data (read/write)                          */
-#define IO_LEDMTX_CNTL  256   /* LED matrix control. read: LSB bit 1 if busy            */
+
 #define IO_LEDMTX_DATA  512   /* LED matrix data (write)	                        */
 #define IO_SPI_FLASH   1024
 #define IO_SPI_SDCARD  2048

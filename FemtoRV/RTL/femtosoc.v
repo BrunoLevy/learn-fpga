@@ -187,7 +187,6 @@ module NrvIO(
    localparam UART_CNTL_bit    = 4; // (read) busy (bit 9), data ready (bit 8)
    localparam UART_DAT_bit     = 5; // (read/write) received data / data to send (8 bits)
    
-   localparam MAX7219_CNTL_bit = 6; // (read) led matrix LSB: busy
    localparam MAX7219_DAT_bit  = 7; // (write)led matrix data (16 bits)
 
    localparam SPI_FLASH_bit    = 8; // (write SPI address (24 bits) read: data (1 byte) 
@@ -352,9 +351,6 @@ module NrvIO(
 	    | (address[UART_CNTL_bit]? {22'b0, serial_tx_busy, serial_valid_latched, 8'b0} : 32'b0) 
 	    | (address[UART_DAT_bit] ? serial_rx_data_latched : 32'b0)	      
 `endif	    
-`ifdef NRV_IO_MAX7219
-	    | (address[MAX7219_CNTL_bit] ? {31'b0, MAX7219_sending} : 32'b0)
-`endif	
 `ifdef NRV_IO_SPI_FLASH
 	    | (address[SPI_FLASH_bit] ? {24'b0, spi_flash_dat} : 32'b0)
 `endif

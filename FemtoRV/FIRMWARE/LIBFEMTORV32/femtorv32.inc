@@ -11,7 +11,7 @@
 .equ IO_OLED_DATA, 32        # OLED display data. Only 8 LSBs used.
 .equ IO_UART_CNTL, 64        # USB UART control. busy (bit 9), data ready (bit 8)
 .equ IO_UART_DATA, 128       # USB UART data (read/write)
-.equ IO_LEDMTX_CNTL, 256     # LED matrix control. read: LSB bit 1 if busy
+
 .equ IO_LEDMTX_DATA, 512     # LED matrix data (write)	
 	
 ################################################################################
