@@ -24,7 +24,7 @@ module NrvRegisterFile(
 	    bank1[~inRegId] <= in;
 	    bank2[~inRegId] <= in;
 	 end	  
-      end else begin // 'else' block: not mandatory, but reduces critical path
+      end 
       // Test bench does not seem to understand that
       // oob access in reg array is supposed to return 0.
 `ifdef BENCH	 
@@ -34,6 +34,5 @@ module NrvRegisterFile(
          out1 <= bank1[~outRegId1];
          out2 <= bank2[~outRegId2];
 `endif
-      end
    end 
 endmodule

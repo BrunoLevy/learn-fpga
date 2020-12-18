@@ -349,7 +349,7 @@ module NrvIO(
 	    | (address[LEDs_bit] ? {28'b0, LEDs} : 32'b0) 
 `endif
 `ifdef NRV_IO_SSD1351
-	    | (address[SSD1351_CNTL_bit] ? {31'b0, !SSD1351_CS} : 32'b0) // I should comment that out, but then ASM mandel_OLED no longer works, why ????
+//	    | (address[SSD1351_CNTL_bit] ? {31'b0, !SSD1351_CS} : 32'b0) // I should comment that out, but then ASM mandel_OLED no longer works, why ????
 `endif
 `ifdef NRV_IO_UART
 	    | (address[UART_CNTL_bit]? {22'b0, serial_tx_busy, serial_valid_latched, 8'b0} : 32'b0) 

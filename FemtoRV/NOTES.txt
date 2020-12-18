@@ -137,6 +137,8 @@ RISC-V notes:
 			 checked with simulation.
 	           ---> OK, need to use SSD1351_is_sensing instead of !SSD1351_CS for
 		         memory_wrbusy
+		   ---> Still had problems at 80MHz with asm programs, removed the 'else
+		         branch' in register file, seems OK now.
 
              - forgot to restore ra in a function (oled_write_window)
 
