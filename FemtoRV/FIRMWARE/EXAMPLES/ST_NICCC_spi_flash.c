@@ -36,29 +36,15 @@ uint32_t spi_addr = 1024*1024;
 /*
  * SPI Flash is memory mapped in the IO space.
  * Protocol to read one byte from the SPI Flash:
- *    1) Loop until IO_IN(IO_SPI_FLASH) bit 8 (BUSY) 
- *         is zero.
- *    2) send address: IO_OUT(IO_SPI_FLASH, address)
- *    3) Loop until IO_IN(IO_SPI_FLASH) bit 8 (BUSY) 
- *         is zero. Read byte is [7:0]
+ *    1) send address: IO_OUT(IO_SPI_FLASH, address)
+ *    2) read byte: result = IO_IN(IO_SPI_FLASH)
  */
 #define BUSY 256
 uint8_t next_spi_byte() {
-  /*  
-   int result = BUSY;
-   while(result & BUSY) {
-       result = IO_IN(IO_SPI_FLASH);
-   }
-   IO_OUT(IO_SPI_FLASH, spi_addr);
-   result = BUSY;
-   while(result & BUSY) {
-       result = IO_IN(IO_SPI_FLASH);
-   }
-  */
    IO_OUT(IO_SPI_FLASH, spi_addr);  
    int result = IO_IN(IO_SPI_FLASH);
    ++spi_addr;
-   return (uint8_t)(result & 255);
+   return (uint8_t)(result);
 }
 
 uint16_t next_spi_word() {

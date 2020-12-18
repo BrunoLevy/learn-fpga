@@ -132,6 +132,9 @@ RISC-V notes:
 		   ---> found the bug by simulation (again, simulation: do-it-or-die !!)
 		   ---> side effet: experimental max freq dropped from 80MHz to 75MHz
 		        (state machine gets more complicated...)
+		   ... still not there (mandelbrot demo displays garbage when removing
+		         wait state from functions), does not enter wait loop, to be
+			 checked with simulation.
 
              - forgot to restore ra in a function (oled_write_window)
 

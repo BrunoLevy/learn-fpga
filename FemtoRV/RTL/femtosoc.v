@@ -179,10 +179,10 @@ module NrvIO(
     */  
    
    localparam LEDs_bit         = 0; // (write) LEDs (4 LSBs)
+   
    localparam SSD1351_CNTL_bit = 1; // (read/write) Oled display control
    localparam SSD1351_CMD_bit  = 2; // (write) Oled display commands (8 bits)
    localparam SSD1351_DAT_bit  = 3; // (write) Oled display data (8 bits)
-
 
    localparam UART_CNTL_bit    = 4; // (read) busy (bit 9), data ready (bit 8)
    localparam UART_DAT_bit     = 5; // (read/write) received data / data to send (8 bits)
@@ -192,6 +192,7 @@ module NrvIO(
 
    localparam SPI_FLASH_bit    = 8; // (write SPI address (24 bits) read: data (1 byte) + rdy (bit 8)
 
+                                    // This one is a software "bit-banging" interface (TODO: hw support)
    localparam SPI_SDCARD_bit   = 9; // write: bit 0: mosi  bit 1: clk   bit 2: csn
                                     // read:  bit 0: miso
 
@@ -479,7 +480,7 @@ module NrvIO(
 
    assign wrBusy = 0
 `ifdef NRV_IO_SSD1351
-//	| !SSD1351_CS
+	| SSD1351_sending 
 `endif
 `ifdef NRV_IO_UART
 	// TODO

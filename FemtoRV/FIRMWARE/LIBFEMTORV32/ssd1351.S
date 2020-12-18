@@ -32,21 +32,6 @@
 	call oled3
 .endm
 
-# 4*3 = 12 cycles, this is the time required
-# by the ssd1351 driver to consume one byte.	
-#.macro OLED_WAIT
-#	nop
-#	nop
-#	nop
-#	nop
-#.endm	
-
-# We will use this one instead if we increase clock freq
-# (really tests for the driver to be ready)
-.macro OLED_WAIT
-        call oled_wait
-.endm
-
 ################################################################################
 	
 # initialize oled display
@@ -72,7 +57,6 @@ GL_init:
 	sw a0,IO_LEDS(gp)
         li a0,0                      # normal operation
 	sw a0,4(gp)
-	OLED_WAIT
 	# Initialization sequence / configuration
 	# Note: takes a lot of space, could be stored in an array of bytes
 	# if ROM space gets crowded
@@ -132,7 +116,6 @@ oled_write_window:
 oled0:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
-	OLED_WAIT
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
@@ -143,9 +126,7 @@ oled0:	add sp,sp,-4
 oled1:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
-	OLED_WAIT
 	sw a1, IO_OLED_DATA(gp)
-	OLED_WAIT
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
@@ -156,11 +137,8 @@ oled1:	add sp,sp,-4
 oled2:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
-	OLED_WAIT
 	sw a1, IO_OLED_DATA(gp)
-	OLED_WAIT
 	sw a2, IO_OLED_DATA(gp)
-	OLED_WAIT
 	lw ra, 0(sp)	
         add sp,sp,4
 	ret
@@ -171,23 +149,16 @@ oled2:	add sp,sp,-4
 oled3:	add sp,sp,-4
         sw ra, 0(sp)
 	sw a0, IO_OLED_CMD(gp)
-	OLED_WAIT
 	sw a1, IO_OLED_DATA(gp)
-	OLED_WAIT
 	sw a2, IO_OLED_DATA(gp)
-	OLED_WAIT
 	sw a3, IO_OLED_DATA(gp)
-	OLED_WAIT
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
 
-# Wait for Oled driver
-# Note: faster code uses the OLED_WAIT macro instead	
+# Wait for Oled driver, not needed anymore !
 .global	oled_wait
 .type	oled_wait, @function
 oled_wait:
-	lw   t0,IO_OLED_CNTL(gp) # (non-zero = busy)
-	bnez t0,oled_wait
 	ret
 	

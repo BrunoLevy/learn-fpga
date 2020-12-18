@@ -407,9 +407,10 @@ module FemtoRV32 #(
 	end
 
 	// *********************************************************************
-	// wait-state for IO store
+	// wait-state for IO store 
 	state[WAIT_IO_STORE_bit]: begin
-	   if(!mem_wbusy) state <= FETCH_REGS;
+	   if(!mem_wbusy) 
+	     state <= FETCH_REGS;
 	end
 
 	
