@@ -180,7 +180,7 @@ module NrvIO(
    
    localparam LEDs_bit         = 0; // (write) LEDs (4 LSBs)
    
-   localparam SSD1351_CNTL_bit = 1; // (read/write) Oled display control
+   localparam SSD1351_CNTL_bit = 1; // (write) Oled display control
    localparam SSD1351_CMD_bit  = 2; // (write) Oled display commands (8 bits)
    localparam SSD1351_DAT_bit  = 3; // (write) Oled display data (8 bits)
 
@@ -190,7 +190,7 @@ module NrvIO(
    localparam MAX7219_CNTL_bit = 6; // (read) led matrix LSB: busy
    localparam MAX7219_DAT_bit  = 7; // (write)led matrix data (16 bits)
 
-   localparam SPI_FLASH_bit    = 8; // (write SPI address (24 bits) read: data (1 byte) + rdy (bit 8)
+   localparam SPI_FLASH_bit    = 8; // (write SPI address (24 bits) read: data (1 byte) 
 
                                     // This one is a software "bit-banging" interface (TODO: hw support)
    localparam SPI_SDCARD_bit   = 9; // write: bit 0: mosi  bit 1: clk   bit 2: csn
@@ -348,19 +348,15 @@ module NrvIO(
 `ifdef NRV_IO_LEDS      
 	    | (address[LEDs_bit] ? {28'b0, LEDs} : 32'b0) 
 `endif
-`ifdef NRV_IO_SSD1351
-//	    | (address[SSD1351_CNTL_bit] ? {31'b0, !SSD1351_CS} : 32'b0) // I should comment that out, but then ASM mandel_OLED no longer works, why ????
-`endif
 `ifdef NRV_IO_UART
 	    | (address[UART_CNTL_bit]? {22'b0, serial_tx_busy, serial_valid_latched, 8'b0} : 32'b0) 
 	    | (address[UART_DAT_bit] ? serial_rx_data_latched : 32'b0)	      
-
 `endif	    
 `ifdef NRV_IO_MAX7219
 	    | (address[MAX7219_CNTL_bit] ? {31'b0, MAX7219_sending} : 32'b0)
 `endif	
 `ifdef NRV_IO_SPI_FLASH
-	    | (address[SPI_FLASH_bit] ? {23'b0, spi_flash_busy, spi_flash_dat} : 32'b0)
+	    | (address[SPI_FLASH_bit] ? {24'b0, spi_flash_dat} : 32'b0)
 `endif
 `ifdef NRV_IO_SPI_SDCARD
 	    | (address[SPI_SDCARD_bit] ? {31'b0, sd_miso} : 32'b0)
