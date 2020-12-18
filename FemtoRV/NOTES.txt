@@ -135,6 +135,8 @@ RISC-V notes:
 		   ... still not there (mandelbrot demo displays garbage when removing
 		         wait state from functions), does not enter wait loop, to be
 			 checked with simulation.
+	           ---> OK, need to use SSD1351_is_sensing instead of !SSD1351_CS for
+		         memory_wrbusy
 
              - forgot to restore ra in a function (oled_write_window)
 
