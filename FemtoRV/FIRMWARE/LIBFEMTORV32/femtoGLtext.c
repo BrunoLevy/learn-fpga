@@ -102,9 +102,7 @@ void GL_putchar_xy(int X, int Y, char c) {
       for(int col=0; col<8; ++col) {
 	 uint32_t BW = (car_ptr[col] & (1 << row)) ? 255 : 0;
 	 IO_OUT(IO_OLED_DATA,BW ? Fhi : Bhi);
-	 oled_wait();
 	 IO_OUT(IO_OLED_DATA,BW ? Flo : Blo);
-	 oled_wait();
       }
    }
 #elif defined(FONT_5x6)
@@ -124,9 +122,7 @@ void GL_putchar_xy(int X, int Y, char c) {
 	       BW = (coldata & (1 << row)) ? 255 : 0;
 	   }
 	   IO_OUT(IO_OLED_DATA,BW ? Fhi : Bhi);
-	   oled_wait();
 	   IO_OUT(IO_OLED_DATA,BW ? Flo : Blo);
-	   oled_wait();
        }
    }
 #elif defined(FONT_3x5)
@@ -140,9 +136,7 @@ void GL_putchar_xy(int X, int Y, char c) {
 	      BW = (coldata & (1 << row)) ? 255 : 0;
 	  }
 	  IO_OUT(IO_OLED_DATA,BW ? Fhi : Bhi);
-	  oled_wait();
 	  IO_OUT(IO_OLED_DATA,BW ? Flo : Blo);
-	  oled_wait();
       }
    }
 #endif

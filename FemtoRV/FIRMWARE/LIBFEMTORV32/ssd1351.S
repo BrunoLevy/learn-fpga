@@ -156,9 +156,3 @@ oled3:	add sp,sp,-4
 	add sp,sp,4
 	ret
 
-# Wait for Oled driver, not needed anymore !
-.global	oled_wait
-.type	oled_wait, @function
-oled_wait:
-	ret
-	

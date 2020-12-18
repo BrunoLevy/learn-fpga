@@ -80,11 +80,9 @@ exit_Z:
 
 	sll  t0,s10,3
 	sw   t0,IO_OLED_DATA(gp)
-	call oled_wait 	
 
         sll  t0,s10,2
 	sw   t0, IO_OLED_DATA(gp)
-	call oled_wait 	
 	
 	add s0,s0,1
 	add s2,s2,dx

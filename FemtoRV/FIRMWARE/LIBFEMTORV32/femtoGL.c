@@ -21,9 +21,7 @@ void GL_fill_rect(
     for(int y=y1; y<=y2; ++y) {
 	for(int x=x1; x<=x2; ++x) {
 	   IO_OUT(IO_OLED_DATA,hi);
-	   OLED_WAIT();
 	   IO_OUT(IO_OLED_DATA,lo);
-	   OLED_WAIT();
 	}
     }
 }

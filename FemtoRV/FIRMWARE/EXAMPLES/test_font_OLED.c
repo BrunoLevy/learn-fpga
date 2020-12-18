@@ -30,9 +30,7 @@ int main() {
 	       
 		// pixel color: RRRRR GGGGG 0 BBBBB
 		IO_OUT(IO_OLED_DATA,BW & ((G>>2)|(R<<3)));
-	        oled_wait();
 		IO_OUT(IO_OLED_DATA,BW & (B|(G << 6)));
-	        oled_wait();
 	    }
 	}
 	++frame;

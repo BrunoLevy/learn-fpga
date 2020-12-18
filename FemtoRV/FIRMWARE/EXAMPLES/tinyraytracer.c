@@ -226,9 +226,7 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
 	 
 	 uint16_t RGB = GL_RGB(R,G,B);
 	 IO_OUT(IO_OLED_DATA, RGB >> 8);
-	 OLED_WAIT();	 
 	 IO_OUT(IO_OLED_DATA, RGB);	 
-	 OLED_WAIT();
       }
    }
 }

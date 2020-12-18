@@ -36,9 +36,7 @@ void FX(ImVec2 a, ImVec2 b, ImVec2 s,float t) {
      for(unsigned int y=0;y<H;y++) {
 	unsigned int RGB = C[T[y+1][x]];
 	IO_OUT(IO_OLED_DATA, RGB >> 8);
-	OLED_WAIT();	 
 	IO_OUT(IO_OLED_DATA, RGB);	 
-	OLED_WAIT();
 	unsigned int r=3&rand();
 	if(t)
 	  T[y+1][x]=T[y][x+r-(r>1)]+(r&1);
