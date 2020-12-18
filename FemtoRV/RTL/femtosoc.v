@@ -57,15 +57,17 @@ module NrvMemoryInterface(
   input 	    rd, // read strobe
   input [31:0] 	    in, // data to be written
   output reg [31:0] out, // read data
-  output wire	    rdBusy, // asserted if mem or IO is busy reading 
-  output wire	    wrBusy, // asserted if mem or IO is busy writing			  
+  output wire 	    rdBusy, // asserted if mem or IO is busy reading 
+  output wire 	    wrBusy, // asserted if mem or IO is busy writing
 			  
   // Interface with mapped IO devices			  
   output [10:0]     IOaddress, // = address[11:2]
-  output 	    IOwr,      // IO devices write strobe
-  output 	    IOrd,      // IO devices read strobe
-  input [31:0] 	    IOin,      // data to be written to IO
-  output [31:0]     IOout      // data read from IO
+  output 	    IOwr, // IO devices write strobe
+  output 	    IOrd, // IO devices read strobe
+  input [31:0] 	    IOin, // data to be written to IO
+  output [31:0]     IOout,// data read from IO
+  input             IOrdBusy,
+  input             IOwrBusy			  
 );
 
    wire             isIO   = address[22];
@@ -78,9 +80,6 @@ module NrvMemoryInterface(
    reg [31:0] RAM[(`NRV_RAM/4)-1:0];
    reg [31:0] out_RAM;
 
-   assign rdBusy = 0; // TODO
-   assign wrBusy = 0; // TODO
-   
    initial begin
       $readmemh("FIRMWARE/firmware.hex",RAM); // Read the firmware from the generated hex file.
    end
@@ -105,6 +104,9 @@ module NrvMemoryInterface(
    assign IOwr      = (wr && isIO);
    assign IOrd      = (rd && isIO);
    assign IOaddress = address[12:2];
+
+   assign rdBusy = IOrdBusy;
+   assign wrBusy = IOwrBusy;
    
 endmodule
 
@@ -117,7 +119,9 @@ module NrvIO(
     input 	      rd,
     input [31:0]      in, 
     output reg [31:0] out,
-
+    output wire       rdBusy,
+    output wire       wrBusy,	     
+	     
 `ifdef NRV_IO_LEDS
     // LEDs D1-D4	     
     output reg [3:0]  LEDs,
@@ -462,6 +466,33 @@ module NrvIO(
   assign serial_tx_wr = (wr && address[UART_DAT_bit]);
 `endif  
 
+/************** rdBusy and wrBusy **************************/
+   
+   assign rdBusy = 0
+`ifdef NRV_IO_UART
+       // TODO		   
+`endif
+`ifdef NRV_IO_SPI_FLASH
+        | spi_flash_receiving		   
+`endif		   
+; 
+
+   assign wrBusy = 0
+`ifdef NRV_IO_SSD1351
+//	| !SSD1351_CS
+`endif
+`ifdef NRV_IO_UART
+	// TODO
+`endif
+`ifdef NRV_IO_MAX7219
+	| MAX7219_sending		   
+`endif		   
+`ifdef NRV_IO_SPI_FLASH
+        | spi_flash_sending		   
+`endif		   
+; 
+
+   
 endmodule
 
 
@@ -569,14 +600,17 @@ module femtosoc(
   wire        IOrd;
   wire        IOwr;
   wire [10:0] IOaddress;
+  wire        IOrdBusy;
+  wire        IOwrBusy;
    
-  
   NrvIO IO(
      .in(IOin),
      .out(IOout),
      .rd(IOrd),
      .wr(IOwr),
      .address(IOaddress),
+     .rdBusy(IOrdBusy),
+     .wrBusy(IOwrBusy),	   
 `ifdef NRV_IO_LEDS	   
      .LEDs({D4,D3,D2,D1}),
 `endif
@@ -635,7 +669,9 @@ module femtosoc(
     .IOout(IOin),
     .IOrd(IOrd),
     .IOwr(IOwr),
-    .IOaddress(IOaddress)
+    .IOaddress(IOaddress),
+    .IOrdBusy(IOrdBusy),
+    .IOwrBusy(IOwrBusy)
   );
 
   FemtoRV32 #(
@@ -662,6 +698,9 @@ module femtosoc(
      assign D5 = error;
 `endif
 
+   
+
+   
 endmodule
 
 

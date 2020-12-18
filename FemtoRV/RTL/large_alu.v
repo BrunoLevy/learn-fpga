@@ -4,16 +4,16 @@
 // Includes a barrel shifter (that shifts in 1 clock)
 
 module NrvLargeALU (
-  input 	     clk, 
-  input [31:0] 	     in1,
-  input [31:0] 	     in2,
+  input 	     clk,      // clock
+  input [31:0] 	     in1,      // <- The two inputs
+  input [31:0] 	     in2,      // <-
   input [2:0] 	     func,     // Operation
   input 	     funcQual, // Operation qualification (+/-, Logical/Arithmetic)
   input              funcM,    // Asserted if operation is an RV32M operation
-  output reg [31:0]  out,    // ALU result. Latched if operation is a shift,mul,div,rem
-  output 	     busy,   // 1 if ALU is currently computing (that is, shift,mul,div,rem)
-  input 	     wr,     // Raise to write ALU inputs and start computing
-  output wire [31:0] AplusB // Direct access to the adder, used by address computation  
+  output reg [31:0]  out,      // ALU result. Latched if operation is a shift,mul,div,rem
+  output 	     busy,     // 1 if ALU is currently computing (that is, shift,mul,div,rem)
+  input 	     wr,       // Raise to write ALU inputs and start computing
+  output wire [31:0] AplusB    // Direct access to the adder, used by address computation  
 );
 
    assign AplusB = in1 + in2;

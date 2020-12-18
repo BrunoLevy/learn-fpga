@@ -4,8 +4,8 @@
 // Implements the RV32I instruction set.
 
 module NrvSmallALU #(
-   parameter [0:0] TWOSTAGE_SHIFTER = 0 // optional twostage shifter, makes shifts faster
-		                        // (but eats up 60 LUTs or so)
+   // optional twostage shifter, makes shifts faster (but eats up 60 LUTs or so)
+   parameter [0:0] TWOSTAGE_SHIFTER = 0 
 )(
   input 	    clk, 
   input [31:0] 	    in1,

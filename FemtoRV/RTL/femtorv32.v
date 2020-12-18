@@ -72,7 +72,7 @@ module FemtoRV32 #(
    
    wire 	 aluInSel1;    // 0: register  1: pc
    wire 	 aluInSel2;    // 0: register  1: imm
-   wire [2:0] 	 func;         // one of the 8 operations done by the ALU
+   wire [2:0] 	 func;         // operation done by the ALU, tests, load/store mode
    wire 	 funcQual;     // 'qualifier' used by some operations (+/-, logic/arith shifts)
    wire          funcM;        // asserted if instr is RV32M.
    wire [31:0] 	 imm;          // immediate value decoded from the instruction
@@ -273,16 +273,17 @@ module FemtoRV32 #(
    // The states, using 1-hot encoding (reduces
    // both LUT count and critical path).
    
-   localparam INITIAL              = 8'b00000000;   
-   localparam WAIT_INSTR           = 8'b00000001;
-   localparam FETCH_INSTR          = 8'b00000010;
-   localparam FETCH_REGS           = 8'b00000100;
-   localparam EXECUTE              = 8'b00001000;
-   localparam WAIT_ALU_OR_DATA     = 8'b00010000;
-   localparam LOAD                 = 8'b00100000;
-   localparam STORE                = 8'b01000000;   
-   localparam ERROR                = 8'b10000000;
-
+   localparam INITIAL              = 9'b000000000;   
+   localparam WAIT_INSTR           = 9'b000000001;
+   localparam FETCH_INSTR          = 9'b000000010;
+   localparam FETCH_REGS           = 9'b000000100;
+   localparam EXECUTE              = 9'b000001000;
+   localparam WAIT_ALU_OR_DATA     = 9'b000010000;
+   localparam LOAD                 = 9'b000100000;
+   localparam STORE                = 9'b001000000;   
+   localparam ERROR                = 9'b010000000;
+   localparam WAIT_IO_STORE        = 9'b100000000;
+   
    localparam WAIT_INSTR_bit           = 0;
    localparam FETCH_INSTR_bit          = 1;
    localparam FETCH_REGS_bit           = 2;
@@ -291,8 +292,9 @@ module FemtoRV32 #(
    localparam LOAD_bit                 = 5;
    localparam STORE_bit                = 6;      
    localparam ERROR_bit                = 7;
+   localparam WAIT_IO_STORE_bit        = 8;
    
-   reg [8:0] state = INITIAL;
+   reg [9:0] state = INITIAL;
    
    // the internal signals that are determined combinatorially from
    // state and other signals.
@@ -322,7 +324,7 @@ module FemtoRV32 #(
 
    // when asserted, next PC is updated from ALU (instead of PC+4)
    wire jump_or_take_branch = isJump || (isBranch && predOut);
-       
+
    // And now the state machine
    
    always @(posedge clk) begin
@@ -398,22 +400,30 @@ module FemtoRV32 #(
 	state[STORE_bit]: begin
 	   instr <= nextInstr;
 	   addressReg <= {PCplus4, 2'b00};
-	   state <= FETCH_REGS;
+	   // If storing to IO device or mapped SPI flash, use wait state.
+	   // (needed because mem_wbusy will be available at next cycle).
+	   state <= (aluAplusB[22] | aluAplusB[23]) ? WAIT_IO_STORE : FETCH_REGS;
 	end
 
+	// *********************************************************************
+	// wait-state for IO store
+	state[WAIT_IO_STORE_bit]: begin
+	   if(!mem_wbusy) state <= FETCH_REGS;
+	end
+
+	
         // *********************************************************************
         // Used by LOAD and by multi-cycle ALU instr (shifts and RV32M ops), writeback from ALU or memory
 	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[WAIT_ALU_OR_DATA_bit]: begin
-	   if(!aluBusy) begin
+	   if(!aluBusy && !mem_rbusy) begin
 	      instr <= nextInstr;
 	      addressReg <= {PCplus4, 2'b00};
 	      state <= FETCH_REGS;
 	   end
 	end
 
-//	state[ERROR_bit]: state <= ERROR;
-	default:          state <= ERROR;
+	default: state <= ERROR;
 	
       endcase
   end   
@@ -435,8 +445,9 @@ module FemtoRV32 #(
 	state[LOAD_bit]:             `show_state("load");	   
 	state[STORE_bit]:            `show_state("store");
 	state[WAIT_ALU_OR_DATA_bit]: `show_state("wait_alu_or_data");
+	state[WAIT_IO_STORE_bit]:    `show_state("wait_IO_store");	
 	state[ERROR_bit]:   	     `bench($display("ERROR"));	   	   	   
-	default:  	             `bench($display("UNKNOWN STATE"));	   	   	   
+	default:  	             `bench($display("UNKNOWN STATE: %b",state));	   	   	   
       endcase
    
       if(state[FETCH_REGS_bit]) begin

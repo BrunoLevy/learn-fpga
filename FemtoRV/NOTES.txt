@@ -122,6 +122,17 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - Had several difficulties introducing a wait state for IOs:
+	        STORE:
+	           a) everything can't be done in the STORE state, because
+		      when we enter the STORE state, mem_wenable and mem_address
+		      where just set by execute, thus mem_wbusy will be set
+		      at the next cycle -> new WAIT_IO_STORE state.
+		   b) stupid error in WAIT_IO_STORE and WAIT_IO_STORE_bit constants !!!
+		   ---> found the bug by simulation (again, simulation: do-it-or-die !!)
+		   ---> side effet: experimental max freq dropped from 80MHz to 75MHz
+		        (state machine gets more complicated...)
+
              - forgot to restore ra in a function (oled_write_window)
 
              - after reorganization of ALU (busy signal separated

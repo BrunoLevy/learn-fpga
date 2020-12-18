@@ -44,6 +44,7 @@ uint32_t spi_addr = 1024*1024;
  */
 #define BUSY 256
 uint8_t next_spi_byte() {
+  /*  
    int result = BUSY;
    while(result & BUSY) {
        result = IO_IN(IO_SPI_FLASH);
@@ -53,6 +54,9 @@ uint8_t next_spi_byte() {
    while(result & BUSY) {
        result = IO_IN(IO_SPI_FLASH);
    }
+  */
+   IO_OUT(IO_SPI_FLASH, spi_addr);  
+   int result = IO_IN(IO_SPI_FLASH);
    ++spi_addr;
    return (uint8_t)(result & 255);
 }

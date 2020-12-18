@@ -175,6 +175,10 @@ EHXPLLL #(
 	   parameter DIVF = 7'b1001111;
            parameter DIVQ = 3'b100;
 	end
+	50: begin
+	   parameter DIVF = 7'b1000010;
+           parameter DIVQ = 3'b100;
+	end
 	45: begin
 	   parameter DIVF = 7'b0111011;
 	   parameter DIVQ = 3'b100;

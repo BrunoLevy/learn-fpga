@@ -1,34 +1,35 @@
 /********************* Instruction decoder *******************************/
 
 module NrvDecoder(
-    input wire [31:0] instr,
-    output wire [4:0] writeBackRegId,
-    output reg	      writeBackEn,
+    input wire [31:0] instr,          // The instruction to be decoded
+    output wire [4:0] writeBackRegId, // The register to be written back
+    output reg 	      writeBackEn,    // Asserted when writing to a reg.
 		  
-    output reg 	      writeBackALU,
-    output reg 	      writeBackPCplus4,
-    output reg 	      writeBackAplusB,
-    output reg 	      writeBackCSR,
+    output reg 	      writeBackALU,    // \
+    output reg 	      writeBackPCplus4,// | Data source for register
+    output reg 	      writeBackAplusB, // | write-back (if enabled)
+    output reg 	      writeBackCSR,    // /
 		  
-    output wire [4:0] inRegId1,
-    output wire [4:0] inRegId2,
+    output wire [4:0] inRegId1, // Register output 1
+    output wire [4:0] inRegId2, // Register output 2
 
-    output reg 	      aluInSel1, // 0: reg  1: pc
-    output reg 	      aluInSel2, // 0: reg  1: imm
-    output [2:0]      func,
-    output reg 	      funcQual,
-    output reg 	      funcM, // Asserted if operation is an RV32M operation
+    output reg 	      aluInSel1, // ALU source selection 0: register  1: pc
+    output reg 	      aluInSel2, //                      0: register  1: imm
+    output [2:0]      func,      // operation done by the ALU, tests, load/store mode
+    output reg 	      funcQual,  // 'qualifier' used by some operations (+/-, logic/arith shifts)
+    output reg 	      funcM,     // asserted if instr is RV32M.
 
-    output reg 	      isALU, 
-    output reg 	      isLoad,
-    output reg 	      isStore,
-    output reg 	      isBranch,
-    output reg 	      isJump,
-    output reg 	      needWaitALU,
+    output reg 	      isALU,     // \
+    output reg 	      isLoad,    // |
+    output reg 	      isStore,   // ) Guess what !
+    output reg 	      isBranch,  // |
+    output reg 	      isJump,    // /
 		  
-    output reg [31:0] imm,
+    output reg 	      needWaitALU, // asserted if instruction uses at least 1  cycle in ALU
 		  
-    output reg 	      error
+    output reg [31:0] imm,   // immediate value decoded from the instruction
+		  
+    output reg 	      error  // true if instr has invalid opcode
 );
 
    reg inRegId1Sel; // 0: force inRegId1 to zero 1: use inRegId1 instr field
@@ -36,7 +37,6 @@ module NrvDecoder(
    // Reference:
    // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
    // See the table page 104
-
 
    // The beauty of RiscV: the instruction decoder is reasonably simple, because
    // - register ids and alu operation are always encoded in the same bits
@@ -87,7 +87,7 @@ module NrvDecoder(
    always @(*) begin
 
        error = 1'b0;
-       inRegId1Sel = 1'b1; // reg 1 Id from instr
+       inRegId1Sel = 1'b1; // default: reg 1 Id from instr
        isALU = 1'b0;
        isLoad = 1'b0;
        isStore = 1'b0;
