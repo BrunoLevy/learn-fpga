@@ -278,21 +278,22 @@ module FemtoRV32 #(
    localparam FETCH_INSTR          = 9'b000000010;
    localparam FETCH_REGS           = 9'b000000100;
    localparam EXECUTE              = 9'b000001000;
-   localparam WAIT_ALU_OR_DATA     = 9'b000010000;
-   localparam LOAD                 = 9'b000100000;
-   localparam STORE                = 9'b001000000;   
-   localparam ERROR                = 9'b010000000;
-   localparam WAIT_IO_STORE        = 9'b100000000;
+   localparam LOAD                 = 9'b000010000;
+   localparam WAIT_ALU_OR_DATA     = 9'b000100000;
+   localparam STORE                = 9'b001000000;
+   localparam WAIT_IO_STORE        = 9'b010000000;   
+   localparam ERROR                = 9'b100000000;
+
    
    localparam WAIT_INSTR_bit           = 0;
    localparam FETCH_INSTR_bit          = 1;
    localparam FETCH_REGS_bit           = 2;
    localparam EXECUTE_bit              = 3;
-   localparam WAIT_ALU_OR_DATA_bit     = 4;
-   localparam LOAD_bit                 = 5;
-   localparam STORE_bit                = 6;      
-   localparam ERROR_bit                = 7;
-   localparam WAIT_IO_STORE_bit        = 8;
+   localparam LOAD_bit                 = 4;   
+   localparam WAIT_ALU_OR_DATA_bit     = 5;
+   localparam STORE_bit                = 6;
+   localparam WAIT_IO_STORE_bit        = 7;   
+   localparam ERROR_bit                = 8;
    
    reg [9:0] state = INITIAL;
    
@@ -414,6 +415,7 @@ module FemtoRV32 #(
 	
         // *********************************************************************
         // Used by LOAD and by multi-cycle ALU instr (shifts and RV32M ops), writeback from ALU or memory
+	//    also waits from data from IO (listens to mem_rbusy)
 	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[WAIT_ALU_OR_DATA_bit]: begin
 	   if(!aluBusy && !mem_rbusy) begin
