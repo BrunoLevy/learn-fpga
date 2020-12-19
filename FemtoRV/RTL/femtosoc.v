@@ -15,6 +15,8 @@
 `include "DEVICES/SPIFlash.v"    // Read data from the serial flash chip
 `include "DEVICES/MAX7219.v"     // 8x8 led matrix driven by a MAX7219 chip
 `include "DEVICES/LEDs.v"        // Driver for 4 leds
+`include "DEVICES/SDCard.v"      // Driver for SDCard (just for bitbanging for now)
+`include "DEVICES/Buttons.v"     // Driver for the buttons
 
 /********************* Nrv RAM *******************************/
 
@@ -267,12 +269,32 @@ module NrvIO(
    /********************* SPI SDCard  *********************************/
    
 `ifdef NRV_IO_SPI_SDCARD
-   initial sd_clk  = 1'b0;
-   initial sd_mosi = 1'b0;
-   initial sd_cs_n = 1'b1;
+   wire [31:0] sdcard_rdata;
+   SDCard sdcard(
+      .clk(clk),
+      .rstrb(rd),
+      .wstrb(wr), 
+      .sel(address[SPI_SDCARD_bit]),
+      .wdata(in),
+      .rdata(sdcard_rdata),
+      .CLK(sd_clk),
+      .MISO(sd_miso),		 
+      .MOSI(sd_mosi),
+      .CS_N(sd_cs_n)
+   );
+`endif
+
+   /********************* Buttons  *************************************/
+
+`ifdef NRV_IO_BUTTONS
+   wire [31:0] buttons_rdata;
+   Buttons buttons_driver(
+      .sel(address[BUTTONS_bit]),
+      .rdata(buttons_rdata),
+      .BUTTONS(buttons)		   
+   );
 `endif
    
-
    /********************* Decoder for IO read **************************/
 
    always @(*) begin
@@ -287,26 +309,12 @@ module NrvIO(
 	    | spi_flash_rdata
 `endif
 `ifdef NRV_IO_SPI_SDCARD
-	    | (address[SPI_SDCARD_bit] ? {31'b0, sd_miso} : 32'b0)
+	    | sdcard_rdata
 `endif
 `ifdef NRV_IO_BUTTONS
-	    | (address[BUTTONS_bit] ? {27'b0, buttons} : 32'b0)
+	    | buttons_rdata
 `endif
 	    ;
-   end
-   
-   /********************* Multiplexer for IO write *********************/
-
-   always @(posedge clk) begin
-      if(wr) begin
-`ifdef NRV_IO_SPI_SDCARD
-	   if(address[SPI_SDCARD_bit]) begin
-	      sd_mosi <= in[0];
-	      sd_clk  <= in[1];
-	      sd_cs_n <= in[2];
-	   end
-`endif	 
-      end	 
    end
 
 /************** rdBusy and wrBusy **************************/

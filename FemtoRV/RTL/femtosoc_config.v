@@ -15,8 +15,8 @@
 
 
 /************************* Frequency ********************************************************************************/
-`define NRV_FREQ 100       // CONFIGWORD 0x001C // Frequency in MHz. 
-                          // Can overclock it up to 75-80 MHz on the ICEStick and 100MHz on ULX3S.
+`define NRV_FREQ 80       // CONFIGWORD 0x001C // Frequency in MHz. 
+                          // Can overclock it up to 75-80 MHz on the ICEStick and 80-100MHz on ULX3S.
                           // Yosys says OK between 40MHz and 50MHz. Experimentally 75 MHz seems OK.
 
 /************************* RAM **************************************************************************************/
@@ -24,10 +24,10 @@
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
 // 6K max on the ICEstick
 // Do not forget the CONFIGWORD 0x0020 comment (FIRMWARE_WORDS depends on it)
-//`define NRV_RAM 393216         // CONFIGWORD 0x0020  // bigger config for ULX3S
+//`define NRV_RAM 393216       // CONFIGWORD 0x0020  // bigger config for ULX3S
 `define NRV_RAM 262144         // CONFIGWORD 0x0020 // default for ULX3S
 //`define NRV_RAM 6144         // CONFIGWORD 0x0020 // default for ICESTICK (cannot do more !)
-//`define NRV_RAM 4096        // CONFIGWORD 0x0020 // small ICESTICK config (to further save LUTs if need be)
+//`define NRV_RAM 4096         // CONFIGWORD 0x0020 // small ICESTICK config (to further save LUTs if need be)
 
 /************************* Control and Status Registers *************************************************************/
 `define NRV_CSR                                 // Uncomment if using something below (counters,...)
