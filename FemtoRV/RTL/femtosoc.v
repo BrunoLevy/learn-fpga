@@ -208,48 +208,22 @@ module NrvIO(
    /********************** UART receiver **************************/
 
 `ifdef NRV_IO_UART
-   
-   reg serial_valid_latched = 1'b0;
-   wire serial_valid;
-   wire [7:0] serial_rx_data;
-   reg  [7:0] serial_rx_data_latched;
-   rxuart rxUART( 
-       .clk(clk),
-       .resetq(1'b1),       
-       .uart_rx(RXD),
-       .rd(1'b1),
-       .valid(serial_valid),
-       .data(serial_rx_data) 
+   wire [31:0] uart_rdata;
+   wire        uart_rbusy;
+   wire        uart_wbusy;
+   UART uart(
+      .clk(clk),
+      .rstrb(rd),	     	     
+      .wstrb(wr),
+      .sel_cntl(address[UART_CNTL_bit]),
+      .sel_dat(address[UART_DAT_bit]),
+      .wdata(in),
+      .wbusy(uart_wbusy),
+      .rdata(uart_rdata),
+      .rbusy(uart_rbusy),
+      .RXD(RXD),
+      .TXD(TXD)	     
    );
-
-   always @(posedge clk) begin
-      if(serial_valid) begin
-         serial_rx_data_latched <= serial_rx_data;
-	 serial_valid_latched <= 1'b1;
-      end
-      if(rd && address[UART_DAT_bit]) begin
-         serial_valid_latched <= 1'b0;
-      end
-   end
-   
-`endif
-
-   /********************** UART transmitter ***************************/
-
-`ifdef NRV_IO_UART
-   
-   wire       serial_tx_busy;
-   wire       serial_tx_wr;
-   uart txUART(
-       .clk(clk),
-       .uart_tx(TXD),	       
-       .resetq(1'b1),
-       .uart_busy(serial_tx_busy),
-       .uart_wr_i(serial_tx_wr),
-       .uart_dat_i(in[7:0])		 
-   );
-
-`endif   
 
    /********************** MAX7219 led matrix driver *******************/
    
@@ -306,8 +280,7 @@ module NrvIO(
 	    | leds_rdata
 `endif
 `ifdef NRV_IO_UART
-	    | (address[UART_CNTL_bit]? {22'b0, serial_tx_busy, serial_valid_latched, 8'b0} : 32'b0) 
-	    | (address[UART_DAT_bit] ? serial_rx_data_latched : 32'b0)	      
+	    | uart_rdata
 `endif	    
 `ifdef NRV_IO_SPI_FLASH
 	    | spi_flash_rdata
@@ -335,15 +308,11 @@ module NrvIO(
       end	 
    end
 
-`ifdef NRV_IO_UART
-  assign serial_tx_wr = (wr && address[UART_DAT_bit]);
-`endif  
-
 /************** rdBusy and wrBusy **************************/
    
    assign rdBusy = 0
 `ifdef NRV_IO_UART
-       // TODO		   
+	| uart_rbusy
 `endif
 `ifdef NRV_IO_SPI_FLASH
         | spi_flash_rbusy
@@ -355,7 +324,7 @@ module NrvIO(
 	| SSD1351_wbusy
 `endif
 `ifdef NRV_IO_UART
-	// TODO
+	| uart_wbusy
 `endif
 `ifdef NRV_IO_MAX7219
 	| max7219_wbusy
@@ -364,7 +333,6 @@ module NrvIO(
         | spi_flash_wbusy
 `endif		   
 ; 
-
    
 endmodule
 
