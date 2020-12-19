@@ -9,9 +9,7 @@
 
 module SSD1351(
     input wire 	      clk,      // system clock
-    input wire 	      wstrb,    // write strobe
-	       
- 	                        // One of sel_cntl, sel_cmd, sel_dat goes high
+    input wire 	      wstrb,    // write strobe (use one of sel_xxx to select dest)
     input wire 	      sel_cntl, // wdata[0]: !CS;  wdata[1]: RST
     input wire 	      sel_cmd,  // send 8-bits command to display
     input wire 	      sel_dat,  // send 8-bits data to display
@@ -77,24 +75,26 @@ module SSD1351(
    
    always @(posedge clk) begin
       if(wstrb) begin
-	 if(sel_cntl) begin
-	    CS  <= !wdata[0];
-	    RST <= wdata[1];
-	 end
-	 if(sel_cmd) begin
-	    RST <= 1'b1;
-	    DC <= 1'b0;
-	    shifter <= wdata[7:0];
-	    bitcount <= 8;
-	    CS  <= 1'b1;
-	 end
-	 if(sel_dat) begin
-	    RST <= 1'b1;
-	    DC <= 1'b1;
-	    shifter <= wdata[7:0];
-	    bitcount <= 8;
-	    CS  <= 1'b1;
-	 end
+	 case(1'b1)
+	   sel_cntl: begin
+	      CS  <= !wdata[0];
+	      RST <= wdata[1];
+	   end
+	   sel_cmd: begin
+	      RST <= 1'b1;
+	      DC <= 1'b0;
+	      shifter <= wdata[7:0];
+	      bitcount <= 8;
+	      CS  <= 1'b1;
+	   end
+	   sel_dat: begin
+ 	      RST <= 1'b1;
+	      DC <= 1'b1;
+	      shifter <= wdata[7:0];
+	      bitcount <= 8;
+	      CS  <= 1'b1;
+	   end
+	 endcase
       end else begin 
 	 if(slow_cnt == cnt_max) begin
 	    if(sending) begin
