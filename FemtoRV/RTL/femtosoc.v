@@ -12,6 +12,7 @@
 `include "DEVICES/femtopll.v"    // The PLL (generates clock at NRV_FREQ)
 `include "DEVICES/uart.v"        // The UART (serial port over USB)
 `include "DEVICES/SSD1351.v"     // The OLED display
+`include "DEVICES/SPIFlash.v"    // Access data stored in the serial flash chip
 
 /********************* Nrv RAM *******************************/
 
@@ -43,7 +44,6 @@ module NrvMemoryInterface(
 
    wire             isIO   = address[22];
    wire [19:0] word_addr   = address[21:2];
-
 
    wire 	    wr    = (wrByteMask != 0);
    wire             wrRAM = wr && !isIO;
@@ -261,25 +261,26 @@ module NrvIO(
    /********************* SPI flash reader *****************************/
    
 `ifdef NRV_IO_SPI_FLASH
-   reg [5:0]  spi_flash_snd_bitcount;
-   reg [31:0] spi_flash_cmd_addr;
-   reg [3:0]  spi_flash_rcv_bitcount;
-   reg [7:0]  spi_flash_dat;
-   wire       spi_flash_sending   = (spi_flash_snd_bitcount != 0);
-   wire       spi_flash_receiving = (spi_flash_rcv_bitcount != 0);
-   wire       spi_flash_busy = spi_flash_sending | spi_flash_receiving;
-   reg 	      spi_flash_slow_clk; // clk=60MHz, slow_clk=30MHz
-
-   assign  spi_mosi = spi_flash_sending && spi_flash_cmd_addr[31];
-   initial spi_cs_n = 1'b1;
-   assign  spi_clk  = spi_flash_busy && spi_flash_slow_clk;
-   
-   always @(posedge clk) begin
-      spi_flash_slow_clk <= ~spi_flash_slow_clk;
-   end
+   wire spi_flash_wbusy;
+   wire spi_flash_rbusy;
+   wire [31:0] spi_flash_rdata;
+   SPIFlash spi_flash(
+      .clk(clk),
+      .rstrb(rd),
+      .wstrb(wr),
+      .sel(address[SPI_FLASH_bit]),
+      .wdata(in),
+      .wbusy(spi_flash_wbusy),		      
+      .rdata(spi_flash_rdata),
+      .rbusy(spi_flash_rbusy),
+      .CLK(spi_clk),
+      .CS_N(spi_cs_n),
+      .MOSI(spi_mosi),
+      .MISO(spi_miso)		      
+   );
 `endif
 
-   /********************* SPI flash reader *****************************/
+   /********************* SPI SDCard  *********************************/
    
 `ifdef NRV_IO_SPI_SDCARD
    initial sd_clk  = 1'b0;
@@ -300,7 +301,7 @@ module NrvIO(
 	    | (address[UART_DAT_bit] ? serial_rx_data_latched : 32'b0)	      
 `endif	    
 `ifdef NRV_IO_SPI_FLASH
-	    | (address[SPI_FLASH_bit] ? {24'b0, spi_flash_dat} : 32'b0)
+	    | spi_flash_rdata
 `endif
 `ifdef NRV_IO_SPI_SDCARD
 	    | (address[SPI_SDCARD_bit] ? {31'b0, sd_miso} : 32'b0)
@@ -327,13 +328,6 @@ module NrvIO(
 	      MAX7219_bitcount <= 16;
 	   end
 `endif
-`ifdef NRV_IO_SPI_FLASH
-	   if(address[SPI_FLASH_bit]) begin
-	      spi_cs_n <= 1'b0;
-	      spi_flash_cmd_addr <= {8'h03, in[23:0]};
-	      spi_flash_snd_bitcount <= 6'd32;
-	   end
-`endif
 `ifdef NRV_IO_SPI_SDCARD
 	   if(address[SPI_SDCARD_bit]) begin
 	      sd_mosi <= in[0];
@@ -342,22 +336,6 @@ module NrvIO(
 	   end
 `endif	 
       end else begin
-`ifdef NRV_IO_SPI_FLASH
-	 if(spi_flash_sending && spi_flash_slow_clk) begin
-	    if(spi_flash_snd_bitcount == 1) begin
-	       spi_flash_rcv_bitcount <= 4'd8;
-	    end
-	    spi_flash_snd_bitcount <= spi_flash_snd_bitcount - 6'd1;
-	    spi_flash_cmd_addr <= {spi_flash_cmd_addr[30:0],1'b0};
-	 end
-	 if(spi_flash_receiving && spi_flash_slow_clk) begin
-	    spi_flash_rcv_bitcount <= spi_flash_rcv_bitcount - 4'd1;
-	    spi_flash_dat <= {spi_flash_dat[6:0],spi_miso};
-	 end
-	 if(!spi_flash_busy && spi_flash_slow_clk) begin
-	    spi_cs_n <= 1'b1;
-	 end
-`endif	 
 `ifdef NRV_IO_MAX7219
 	 if(MAX7219_sending &&  MAX7219_slow_clk) begin
             MAX7219_bitcount <= MAX7219_bitcount - 5'd1;
@@ -378,7 +356,7 @@ module NrvIO(
        // TODO		   
 `endif
 `ifdef NRV_IO_SPI_FLASH
-        | spi_flash_receiving		   
+        | spi_flash_rbusy
 `endif		   
 ; 
 
@@ -393,7 +371,7 @@ module NrvIO(
 	| MAX7219_sending		   
 `endif		   
 `ifdef NRV_IO_SPI_FLASH
-        | spi_flash_sending		   
+        | spi_flash_wbusy
 `endif		   
 ; 
 
@@ -402,7 +380,6 @@ endmodule
 
 
 /********************* Nrv main *******************************/
-
 
 module femtosoc(
 `ifdef NRV_IO_LEDS	      
@@ -603,9 +580,4 @@ module femtosoc(
      assign D5 = error;
 `endif
 
-   
-
-   
 endmodule
-
-

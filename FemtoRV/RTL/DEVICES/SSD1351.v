@@ -4,7 +4,7 @@
 //       Bruno Levy, 2020-2021
 //
 // This file: driver for SSD1351 OLED display
-// Refernce: https://www.crystalfontz.com/controllers/SolomonSystech/SSD1351/
+// Reference: https://www.crystalfontz.com/controllers/SolomonSystech/SSD1351/
 //
 // TODO: we could use wmask to write directly 16 bits or 32 bits of data
 //       (we could even have a 'fast clear' option that writes a number
