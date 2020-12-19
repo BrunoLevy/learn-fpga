@@ -224,7 +224,8 @@ module NrvIO(
       .RXD(RXD),
       .TXD(TXD)	     
    );
-
+`endif 
+   
    /********************** MAX7219 led matrix driver *******************/
    
 `ifdef NRV_IO_MAX7219
