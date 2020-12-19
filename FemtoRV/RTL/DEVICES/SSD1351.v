@@ -1,6 +1,4 @@
 // femtorv32, a minimalistic RISC-V RV32I core
-//    (minus SYSTEM and FENCE that are not implemented)
-//
 //       Bruno Levy, 2020-2021
 //
 // This file: driver for SSD1351 OLED display

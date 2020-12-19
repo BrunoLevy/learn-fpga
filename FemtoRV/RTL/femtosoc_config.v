@@ -16,7 +16,7 @@
 
 /************************* Frequency ********************************************************************************/
 `define NRV_FREQ 80       // CONFIGWORD 0x001C // Frequency in MHz. 
-                          // Can overclock it up to 80 MHz on the ICEStick and 100MHz on ULX3S.
+                          // Can overclock it up to 75-80 MHz on the ICEStick and 100MHz on ULX3S.
                           // Yosys says OK between 40MHz and 50MHz. Experimentally 75 MHz seems OK.
 
 /************************* RAM **************************************************************************************/

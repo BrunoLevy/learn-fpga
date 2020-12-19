@@ -12,7 +12,8 @@
 `include "DEVICES/femtopll.v"    // The PLL (generates clock at NRV_FREQ)
 `include "DEVICES/uart.v"        // The UART (serial port over USB)
 `include "DEVICES/SSD1351.v"     // The OLED display
-`include "DEVICES/SPIFlash.v"    // Access data stored in the serial flash chip
+`include "DEVICES/SPIFlash.v"    // Read data from the serial flash chip
+`include "DEVICES/MAX7219.v"     // 8x8 led matrix driven by a MAX7219 chip
 
 /********************* Nrv RAM *******************************/
 
@@ -158,7 +159,7 @@ module NrvIO(
    localparam UART_CNTL_bit    = 4; // (read) busy (bit 9), data ready (bit 8)
    localparam UART_DAT_bit     = 5; // (read/write) received data / data to send (8 bits)
    
-   localparam MAX7219_DAT_bit  = 7; // (write)led matrix data (16 bits)
+   localparam MAX7219_DAT_bit  = 7; // (write) led matrix data (16 bits)
 
    localparam SPI_FLASH_bit    = 8; // (write SPI address (24 bits) read: data (1 byte) 
 
@@ -243,19 +244,17 @@ module NrvIO(
    /********************** MAX7219 led matrix driver *******************/
    
 `ifdef NRV_IO_MAX7219
-   reg [2:0]  MAX7219_divider;
-   always @(posedge clk) begin
-      MAX7219_divider <= MAX7219_divider + 1;
-   end
-   // clk=60MHz, slow_clk=60/8 MHz (max = 10 MHz)
-   wire       MAX7219_slow_clk = (MAX7219_divider == 3'b000);
-   reg[4:0]   MAX7219_bitcount; // 0 means idle
-   reg[15:0]  MAX7219_shifter;
-
-   assign MAX7219_DIN  = MAX7219_shifter[15];
-   wire MAX7219_sending = |MAX7219_bitcount;
-   assign MAX7219_CS  = !MAX7219_sending;
-   assign MAX7219_CLK = MAX7219_sending && MAX7219_slow_clk;
+   wire max7219_wbusy;
+   MAX7219 max7219(
+      .clk(clk),
+      .wstrb(wr),
+      .sel(address[MAX7219_DAT_bit]),
+      .wdata(in),
+      .wbusy(max7219_wbusy),
+      .DIN(MAX7219_DIN),
+      .CS(MAX7219_CS),
+      .CLK(MAX7219_CLK)		   
+   );
 `endif   
 
    /********************* SPI flash reader *****************************/
@@ -322,12 +321,6 @@ module NrvIO(
 	      `bench($display("****************** LEDs = %b  0x%h %d", in[3:0],in,$signed(in)));
 	   end
 `endif
-`ifdef NRV_IO_MAX7219
-	   if(address[MAX7219_DAT_bit]) begin
-	      MAX7219_shifter <= in[15:0];
-	      MAX7219_bitcount <= 16;
-	   end
-`endif
 `ifdef NRV_IO_SPI_SDCARD
 	   if(address[SPI_SDCARD_bit]) begin
 	      sd_mosi <= in[0];
@@ -335,14 +328,7 @@ module NrvIO(
 	      sd_cs_n <= in[2];
 	   end
 `endif	 
-      end else begin
-`ifdef NRV_IO_MAX7219
-	 if(MAX7219_sending &&  MAX7219_slow_clk) begin
-            MAX7219_bitcount <= MAX7219_bitcount - 5'd1;
-            MAX7219_shifter <= {MAX7219_shifter[14:0], 1'b0};
-	 end
-`endif
-     end	 
+      end	 
    end
 
 `ifdef NRV_IO_UART
@@ -368,7 +354,7 @@ module NrvIO(
 	// TODO
 `endif
 `ifdef NRV_IO_MAX7219
-	| MAX7219_sending		   
+	| max7219_wbusy
 `endif		   
 `ifdef NRV_IO_SPI_FLASH
         | spi_flash_wbusy
