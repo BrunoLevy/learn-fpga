@@ -35,7 +35,7 @@ module NrvLargeALU (
    //   J1's st0,st1 are inverted as compared to in1,in2 (st0<->in2  st1<->in1)
    // Equivalent code:
    // case(func) 
-   //    3'b000: out = funcQual ? in1 - in2 : in1 + in2;                 // ADD/SUB
+   //    3'b000: out = funcQual ? in1 - in2 : in1 + in2;               // ADD/SUB
    //    3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ; // SLT
    //    3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                    // SLTU
    //    ...
@@ -52,7 +52,7 @@ module NrvLargeALU (
    // iterative algorithm instead (e.g., the one in FIRMWARE/LIB/mul.s)
    wire               in1U = (func == 3'b011);
    wire               in2U = (func == 3'b010 || func == 3'b011);
-   wire signed [32:0] in1E = {in1U ? 1'b0 : in1[31], in1}; // 33 bits: should be 32:0 rather than 33:0, to be checked
+   wire signed [32:0] in1E = {in1U ? 1'b0 : in1[31], in1}; 
    wire signed [32:0] in2E = {in2U ? 1'b0 : in2[31], in2};
    wire signed [63:0] times = in1E * in2E;
 
@@ -146,7 +146,7 @@ module NrvLargeALU (
 	 end
       end else if(wr) begin // Barrel shifter, latched to reduce combinatorial depth.
 	 case(func)
-	   3'b001: ALUreg <= in1 << in2[4:0];                                      // SLL	   
+	   3'b001: ALUreg <= in1 << in2[4:0];                                        // SLL	   
 	   3'b101: ALUreg <= $signed({funcQual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
 	 endcase 
       end 

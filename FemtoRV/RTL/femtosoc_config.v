@@ -7,8 +7,8 @@
 /************************* Devices **********************************************************************************/
 `define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-`define NRV_IO_MAX7219      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
+`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX7219      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
 //`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
 //`define NRV_IO_BUTTONS     // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
@@ -53,3 +53,34 @@
 `ifdef ICE_STICK
 //`define NRV_NEGATIVE_RESET 
 `endif
+
+/************************ Normally you do not need to change anything beyond that point ****************************/
+
+/*
+ * On the ECP5 evaluation board, there is already a wired button, active low,
+ * wired to the "P4" ball of the ECP5 (see ecp5_evn.lpf)
+ */ 
+`ifdef ECP5_EVN
+`define NRV_NEGATIVE_RESET
+`endif
+
+// Toggle FPGA defines (ICE40, ECP5) in function of board defines (ICE_STICK, ECP5_EVN)
+// Board defines are set in compilation scripts (makeit_icestick.sh and makeit_ecp5_evn.sh)
+
+`ifdef ICE_STICK
+ `define ICE40
+`endif
+
+`ifdef ECP5_EVN
+ `define ECP5 
+`endif
+
+`ifdef ULX3S
+ `define ECP5 
+`endif
+
+`define CLKFREQ   (`NRV_FREQ*1000000) // Used by DEVICES/uart.v (clk freq in Hz, NRV_FREQ is in MHz).
+
+`default_nettype none // Makes it easier to detect typos !
+
+/******************************************************************************************************************/

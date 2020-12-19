@@ -5,42 +5,13 @@
 //
 // This file: the "System on Chip" that goes with femtorv32.
 
-`include "femtosoc_config.v"
-
 /*************************************************************************************/
-// Makes it easier to detect typos !
-`default_nettype none
 
-/*
- * On the ECP5 evaluation board, there is already a wired button, active low,
- * wired to the "P4" ball of the ECP5 (see ecp5_evn.lpf)
- */ 
-`ifdef ECP5_EVN
-`define NRV_NEGATIVE_RESET
-`endif
-
-// Toggle FPGA defines (ICE40, ECP5) in function of board defines (ICE_STICK, ECP5_EVN)
-// Board defines are set in compilation scripts (makeit_icestick.sh and makeit_ecp5_evn.sh)
-
-`ifdef ICE_STICK
- `define ICE40
-`endif
-
-`ifdef ECP5_EVN
- `define ECP5 
-`endif
-
-`ifdef ULX3S
- `define ECP5 
-`endif
-
-`include "femtorv32.v"
-`include "femtopll.v"
-
-// Used by the UART (NRV_FREQ in Hz).
-`define CLKFREQ   (`NRV_FREQ*1000000)
-`include "uart.v"
-
+`include "femtosoc_config.v"     // User configuration of processor and SOC.
+`include "PROCESSOR/femtorv32.v" // The processor
+`include "DEVICES/femtopll.v"    // The PLL (generates clock at NRV_FREQ)
+`include "DEVICES/uart.v"        // The UART (serial port over USB)
+`include "DEVICES/SSD1351.v"     // The OLED display
 
 /********************* Nrv RAM *******************************/
 
@@ -205,47 +176,24 @@ module NrvIO(
 `endif   
 
    /********************** SSD1351 **************************/
-   
 `ifdef NRV_IO_SSD1351
-   initial begin
-      SSD1351_DC  = 1'b0;
-      SSD1351_RST = 1'b0;
-      SSD1351_CS  = 1'b1;
-   end
+   wire SSD1351_wbusy;
+   SSD1351 oled_display(
+      .clk(clk),
+      .wstrb(wr),			
+      .sel_cntl(address[SSD1351_CNTL_bit]),
+      .sel_cmd(address[SSD1351_CMD_bit]),
+      .sel_dat(address[SSD1351_DAT_bit]),
+      .wdata(in),
+      .wbusy(SSD1351_wbusy),
+      .DIN(SSD1351_DIN),
+      .CLK(SSD1351_CLK),
+      .CS(SSD1351_CS),
+      .DC(SSD1351_DC),
+      .RST(SSD1351_RST)
+   );
+`endif   
 
- `ifdef BENCH // Seems that iverilog does not like this usage of generate.
-   reg[1:0] SSD1351_slow_cnt;
-   localparam SSD1351_cnt_bit = 1;
-   localparam SSD1351_cnt_max = 2'b11;
- `else   
-   generate
-      if(`NRV_FREQ <= 60) begin
-	 reg SSD1351_slow_cnt;
-	 localparam SSD1351_cnt_bit = 0;
-	 localparam SSD1351_cnt_max = 1'b1;
-      end else begin
-	 reg[1:0] SSD1351_slow_cnt;
-	 localparam SSD1351_cnt_bit = 1;
-	 localparam SSD1351_cnt_max = 2'b11;
-      end
-   endgenerate
- `endif
-      
-   // Currently sent bit, 1-based index
-   // (0000 config. corresponds to idle)
-   reg[3:0] SSD1351_bitcount = 4'b0000;
-   reg[7:0] SSD1351_shifter = 0;
-   wire     SSD1351_sending = (SSD1351_bitcount != 0);
-
-   assign SSD1351_DIN = SSD1351_shifter[7];
-   assign SSD1351_CLK = SSD1351_slow_cnt[SSD1351_cnt_bit]; 
-
-   always @(posedge clk) begin
-      SSD1351_slow_cnt <= SSD1351_slow_cnt + 1;
-   end
-   
-`endif 
-   
    /********************** UART receiver **************************/
 
 `ifdef NRV_IO_UART
@@ -373,26 +321,6 @@ module NrvIO(
 	      `bench($display("****************** LEDs = %b  0x%h %d", in[3:0],in,$signed(in)));
 	   end
 `endif
-`ifdef NRV_IO_SSD1351	   
-	   if(address[SSD1351_CNTL_bit]) begin
-	      SSD1351_CS  <= !in[0];
-	      SSD1351_RST <= in[1];
-	   end
-	   if(address[SSD1351_CMD_bit]) begin
-	      SSD1351_RST <= 1'b1;
-	      SSD1351_DC <= 1'b0;
-	      SSD1351_shifter <= in[7:0];
-	      SSD1351_bitcount <= 8;
-	      SSD1351_CS  <= 1'b1;
-	   end
-	   if(address[SSD1351_DAT_bit]) begin
-	      SSD1351_RST <= 1'b1;
-	      SSD1351_DC <= 1'b1;
-	      SSD1351_shifter <= in[7:0];
-	      SSD1351_bitcount <= 8;
-	      SSD1351_CS  <= 1'b1;
-	   end
-`endif 
 `ifdef NRV_IO_MAX7219
 	   if(address[MAX7219_DAT_bit]) begin
 	      MAX7219_shifter <= in[15:0];
@@ -414,22 +342,6 @@ module NrvIO(
 	   end
 `endif	 
       end else begin
-`ifdef NRV_IO_SSD1351
-
-	 if(SSD1351_slow_cnt == SSD1351_cnt_max) begin
-	    if(SSD1351_sending) begin
-	       if(SSD1351_CS) begin
-		  SSD1351_CS <= 1'b0;
-	       end else begin
-		  SSD1351_bitcount <= SSD1351_bitcount - 4'd1;
-		  SSD1351_shifter <= {SSD1351_shifter[6:0], 1'b0};
-	       end
-	    end else begin 
-	       SSD1351_CS  <= 1'b1;  
-	    end
-	 end
-	 
-`endif
 `ifdef NRV_IO_SPI_FLASH
 	 if(spi_flash_sending && spi_flash_slow_clk) begin
 	    if(spi_flash_snd_bitcount == 1) begin
@@ -472,7 +384,7 @@ module NrvIO(
 
    assign wrBusy = 0
 `ifdef NRV_IO_SSD1351
-	| SSD1351_sending 
+	| SSD1351_wbusy
 `endif
 `ifdef NRV_IO_UART
 	// TODO

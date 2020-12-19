@@ -23,13 +23,11 @@ module FemtoRV32 #(
 ) (
    input 	     clk,
 
-   // Memory interface: using the same protocol as Claire Wolf's picoR32
-   //                   (WIP: add mem_valid / mem_ready protocol)
    output [31:0]      mem_addr,  // address bus, only ADDR_WIDTH bits are used
    output wire [31:0] mem_wdata, // data to be written
    output wire [3:0]  mem_wmask, // write mask for the 4 bytes of each word
    input [31:0]       mem_rdata, // input lines for both data and instr
-   output wire 	      mem_rstrb, // active to initiate memory read
+   output wire 	      mem_rstrb, // active to initiate memory read (used by IO)
    input wire 	      mem_rbusy, // asserted if memory is busy reading value
    input wire         mem_wbusy, // asserted if memory is busy writing value
    
@@ -250,7 +248,7 @@ module FemtoRV32 #(
 	writeBackPCplus4: writeBackData = {PCplus4, 2'b00};
 	isLoad:           writeBackData = LOAD_mem_rdata_aligned;
 `ifdef NRV_CSR
-	writeBackCSR: writeBackData = CSR_rdata;	
+	writeBackCSR:     writeBackData = CSR_rdata;	
 `endif
       endcase
    end

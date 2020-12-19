@@ -41,7 +41,7 @@ _last line (RV32IM) using ECP5 DSP blocs_
 LUT count (FemtoRV32 + FemtoSOC)
 --------------------------------
 
-On IceStick: 1156 LUTs with the following `RTL/femtosoc_config.v` configuration:
+On IceStick: 1180 LUTs with the following `RTL/femtosoc_config.v` configuration:
 
 | Parameter            | value |
 |----------------------|-------|
