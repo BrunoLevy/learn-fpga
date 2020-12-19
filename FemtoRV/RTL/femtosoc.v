@@ -14,6 +14,7 @@
 `include "DEVICES/SSD1351.v"     // The OLED display
 `include "DEVICES/SPIFlash.v"    // Read data from the serial flash chip
 `include "DEVICES/MAX7219.v"     // 8x8 led matrix driven by a MAX7219 chip
+`include "DEVICES/LEDs.v"        // Driver for 4 leds
 
 /********************* Nrv RAM *******************************/
 
@@ -169,14 +170,23 @@ module NrvIO(
 
    localparam BUTTONS_bit      = 10; // read: buttons state
 
+   /*********************** LEDs ****************************/
 
 `ifdef NRV_IO_LEDS
-   initial begin
-      LEDs = 4'b0000;
-   end
-`endif   
-
+   wire [31:0] leds_rdata;
+   LEDDriver leds(
+      .clk(clk),
+      .rstrb(rd),		  
+      .wstrb(wr),			
+      .sel(address[LEDs_bit]),
+      .wdata(in),		  
+      .rdata(leds_rdata),
+      .LED(LEDs)
+   );
+`endif
+   
    /********************** SSD1351 **************************/
+
 `ifdef NRV_IO_SSD1351
    wire SSD1351_wbusy;
    SSD1351 oled_display(
@@ -293,7 +303,7 @@ module NrvIO(
    always @(*) begin
       out = 32'b0
 `ifdef NRV_IO_LEDS      
-	    | (address[LEDs_bit] ? {28'b0, LEDs} : 32'b0) 
+	    | leds_rdata
 `endif
 `ifdef NRV_IO_UART
 	    | (address[UART_CNTL_bit]? {22'b0, serial_tx_busy, serial_valid_latched, 8'b0} : 32'b0) 
@@ -315,12 +325,6 @@ module NrvIO(
 
    always @(posedge clk) begin
       if(wr) begin
-`ifdef NRV_IO_LEDS	   
-	   if(address[LEDs_bit]) begin
-	      LEDs <= in[3:0];
-	      `bench($display("****************** LEDs = %b  0x%h %d", in[3:0],in,$signed(in)));
-	   end
-`endif
 `ifdef NRV_IO_SPI_SDCARD
 	   if(address[SPI_SDCARD_bit]) begin
 	      sd_mosi <= in[0];
