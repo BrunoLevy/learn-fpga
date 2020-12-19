@@ -4,8 +4,11 @@
 //       Bruno Levy, 2020-2021
 //
 // This file: driver for SSD1351 OLED display
+// Refernce: https://www.crystalfontz.com/controllers/SolomonSystech/SSD1351/
 //
 // TODO: we could use wmask to write directly 16 bits or 32 bits of data
+//       (we could even have a 'fast clear' option that writes a number
+//        of zeroes).
 
 module SSD1351(
     input wire 	      clk,      // system clock
@@ -35,18 +38,26 @@ module SSD1351(
    /********* The clock ****************************************************/
    // Note: SSD1351 expects the raising edges of the clock in the middle of
    // the data bits.
+   // TODO: try to have a 'waveform' instead, that is shifted (simpler and
+   //       more elegant).
+   // Page 52 of the doc: 4-wire SPI timing:
+   //   Unclear what 'Clock Cycle Time' (220 ns) means,
+   //   Clock Low Time (20ns) + Clock High Time (20ns) = 40ns
+   //   max freq = 1/(40ns) = 25 MHz
+   //   experimentally, seems to work up to 30 Mhz (but not more)
    
- `ifdef BENCH // Seems that iverilog does not like this usage of generate.
+   // Seems that iverilog does not like the way I'm using 'generate' below.
+ `ifdef BENCH 
    reg[1:0] slow_cnt;
    localparam cnt_bit = 1;
    localparam cnt_max = 2'b11;
  `else   
    generate
-      if(`NRV_FREQ <= 60) begin
+      if(`NRV_FREQ <= 60) begin // Divide by 2-> 30 MHz
 	 reg slow_cnt;
 	 localparam cnt_bit = 0;
 	 localparam cnt_max = 1'b1;
-      end else begin
+      end else begin            // Divide by 4
 	 reg[1:0] slow_cnt;
 	 localparam cnt_bit = 1;
 	 localparam cnt_max = 2'b11;
@@ -54,14 +65,6 @@ module SSD1351(
    endgenerate
  `endif
 
-   always @(posedge clk) begin
-      slow_cnt <= slow_cnt + 1;
-   end
-
-   assign CLK = slow_cnt[cnt_bit]; 
-   
-   /********* The shifter  **************************************************/
-   
    // Currently sent bit, 1-based index
    // (0000 config. corresponds to idle)
    reg[3:0] bitcount = 4'b0000;
@@ -69,42 +72,46 @@ module SSD1351(
    wire     sending = (bitcount != 0);
 
    assign DIN = shifter[7];
+   assign CLK = slow_cnt[cnt_bit]; 
    assign wbusy = sending;
-   
+
+   always @(posedge clk) begin
+      slow_cnt <= slow_cnt + 1;
+   end
+
    /*************************************************************************/
    
    always @(posedge clk) begin
       if(wstrb) begin
-	 case(1'b1)
-	   sel_cntl: begin
-	      CS  <= !wdata[0];
-	      RST <= wdata[1];
-	   end
-	   sel_cmd: begin
-	      RST <= 1'b1;
-	      DC <= 1'b0;
-	      shifter <= wdata[7:0];
+	 if(sel_cntl) begin
+	    CS  <= !wdata[0];
+	    RST <= wdata[1];
+	 end
+	 if(sel_cmd) begin
+	    RST <= 1'b1;
+	    DC <= 1'b0;
+	    shifter <= wdata[7:0];
 	      bitcount <= 8;
-	      CS  <= 1'b1;
-	   end
-	   sel_dat: begin
- 	      RST <= 1'b1;
-	      DC <= 1'b1;
-	      shifter <= wdata[7:0];
-	      bitcount <= 8;
-	      CS  <= 1'b1;
-	   end
-	 endcase
+	    CS  <= 1'b1;
+	 end
+	 if(sel_dat) begin
+ 	    RST <= 1'b1;
+	    DC <= 1'b1;
+	    shifter <= wdata[7:0];
+	    bitcount <= 8;
+	    CS  <= 1'b1;
+	 end
       end else begin 
-	 if(slow_cnt == cnt_max) begin
+	 // detect falling edge of slow_clk
+	 if(slow_cnt == cnt_max) begin 
 	    if(sending) begin
-	       if(CS) begin
+	       if(CS) begin    // first tick activates CS (low)
 		  CS <= 1'b0;
-	       end else begin
+	       end else begin  // shift on falling edge
 		  bitcount <= bitcount - 4'd1;
 		  shifter <= {shifter[6:0], 1'b0};
 	       end
-	    end else begin 
+	    end else begin     // last tick deactivates CS (high) 
 	       CS  <= 1'b1;  
 	    end
 	 end
