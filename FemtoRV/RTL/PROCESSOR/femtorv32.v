@@ -39,12 +39,15 @@ module FemtoRV32 #(
    // The internal register that stores the current address,
    // directly wired to the address bus.
    reg [ADDR_WIDTH-1:0] addressReg;
-
+   assign mem_addr = addressReg;
+   
    // The program counter (not storing the two LSBs, always aligned)
    reg [ADDR_WIDTH-3:0] PC;
 
-   assign mem_addr = addressReg;
-
+   // The write data register, directly wired to the outgoing data bus.
+   reg [31:0] wdataReg;
+   assign mem_wdata = wdataReg;
+   
    reg [31:0] instr;     // Latched instruction. 
    reg [31:0] nextInstr; // Prefetched instruction.
 
@@ -194,13 +197,13 @@ module FemtoRV32 #(
    // and sign-expands mem_rdata based 
    // on width (func[1:0]), signed/unsigned flag (func[2])
    // and the two LSBs of the address. 
-   wire [31:0] LOAD_mem_rdata_aligned;
+   wire [31:0] LOAD_data_aligned_for_CPU;
    NrvLoadFromMemory load_from_mem(
-       .mem_rdata(mem_rdata),        // Raw data read from mem
-       .addr_LSBs(mem_addr[1:0]),    // The two LSBs of the address
-       .width(func[1:0]),           // Data width: 00:byte 01:hword 10:word
-       .is_unsigned(func[2]),       // signed/unsigned flag
-       .data(LOAD_mem_rdata_aligned) // Data ready to be sent to register
+       .mem_rdata(mem_rdata),           // Raw data read from mem
+       .addr_LSBs(mem_addr[1:0]),       // The two LSBs of the address
+       .width(func[1:0]),               // Data width: 00:byte 01:hword 10:word
+       .is_unsigned(func[2]),           // signed/unsigned flag
+       .data(LOAD_data_aligned_for_CPU) // Data ready to be sent to register
    );
 
    // STORE: a small combinatorial circuit that realigns
@@ -209,14 +212,15 @@ module FemtoRV32 #(
    // When a STORE instruction is executed, the data to be stored to
    // mem is available from the second register (regOut2) and the
    // address where to store it is the output of the ALU (aluOut).
-   wire mem_wenable;   
+   wire mem_wenable;
+   wire [31:0] STORE_data_aligned_for_MEM;
    NrvStoreToMemory store_to_mem(
-       .data(regOut2),          // Data to be sent, out of register
-       .addr_LSBs(aluAplusB[1:0]), // The two LSBs of the address
-       .width(func[1:0]),      // Data width: 00:byte 01:hword 10:word
-       .mem_wdata(mem_wdata),   // Shifted data to be sent to memory
-       .mem_wmask(mem_wmask),   // Write mask for the 4 bytes
-       .wr_enable(mem_wenable)  // Write enable ('anded' with write mask)
+       .data(regOut2),                         // Data to be sent, out of register
+       .addr_LSBs(aluAplusB[1:0]),             // The two LSBs of the address
+       .width(func[1:0]),                      // Data width: 00:byte 01:hword 10:word
+       .mem_wdata(STORE_data_aligned_for_MEM), // Shifted data to be sent to memory
+       .mem_wmask(mem_wmask),                  // Write mask for the 4 bytes
+       .wr_enable(mem_wenable)                 // Write enable ('anded' with write mask)
    );
    
    /*************************************************************************/
@@ -246,7 +250,7 @@ module FemtoRV32 #(
 	writeBackALU :    writeBackData = aluOut;
 	writeBackAplusB:  writeBackData = aluAplusB;	
 	writeBackPCplus4: writeBackData = {PCplus4, 2'b00};
-	isLoad:           writeBackData = LOAD_mem_rdata_aligned;
+	isLoad:           writeBackData = LOAD_data_aligned_for_CPU;
 `ifdef NRV_CSR
 	writeBackCSR:     writeBackData = CSR_rdata;	
 `endif
@@ -374,7 +378,10 @@ module FemtoRV32 #(
 	   case (1'b1)
 	     error_latched: state <= ERROR;
 	     isLoad:        state <= LOAD;
-	     isStore:       state <= STORE;
+	     isStore:       begin
+		state <= STORE;
+		wdataReg <= STORE_data_aligned_for_MEM;
+	     end
 	     needWaitALU:   state <= WAIT_ALU_OR_DATA;	     
 	     jump_or_take_branch: begin
 		PC <= aluAplusB[31:2];

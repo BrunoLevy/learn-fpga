@@ -24,8 +24,8 @@ int getchar() {
   // TODO: understand and fix (for now, workaround).
   static int first = 1;
   if(first) {
-    (*getcharfunc)();
-    first = 0;
+  (*getcharfunc)();
+     first = 0;
   }
   return (*getcharfunc)();
 }

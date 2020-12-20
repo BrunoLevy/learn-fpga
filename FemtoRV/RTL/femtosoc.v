@@ -129,13 +129,13 @@ module femtosoc(
    
    // IO bus. 
    wire        mem_address_is_io = mem_address[22];
-   wire [31:0] io_rdata;
+   reg  [31:0] io_rdata;
    wire [31:0] io_wdata = mem_wdata;
    wire        io_rstrb = mem_rstrb && mem_address_is_io;
    wire        io_wstrb = mem_wstrb && mem_address_is_io;
    wire [10:0] io_word_address = mem_address[12:2]; // word offset in io page
-   wire        io_rbusy;
-   wire        io_wbusy;
+   reg        io_rbusy;
+   reg        io_wbusy;
    assign      mem_rbusy = io_rbusy; // TODO: OR with mapped SPI page here
    assign      mem_wbusy = io_wbusy; // TODO: OR with mapped SPI page here
 
@@ -306,8 +306,10 @@ module femtosoc(
 `endif
    
 /************** io_rdata, io_rbusy and io_wbusy signals *************/
-
-   assign io_rdata = 32'b0
+/* They are latched to reduce critical path */
+   
+always @(posedge clk) begin
+   io_rdata <= 32'b0
 `ifdef NRV_IO_LEDS      
 	    | leds_rdata
 `endif
@@ -325,7 +327,7 @@ module femtosoc(
 `endif
 	    ;
    
-   assign io_rbusy = 0
+   io_rbusy <= 0
 `ifdef NRV_IO_UART
 	| uart_rbusy
 `endif
@@ -334,7 +336,7 @@ module femtosoc(
 `endif		   
 ; 
 
-   assign io_wbusy = 0
+   io_wbusy <= 0
 `ifdef NRV_IO_SSD1351
 	| SSD1351_wbusy
 `endif
@@ -349,6 +351,8 @@ module femtosoc(
 `endif		   
 ; 
 
+end
+   
 /****************************************************************/
 
   wire error;
