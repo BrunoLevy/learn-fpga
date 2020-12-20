@@ -146,7 +146,7 @@ We configure `FemtoRV/RTL/femtosoc_config.v` as follows (we keep unused options 
 //`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
 `define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
 
-`define NRV_FREQ 80        // CONFIGWORD 0x001C // Frequency in MHz. Can push it to 80Mhz.
+`define NRV_FREQ 50        // CONFIGWORD 0x001C // Frequency in MHz. You can try overclocking (up to 100 MHz)
                                                   
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
