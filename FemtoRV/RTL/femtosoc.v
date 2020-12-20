@@ -314,7 +314,7 @@ module femtosoc(
  * before everything would be there one clock later...
  */ 
    
-always @(*) begin
+always @(posedge clk) begin
    io_rdata <= 32'b0
 `ifdef NRV_IO_LEDS      
 	    | leds_rdata
@@ -332,7 +332,9 @@ always @(*) begin
 	    | buttons_rdata
 `endif
 	    ;
-   
+end
+
+always @(*) begin   
    io_rbusy <= 0
 `ifdef NRV_IO_UART
 	| uart_rbusy

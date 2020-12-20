@@ -212,7 +212,7 @@ module FemtoRV32 #(
    // When a STORE instruction is executed, the data to be stored to
    // mem is available from the second register (regOut2) and the
    // address where to store it is the output of the ALU (aluOut).
-   wire mem_wenable;
+   wire        mem_wenable;
    wire [31:0] STORE_data_aligned_for_MEM;
    NrvStoreToMemory store_to_mem(
        .data(regOut2),                         // Data to be sent, out of register
