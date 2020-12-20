@@ -24,7 +24,11 @@ module NrvRegisterFile(
 	    bank1[~inRegId] <= in;
 	    bank2[~inRegId] <= in;
 	 end	  
-      end 
+      end else begin // Not mandatory to put what's below in an 'else' branch, 
+	             // but it allows higher overclocking.
+	             //   with it: up to 80 MHz on the icestick, 
+	             //   without it: 60 MHz
+	             // TODO: understand critical path, optimize timings
       // Test bench does not seem to understand that
       // oob access in reg array is supposed to return 0.
 `ifdef BENCH	 
@@ -34,5 +38,6 @@ module NrvRegisterFile(
          out1 <= bank1[~outRegId1];
          out2 <= bank2[~outRegId2];
 `endif
+      end
    end 
 endmodule

@@ -30,7 +30,7 @@ module NrvSmallALU #(
    //   J1's st0,st1 are inverted as compared to in1,in2 (st0<->in2  st1<->in1)
    // Equivalent code:
    // case(func) 
-   //    3'b000: out = funcQual ? in1 - in2 : in1 + in2;                 // ADD/SUB
+   //    3'b000: out = funcQual ? in1 - in2 : in1 + in2;               // ADD/SUB
    //    3'b010: out = ($signed(in1) < $signed(in2)) ? 32'b1 : 32'b0 ; // SLT
    //    3'b011: out = (in1 < in2) ? 32'b1 : 32'b0;                    // SLTU
    //    ...
