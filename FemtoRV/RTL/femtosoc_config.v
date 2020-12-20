@@ -15,7 +15,7 @@
 
 
 /************************* Frequency ********************************************************************************/
-`define NRV_FREQ 75       // CONFIGWORD 0x001C // Frequency in MHz. 
+`define NRV_FREQ 50       // CONFIGWORD 0x001C // Frequency in MHz. 
                           // Can overclock it up to 75-80 MHz on the ICEStick and 80-100MHz on ULX3S.
                           // Yosys says OK between 40MHz and 50MHz. 
 
@@ -44,6 +44,13 @@
  * but uses 60-100 LUTs) (inspired by PICORV32). 
  */ 
 `define NRV_TWOSTAGE_SHIFTER 
+
+/*
+ * Uncomment to systematically latch ALU output, 
+ * this augments CPI (from 2 to 3), but may reduce
+ * critical path (overclocking to 90MHz on IceStick works with OLED display and SPI flash)
+ */
+//`define NRV_LATCH_ALU
 
 /* 
  * Uncomment if the RESET button is wired and active low:

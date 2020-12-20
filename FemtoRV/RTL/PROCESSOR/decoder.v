@@ -156,7 +156,11 @@ module NrvDecoder(
 	      aluInSel2 = 1'b1;       // ALU source 2 : imm
 	                              // Qualifier for ALU op: SRLI/SRAI
 	      funcQual = funcIsShift ? instr[30] : 1'b0;
+`ifdef NRV_LATCH_ALU
+	      needWaitALU = 1'b1;	      
+`else
 	      needWaitALU = funcIsShift;
+`endif	      
 	      isALU = 1'b1;           // ALU op : from instr
 	      imm = Iimm;             // imm format = I
 	   end
@@ -169,10 +173,18 @@ module NrvDecoder(
 	      funcQual = instr[30];   // Qualifier for ALU op: +/- SRL/SRA
 	      isALU = 1'b1;           // ALU op : from instr
 `ifdef NRV_RV32M
-	      needWaitALU = funcIsShift || instr[25];	
+ `ifdef NRV_LATCH_ALU
+	      needWaitALU = 1'b1;
+ `else
+	      needWaitALU = funcIsShift || instr[25];
+ `endif
               funcM = instr[25];
 `else
+ `ifdef NRV_LATCH_ALU
+	      needWaitALU = 1'b1;	      
+ `else
 	      needWaitALU = funcIsShift;
+ `endif	      
 	      error = instr[25];
 `endif	      
 	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; // don't care

@@ -129,13 +129,13 @@ module femtosoc(
    
    // IO bus. 
    wire        mem_address_is_io = mem_address[22];
-   reg  [31:0] io_rdata;
+   reg  [31:0] io_rdata; // for now, combinatorially assigned
    wire [31:0] io_wdata = mem_wdata;
    wire        io_rstrb = mem_rstrb && mem_address_is_io;
    wire        io_wstrb = mem_wstrb && mem_address_is_io;
    wire [10:0] io_word_address = mem_address[12:2]; // word offset in io page
-   reg        io_rbusy;
-   reg        io_wbusy;
+   reg        io_rbusy; // for now, combinatorially assigned
+   reg        io_wbusy; // for now, combinatorially assigned
    assign      mem_rbusy = io_rbusy; // TODO: OR with mapped SPI page here
    assign      mem_wbusy = io_wbusy; // TODO: OR with mapped SPI page here
 
@@ -306,9 +306,15 @@ module femtosoc(
 `endif
    
 /************** io_rdata, io_rbusy and io_wbusy signals *************/
-/* They are latched to reduce critical path */
+
+/*
+ * For now, they are combinatorially assigned
+ * Could be latched to reduce critical path,
+ * but then we would need an additional wait state
+ * before everything would be there one clock later...
+ */ 
    
-always @(posedge clk) begin
+always @(*) begin
    io_rdata <= 32'b0
 `ifdef NRV_IO_LEDS      
 	    | leds_rdata
