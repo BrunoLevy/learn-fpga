@@ -335,7 +335,7 @@ always @(posedge clk) begin
 end
 
 always @(*) begin   
-   io_rbusy <= 0
+   io_rbusy = 0
 `ifdef NRV_IO_UART
 	| uart_rbusy
 `endif
@@ -344,7 +344,7 @@ always @(*) begin
 `endif		   
 ; 
 
-   io_wbusy <= 0
+   io_wbusy = 0
 `ifdef NRV_IO_SSD1351
 	| SSD1351_wbusy
 `endif

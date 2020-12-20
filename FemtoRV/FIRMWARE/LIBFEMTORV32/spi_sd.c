@@ -73,7 +73,6 @@ void spi_send (uint8_t d) {
     CK_H(); CLK_DELAY(); CK_L(); CLK_DELAY();
     if (d & 0x01) MOSI_H(); else MOSI_L();    // bit0 
     CK_H(); CLK_DELAY(); CK_L(); CLK_DELAY();
-//  DLY_US(10);
 }
 
 uint8_t spi_receive () {
@@ -95,7 +94,6 @@ uint8_t spi_receive () {
     CK_H(); CLK_DELAY(); CK_L(); CLK_DELAY();
     r <<= 1; if (MISO()) r++;    // bit0 
     CK_H(); CLK_DELAY(); CK_L(); CLK_DELAY();
-//  DLY_US(10);
     return r;
 }
 
@@ -297,7 +295,6 @@ int sd_init() {
 int sd_readsector(uint32_t start_block, uint8_t *buffer, uint32_t sector_count) {
     uint8_t response;
     uint32_t ctrl;
-//  t_time tStart;
     int retries = 0;
     int i;
     if (sector_count == 0) {
@@ -311,12 +308,9 @@ int sd_readsector(uint32_t start_block, uint8_t *buffer, uint32_t sector_count) 
             return 0;
         }
 
-//      tStart = timer_now();
-
         // Wait for start of block indicator
         while(spi_receive() != CMD_START_OF_BLOCK) {
             // Timeout
-//          if (timer_diff(timer_now(), tStart) >= 1000) {
 	    if(retries > 5000) {
                 printf("sd_readsector: Timeout waiting for data ready\n");
                 return 0;
@@ -341,7 +335,6 @@ int sd_readsector(uint32_t start_block, uint8_t *buffer, uint32_t sector_count) 
 
 int sd_writesector(uint32_t start_block, uint8_t *buffer, uint32_t sector_count) {
     uint8_t response;
-//   t_time tStart;
     int retries = 0;
     int i;
 
@@ -372,12 +365,9 @@ int sd_writesector(uint32_t start_block, uint8_t *buffer, uint32_t sector_count)
             return 0;
         }
 
-//      tStart = timer_now();
-
         // Wait for data write complete
         while(spi_sendrecv(0xFF) == 0) {
             // Timeout
-            // if (timer_diff(timer_now(), tStart) >= 1000)
 	    if(retries > 5000) {
                 printf("sd_writesector: Timeout waiting for data write complete\n");
                 return 0;
@@ -394,7 +384,6 @@ int sd_writesector(uint32_t start_block, uint8_t *buffer, uint32_t sector_count)
         // Wait for data write complete
         while(spi_sendrecv(0xFF) == 0) {
             // Timeout
-            // if (timer_diff(timer_now(), tStart) >= 1000)
 	    if(retries > 5000) {
                 printf("sd_writesector: Timeout waiting for return to idle\n");
                 return 0;
