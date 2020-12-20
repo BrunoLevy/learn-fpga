@@ -92,7 +92,7 @@ ECP5_EVN.prog:
 #######################################################################################################################
 
 testbench:
-	(cd RTL; iverilog femtosoc_bench.v -o ../femtosoc_bench.vvp)
+	(cd RTL; iverilog -IPROCESSOR -IDEVICES femtosoc_bench.v -o ../femtosoc_bench.vvp)
 	vvp femtosoc_bench.vvp
 
 #######################################################################################################################
