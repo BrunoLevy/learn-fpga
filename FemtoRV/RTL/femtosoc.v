@@ -116,7 +116,7 @@ module femtosoc(
  *   address[23]   (future) SPI page (1-hot)
  */ 
 
-   // The memory bus
+   // The memory bus.
    wire [31:0] mem_address;
    wire  [3:0] mem_wmask;
    wire [31:0] mem_rdata;
@@ -127,19 +127,19 @@ module femtosoc(
 
    wire        mem_wstrb = |mem_wmask;
    
-   // IO bus. All addresses are word offsets in IO page.
+   // IO bus. 
    wire        mem_address_is_io = mem_address[22];
    wire [31:0] io_rdata;
    wire [31:0] io_wdata = mem_wdata;
    wire        io_rstrb = mem_rstrb && mem_address_is_io;
    wire        io_wstrb = mem_wstrb && mem_address_is_io;
-   wire [10:0] io_word_address = mem_address[12:2];
+   wire [10:0] io_word_address = mem_address[12:2]; // word offset in io page
    wire        io_rbusy;
    wire        io_wbusy;
-   assign      mem_rbusy = io_rbusy;
-   assign      mem_wbusy = io_wbusy;
+   assign      mem_rbusy = io_rbusy; // TODO: OR with mapped SPI page here
+   assign      mem_wbusy = io_wbusy; // TODO: OR with mapped SPI page here
 
-   wire        mem_address_is_ram = !mem_address[22];
+   wire        mem_address_is_ram = !mem_address[22]; // TODO: AND! with mapped SPI
    wire [19:0] ram_word_address = mem_address[21:2];
    reg [31:0] RAM[(`NRV_RAM/4)-1:0];
    reg [31:0] ram_rdata;
@@ -199,7 +199,7 @@ module femtosoc(
       .sel(io_word_address[LEDs_bit]),
       .wdata(io_wdata),		  
       .rdata(leds_rdata),
-      .LED({D5,D4,D3,D2})
+      .LED({D4,D3,D2,D1})
    );
 `endif
 
@@ -374,7 +374,7 @@ module femtosoc(
   );
    
 `ifdef NRV_IO_LEDS  
-     assign D1 = error;
+     assign D5 = error;
 `endif
    
 
