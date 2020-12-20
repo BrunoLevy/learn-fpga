@@ -133,7 +133,7 @@ module femtosoc(
    wire [31:0] io_wdata = mem_wdata;
    wire        io_rstrb = mem_rstrb && mem_address_is_io;
    wire        io_wstrb = mem_wstrb && mem_address_is_io;
-   wire [10:0] io_address = mem_address[12:2];
+   wire [10:0] io_word_address = mem_address[12:2];
    wire        io_rbusy;
    wire        io_wbusy;
    assign      mem_rbusy = io_rbusy;
@@ -196,7 +196,7 @@ module femtosoc(
       .clk(clk),
       .rstrb(io_rstrb),		  
       .wstrb(io_wstrb),			
-      .sel(io_address[LEDs_bit]),
+      .sel(io_word_address[LEDs_bit]),
       .wdata(io_wdata),		  
       .rdata(leds_rdata),
       .LED({D5,D4,D3,D2})
@@ -209,9 +209,9 @@ module femtosoc(
    SSD1351 oled_display(
       .clk(clk),
       .wstrb(io_wstrb),			
-      .sel_cntl(io_address[SSD1351_CNTL_bit]),
-      .sel_cmd(io_address[SSD1351_CMD_bit]),
-      .sel_dat(io_address[SSD1351_DAT_bit]),
+      .sel_cntl(io_word_address[SSD1351_CNTL_bit]),
+      .sel_cmd(io_word_address[SSD1351_CMD_bit]),
+      .sel_dat(io_word_address[SSD1351_DAT_bit]),
       .wdata(io_wdata),
       .wbusy(SSD1351_wbusy),
       .DIN(oled_DIN),
@@ -231,8 +231,8 @@ module femtosoc(
       .clk(clk),
       .rstrb(io_rstrb),	     	     
       .wstrb(io_wstrb),
-      .sel_cntl(io_address[UART_CNTL_bit]),
-      .sel_dat(io_address[UART_DAT_bit]),
+      .sel_cntl(io_word_address[UART_CNTL_bit]),
+      .sel_dat(io_word_address[UART_DAT_bit]),
       .wdata(io_wdata),
       .wbusy(uart_wbusy),
       .rdata(uart_rdata),
@@ -248,12 +248,12 @@ module femtosoc(
    MAX7219 max7219(
       .clk(clk),
       .wstrb(io_wstrb),
-      .sel(io_address[MAX7219_DAT_bit]),
+      .sel(io_word_address[MAX7219_DAT_bit]),
       .wdata(io_wdata),
       .wbusy(max7219_wbusy),
-      .DIN(MAX7219_DIN),
-      .CS(MAX7219_CS),
-      .CLK(MAX7219_CLK)		   
+      .DIN(ledmtx_DIN),
+      .CS(ledmtx_CS),
+      .CLK(ledmtx_CLK)		   
    );
 `endif   
    
@@ -285,7 +285,7 @@ module femtosoc(
       .clk(clk),
       .rstrb(io_rstrb),
       .wstrb(io_wstrb), 
-      .sel(io_address[SPI_SDCARD_bit]),
+      .sel(io_word_address[SPI_SDCARD_bit]),
       .wdata(io_wdata),
       .rdata(sdcard_rdata),
       .CLK(sd_clk),
@@ -299,7 +299,7 @@ module femtosoc(
 `ifdef NRV_IO_BUTTONS
    wire [31:0] buttons_rdata;
    Buttons buttons_driver(
-      .sel(io_address[BUTTONS_bit]),
+      .sel(io_word_address[BUTTONS_bit]),
       .rdata(buttons_rdata),
       .BUTTONS(buttons)		   
    );
