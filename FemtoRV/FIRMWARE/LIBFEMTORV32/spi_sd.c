@@ -378,7 +378,6 @@ int sd_writesector(uint32_t start_block, uint8_t *buffer, uint32_t sector_count)
         // Additional 8 SPI clocks
         spi_send(0xff);
 
-        // tStart = timer_now();
 	retries = 0;
 	
         // Wait for data write complete

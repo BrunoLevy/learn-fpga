@@ -7,16 +7,17 @@
 
 /*************************************************************************************/
 
-`include "femtosoc_config.v"     // User configuration of processor and SOC.
-`include "PROCESSOR/femtorv32.v" // The processor
-`include "DEVICES/femtopll.v"    // The PLL (generates clock at NRV_FREQ)
-`include "DEVICES/uart.v"        // The UART (serial port over USB)
-`include "DEVICES/SSD1351.v"     // The OLED display
-`include "DEVICES/SPIFlash.v"    // Read data from the serial flash chip
-`include "DEVICES/MAX7219.v"     // 8x8 led matrix driven by a MAX7219 chip
-`include "DEVICES/LEDs.v"        // Driver for 4 leds
-`include "DEVICES/SDCard.v"      // Driver for SDCard (just for bitbanging for now)
-`include "DEVICES/Buttons.v"     // Driver for the buttons
+`include "femtosoc_config.v"        // User configuration of processor and SOC.
+`include "PROCESSOR/femtorv32.v"    // The processor
+`include "DEVICES/femtopll.v"       // The PLL (generates clock at NRV_FREQ)
+`include "DEVICES/HardwareConfig.v" // Constant registers to query hardware config.
+`include "DEVICES/uart.v"           // The UART (serial port over USB)
+`include "DEVICES/SSD1351.v"        // The OLED display
+`include "DEVICES/SPIFlash.v"       // Read data from the serial flash chip
+`include "DEVICES/MAX7219.v"        // 8x8 led matrix driven by a MAX7219 chip
+`include "DEVICES/LEDs.v"           // Driver for 4 leds
+`include "DEVICES/SDCard.v"         // Driver for SDCard (just for bitbanging for now)
+`include "DEVICES/Buttons.v"        // Driver for the buttons
 
 /*************************************************************************************/
 
@@ -134,8 +135,8 @@ module femtosoc(
    wire        io_rstrb = mem_rstrb && mem_address_is_io;
    wire        io_wstrb = mem_wstrb && mem_address_is_io;
    wire [10:0] io_word_address = mem_address[12:2]; // word offset in io page
-   reg        io_rbusy; // for now, combinatorially assigned
-   reg        io_wbusy; // for now, combinatorially assigned
+   wire	       io_rbusy; // for now, combinatorially assigned
+   wire        io_wbusy; // for now, combinatorially assigned
    assign      mem_rbusy = io_rbusy; // TODO: OR with mapped SPI page here
    assign      mem_wbusy = io_wbusy; // TODO: OR with mapped SPI page here
 
@@ -168,26 +169,17 @@ module femtosoc(
  * simpler (saves a lot of LUTs), as in J1/swapforth,
  * thanks to Matthias Koch(Mecrisp author) for the idea !
  */  
-   
-   localparam LEDs_bit         = 0; // (write) LEDs (4 LSBs)
-   
-   localparam SSD1351_CNTL_bit = 1; // (write) Oled display control
-   localparam SSD1351_CMD_bit  = 2; // (write) Oled display commands (8 bits)
-   localparam SSD1351_DAT_bit  = 3; // (write) Oled display data (8 bits)
 
-   localparam UART_CNTL_bit    = 4; // (read) busy (bit 9), data ready (bit 8)
-   localparam UART_DAT_bit     = 5; // (read/write) received data / data to send (8 bits)
-   
-   localparam MAX7219_DAT_bit  = 7; // (write) led matrix data (16 bits)
+`include "DEVICES/HardwareConfig_bits.v"   
 
-   localparam SPI_FLASH_bit    = 8; // (write SPI address (24 bits) read: data (1 byte) 
-
-                                    // This one is a software "bit-banging" interface (TODO: hw support)
-   localparam SPI_SDCARD_bit   = 9; // write: bit 0: mosi  bit 1: clk   bit 2: csn
-                                    // read:  bit 0: miso
-
-   localparam BUTTONS_bit      = 10; // read: buttons state
-
+/*********************** Hardware configuration ************/
+wire [31:0] hwconfig_rdata;
+HardwareConfig hwconfig(
+   .clk(clk),			
+   .sel_memory(io_word_address[HW_CONFIG_RAM_bit]),
+   .sel_devices_freq(io_word_address[HW_CONFIG_DEVICES_FREQ_bit]),
+   .rdata(hwconfig_rdata)			 
+);
    
 /*********************** 4 LEDs ****************************/
 `ifdef NRV_IO_LEDS
@@ -225,18 +217,13 @@ module femtosoc(
 /********************** UART ****************************************/
 `ifdef NRV_IO_UART
    wire [31:0] uart_rdata;
-   wire        uart_rbusy;
-   wire        uart_wbusy;
    UART uart(
       .clk(clk),
       .rstrb(io_rstrb),	     	     
       .wstrb(io_wstrb),
-      .sel_cntl(io_word_address[UART_CNTL_bit]),
-      .sel_dat(io_word_address[UART_DAT_bit]),
+      .sel(io_word_address[UART_DAT_bit]),
       .wdata(io_wdata),
-      .wbusy(uart_wbusy),
       .rdata(uart_rdata),
-      .rbusy(uart_rbusy),
       .RXD(RXD),
       .TXD(TXD)	     
    );
@@ -260,7 +247,6 @@ module femtosoc(
 /********************* SPI flash reader *****************************/
 `ifdef NRV_IO_SPI_FLASH
    wire spi_flash_wbusy;
-   wire spi_flash_rbusy;
    wire [31:0] spi_flash_rdata;
    SPIFlash spi_flash(
       .clk(clk),
@@ -270,7 +256,6 @@ module femtosoc(
       .wdata(io_wdata),
       .wbusy(spi_flash_wbusy),		      
       .rdata(spi_flash_rdata),
-      .rbusy(spi_flash_rbusy),
       .CLK(spi_clk),
       .CS_N(spi_cs_n),
       .MOSI(spi_mosi),
@@ -308,14 +293,11 @@ module femtosoc(
 /************** io_rdata, io_rbusy and io_wbusy signals *************/
 
 /*
- * For now, they are combinatorially assigned
- * Could be latched to reduce critical path,
- * but then we would need an additional wait state
- * before everything would be there one clock later...
+ * io_rdata is latched
  */ 
    
 always @(posedge clk) begin
-   io_rdata <= 32'b0
+   io_rdata <= hwconfig_rdata
 `ifdef NRV_IO_LEDS      
 	    | leds_rdata
 `endif
@@ -334,22 +316,14 @@ always @(posedge clk) begin
 	    ;
 end
 
-always @(*) begin   
-   io_rbusy = 0
-`ifdef NRV_IO_UART
-	| uart_rbusy
-`endif
-`ifdef NRV_IO_SPI_FLASH
-        | spi_flash_rbusy
-`endif		   
-; 
+   // For now, we got no device that has
+   // blocking reads (SPI flash blocks on
+   // write address and waits for read data).
+   assign io_rbusy = 0 ; 
 
-   io_wbusy = 0
+   assign io_wbusy = 0
 `ifdef NRV_IO_SSD1351
 	| SSD1351_wbusy
-`endif
-`ifdef NRV_IO_UART
-	| uart_wbusy
 `endif
 `ifdef NRV_IO_MAX7219
 	| max7219_wbusy
@@ -359,10 +333,9 @@ always @(*) begin
 `endif		   
 ; 
 
-end
-   
 /****************************************************************/
-
+/* And last but not least, the processor                        */
+   
   wire error;
    
   FemtoRV32 #(

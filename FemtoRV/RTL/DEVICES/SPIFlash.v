@@ -17,7 +17,6 @@ module SPIFlash(
 
     output wire        wbusy, // asserted if the driver is busy sending data		
     output wire [31:0] rdata, // data read
-    output wire        rbusy, // asserted if the driver is busy receiving data		
 
 		             // SPI flash pins
     output wire        CLK,  // clock
@@ -34,7 +33,6 @@ module SPIFlash(
    wire       receiving = (rcv_bitcount != 0);
    wire       busy = sending | receiving;
    assign     wbusy = busy; // send address and read data done on wstrb
-   assign     rbusy = 1'b0; // on rstrb, just access read data
    reg 	      slow_clk;     // =clk/2 (TODO check if/when we need to divide more)
    
    assign  MOSI = sending && cmd_addr[31];

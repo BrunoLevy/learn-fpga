@@ -25,20 +25,6 @@ extern int exec(const char* filename); /* Executes a program from the SDCard.
 					* Returns a non-zero number on error.
 					* does not return on success !
 					*/
-
-extern uint32_t* CONFIGWORDS;
-#define CONFIGWORD_PROC           0
-#define CONFIGWORD_PROC_FREQ      1
-#define CONFIGWORD_RAM            2
-#define CONFIGWORD_DEVICES        3
-
-#define CONFIGWORD_DEVICE_LEDS      1
-#define CONFIGWORD_DEVICE_UART      2
-#define CONFIGWORD_DEVICE_SSD1351   4
-#define CONFIGWORD_DEVICE_MAX7219   8
-#define CONFIGWORD_DEVICE_SPI_FLASH 16
-#define CONFIGWORD_DEVICE_SPI_SDCARD 32
-
 /* Virtual I/O */
 typedef int (*putcharfunc_t)(int);
 typedef int (*getcharfunc_t)(void);
@@ -108,13 +94,21 @@ void GL_putchar_xy(int x, int y, char c);
                               /*  rd:  0: ready  1: busy                                */
 #define IO_OLED_CMD     16    /* OLED display command. Only 8 LSBs used.                */
 #define IO_OLED_DATA    32    /* OLED display data. Only 8 LSBs used.                   */
-#define IO_UART_CNTL    64    /* USB UART RX control. busy (bit 9), data ready (bit 8)  */
+#define IO_DEVICES_FREQ 64    /* r: devices (16 LSBs) and frequency (16 MSBs)           */
 #define IO_UART_DATA    128   /* USB UART RX data (read/write)                          */
-
+#define IO_RAM          256   /* r: Installed RAM                                       */
 #define IO_LEDMTX_DATA  512   /* LED matrix data (write)	                        */
 #define IO_SPI_FLASH   1024
 #define IO_SPI_SDCARD  2048
 #define IO_BUTTONS     4096
+
+#define IO_DEVICE_LEDS_BIT      0  
+#define IO_DEVICE_SSD1351_BIT   1  
+#define IO_DEVICE_UART_BIT      5 
+#define IO_DEVICE_MAX2719_BIT   7
+#define IO_DEVICE_SPI_FLASH_BIT 8
+#define IO_DEVICE_SDCARD_BIT    9
+#define IO_DEVICE_BUTTONS_BIT   10
 
 #define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
 #define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)

@@ -9,9 +9,14 @@ _start:
 .option push
 .option norelax
      li gp,IO_BASE       #   Base address of memory-mapped IO
-.option pop     
-     la sp,FEMTOSOC_RAM  #   Read RAM size and initialize sp
-     lw sp,0(sp)         # one position past the end of the RAM
+.option pop
+	
+#     la sp,FEMTOSOC_RAM    #   Read RAM size and initialize sp
+#     lw sp,0(sp)           # one position past the end of the RAM
+
+     lw sp,IO_RAM(gp)      # Read RAM size in hw config register and
+     nop	           #   initialize SP one position past end of RAM
+     nop            	   # Do not change size of program !
      call main
      tail exit
 

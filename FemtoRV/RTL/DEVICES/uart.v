@@ -10,13 +10,9 @@ module UART(
     input wire 	       clk,      // system clock
     input wire 	       rstrb,    // read strobe		
     input wire 	       wstrb,    // write strobe
-    input wire 	       sel_cntl, // select control (r)
-    input wire 	       sel_dat,  // select data (rw) 	       
+    input wire 	       sel,      // select data (rw) 	       
     input wire [31:0]  wdata,    // data to be written
-
-    output wire        wbusy, // asserted if the driver is busy sending data		
     output wire [31:0] rdata, // data read
-    output wire        rbusy, // asserted if the driver is busy receiving data		
 
     input wire 	       RXD, // UART pins
     output wire        TXD	    
@@ -42,7 +38,7 @@ module UART(
          serial_rx_data_latched <= serial_rx_data;
 	 serial_valid_latched <= 1'b1;
       end
-      if(rstrb && sel_dat) begin
+      if(rstrb && sel) begin
          serial_valid_latched <= 1'b0;
       end
    end
@@ -60,12 +56,7 @@ module UART(
        .uart_dat_i(wdata[7:0])		 
    );
 
-   assign rdata = sel_cntl ? {22'b0, serial_tx_busy, serial_valid_latched, 8'b0} :
-		  sel_dat  ? {24'b0, serial_rx_data_latched} : 32'b0;
+   assign rdata = sel ? {22'b0, serial_tx_busy, serial_valid_latched, serial_rx_data_latched} : 32'b0;
+   assign serial_tx_wr = wstrb && sel;
 
-   assign serial_tx_wr = wstrb && sel_dat;
-
-   assign rbusy = 1'b0;
-   assign wbusy = 1'b0;    	    
-   
 endmodule

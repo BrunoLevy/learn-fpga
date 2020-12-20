@@ -25,8 +25,9 @@ module MAX7219(
    // clk=60MHz, slow_clk=60/8 MHz (max = 10 MHz)
    wire       slow_clk = (divider == 3'b000);
    reg[4:0]   bitcount; // 0 means idle
+   initial    bitcount = 0;   
    reg[15:0]  shifter;
-
+      
    assign DIN  = shifter[15];
    wire sending = |bitcount;
    assign wbusy = sending;   

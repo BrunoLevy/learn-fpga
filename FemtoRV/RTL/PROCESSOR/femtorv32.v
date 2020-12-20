@@ -414,6 +414,7 @@ module FemtoRV32 #(
 	// *********************************************************************
 	// wait-state for IO store 
 	state[WAIT_IO_STORE_bit]: begin
+	   `verbose($display("        mem_wbusy:%b",mem_wbusy));	   
 	   if(!mem_wbusy) 
 	     state <= FETCH_REGS;
 	end
@@ -424,6 +425,7 @@ module FemtoRV32 #(
 	//    also waits from data from IO (listens to mem_rbusy)
 	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[WAIT_ALU_OR_DATA_bit]: begin
+	   `verbose($display("        mem_rbusy:%b",mem_rbusy));
 	   if(!aluBusy && !mem_rbusy) begin
 	      instr <= nextInstr;
 	      addressReg <= {PCplus4, 2'b00};
@@ -450,7 +452,7 @@ module FemtoRV32 #(
 	state[FETCH_INSTR_bit]:      `show_state("fetch_instr");
 	state[FETCH_REGS_bit]:       `show_state("fetch_regs");
 	state[EXECUTE_bit]:          `show_state("execute");
-	state[LOAD_bit]:             `show_state("load");	   
+	state[LOAD_bit]:             begin `show_state("load");	`bench($display("        addr: %b",mem_addr)); end
 	state[STORE_bit]:            `show_state("store");
 	state[WAIT_ALU_OR_DATA_bit]: `show_state("wait_alu_or_data");
 	state[WAIT_IO_STORE_bit]:    `show_state("wait_IO_store");	

@@ -10,7 +10,12 @@
 .type  main, @function
 
 main:   add sp,sp,-4
-        sw  ra, 0(sp)	
+        sw  ra, 0(sp)
+
+# output amount of RAM on LEDs	
+	lw t1,IO_RAM(gp)	
+	sw t1,IO_LEDS(gp)
+	
 	li  t1,0
 	li  t2,16
 	

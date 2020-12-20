@@ -8,7 +8,7 @@
 .type	UART_putchar, @function
 UART_putchar:
         sw a0,IO_UART_DATA(gp)
-pcrx:	lw t0,IO_UART_CNTL(gp)
+pcrx:	lw t0,IO_UART_DATA(gp)
 	andi t0,t0,512 # bit 9 = busy
 	bnez t0,pcrx
 	ret
@@ -16,10 +16,10 @@ pcrx:	lw t0,IO_UART_CNTL(gp)
 .global	UART_getchar
 .type	UART_getchar, @function
 UART_getchar:
-        lw a0,IO_UART_CNTL(gp)
-	andi a0,a0,256 # bit 8 = data ready
-        beqz a0,UART_getchar
         lw a0,IO_UART_DATA(gp)
+	andi t0,a0,256 # bit 8 = data ready
+        beqz t0,UART_getchar
+	andi a0, a0, 255
 	li t0, 10                  # <enter> generates CR/LF, we ignore LF.
 	beq a0, t0, UART_getchar
         ret 
