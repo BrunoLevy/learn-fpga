@@ -109,6 +109,14 @@ int parse_verilog(const char* filename, SymTable& table) {
 		symname = words[1];
 		symvalue = words[2];
 		symaddress = words[5];
+	    } else if(
+		words.size() >= 3 &&
+		words[0] == "`define" &&
+		words[1] == "NRV_RAM"
+	    ) {
+	        symname = words[1];
+	        symvalue = words[2];
+		symaddress = "0x0000";
 	    }
 	    if(symname != "" && symvalue != "" && symaddress != "") {
 		int value;
@@ -141,7 +149,9 @@ int parse_verilog(const char* filename, SymTable& table) {
 		if(sym.name == "NRV_RAM") {
 		    result = sym.value;
 		}
-		table.push_back(sym);
+		if(sym.address != 0) {
+		  table.push_back(sym);
+		}
 	    }
 	}
     }

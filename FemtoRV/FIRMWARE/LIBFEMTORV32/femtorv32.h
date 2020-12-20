@@ -98,10 +98,11 @@ void GL_putchar_xy(int x, int y, char c);
 #define IO_UART_DATA    128   /* USB UART RX data (read/write)                          */
 #define IO_RAM          256   /* r: Installed RAM                                       */
 #define IO_LEDMTX_DATA  512   /* LED matrix data (write)	                        */
-#define IO_SPI_FLASH   1024
-#define IO_SPI_SDCARD  2048
-#define IO_BUTTONS     4096
+#define IO_SPI_FLASH   1024   /* Onboard SPI flash, can be used to stored data          */
+#define IO_SPI_SDCARD  2048   /* ULX3S SDCard                                           */
+#define IO_BUTTONS     4096   /* ULX3S buttons                                          */
 
+/* To test the presence of a device, use IO_IN(IO_DEVICES_FREQ) & (1 << XXXX_BIT) */
 #define IO_DEVICE_LEDS_BIT      0  
 #define IO_DEVICE_SSD1351_BIT   1  
 #define IO_DEVICE_UART_BIT      5 

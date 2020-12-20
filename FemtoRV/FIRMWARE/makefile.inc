@@ -79,7 +79,8 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv
 #Rule to convert a raw hex file into an executable (flat binary file)
 %.exe: %.rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
 	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc_config.v -exe $@
-
+#	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram 262144 -hex $@
+	
 .PHONY: root clean all get_riscv_toolchain
 
 root: all

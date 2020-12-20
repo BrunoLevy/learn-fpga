@@ -4,14 +4,15 @@
 //
 // This file: driver for UART (serial over USB)
 
-`include "uart_impl.v" // using swapforth uart under the scene
+`define CLKFREQ   (`NRV_FREQ*1000000) // Used by uart_impl.v (clk freq in Hz, NRV_FREQ is in MHz).
+`include "uart_impl.v"                // (uart_impl is borrowed from J1 swapforth)
 
 module UART(
-    input wire 	       clk,      // system clock
-    input wire 	       rstrb,    // read strobe		
-    input wire 	       wstrb,    // write strobe
-    input wire 	       sel,      // select data (rw) 	       
-    input wire [31:0]  wdata,    // data to be written
+    input wire 	       clk,   // system clock
+    input wire 	       rstrb, // read strobe		
+    input wire 	       wstrb, // write strobe
+    input wire 	       sel,   // select data (rw) 	       
+    input wire [31:0]  wdata, // data to be written
     output wire [31:0] rdata, // data read
 
     input wire 	       RXD, // UART pins
