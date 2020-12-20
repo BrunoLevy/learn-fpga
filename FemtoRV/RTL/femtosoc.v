@@ -117,7 +117,7 @@ module femtosoc(
  */ 
 
    // The memory bus
-   wire [23:0] mem_address;
+   wire [31:0] mem_address;
    wire  [3:0] mem_wmask;
    wire [31:0] mem_rdata;
    wire [31:0] mem_wdata;   
@@ -350,7 +350,7 @@ module femtosoc(
 ; 
 
 /****************************************************************/
-   
+
   wire error;
    
   FemtoRV32 #(
@@ -377,5 +377,6 @@ module femtosoc(
      assign D1 = error;
 `endif
    
+
    
 endmodule
