@@ -118,40 +118,35 @@ debugging) and the UART (to talk with the system through a
 terminal-over-USB connection). We use 6144 bytes of RAM. It is not 
 very much, but we cannot do more on the IceStick. You will see that
 with 6k of RAM, you can still program nice and interesting RISC-V
-demos. The file contains some `CONFIGWORD` commands that need to
-be kept: the firmware generation tool uses them to store the hardware
-configuration in some predefined memory areas. 
-
+demos. 
 
 We configure `FemtoRV/RTL/femtosoc_config.v` as follows (we keep unused options as commented-out lines):
 ```
 /*
  * Optional mapped IO devices
  */
-`define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-//`define NRV_IO_MAX7219      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
-//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
-//`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
-//`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
+`define NRV_IO_LEDS         // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+`define NRV_IO_UART         // Mapped IO, virtual UART (USB)
+//`define NRV_IO_SSD1351      // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX7219      // Mapped IO, 8x8 led matrix
+//`define NRV_IO_SPI_FLASH    // Mapped IO, SPI flash  
+//`define NRV_IO_SPI_SDCARD   // Mapped IO, SPI SDCARD
+//`define NRV_IO_BUTTONS      // Mapped IO, buttons
 
-`define NRV_FREQ 50        // CONFIGWORD 0x001C // Frequency in MHz. You can try overclocking to 80Mhz
+`define NRV_FREQ 50         // Frequency in MHz. You can try overclocking to 80Mhz
                                                   
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
 // 6K max on the ICEstick
-// Do not forget the CONFIGWORD 0x0020 comment (FIRMWARE_WORDS depends on it)
-//`define NRV_RAM 393216       // CONFIGWORD 0x0020 // bigger config for ULX3S
-//`define NRV_RAM 262144       // CONFIGWORD 0x0020 // default for ULX3S
-//`define NRV_RAM 131072       // CONFIGWORD 0x0020 // You need at least this to run DHRYSTONE
-//`define NRV_RAM 65536        // CONFIGWORD 0x0020
-`define NRV_RAM 6144         // CONFIGWORD 0x0020 // default for IceStick (maximum)
-//`define NRV_RAM 4096         // CONFIGWORD 0x0020 // smaller for IceStick (to save LUTs)
+//`define NRV_RAM 393216       // bigger config for ULX3S
+//`define NRV_RAM 262144       // default for ULX3S
+`define NRV_RAM 6144         // default for IceStick (maximum)
+//`define NRV_RAM 4096         // smaller for IceStick (to save LUTs)
 
-//`define NRV_COUNTERS    // CONFIGWORD 0x0018[0] // Uncomment for instr and cycle counters (won't fit on the ICEStick)
-//`define NRV_COUNTERS_64 // CONFIGWORD 0x0018[1] // ... and uncomment this one as well if you want 64-bit counters
-//`define NRV_RV32M       // CONFIGWORD 0x0018[2] // Uncomment for hardware mul and div support (RV32M instructions)
+//`define NRV_CSR         // Uncomment if using something below (counters,...)
+//`define NRV_COUNTERS    // Uncomment for instr and cycle counters (won't fit on the ICEStick)
+//`define NRV_COUNTERS_64 // ... and uncomment this one as well if you want 64-bit counters
+//`define NRV_RV32M       // Uncomment for hardware mul and div support (RV32M instructions)
 
 /*
  * For the small ALU (that is, when not using RV32M),
@@ -257,13 +252,13 @@ deactivate the UART). To do that, configure devices in `FemtoRV/RTL/femtosoc_con
 /*
  * Optional mapped IO devices
  */
-`define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-//`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-`define NRV_IO_MAX7219      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
-//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
-//`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
-//`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
+`define NRV_IO_LEDS       // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+//`define NRV_IO_UART       // Mapped IO, virtual UART (USB)
+//`define NRV_IO_SSD1351    // Mapped IO, 128x128x64K OLed screen
+`define NRV_IO_MAX7219    // Mapped IO, 8x8 led matrix
+//`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
+//`define NRV_IO_SPI_SDCARD // Mapped IO, SPI SDCARD
+//`define NRV_IO_BUTTONS    // Mapped IO, buttons
 ```
 
 ![](Images/IceStick_hello.gif)
@@ -326,13 +321,13 @@ Now you need to reconfigure `femtosoc_config.v` as follows:
 /*
  * Optional mapped IO devices
  */
-`define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-//`define NRV_IO_MAX7219      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
-//`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
-//`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
-//`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
+`define NRV_IO_LEDS       // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+//`define NRV_IO_UART       // Mapped IO, virtual UART (USB)
+`define NRV_IO_SSD1351    // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX7219    // Mapped IO, 8x8 led matrix
+//`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
+//`define NRV_IO_SPI_SDCARD // Mapped IO, SPI SDCARD
+//`define NRV_IO_BUTTONS    // Mapped IO, buttons
 ```
 
 Let us compile a test program:
@@ -389,13 +384,13 @@ another driver in `FemtoRV/RTL/femtosoc_config.v`, as follows:
 /*
  * Optional mapped IO devices
  */
-`define NRV_IO_LEDS         // CONFIGWORD 0x0024[0]  // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART         // CONFIGWORD 0x0024[1]  // Mapped IO, virtual UART (USB)
-`define NRV_IO_SSD1351      // CONFIGWORD 0x0024[2]  // Mapped IO, 128x128x64K OLed screen
-//`define NRV_IO_MAX7219      // CONFIGWORD 0x0024[3]  // Mapped IO, 8x8 led matrix
-`define NRV_IO_SPI_FLASH    // CONFIGWORD 0x0024[4]  // Mapped IO, SPI flash  
-//`define NRV_IO_SPI_SDCARD   // CONFIGWORD 0x0024[5]  // Mapped IO, SPI SDCARD
-//`define NRV_IO_BUTTONS      // CONFIGWORD 0x0024[6]  // Mapped IO, buttons
+`define NRV_IO_LEDS         // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+//`define NRV_IO_UART         // Mapped IO, virtual UART (USB)
+`define NRV_IO_SSD1351      // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX7219      // Mapped IO, 8x8 led matrix
+`define NRV_IO_SPI_FLASH    // Mapped IO, SPI flash  
+//`define NRV_IO_SPI_SDCARD   // Mapped IO, SPI SDCARD
+//`define NRV_IO_BUTTONS      // Mapped IO, buttons
 ```
 
 Then, you need to copy the data to the SPI flash:
