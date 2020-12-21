@@ -7,10 +7,8 @@
  *   OLED display (NRV_IO_SSD1351)
  *   SDCard       (NRV_IO_SPI_SDCARD)
  * 
- * The polygon stream is a 640K file (DATA/scene1.bin), 
- * that needs to be stored on the SD card and renamed
- * as scene1.dat (because .bin is the extension for our
- * programs)
+ * The polygon stream is a 640K file (DATA/scene1.dat),
+ * that needs to be stored on the SD card. 
  *
  * More details and links in C_EXAMPLES/DATA/notes.txt
  */
