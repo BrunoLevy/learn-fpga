@@ -252,5 +252,5 @@ int main() {
 
     render(spheres, nb_spheres, lights, nb_lights);
     
-    return 0;
+    exit(0); // femtOS does not properly exit programs, so exit() is needed (to be fixed)
 }

@@ -370,14 +370,15 @@ so that it will not be lost when the device is switched off)
 Then you can compile a couple of programs:
 ```
 $ cd FIRMWARE/EXAMPLES
-$ make commander.exe sieve.exe mandelbrot_OLED.exe
+$ make sieve.bin mandelbrot_OLED.bin 
 ```
 (it works for all programs in `EXAMPLES` and in `ASM_EXAMPLES`).
 
-Copy `commander.exe`,`sieve.exe` and `mandelbrot_OLED.exe` to a
+Copy `sieve.bin` and `mandelbrot_OLED.bin` to a
 FAT-formatted SDCard. Unplug the ULX3S from the USB, 
 insert the SDCard into it and replug it into the USB. The up and
 down buttons let you select the program, and the right button starts it.
+The F2 button (near the SDCard) resets the machine (and restarts `commander`).
 
 To compile all the examples, `make everything` in the `EXAMPLES`
 directory. Note: do not copy too many programs on an SDCard,
@@ -393,15 +394,15 @@ self-contained library and implementations of `fopen()`, `fread()`,
 `fwrite()` and `fclose()`. Let us see how to use that to port a 
 [Y2K demo called ST-NICCC](http://www.pouet.net/prod.php?which=1251).
 The demo uses a precomputed stream of 2D polygons stored in a file.
-To generate the demo, first copy the file `FIRMWARE/EXAMPLES/DATA/scene1.bin` 
+To generate the demo, first copy the file `FIRMWARE/EXAMPLES/DATA/scene1.dat` 
 (from the original ST-NICCC demo) to the SDCard. Then generate the
 executable:
 ```
 $ cd FIRMWARE/EXAMPLES
-$ make ST_NICCC.exe
+$ make ST_NICCC.bin
 ```
-then copy `ST_NICCC.exe` to the SDCard, insert the SDCard in the ULX3S
-and restart it, then select `ST_NICCC.exe` using the up/down buttons and
+then copy `ST_NICCC.bin` to the SDCard, insert the SDCard in the ULX3S
+and restart it, then select `ST_NICCC.bin` using the up/down buttons and
 start it using the right button.
 
 _Note: there is also a version `ST_NICCC_spi_flash.c` that reads data

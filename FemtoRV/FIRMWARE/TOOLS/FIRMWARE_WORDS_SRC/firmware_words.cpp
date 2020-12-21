@@ -345,12 +345,12 @@ int main(int argc, char** argv) {
   }
     
   std::cout << "Code size: "
-	    << max_address/4 << " words"
+	    << (max_address-bin_start_addr)/4 << " words"
 	    << " ( total RAM size: "
 	    << (RAM_SIZE/4)
 	    << " words )"
 	    << std::endl;
-  std::cout << "Occupancy: " << (max_address*100) / RAM_SIZE
+  std::cout << "Occupancy: " << ((max_address-bin_start_addr)*100) / RAM_SIZE
 	    << "%" << std::endl;
   return 0;
 }

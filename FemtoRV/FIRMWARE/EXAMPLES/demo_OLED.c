@@ -85,4 +85,5 @@ int main() {
 	printf("The quick brown fox jumps over the lazy dog.\n");
 	delay(100);	
     }
-}
+    exit(0); // femtOS does not properly exit programs, so exit() is needed (to be fixed)
+ }

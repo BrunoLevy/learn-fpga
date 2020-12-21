@@ -9,9 +9,12 @@ _start:
 .option norelax
      li gp,IO_BASE       #   Base address of memory-mapped IO
 .option pop
-	
+
      lw sp,IO_RAM(gp)      # Read RAM size in hw config register and
-        	           #   initialize SP one position past end of RAM
+        #   initialize SP one position past end of RAM
+	
+     # Should find a way of clearing BSS here...
+	
      call main
      tail exit
 

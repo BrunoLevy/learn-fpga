@@ -58,7 +58,7 @@ RVINCS=-I$(FIRMWARE_DIR)/LIBFEMTORV32 -I$(FIRMWARE_DIR)/LIBFEMTOC
 RVCFLAGS=$(OPTIMIZE) $(RVINCS) -fno-pic -march=$(ARCH) -mabi=$(ABI) -fno-stack-protector -w -Wl,--no-relax
                                       # Note: --no-relax because I'm using gp for fast access to mapped IO.
 RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) $(RVINCS)
-RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv
+RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax
 
 #Rule to compile C objects
 .c.o: $< $(RV_BINARIES)
@@ -93,7 +93,7 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv
 root: all
 
 clean:
-	rm -f *.o *.elf *.hex *rawhex *.exe *~ *.a
+	rm -f *.o *.elf *.hex *.rawhex *.exe *~ *.a *.bin *.bm_elf *.bm_rawhex
 
 #Generating the conversion utility for hex files	
 $(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS_SRC/firmware_words.cpp

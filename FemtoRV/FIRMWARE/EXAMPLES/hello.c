@@ -16,7 +16,7 @@ int main() {
       printf("Hello world !!\n Let me introduce myself, I am FemtoRV32, one of the smallest RISC-V cores\n");
       delay(1000);
       printf("I am running at %d MHz\n", IO_IN(IO_DEVICES_FREQ) >> 16);
-      delay(1000);      
+      delay(1000);
    }
    return 0;
 }

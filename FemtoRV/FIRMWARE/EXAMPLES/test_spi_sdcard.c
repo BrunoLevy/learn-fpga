@@ -39,6 +39,6 @@ int main() {
 	}
     }
     printf("\n");
-*/    
-    return 0;
+*/
+    exit(0); // femtOS does not properly exit programs, so exit() is needed (to be fixed)   
 }
