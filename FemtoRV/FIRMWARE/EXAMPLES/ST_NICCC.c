@@ -158,7 +158,6 @@ int read_frame() {
 
 int main() {
     GL_tty_init();
-    GL_init();
     GL_clear();
     printf("ST-NICCC demo\n");
     if(sd_init()) {
@@ -170,7 +169,6 @@ int main() {
         printf("ERROR: Failed to init file system\n");
 	return -1;
     }
-    GL_init();
     GL_clear();
     wireframe = 0;
 
