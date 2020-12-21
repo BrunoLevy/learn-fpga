@@ -155,15 +155,7 @@ int exec_elf(const char* filename) {
     return -1;
   }
   LEDS(4);  
-  // Does not work if I don't do that (why ???)
-  // Maybe related with argc, argv, envp ??
-  {
-    void* start = (void*)0x10000;
-    int memsize = IO_IN(IO_RAM);
-    memset(start, 0, memsize - 0x10000 - 1024); // -1024 to avoid touching the stack
-  }
 
-  
   Elf32_Ehdr elf_header;
   Elf32_Shdr sec_header;
   FILE* f = fopen(filename,"r");
@@ -198,11 +190,8 @@ int exec_elf(const char* filename) {
       printf("ELF: Could not read section header\n",filename);
       return -1;
     }
+    LEDS(i);
     if(sec_header.sh_flags & SHF_ALLOC) {
-      //printf(
-      // "addr=%x off=%x sz=%x\n",
-      // sec_header.sh_addr, sec_header.sh_offset, sec_header.sh_size
-      //);
       switch(sec_header.sh_type) {
       case SHT_PROGBITS: {
 	if(text_address == 0) {

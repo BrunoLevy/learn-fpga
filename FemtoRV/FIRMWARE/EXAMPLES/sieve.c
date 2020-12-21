@@ -101,6 +101,6 @@ int main(void)
 		printf(" ERROR\n");
 		abort();
 	}
-   exit(0); // femtOS does not properly exit programs, so exit() is needed (to be fixed)   
+   return 0;
 }
 

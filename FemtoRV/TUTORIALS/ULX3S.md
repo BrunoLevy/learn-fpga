@@ -369,11 +369,11 @@ so that it will not be lost when the device is switched off)
 Then you can compile a couple of programs:
 ```
 $ cd FIRMWARE/EXAMPLES
-$ make sieve.bin mandelbrot_OLED.bin 
+$ make sieve.elf mandelbrot_OLED.elf 
 ```
-(it works for all programs in `EXAMPLES` and in `ASM_EXAMPLES`).
+(it works for all programs in `EXAMPLES`, but not in `ASM_EXAMPLES` yet).
 
-Copy `sieve.bin` and `mandelbrot_OLED.bin` to a
+Copy `sieve.elf` and `mandelbrot_OLED.elf` to a
 FAT-formatted SDCard. Unplug the ULX3S from the USB, 
 insert the SDCard into it and replug it into the USB. The up and
 down buttons let you select the program, and the right button starts it.
@@ -398,10 +398,10 @@ To generate the demo, first copy the file `FIRMWARE/EXAMPLES/DATA/scene1.dat`
 executable:
 ```
 $ cd FIRMWARE/EXAMPLES
-$ make ST_NICCC.bin
+$ make ST_NICCC.elf
 ```
-then copy `ST_NICCC.bin` to the SDCard, insert the SDCard in the ULX3S
-and restart it, then select `ST_NICCC.bin` using the up/down buttons and
+then copy `ST_NICCC.elf` to the SDCard, insert the SDCard in the ULX3S
+and restart it, then select `ST_NICCC.elf` using the up/down buttons and
 start it using the right button.
 
 _Note: there is also a version `ST_NICCC_spi_flash.c` that reads data

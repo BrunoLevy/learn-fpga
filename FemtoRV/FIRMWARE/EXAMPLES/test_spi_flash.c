@@ -44,5 +44,5 @@ int main() {
       printf("\n");
       ++addr;
    }
-   exit(0); // femtOS does not properly exit programs, so exit() is needed (to be fixed)
+   return 0;
 }

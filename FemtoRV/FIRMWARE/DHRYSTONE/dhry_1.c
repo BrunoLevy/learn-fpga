@@ -353,7 +353,7 @@ main ()
     printf ("\n");
   }
 #endif
-  exit(0); // Needed because femtOS does not properly exits, to be fixed.
+  return 0;
 }
 
 
