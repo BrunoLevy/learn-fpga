@@ -146,7 +146,6 @@ We configure `FemtoRV/RTL/femtosoc_config.v` as follows (we keep unused options 
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
 // 6K max on the ICEstick
-// Do not forget the CONFIGWORD 0x0020 comment (FIRMWARE_WORDS depends on it)
 //`define NRV_RAM 393216       // bigger config for ULX3S
 `define NRV_RAM 262144       // default for ULX3S
 //`define NRV_RAM 6144         // default for IceStick (maximum)

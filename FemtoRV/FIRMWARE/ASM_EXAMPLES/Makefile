@@ -16,5 +16,6 @@ everything: $(ALL_PROGRAMS)
 	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/femtorv32.ld $< -o $@ -L$(FIRMWARE_DIR)/CRT_BAREMETAL -L$(FIRMWARE_DIR)/LIBFEMTORV32 -L$(FIRMWARE_DIR)/LIBFEMTOC -lfemtorv32 -lfemtoc $(RVGCC_LIB)
 
 # Generate a "femtOS elf executable", to be loaded from address 0x10000 (rule for conversion to .bin file in makefile.inc)
-%.elf: %.o $(RV_BINARIES)
-	$(RVGCC) $(RVCFLAGS) $< -o $@ -L$(FIRMWARE_DIR)/CRT_BAREMETAL -L$(FIRMWARE_DIR)/LIBFEMTORV32 -L$(FIRMWARE_DIR)/LIBFEMTOC -lfemtorv32 -lfemtoc -lm
+# (note: does not work for now for assembly programs, I do not know why, to be debugged)
+#%.elf: %.o $(RV_BINARIES)
+#	$(RVGCC) $(RVCFLAGS) $< -o $@ -L$(FIRMWARE_DIR)/LIBFEMTORV32 -L$(FIRMWARE_DIR)/LIBFEMTOC -lfemtorv32 -lfemtoc -lm

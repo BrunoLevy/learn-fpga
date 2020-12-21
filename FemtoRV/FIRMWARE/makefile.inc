@@ -40,6 +40,7 @@ RVLD=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-ld
 RVOBJCOPY=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-objcopy
 RVOBJDUMP=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-objdump
 RVGCC=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-gcc
+RVGPP=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-g++
 RVAR=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-ar
 RVRANLIB=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-ranlib
 
@@ -59,6 +60,10 @@ RVCFLAGS=$(OPTIMIZE) $(RVINCS) -fno-pic -march=$(ARCH) -mabi=$(ABI) -fno-stack-p
                                       # Note: --no-relax because I'm using gp for fast access to mapped IO.
 RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) $(RVINCS)
 RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax
+
+#Rule to compile C++ objects
+.cpp.o: $< $(RV_BINARIES)
+	$(RVGPP) $(RVCFLAGS) $(RVUSERCFLAGS) -c $<
 
 #Rule to compile C objects
 .c.o: $< $(RV_BINARIES)
