@@ -10,7 +10,7 @@ echo "============> Compiling libs"
 EXE_BASENAME=`basename $1 | sed -e 's|\.c$||' -e 's|\.S$||'`
 SOURCE_DIR=`dirname $1`
 echo "============>" Making $EXE_BASENAME
-(cd $SOURCE_DIR; make clean $EXE_BASENAME".hex" $EXE_BASENAME".exe")
+(cd $SOURCE_DIR; make clean $EXE_BASENAME".hex")
 
 rm -f firmware.hex firmware.txt
 if [ -f  $SOURCE_DIR"/"$EXE_BASENAME".hex" ]; then

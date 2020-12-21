@@ -1,17 +1,15 @@
-ULX3D Tutorial
+ULX3S Tutorial
 ==============
 
 ![](Images/ULX3S.jpg)
 
 This tutorial will show you how to install FPGA development tools,
 synthesize a RISC-V core, compile and install programs and run them
-on a UX3S.
+on a ULX3S.
 
-_Note: the following instructions are for Linux (I'm using Ubuntu). It 
-is possible to make everything work under Windows using WSL,
-@gojimmypi reported a success (with the IceStick)!
-Expecting some pull requests,
-instructions will follow shortly.__
+_Note: the following instructions are for Linux (I'm using Ubuntu).
+Windows users can run the tutorial using WSL. It requires some
+adaptation, as explained [here](WSL.md)._
 
 Before starting, you will need to install the OpenSource FPGA
 development tools, Yosys (Verilog synthesis), Trellis (tools for

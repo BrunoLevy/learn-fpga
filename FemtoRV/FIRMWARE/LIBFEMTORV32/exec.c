@@ -39,7 +39,9 @@ exec_memcpy:
 
 typedef void (*exec_memcpy_func)(void*, void*, size_t, void*);
 
-int exec(const char* filename) {
+/* Executes a flat binary file implanted from address 0 */
+
+int old_exec(const char* filename) {
 
     uint32_t exec_memcpy[] = {
 	make_word(93,02,00,00),
@@ -90,6 +92,55 @@ int exec(const char* filename) {
     }
 
     ((exec_memcpy_func)(exec_memcpy))(0, buff, size, exec_memcpy - 100);
+    
+    return 0;
+}
+
+/************************************************************************/
+
+/* 
+ * Executes a flat binary file. Data is to be implanted at address 0x10000.
+ * crt is starting from address 0x10074 (readelf -a shows that).
+ */
+int exec(const char* filename) {
+
+    if(sd_init()) {
+	printf("Could not initialize SDCard\n");
+	return -1;
+    }
+    printf("SDCard OK\n");
+    fl_init();
+    if(fl_attach_media(
+	   (fn_diskio_read)sd_readsector,
+	   (fn_diskio_write)sd_writesector) != FAT_INIT_OK
+    ) {
+	printf("ERROR: Failed to init file system\n");
+	return -1;
+    }
+    printf("FileSystem OK\n");
+
+    FILE* f = fopen(filename,"r");
+    if(!f) {
+	printf("Could not open %s\n", filename);
+	return -1;
+    }
+    fseek(f, 0, SEEK_END);
+    int size = ftell(f);
+    printf("File size = %d\n", size);
+    fseek(f, 0, SEEK_SET);
+
+    void* start = (void*)0x10000;
+    size -= 0x10000;
+    int memsize = IO_IN(IO_RAM);
+    memset(start, 0, memsize - 0x10000 - 1024); // -1024 to avoid touching the stack
+    
+    if(fread(start, 1, size, f) != size) {
+      	printf("Could not read file\n");
+    } else {
+	printf("File ready in RAM\n");
+    }
+
+    asm("j 0x10074"); // TODO: understand why it starts 74 bites away from 0x10000
     
     return 0;
 }

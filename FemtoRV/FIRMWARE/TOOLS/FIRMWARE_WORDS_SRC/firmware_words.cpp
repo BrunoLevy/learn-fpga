@@ -50,7 +50,6 @@ char* byte_to_string(unsigned char c) {
     return result;
 }
 
-
 void split_string(
     const std::string& in,
     char separator,
@@ -166,7 +165,8 @@ int main(int argc, char** argv) {
   std::string in_verilog_filename;
   std::string out_hex_filename;
   std::string out_occ_filename;
-  std::string out_exe_filename;
+  std::string out_bin_filename;
+  int bin_start_addr = 0;
   
   if(argc < 2) {
     cmdline_error = true;
@@ -185,8 +185,10 @@ int main(int argc, char** argv) {
       out_hex_filename = argv[i+1];       
     } else if(!strcmp(argv[i],"-occ")) {
       out_occ_filename = argv[i+1];             
-    } else if(!strcmp(argv[i],"-exe")) {
-      out_exe_filename = argv[i+1];                   
+    } else if(!strcmp(argv[i],"-bin")) {
+      out_bin_filename = argv[i+1];
+    } else if(!strcmp(argv[i],"-bin_start_addr")) {
+      sscanf(argv[i+1],"%x",&bin_start_addr);
     } else if (!strcmp(argv[i],"-ram")) {
       sscanf(argv[i+1],"%d",&RAM_SIZE);
     } else {
@@ -334,10 +336,11 @@ int main(int argc, char** argv) {
     }
   }
 	
-  if(out_exe_filename != "") {
-    std::cerr << "   SAVE BIN: " << out_exe_filename << std::endl;
-    FILE* f = fopen(out_exe_filename.c_str(),"wb");
-    fwrite(RAM.data(), 1, MAX_ADDR+1, f);
+  if(out_bin_filename != "") {
+    std::cerr << "   SAVE BIN: " << out_bin_filename << std::endl;
+    printf("        start addr:0x%lx\n",(unsigned long)bin_start_addr);
+    FILE* f = fopen(out_bin_filename.c_str(),"wb");
+    fwrite(RAM.data()+bin_start_addr, 1, MAX_ADDR+1-bin_start_addr, f);
     fclose(f);
   }
     

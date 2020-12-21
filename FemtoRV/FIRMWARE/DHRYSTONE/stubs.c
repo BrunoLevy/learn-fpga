@@ -15,5 +15,5 @@ long insn() {
 }
 
 int has_counters() {
-    return (CONFIGWORDS[CONFIGWORD_PROC] & 1);
+    return 1; /* (CONFIGWORDS[CONFIGWORD_PROC] & 1); */
 }

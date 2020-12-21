@@ -8,7 +8,7 @@ char* cwd = "/";
 
 int is_executable(const char* filename) {
     int l = strlen(filename);
-    return (l >= 4 && !strcmp(filename + l - 4, ".exe"));
+    return (l >= 4 && !strcmp(filename + l - 4, ".bin"));
 }
 
 void refresh() {
@@ -47,7 +47,7 @@ void call_exec() {
 		if(cur == sel && is_executable(dirent.filename)) {
 		    strcpy(buff, cwd);
 		    strcpy(buff+strlen(buff), dirent.filename);
-		    exec(buff);
+		    exec(buff);	      
 		}
 		++cur;
             }

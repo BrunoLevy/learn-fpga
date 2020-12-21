@@ -206,12 +206,12 @@ module NrvDecoder(
 	      isStore = 1'b1;
 	   end
 	    
-`ifdef NRV_COUNTERS
+`ifdef NRV_CSR
            // System RDCYCLE[H], RDTIME[H] and RDINSTRET[H]
 	   // TODO: other system instr
 	   7'b1110011: begin 
 	      writeBackEn = 1'b1;
-	      writeBackCSR = 1'b1; // write back sel = counter
+	      writeBackCSR = 1'b1; // write back sel = csr
 	      inRegId1Sel = 1'bx; 
 	      aluInSel1 = 1'bx;      
 	      aluInSel2 = 1'bx;      

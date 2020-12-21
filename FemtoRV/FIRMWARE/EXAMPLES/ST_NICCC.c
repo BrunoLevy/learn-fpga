@@ -8,7 +8,9 @@
  *   SDCard       (NRV_IO_SPI_SDCARD)
  * 
  * The polygon stream is a 640K file (DATA/scene1.bin), 
- * that needs to be stored on the SD card.
+ * that needs to be stored on the SD card and renamed
+ * as scene1.dat (because .bin is the extension for our
+ * programs)
  *
  * More details and links in C_EXAMPLES/DATA/notes.txt
  */
@@ -160,12 +162,12 @@ int main() {
     GL_clear();
     printf("ST-NICCC demo\n");
     if(sd_init()) {
-	printf("Could not initialize SDCard\n");
+        printf("Could not initialize SDCard\n");
 	return -1;
     }
     fl_init();
     if(fl_attach_media((fn_diskio_read)sd_readsector, (fn_diskio_write)sd_writesector) != FAT_INIT_OK) {
-	printf("ERROR: Failed to init file system\n");
+        printf("ERROR: Failed to init file system\n");
 	return -1;
     }
     GL_init();
@@ -174,9 +176,9 @@ int main() {
 
     for(;;) {
         cur_spi = 0;
-	F = fopen("/scene1.bin","r");
+	F = fopen("/scene1.dat","r");
 	if(!F) {
-	    printf("Could not open scene1.bin\n");
+	    printf("Could not open scene1.dat\n");
 	    return -1;
 	}
 	GL_polygon_mode(wireframe ? GL_POLY_LINES: GL_POLY_FILL);	

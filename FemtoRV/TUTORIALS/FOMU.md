@@ -1,6 +1,10 @@
 FOMU Tutorial (WIP)
 ===================
 
+_Note: the following instructions are for Linux (I'm using Ubuntu).
+Windows users can run the tutorial using WSL. It requires some
+adaptation, as explained [here](WSL.md)._
+
 Step 0: install FemtoRV
 =======================
 ```
