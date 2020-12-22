@@ -16,6 +16,7 @@ Quick links:
   - [FemtoRV](FemtoRV/README.md)
   - [IceStick tutorial](FemtoRV/TUTORIALS/IceStick.md)
   - [ULX3S tutorial](FemtoRV/TUTORIALS/ULX3S.md)
+  - [ECP5 eval board tutorial](FemtoRV/TUTORIALS/ECP5_EVN.md)
   - [Designing a RISC-V processor - the FemtoRV32](FemtoRV/TUTORIALS/FemtoRV32.md)      
     
 Basic: more basic things I wrote during May 2020 - June 2020  
