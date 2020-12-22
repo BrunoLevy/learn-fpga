@@ -87,7 +87,12 @@ ECP5_EVN.synth: FIRMWARE/firmware.hex
 	ecppack --compress --svf-rowsize 100000 --svf $(PROJECTNAME).svf $(PROJECTNAME)_out.config $(PROJECTNAME).bit
 
 ECP5_EVN.prog:
-	openocd -f ecp5-evn.cfg -c "transport select jtag; init; svf $(PROJECTNAME).svf; exit"
+	ujprog $(PROJECTNAME).bit           
+#	openocd -f ecp5-evn.cfg -c "transport select jtag; init; svf $(PROJECTNAME).svf; exit"
+
+ECP5_EVN.prog_flash:
+	ujprog -j flash $(PROJECTNAME).bit           
+
 
 #######################################################################################################################
 
