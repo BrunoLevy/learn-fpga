@@ -10,7 +10,7 @@
 //`define NRV_IO_BUTTONS    // Mapped IO, buttons
 
 /************************* Frequency ********************************************************************************/
-`define NRV_FREQ 75      // Frequency in MHz. 
+`define NRV_FREQ 50       // Frequency in MHz. 
                           // Can overclock it up to 75-80 MHz on the ICEStick and 80-100MHz on ULX3S.
                           // Yosys says OK between 40MHz and 50MHz. 
 
