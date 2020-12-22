@@ -24,7 +24,7 @@ module NrvRegisterFile(
 	    bank1[~inRegId] <= in;
 	    bank2[~inRegId] <= in;
 	 end	  
-      end // else begin // Not mandatory to put what's below in an 'else' branch, 
+      end else begin // Not mandatory to put what's below in an 'else' branch, 
 	             // but it allows higher overclocking.
 	             //   with it: up to 80 MHz on the icestick, 
 	             //   without it: 60 MHz
@@ -39,5 +39,5 @@ module NrvRegisterFile(
          out2 <= bank2[~outRegId2];
 `endif
       end
-//   end 
+   end 
 endmodule
