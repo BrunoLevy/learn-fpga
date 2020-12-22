@@ -6,6 +6,7 @@ _(Everything fit on the IceStick < 1280 LUTs)_
 Quick links: 
 - [IceStick tutorial](TUTORIALS/IceStick.md)
 - [ULX3S tutorial](TUTORIALS/ULX3S.md)
+- [ECP5 eval board tutorial](FemtoRV/TUTORIALS/ECP5_EVN.md)
 - [FemtoRV32 design notes](TUTORIALS/FemtoRV32.md)
 
 Features
