@@ -1,5 +1,5 @@
-ULX3S Tutorial
-==============
+ECP5 evaluation board - Tutorial
+================================
 
 ![](Images/ecp5_evn.jpg)
 
