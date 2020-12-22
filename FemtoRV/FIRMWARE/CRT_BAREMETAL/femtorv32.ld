@@ -1,5 +1,5 @@
 /*
- * linker control script,
+ * linker control script for 'bare metal' executables.
  * Ensures that _start defined in LIB/crt0.S is put at address 0
  */
 MEMORY

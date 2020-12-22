@@ -15,7 +15,7 @@ everything: $(ALL_PROGRAMS)
 
 # Generate a "bare metal elf", to be loaded from address 0 (rule for conversion to .hex file in makefile.inc)
 %.bm_elf: %.o $(RV_BINARIES)
-	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/femtorv32.ld $< -o $@ \
+	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT_BAREMETAL/femtorv32.ld $< -o $@ \
 	-L$(FIRMWARE_DIR)/CRT_BAREMETAL -L$(FIRMWARE_DIR)/LIBFEMTORV32 -L$(FIRMWARE_DIR)/LIBFEMTOC \
 	-lfemtorv32 -lfemtoc $(RVGCC_LIB)
 
