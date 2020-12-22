@@ -216,18 +216,20 @@ from Adafruit were reported to work as well.
 Connect the wires. You may change pin assignment if you want, by 
 editing `ecp5_evn.lpf`. Default configuration is as follows:
 
-| pin name              | pin description      | pin on the ECP5-EVN  |
+| OLED display pin name | pin description      | pin on the ECP5-EVN  |
 |-----------------------|----------------------|----------------------|
 |  CS                   | Chip Select          | D13                  |
 |  DC                   | Data/Command         | E12                  |
-|  RES/RST              | Reset                | E13                  |
-|  SDA/DIN              | Data                 | D11                  |
-|  SCL/CLK              | Clock                | D12                  |
+|  RES or RST           | Reset                | E13                  |
+|  SDA or DIN           | Data                 | D11                  |
+|  SCL or CLK           | Clock                | D12                  |
 |  VCC                  | +3.3V                | +3.3V                |
 |  GND                  | Ground               | GND                  |
              
 Note that finding the pins on the ECP5-EVN is a bit painful because they
-are in a seemingly random order !
+are in a seemingly random order ! (but you can imagine that routing all 
+the pins out of this beast is a difficult task, especially on this
+evaluation board that has many many connectors).
 
 
 Now configure `FemtoRV/RTL/femtosoc_config.v` as follows:
@@ -279,7 +281,8 @@ _(The black diagonal stripes are due to display refresh, they are not visible no
 | `EXAMPLES/tinyraytracer.c`                   | a port from [TinyRaytracer](https://github.com/ssloy/tinyraytracer).             |
 
 The LIBFEMTORV32 library includes some basic font rendering, 2D polygon clipping and 2D polygon filling routines. 
-For most of the programs, everything fits in the available 6kbytes of memory ! 
+For most of the programs, everything fits in the available 6kbytes of
+memory for the smallest configuration (IceStick) ! 
 The larger programs use floating point arithmetics, implemented 
 in software in gcc's libraries (there will be one day a hardware FPU
 for femtorv32, maybe...). 

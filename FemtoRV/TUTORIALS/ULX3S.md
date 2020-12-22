@@ -319,7 +319,8 @@ _(The black diagonal stripes are due to display refresh, they are not visible no
 | `EXAMPLES/tinyraytracer.c`                   | a port from [TinyRaytracer](https://github.com/ssloy/tinyraytracer).             |
 
 The LIBFEMTORV32 library includes some basic font rendering, 2D polygon clipping and 2D polygon filling routines. 
-For most of the programs, everything fits in the available 6kbytes of memory ! 
+For most of the programs, everything fits in the available 6kbytes of
+memory for the smallest configuration (IceStick) !
 The larger programs use floating point arithmetics, implemented 
 in software in gcc's libraries (there will be one day a hardware FPU
 for femtorv32, maybe...). 
