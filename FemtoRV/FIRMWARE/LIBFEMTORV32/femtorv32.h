@@ -25,9 +25,17 @@ extern uint64_t cycles(); /* gets the number of cycles since last reset (needs N
 
 /* System */
 
-extern int exec(const char* filename); /* Executes a program from the SDCard. 
+extern int filesystem_init(); /* 
+			       * needs to be called to access files on SDCard (fopen(),fread()...) 
+			       * returns 0 on success, non-zero on error.
+			       */
+
+extern int exec(const char* filename); /* 
+					* Executes a program from the SDCard. 
 					* Returns a non-zero number on error.
 					* does not return on success !
+					* Supports risc-v elves (.elf) and
+					* flat binaries (.bin).
 					*/
 /* Virtual I/O */
 typedef int (*putcharfunc_t)(int);

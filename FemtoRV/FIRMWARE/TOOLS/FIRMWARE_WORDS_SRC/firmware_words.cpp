@@ -6,6 +6,7 @@
  * $readmemh().
  */ 
 
+
 #include <iostream>
 #include <fstream>
 #include <cctype>
@@ -15,9 +16,15 @@
 #include <cstring>
 #include <cstdint>
 
+extern "C" {
+  #include <femto_elf.h>
+}
+
 int RAM_SIZE = 0;
 std::vector<unsigned char> RAM;
 std::vector<unsigned char> OCC;
+
+/*********************************************************************/
 
 unsigned char char_to_nibble(char c) {
     unsigned char result;
@@ -156,6 +163,10 @@ int parse_verilog(const char* filename, SymTable& table) {
     }
     return result;
 }
+
+/****************************************************************/
+
+/****************************************************************/
 
 int main(int argc, char** argv) {
 

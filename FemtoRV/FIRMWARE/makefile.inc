@@ -101,8 +101,8 @@ clean:
 	rm -f *.o *.elf *.hex *.rawhex *.exe *~ *.a *.bin *.bm_elf *.bm_rawhex
 
 #Generating the conversion utility for hex files	
-$(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS_SRC/firmware_words.cpp
-	g++ $< -o $@
+$(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS_SRC/firmware_words.cpp $(FIRMWARE_DIR)/LIBFEMTORV32/femto_elf.c
+	g++ -I$(FIRMWARE_DIR)/LIBFEMTORV32 -DSTANDALONE_FEMTOELF $^ -o $@
 
 ##############################################################################################
 #RISCV toolchain, get it from the web, automatically

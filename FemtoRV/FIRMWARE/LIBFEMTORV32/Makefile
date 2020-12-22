@@ -11,8 +11,8 @@ OBJECTS=femtorv32.o microwait.o max7219.o ssd1351.o uart.o \
          font_8x8.o font_5x6.o font_3x5.o virtual_io.o femtoGL.o femtoGLtext.o \
 	 femtoGLsetpixel.o femtoGLline.o femtoGLfill_poly.o \
 	 tty_init.o max7219_text.o \
-         spi_sd.o exec.o \
-         cycles.o
+         spi_sd.o cycles.o \
+	 filesystem.o exec.o femto_elf.o
 
 all: libfemtorv32.a
 
