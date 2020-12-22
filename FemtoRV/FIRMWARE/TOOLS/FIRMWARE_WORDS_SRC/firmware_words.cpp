@@ -16,13 +16,8 @@
 #include <cstring>
 #include <cstdint>
 
-extern "C" {
-  #include <femto_elf.h>
-}
+#include <femto_elf.h>
 
-int RAM_SIZE = 0;
-std::vector<unsigned char> RAM;
-std::vector<unsigned char> OCC;
 
 /*********************************************************************/
 
@@ -77,20 +72,14 @@ void split_string(
     }
 }
 
-struct Sym {
-    std::string name;
-    int value;
-    int address;
-    int bit;      // or -1 if full word
-};
-typedef std::vector<Sym> SymTable;
+/**************************************************************/
 
 /*
  * \brief Parses femtosoc.v and extracts configured devices,
  *        frequency, RAM size.
  * \return RAM size.
  */
-int parse_verilog(const char* filename, SymTable& table) {
+int get_RAM_size_from_verilog(const char* filename) {
     int result = 0;
     std::ifstream in(filename);
     if(!in) {
@@ -101,70 +90,138 @@ int parse_verilog(const char* filename, SymTable& table) {
     while(std::getline(in, line)) {
 	std::vector<std::string> words;
 	split_string(line, ' ', words);
-	std::string symname;
-	std::string symvalue;
-	std::string symaddress;
-	if(words.size() >= 5 && words[0] == "`define") {
-	    if(words[2] == "//" && words[3] == "CONFIGWORD") {
-		symname = words[1];
-		symvalue = "1";
-		symaddress = words[4];
-	    } else if(
-		words.size() >= 6 && words[3] == "//" &&
-		words[4] == "CONFIGWORD") {
-		symname = words[1];
-		symvalue = words[2];
-		symaddress = words[5];
-	    } else if(
-		words.size() >= 3 &&
-		words[0] == "`define" &&
-		words[1] == "NRV_RAM"
-	    ) {
-	        symname = words[1];
-	        symvalue = words[2];
-		symaddress = "0x0000";
-	    }
-	    if(symname != "" && symvalue != "" && symaddress != "") {
-		int value;
-		int addr;
-		int bit = -1;
-
-		sscanf(symvalue.c_str(), "%d", &value);
-		
-		sscanf(symaddress.c_str()+2, "%x", &addr);
-		const char* strbit = strchr(symaddress.c_str(), '[');
-		if(strbit != nullptr) {
-		    sscanf(strbit+1, "%d", &bit);
-		}
-		
-		if(bit != -1) {
-		    fprintf(stderr, "   CONFIG  %22s=%5d  @0x%lx[%d]\n",
-			    symname.c_str(), value, (unsigned long int)addr, bit
-		    );
-		} else {
-		    fprintf(stderr, "   CONFIG  %22s=%5d  @0x%lx\n",
-			    symname.c_str(), value, (unsigned long int)addr
-		    );		    
-		}
-
-		Sym sym;
-		sym.name = symname;
-		sym.value = value;
-		sym.address = addr;
-		sym.bit = bit;
-		if(sym.name == "NRV_RAM") {
-		    result = sym.value;
-		}
-		if(sym.address != 0) {
-		  table.push_back(sym);
-		}
-	    }
+	if(
+	   words.size() >= 3 &&
+	   words[0] == "`define" &&
+	   words[1] == "NRV_RAM"
+	) {
+	  sscanf(words[2].c_str(), "%d", &result);
 	}
     }
     return result;
 }
 
-/****************************************************************/
+/**************************************************************************/
+
+/* returns the highest set address or -1 if there was an error. */
+int load_RAM_rawhex(const char* filename, std::vector<unsigned char>& RAM) {
+  std::cerr << "   LOAD RAWHEX: " << filename << std::endl;
+  
+  int RAM_SIZE = RAM.size();
+
+  /* Occupancy array, to make sure we do not set the same byte twice. */
+  std::vector<unsigned char> OCC(RAM_SIZE,0);
+
+  int address = 0;
+  int lineno = 0;
+  int max_address = 0;
+  std::ifstream in(filename);
+  if(!in) {
+    std::cerr << "Could not open " << filename << std::endl;
+    return -1;
+  }
+  
+  std::string line;
+  while(std::getline(in, line)) {
+    ++lineno;
+    if(line[0] == '@') {
+      sscanf(line.c_str()+1,"%x",&address);
+    } else {
+      std::string charbytes;
+      for(int i=0; i<line.length(); ++i) {
+	if(line[i] != ' ' && std::isprint(line[i])) {
+	  charbytes.push_back(line[i]);
+	}
+      }
+
+      if(charbytes.size() % 2 != 0) {
+	std::cerr << "Line : " << lineno << std::endl;
+	std::cerr << " invalid number of characters"
+		  << std::endl;
+	return -1;
+      }
+
+      int i = 0;
+      while(i < charbytes.size()) {
+	if(address >= RAM_SIZE) {
+	  std::cerr << "Line : " << lineno << std::endl;
+	  std::cerr << " RAM size exceeded"
+		    << std::endl;
+	  return -1;
+	}
+	if(OCC[address] != 0) {
+	  std::cerr << "Line : " << lineno << std::endl;
+	  std::cerr << " same RAM address written twice"
+		    << std::endl;
+	  return -1;
+	}
+	max_address = std::max(max_address, address);
+	RAM[address] = string_to_byte(&charbytes[i]);
+	OCC[address] = 255;
+	i += 2;
+	address++;
+      }
+    }
+  }
+  return max_address;
+}
+
+/* returns the highest set address or -1 if there was an error. */
+int load_RAM_elf(const char* filename, std::vector<unsigned char>& RAM) {
+  std::cerr << "   LOAD ELF: " << filename << std::endl;
+  int RAM_SIZE = RAM.size();
+  Elf32Info info;
+  if(elf32_stat(filename, &info) != ELF32_OK) {
+    std::cerr << "Error while reading ELF file " << filename << std::endl;
+    return -1;
+  }
+  if(info.max_address >= RAM_SIZE) {
+    std::cerr << "Memory exceeded !" << std::endl;
+    return -1;
+  }
+  if(elf32_load_at(filename, &info, RAM.data()) != ELF32_OK) {
+    std::cerr << "Error while reading ELF file " << filename << std::endl;
+    return -1;
+  }
+  return info.max_address;
+}
+
+/* returns the highest set address or -1 if there was an error. */
+int load_RAM(const char* filename, std::vector<unsigned char>& RAM) {
+  int l = strlen(filename);
+  if(l >= 3 && !strcmp(filename+l-3,"hex")) {
+    return load_RAM_rawhex(filename, RAM);
+  } 
+  if(l >= 3 && !strcmp(filename+l-3,"elf")) {
+    return load_RAM_elf(filename, RAM);
+  }
+  std::cerr << filename << ": invalid extension" << std::endl;
+  return -1;
+}
+
+void save_RAM_hex(const char* filename, std::vector<unsigned char>& RAM) {
+  int RAM_SIZE = RAM.size();
+  std::cerr << "   SAVE HEX: " << filename << std::endl;    
+  std::ofstream out(filename);
+  for(int i=0; i<RAM_SIZE; i+=4) {
+    out << byte_to_string(RAM[i+3])
+	<< byte_to_string(RAM[i+2])
+	<< byte_to_string(RAM[i+1])
+	<< byte_to_string(RAM[i])
+	<< " ";
+    if(((i/4+1) % 4) == 0) {
+      out << std::endl;
+    }
+  }
+}
+
+void save_RAM_bin(const char* filename, std::vector<unsigned char>& RAM, int start_addr, int max_addr) {
+  std::cerr << "   SAVE BIN: " << filename << std::endl;
+  printf("        start addr:0x%lx\n",(unsigned long)start_addr);
+  FILE* f = fopen(filename,"wb");
+  fwrite(RAM.data()+start_addr, 1, max_addr+1-start_addr,f);
+  fclose(f);
+}
 
 /****************************************************************/
 
@@ -172,17 +229,18 @@ int main(int argc, char** argv) {
 
   bool cmdline_error = false;
 
-  std::string in_rawhex_filename;
+  std::string in_filename;
   std::string in_verilog_filename;
   std::string out_hex_filename;
   std::string out_occ_filename;
   std::string out_bin_filename;
   int bin_start_addr = 0;
+  int RAM_SIZE = 0;
   
   if(argc < 2) {
     cmdline_error = true;
   } else {
-    in_rawhex_filename = argv[1];
+    in_filename = argv[1];
   }
   
   for(int i=2; i<argc; i+=2) {
@@ -215,19 +273,9 @@ int main(int argc, char** argv) {
     return 1;
   }
   
-  std::string firmware;
-  std::ifstream in(in_rawhex_filename);
-   
-  if(!in) {
-    std::cerr << "Could not open " << in_rawhex_filename << std::endl;
-    return 1;
-  }
-
-   
-  SymTable defines;
   if(in_verilog_filename != "") {
     std::cerr << "   CONFIG: parsing " << in_verilog_filename << std::endl;
-    RAM_SIZE = parse_verilog(in_verilog_filename.c_str(), defines);
+    RAM_SIZE = get_RAM_size_from_verilog(in_verilog_filename.c_str());
     if(RAM_SIZE == 0) {
       std::cerr << "Did not find RAM size in femtosoc.v"
 		<< std::endl;
@@ -235,133 +283,36 @@ int main(int argc, char** argv) {
     }
   }
 
-
   if(RAM_SIZE == 0) {
     std::cerr << "RAM size not specified"
 	      << std::endl;
     return 1;
   }
+
+  std::cerr << "   RAM SIZE=" << RAM_SIZE << std::endl;
   
-  RAM.assign(RAM_SIZE,0);
-  OCC.assign(RAM_SIZE,0);
+  std::vector<unsigned char> RAM(RAM_SIZE,0);
 
-  int address = 0;
-  int lineno = 0;
-  int max_address = 0;
-  std::string line;
-  while(std::getline(in, line)) {
-    ++lineno;
-    if(line[0] == '@') {
-      sscanf(line.c_str()+1,"%x",&address);
-    } else {
-      std::string charbytes;
-      for(int i=0; i<line.length(); ++i) {
-	if(line[i] != ' ' && std::isprint(line[i])) {
-	  charbytes.push_back(line[i]);
-	}
-      }
-
-      if(charbytes.size() % 2 != 0) {
-	std::cerr << "Line : " << lineno << std::endl;
-	std::cerr << " invalid number of characters"
-		  << std::endl;
-	exit(-1);
-      }
-
-      int i = 0;
-      while(i < charbytes.size()) {
-	if(address >= RAM_SIZE) {
-	  std::cerr << "Line : " << lineno << std::endl;
-	  std::cerr << " RAM size exceeded"
-		    << std::endl;
-	  exit(-1);
-	}
-	if(OCC[address] != 0) {
-	  std::cerr << "Line : " << lineno << std::endl;
-	  std::cerr << " same RAM address written twice"
-		    << std::endl;
-	  exit(-1);
-	}
-	max_address = std::max(max_address, address);
-	RAM[address] = string_to_byte(&charbytes[i]);
-	OCC[address] = 255;
-	i += 2;
-	address++;
-      }
-    }
+  int max_addr = load_RAM(in_filename.c_str(), RAM);
+  if(max_addr == -1) {
+    return 1;
   }
-   
-  for(int i=0; i<defines.size(); ++i) {
-    int addr  = defines[i].address;
-    int value = defines[i].value;
-    int bit   = defines[i].bit;
-    if(addr + 4 >= RAM_SIZE) {
-      std::cerr << defines[i].name << ": "
-		<< defines[i].address
-		<< " larger than RAM_SIZE(" << RAM_SIZE << ")"
-		<< std::endl;
-      exit(-1);
-    }
-    uint32_t* target = (uint32_t*)(&RAM[addr]);
-    if(bit == -1) {
-      *target = value;
-    } else {
-      *target |= (1 << bit);
-    }
-  }
-
+  
   if(out_hex_filename != "") {
-    std::cerr << "   SAVE HEX: " << out_hex_filename << std::endl;    
-    std::ofstream out(out_hex_filename.c_str());
-    for(int i=0; i<RAM_SIZE; i+=4) {
-      out << byte_to_string(RAM[i+3])
-	  << byte_to_string(RAM[i+2])
-	  << byte_to_string(RAM[i+1])
-	  << byte_to_string(RAM[i])
-	  << " ";
-      if(((i/4+1) % 4) == 0) {
-	out << std::endl;
-      }
-    }
+    save_RAM_hex(out_hex_filename.c_str(), RAM);
   }
 
-  if(out_occ_filename != "") {
-    std::cerr << "   SAVE OCC: " << out_occ_filename << std::endl;        
-    std::ofstream out_occ(out_occ_filename.c_str());  
-    for(int i=0; i<RAM_SIZE; i+=4) {
-      out_occ << byte_to_string(OCC[i+3])
-	      << byte_to_string(OCC[i+2])
-	      << byte_to_string(OCC[i+1])
-	      << byte_to_string(OCC[i])
-	      << " ";
-      if(((i/4+1) % 16) == 0) {
-	out_occ << std::endl;
-      }
-    }
-  }
-
-  int MAX_ADDR = 0;
-  for(int i=0; i<RAM_SIZE; i++) {
-    if(OCC[i] != 0) {
-      MAX_ADDR=i;
-    }
-  }
-	
   if(out_bin_filename != "") {
-    std::cerr << "   SAVE BIN: " << out_bin_filename << std::endl;
-    printf("        start addr:0x%lx\n",(unsigned long)bin_start_addr);
-    FILE* f = fopen(out_bin_filename.c_str(),"wb");
-    fwrite(RAM.data()+bin_start_addr, 1, MAX_ADDR+1-bin_start_addr, f);
-    fclose(f);
+    save_RAM_bin(out_bin_filename.c_str(), RAM, bin_start_addr, max_addr);
   }
     
   std::cout << "Code size: "
-	    << (max_address-bin_start_addr)/4 << " words"
+	    << (max_addr-bin_start_addr)/4 << " words"
 	    << " ( total RAM size: "
 	    << (RAM_SIZE/4)
 	    << " words )"
 	    << std::endl;
-  std::cout << "Occupancy: " << ((max_address-bin_start_addr)*100) / RAM_SIZE
+  std::cout << "Occupancy: " << ((max_addr-bin_start_addr)*100) / RAM_SIZE
 	    << "%" << std::endl;
   return 0;
 }

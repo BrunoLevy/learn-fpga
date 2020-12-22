@@ -405,3 +405,20 @@ LUT golfing experiments, trying to reduce LUT count.
 
 =============================================================================
 
+#OLD FIRMWARE makefile.inc
+
+#Rule to convert an ELF binary into a raw hex file (that cannot be directly imported in verilog files)
+%.bm_rawhex: %.bm_elf $(RV_BINARIES)
+	$(RVOBJCOPY) -O verilog $< $@
+	
+#Rule to convert a raw hex file into an hex file that can be directly imported in verilog files
+%.hex: %.bm_rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc_config.v -hex $@
+
+#Rule to convert an ELF binary into a raw hex file 
+%.rawhex: %.elf $(RV_BINARIES)
+	$(RVOBJCOPY) -O verilog $< $@
+	
+#Rule to convert a raw hex file into an executable (flat binary file), loadable by femtos exec function
+%.bin: %.rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc_config.v -bin $@ -bin_start_addr 0x10000

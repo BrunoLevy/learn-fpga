@@ -73,26 +73,16 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax
 .S.o: $< $(RV_BINARIES)
 	$(RVAS) $(RVASFLAGS) $(RVUSERASFLAGS) $< -o $@ 
 
-###### Baremetal executables and OS ##############################################################
+#Rule to convert a .elf executable into a .hex file for verilog 'readmemh()' command,
+# using my 'firmware_words' utility to parse the .elf executable.
+# It is used for "bare metal" executables, compiled with linker script, starting
+# at address 0 (firmware for IceStick, or femtOS commander.c for ULX3S). The rules
+# to generate standard (.elf) or bare metal (.bm_elf) executables are in EXAMPLES/Makefile
 
-#Rule to convert an ELF binary into a raw hex file (that cannot be directly imported in verilog files)
-%.bm_rawhex: %.bm_elf $(RV_BINARIES)
-	$(RVOBJCOPY) -O verilog $< $@
-	
-#Rule to convert a raw hex file into an hex file that can be directly imported in verilog files
-%.hex: %.bm_rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
+%.hex: %.bm_elf $(FIRMWARE_DIR)/TOOLS/firmware_words
 	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc_config.v -hex $@
 
-###### executables to be started from femtOS #####################################################
-
-#Rule to convert an ELF binary into a raw hex file 
-%.rawhex: %.elf $(RV_BINARIES)
-	$(RVOBJCOPY) -O verilog $< $@
-	
-#Rule to convert a raw hex file into an executable (flat binary file), loadable by femtos exec function
-%.bin: %.rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
-	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc_config.v -bin $@ -bin_start_addr 0x10000
-	
+##############################################################################################
 .PHONY: root clean all get_riscv_toolchain
 
 root: all

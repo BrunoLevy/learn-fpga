@@ -60,7 +60,7 @@ ICESTICK.prog:
 
 #######################################################################################################################
 
-ULX3S: ULX3S.synth ULX3S.prog
+ULX3S: ULX3S.synth ULX3S.prog_flash
 
 ULX3S.synth: FIRMWARE/firmware.hex
 	yosys $(YOSYS_ULX3S_OPT) $(VERILOGS)
