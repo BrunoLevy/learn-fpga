@@ -58,7 +58,7 @@ Statistics measured with ICE40/IceStick target.
 | NRV_COUNTERS         | OFF    | OFF    | OFF    |
 | NRV_COUNTERS_64      | OFF    | OFF    | OFF    |
 | NRV_RV32M            | OFF    | OFF    | OFF    |
-|----------------------|--------|--------|--------|
+|                      |        |        |        |
 | LUT count            | 1180   | 1140   | 980    |
 
 First column is a standard configuration for IceStick (UART and LED configured, 6Kb RAM, two-level shifter). This
