@@ -330,7 +330,8 @@ typedef struct {
 } Elf32Info;
 ```
 
-Now, in `femto_elf.c`, the function that loads the ELF is as follows:
+Now, in `femto_elf.c`, the function that loads the ELF is as follows (if you look
+at the actual file, it has some sanity checks that I removed for legibility):
 
 ```
 int elf32_parse(const char* filename, Elf32Info* info) {
@@ -338,44 +339,21 @@ int elf32_parse(const char* filename, Elf32Info* info) {
   Elf32_Shdr sec_header;
   FILE* f = fopen(filename,"r");
   uint8_t* base_mem = (uint8_t*)(info->base_address);
-  
   info->text_address = 0;
   
-  if(f == NULL) {
-    return ELF32_FILE_NOT_FOUND;
-  }
-
   /* read elf header */
-  if(fread(&elf_header, 1, sizeof(elf_header), f) != sizeof(elf_header)) {
-    return ELF32_READ_ERROR;
-  }
-
-  /* sanity check */
-  if(elf_header.e_ehsize != sizeof(elf_header)) {
-    return ELF32_HEADER_SIZE_MISMATCH;
-  }
-
-  /* sanity check */  
-  if(elf_header.e_shentsize != sizeof(Elf32_Shdr)) {
-    return ELF32_HEADER_SIZE_MISMATCH;
-  }
+  fread(&elf_header, 1, sizeof(elf_header), f);
   
   /* read all section headers */  
   for(int i=0; i<elf_header.e_shnum; ++i) {
     
     fseek(f,elf_header.e_shoff + i*sizeof(sec_header), SEEK_SET);
-    if(fread(&sec_header, 1, sizeof(sec_header), f) != sizeof(sec_header)) {
-      return ELF32_READ_ERROR;
-    }
+    fread(&sec_header, 1, sizeof(sec_header), f);    
     
-    /* The sections we are interested in are the ALLOC sections. */
-    if(!(sec_header.sh_flags & SHF_ALLOC)) {
-      continue;
-    }
+    /* The sections we are interested in are the ALLOC sections. Skip the other ones. */
+    if(!(sec_header.sh_flags & SHF_ALLOC)) continue;
 
     /* I assume that the first PROGBITS section is the text segment */
-    /* TODO: verify using the name of the section (but requires to  */
-    /* load the strings table, painful...)                          */ 
     if(sec_header.sh_type == SHT_PROGBITS && info->text_address == 0) {
       info->text_address = sec_header.sh_addr;
     }
@@ -394,14 +372,10 @@ int elf32_parse(const char* filename, Elf32Info* info) {
     ) {
 	if(info->base_address != NO_ADDRESS) {
 	  fseek(f,sec_header.sh_offset, SEEK_SET);
-	  if(
-	     fread(
-		   base_mem + sec_header.sh_addr, 1,
-		   sec_header.sh_size, f
-	     ) != sec_header.sh_size
-	  ) {
-	    return ELF32_READ_ERROR;
-	  }
+	  fread(
+               base_mem + sec_header.sh_addr, 1,
+	       sec_header.sh_size, f
+	  );
 	}
     }
 
