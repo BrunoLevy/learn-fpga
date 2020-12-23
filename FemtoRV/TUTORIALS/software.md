@@ -32,9 +32,9 @@ but the toolchain supports both 32 bits riscv target (that we are using)
 and 64 bits.
 
 In our case we need a compiler for microcontrollers (FemtoRV32 is not
-Linux-capable yet). The packages available in Linux distributions are
+Linux-capable yet). The packages generally available in Linux distributions are
 targeting a Linux system, so we cannot use them directly (still possible
-for baremetal firmwares, more on this below, but not for generating 
+for baremetal firmwares, but not for generating 
 FemtoRV32 compatible elf, more on this below). It is also a good thing 
 to have all the possible combinations of `RV32I(M)(A)(F)(D)` installed, 
 if you want to play with different core configurations, and implement a 
@@ -49,8 +49,12 @@ associated libraries. It is important, because for instance, if you use RV32I, t
 you do not have hardware multiplication. You need both a function for
 that (link with the right gcc library) and you need to tell the
 compiler to generate a call to that function instead of a `MUL`
-instruction. This is what you chose at the beginning of
-`FIRMWARE/makefile.inc`. 
+instruction. It also concerns all the floating point operations, that
+can be either implemented by using integer multiplication, or calling
+the software version. There are many combinations. This is what you 
+chose at the beginning of `FIRMWARE/makefile.inc`, by setting
+`ARCH` (to `rv32i` or `rv32im` for now, but everything is ready for
+all the other extensions, such as `c`,`a`,`f`...).
 
 _If you want to know more / to have an even more baremetal approach:_
 
@@ -60,8 +64,8 @@ use `ld` to link with a library that implements the needed functions
 even if your compiler is targeted towards a Linux runtime (because you
 do not use the C libraries). This is what I was doing at the beginning, 
 however I do not recommend to do that, because everything gets painful
-(need to reinvent the wheel, to reimplement memcpy(), and no floating
-point). If you really want to do that, take a look at `FIRMWARE/LIBFEMTOC/Makefile`, 
+(need to reinvent the wheel, to reimplement memcpy() etc..., and there
+is no floating point). If you really want to do that, take a look at `FIRMWARE/LIBFEMTOC/Makefile`, 
 uncomment `MISSING_OBJECTS` and `MISSING_OBJECTS_WITH_DIR`. If you want to 
 learn more about how this works and how to find these functions, the sources for the toolchain and
 libraries are [here](https://github.com/riscv/riscv-gnu-toolchain).
@@ -75,5 +79,23 @@ startup function: `riscv-newlib/libgloss/riscv/crt0.S`. It is good to
 see it, because for when we will run elf executables, we know what the
 C runtime expects from us.
 
+RISC-V executables
+------------------
+
+By default, gcc produces executables in the ELF format (Executable and
+Linkable Format). Now we want to convert it into something we can load
+in our risc-v processor on the FPGA. There are two different ways of
+doing that (and we will do both):
+
+  1) convert the ELF executable into `FIRMWARE/firmware.hex`, an ascii
+file in hexadecimal, that can be directly loaded by Verilog's `readmemh()` 
+function to initialize the RAM, as done in `RTL/femtosoc.v`. This
+solution is used by the smaller devices (IceStick), that do not have
+SDCard reader or that have not enough RAM.
+
+  2) use the ELF executable as is, copied on an SDCard, and start the
+program using a minimalistic/crappy OS (FemtOS). Note that this solution
+requires to have the OS preloaded in the RAM (this is why we need both 
+solutions).
 
 
