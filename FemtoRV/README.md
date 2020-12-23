@@ -8,6 +8,7 @@ Quick links:
 - [ULX3S tutorial](TUTORIALS/ULX3S.md)
 - [ECP5 eval board tutorial](TUTORIALS/ECP5_EVN.md)
 - [FemtoRV32 design notes](TUTORIALS/FemtoRV32.md)
+- [RISC-V compilation](TUTORIALS/software.md)
 
 Features
 --------
@@ -76,3 +77,6 @@ References to other RISC-V cores
 - The reference: Claire Wolf's [picorv32](https://github.com/cliffordwolf/picorv32) (borrowed many ideas from there).
 - The smallest RISC-V: [SERV](https://github.com/olofk/serv), you can fit 5 instances (!) in 1000 LUTs.
 - Faster cores, Linux capable cores: [biriscv](https://github.com/ultraembedded/biriscv/), [VexRiscv](https://github.com/SpinalHDL/VexRiscv)
+- FemtoRV32's best friend: [ICE-V](https://github.com/sylefeb/Silice/tree/master/projects/ice-v),
+     written in [Silice](https://github.com/sylefeb/Silice/) (a higher-level HDL)
+     
