@@ -85,8 +85,9 @@ in the bit ranges specifications ? Ok, answer [here](https://stackoverflow.com/q
  - `[2+:2]` means `[3:2]`, `1+:1` means [1]
  - `[4+:2]` means `[5:4]`, `0+:1` means [0]
  - `[6+:2]` means `[7:6]`, `3+:1` means [3]
-(Sylvain, why on earth did you use this notation ? Seems
-super-convoluted to me, but you probably have a good reason).
+
+_(Sylvain, why on earth did you use this notation ? Seems
+super-convoluted to me, but you probably have a good reason)_.
 
 
  Ok it is clear (now), `pos` and `neg` contain information for
