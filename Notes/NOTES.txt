@@ -10,6 +10,7 @@ UART:
 
 M5Stack mini I2C keyboard
    https://github.com/m5stack/M5-ProductExampleCodes/tree/master/Hat/CardKB_HAT/
+
 I2C bit-banging:
    https://calcium3000.wordpress.com/2016/08/19/i2c-bit-banging-tutorial-part-i/
     

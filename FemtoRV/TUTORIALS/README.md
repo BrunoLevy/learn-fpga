@@ -11,3 +11,4 @@ FemtoRV32 Notes
 
 - [Notes on FemtoRV32 design](FemtoRV32.md)
 - [Notes on RISC-V software compilation and runtime](software.md)
+- [Notes on HDMI](HDMI.md) _(WIP)_

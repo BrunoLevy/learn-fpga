@@ -92,3 +92,22 @@ IOBUF PORT "sd_cs_n" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
 
 LOCATE COMP "wifi_en"  SITE "F1";
 IOBUF PORT "wifi_en" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
+
+# GPDI differential interface (Video)
+LOCATE COMP "gpdi_dp[0]" SITE "A16"; # Blue +
+LOCATE COMP "gpdi_dn[0]" SITE "B16"; # Blue -
+LOCATE COMP "gpdi_dp[1]" SITE "A14"; # Green +
+LOCATE COMP "gpdi_dn[1]" SITE "C14"; # Green -
+LOCATE COMP "gpdi_dp[2]" SITE "A12"; # Red +
+LOCATE COMP "gpdi_dn[2]" SITE "A13"; # Red -
+LOCATE COMP "gpdi_dp[3]" SITE "A17"; # Clock +
+LOCATE COMP "gpdi_dn[3]" SITE "B18"; # Clock -
+IOBUF PORT "gpdi_dp[0]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dn[0]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dp[1]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dn[1]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dp[2]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dn[2]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dp[3]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dn[3]" IO_TYPE=LVCMOS33 DRIVE=4;
+
