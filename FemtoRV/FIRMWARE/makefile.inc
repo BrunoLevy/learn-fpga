@@ -14,7 +14,7 @@ FIRMWARE_DIR=/home/blevy/Programming/learn-fpga/FemtoRV/FIRMWARE
 #  since yosys does not (yet) infer DSP blocks for ICE40).
 ARCH=rv32i
 ABI=ilp32
-OPTIMIZE=-O3
+OPTIMIZE=-Os
 # Optimize for size, on the IceStick we only have 6K of RAM !
 
 # Normally you do not need to modify anything beyond this line.
