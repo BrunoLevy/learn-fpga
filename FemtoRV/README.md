@@ -42,19 +42,37 @@ _last line (RV32IM) using ECP5 DSP blocs_
 LUT count (FemtoRV32 + FemtoSOC)
 --------------------------------
 
-On IceStick: 1180 LUTs with the following `RTL/femtosoc_config.v` configuration:
+Statistics measured with ICE40/IceStick target. 
 
-| Parameter            | value |
-|----------------------|-------|
-| NRV_TWO_STAGE_SHIFTER| ON    |
-| NRV_NEGATIVE_RESET   | OFF   |
-| NRV_IO_LEDS          | ON    |
-| NRV_IO_UART          | ON    |
-| NRV_IO_SSD1351       | OFF   |
-| NRV_IO_MAX7219       | OFF   |
-| NRV_IO_SPI_FLASH     | OFF   |
-| NRV_FREQ             | 80    |
-| NRV_RAM              | 6144  |
-| NRV_COUNTERS         | OFF   |
-| NRV_COUNTERS_64      | OFF   |
-| NRV_RV32M            | OFF   |
+| Parameter            | value1 | value2 | value3 |
+|----------------------|--------|--------|--------|
+| NRV_TWO_STAGE_SHIFTER| ON     | OFF    | OFF    |
+| NRV_NEGATIVE_RESET   | OFF    | OFF    | OFF    |
+| NRV_IO_LEDS          | ON     | ON     | ON     |
+| NRV_IO_UART          | ON     | ON     | OFF    |
+| NRV_IO_SSD1351       | OFF    | OFF    | OFF    |
+| NRV_IO_MAX7219       | OFF    | OFF    | OFF    |
+| NRV_IO_SPI_FLASH     | OFF    | OFF    | OFF    |
+| NRV_FREQ             | 50     | 50     | 50     | 
+| NRV_RAM              | 6144   | 6144   | 1024   |
+| NRV_COUNTERS         | OFF    | OFF    | OFF    |
+| NRV_COUNTERS_64      | OFF    | OFF    | OFF    |
+| NRV_RV32M            | OFF    | OFF    | OFF    |
+|----------------------|--------|--------|--------|
+| LUT count            | 1180   | 1140   | 980    |
+
+First column is a standard configuration for IceStick (UART and LED configured, 6Kb RAM, two-level shifter). This
+corresponds to the second line of the Dhrystones test. Second column measures the impact of the two-level shifter
+(eats up 40 LUTs). Third column is a minimalistic configuration, with no peripheral (just LEDs) and minimal RAM,
+to have an idea of how many LUTs the processor alone uses (less than 1000, achievement unlocked !).
+
+FemtoRV32 makes a compromise between complexity (the sources fit in 1000 lines of Verilog and - I think - are easy to read),
+LUT count (1000 is also the magic number here) and performance (around 1000 Dhrystones/s/MHz, most instructions take between
+2 and 3 cycles). 
+
+References to other RISC-V cores
+--------------------------------
+
+- The reference: Claire Wolf's [picorv32](https://github.com/cliffordwolf/picorv32) (borrowed many ideas from there).
+- The smallest RISC-V: [SERV](https://github.com/olofk/serv), you can fit 5 instances (!) in 1000 LUTs.
+- Faster cores, Linux capable cores: [biriscv](https://github.com/ultraembedded/biriscv/), [VexRiscv](https://github.com/SpinalHDL/VexRiscv)
