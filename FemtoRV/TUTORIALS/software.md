@@ -251,7 +251,7 @@ Reading ELF executables
 Olof Kindgren wrote a Verilog plugin
 [here](https://github.com/fusesoc/elf-loader) for FuseSoc, that uses
 the standard `libelf`. However, it is a nightmare to compile under
-Windows (I don't know if it is evey possible). So my idea was different,
+Windows (I don't know if it is even possible). So my idea was different,
 can we write the minimal amount of code that fits our needs ?
 The ELF (Executable and Linking Format) is complicated, because it
 does what it's name tells: it contains what's necessary for loading
@@ -298,7 +298,6 @@ Then, later in `elf.h`, we find the `Elf32_Shdr` structure, with the
 explanations for all the columns we could see in the table output by
 `readelf`:
 
-|------------|------------------------------------------------------------------------------------|
 | Field      | Description                                                                        |
 |------------|------------------------------------------------------------------------------------|
 | `sh_type`  | we are interested in `PROGBITS` (load the section) and `NOBITS` (clear the memory) |
@@ -417,4 +416,67 @@ int elf32_parse(const char* filename, Elf32Info* info) {
   return ELF32_OK;
 }
 ```
+(if you take a look at `femto_elf.c`, you will see that I've copied
+structures definitions and constants from `elf.h`, so that it compiles
+everywhere, even in uncivilized Windows countries).
 
+Ok, here we are, so now I am using `femto_elf.h`/`femto_elf.c` in my
+`firmware_words` utility that outputs a Verilog ASCII `.hex` file to
+initialize the RAM. 
+
+FemtOS and standard ELF executables
+-----------------------------------
+
+Now we are equipped with what's necessary to write a very basic and
+crappy operating system. I'm doing that on the ULX3S. It is a bare 
+metal executable, that displays a list of files on the OLED display, 
+lets the user select them with the buttons, and execute the selected file.
+Its sources are in `FIRMWARE/EXAMPLES/commander.c`, so you can build
+it with:
+```
+$ cd FIRMWARE
+$ ./make_firmware.sh EXAMPLES/commander.c
+$ cd ..
+```
+(then you `$make ULX3S`).
+
+Now you can copy some programs on an SDCard, insert it into the ULX3S,
+and run them (`up` and `down` buttons to select, `right` to run). The
+`reset` button is the one near the SDCard. 
+
+The executable are produced by:
+```
+$ cd FIRMWARE/EXAMPLES
+$ make xxx.elf
+```
+(you can also `make everything`, but do not install all of them on the
+SDCard, because the interface of FemtOS is very crappy, it does not work
+if the list does not fit on the screen, to be fixed). Now if you look at
+the rule in `FIRMWARE/EXAMPLES/Makefile`, it is very simple:
+```
+%.elf: %.o $(RV_BINARIES)
+	$(RVGCC) $(RVCFLAGS) $< -o $@ -Wl,-gc-sections \
+	-L$(FIRMWARE_DIR)/LIBFEMTORV32 -L$(FIRMWARE_DIR)/LIBFEMTOC -lfemtorv32 -lfemtoc -lm
+```
+- the macros are defined in `FIRMWARE/makefile.inc` 
+- the `-Wl,-gc-sections` flag is just to make sure the linker eliminates the code that is not used (probably not mandatory)
+
+Here we can directly use the default memory map, that places user code
+at address '0x10000' (that is, 64Kb). Since FemtOS commander fits in
+64Kb, it is perfect for us !
+
+There is something stupid though: a lot of code is duplicated, for
+instance if you run `ST_NICCC`, that accesses a file on the SDCard,
+all the FAT32 library (by @ultraembedded) is loaded twice: once in
+FemtOS, and once in the program image. OK, it is only a few tenths
+of Kbs, but I do not like it, it is not good practice. 
+
+There are two different things that we could do:
+- implement shared library support
+- implement system calls
+
+For the first option, I will need to learn much more about the ELF
+format. For the second option, I will need to implement priviledged
+instructions and exceptions. This is probably what I'll do next.
+
+_TO BE CONTINUED_
