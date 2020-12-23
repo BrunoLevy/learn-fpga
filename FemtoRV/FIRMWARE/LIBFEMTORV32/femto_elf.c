@@ -130,10 +130,7 @@ int elf32_parse(const char* filename, Elf32Info* info) {
   for(int i=0; i<elf_header.e_shnum; ++i) {
     
     fseek(f,elf_header.e_shoff + i*sizeof(sec_header), SEEK_SET);
-    if(
-       (info->base_address != NO_ADDRESS) &&
-       fread(&sec_header, 1, sizeof(sec_header), f) != sizeof(sec_header)
-    ) {
+    if(fread(&sec_header, 1, sizeof(sec_header), f) != sizeof(sec_header)) {
       return ELF32_READ_ERROR;
     }
     
@@ -156,7 +153,7 @@ int elf32_parse(const char* filename, Elf32Info* info) {
       info->max_address, 
       sec_header.sh_addr + sec_header.sh_size
     );
-     
+
     /* PROGBIT, INI_ARRAY and FINI_ARRAY need to be loaded. */
     if(
        sec_header.sh_type == SHT_PROGBITS ||

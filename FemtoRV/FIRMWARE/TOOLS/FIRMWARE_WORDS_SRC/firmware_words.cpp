@@ -175,6 +175,7 @@ int load_RAM_elf(const char* filename, std::vector<unsigned char>& RAM) {
     std::cerr << "Error while reading ELF file " << filename << std::endl;
     return -1;
   }
+   std::cerr << "       max address=" << info.max_address << std::endl; 
   if(info.max_address >= RAM_SIZE) {
     std::cerr << "Memory exceeded !" << std::endl;
     return -1;
