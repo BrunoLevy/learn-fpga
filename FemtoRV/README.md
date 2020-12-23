@@ -32,10 +32,10 @@ Performance (Dhrystones test)
 
 |Configuration                            | CPI   | Dhrystones/s/MHz | DMIPS/MHz |
 |-----------------------------------------|-------|------------------|-----------|
-|FemroRV32 with RV32I and simple shifter  | 3.663 |      580         |   0.330   |
-|FemroRV32 with RV32I and 2-stage shifter | 3.587 |      592         |   0.336   |
-|FemroRV32 with RV32I and barrel shifter  | 3.478 |      611         |   0.347   |
-|FemroRV32 with RV32IM and barrel shifter | 3.692 |      1024        |   0.582   |
+|FemroRV32 with RV32I and simple shifter  | 3.434 |      956         |   0.544   |
+|FemroRV32 with RV32I and 2-stage shifter | 3.062 |     1072         |   0.610   |
+|FemroRV32 with RV32I and barrel shifter  | 2.786 |     1178         |   0.670   |
+|FemroRV32 with RV32IM and barrel shifter | 2.934 |     1241         |   0.706   |
 
 _last line (RV32IM) using ECP5 DSP blocs_
 

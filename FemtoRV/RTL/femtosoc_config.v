@@ -6,11 +6,11 @@
 `define NRV_IO_SSD1351    // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX7219      // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
-//`define NRV_IO_SPI_SDCARD // Mapped IO, SPI SDCARD
-//`define NRV_IO_BUTTONS    // Mapped IO, buttons
+`define NRV_IO_SPI_SDCARD // Mapped IO, SPI SDCARD
+`define NRV_IO_BUTTONS    // Mapped IO, buttons
 
 /************************* Frequency ********************************************************************************/
-`define NRV_FREQ 100      // Frequency in MHz. 
+`define NRV_FREQ 90       // Frequency in MHz. 
                           // Can overclock it up to 75-80 MHz on the ICEStick and 80-100MHz on ULX3S.
                           // Yosys says OK between 40MHz and 50MHz. 
 
