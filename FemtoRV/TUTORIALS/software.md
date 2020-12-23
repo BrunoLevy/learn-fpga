@@ -198,7 +198,9 @@ explanations below:
    my `femtolibc` with some libc replacement functions (`printf` is a big beast, mine is
    much smaller, though it does not have all the functionalities).
 - Finally, `RVGCC_LIB`, also defined in `FIRMWARE/makefile.inc`, that
-   points to `libc.a`, `libm.a` and `libgcc.a` for the specified
+   points to `libc.a`, `libm.a` and `libgcc.a`
+   (`libgcc.a` has integer multiplication / division and floating
+   point functions) for the specified
    architecture (`RV32I` or `RV32IM`). This is why it is good to have the
    complete toolchain for embedded systems. Now if you don't have it,
    you can comment-out the definition of `RVGCC_LIB` in
@@ -218,8 +220,8 @@ $ riscv64-unknown-elf-objcopy -O verilog firmware.bm_elf firmware.hex
 exactly in the way Verilog expects it (or at least I did not find any
 way of doing that). There are several ways of fixing that, for instance,
 Claire Wolf (picorv32 author) is using a 
-[Pythonscript](https://github.com/cliffordwolf/picorv32/blob/master/firmware/makehex.py).
-I decided to write a small C++ program called[firmware_words](https://github.com/BrunoLevy/learn-fpga/tree/master/FemtoRV/FIRMWARE/TOOLS/FIRMWARE_WORDS_SRC)
+[Python script](https://github.com/cliffordwolf/picorv32/blob/master/firmware/makehex.py).
+I decided to write a small C++ program called [firmware_words](https://github.com/BrunoLevy/learn-fpga/tree/master/FemtoRV/FIRMWARE/TOOLS/FIRMWARE_WORDS_SRC)
 that does the job. In addition it checks that everything fits in the
 memory declared in `RTL/femtosoc_config.v`. Then, the generated file
 `FIRMWARE/firmware.hex` is used to initialize the RAM in
