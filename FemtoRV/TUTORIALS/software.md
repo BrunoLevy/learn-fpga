@@ -458,6 +458,6 @@ _TO BE CONTINUED_
 
 References and links
 --------------------
-- In @ultraembedded's [exactstep](https://github.com/ultraembedded/exactstep) 
+- In @ultraembedded's [exactstep](https://github.com/ultraembedded/exactstep)
   simulator, there is a libelf-based [elf_load.cpp](https://github.com/ultraembedded/exactstep/blob/master/core/elf_load.cpp)
 

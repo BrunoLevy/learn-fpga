@@ -18,8 +18,8 @@
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
 // 6K max on the ICEstick
-//`define NRV_RAM 393216 // bigger config for ULX3S
-`define NRV_RAM 262144 // default for ULX3S
+`define NRV_RAM 393216 // bigger config for ULX3S
+//`define NRV_RAM 262144 // default for ULX3S
 //`define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
 //`define NRV_RAM 1024   // small ICESTICK config (to further save LUTs if need be)
 
