@@ -95,3 +95,8 @@ CCRRGGBB (in that order, C for clock). Let us see how they are
 generated. For that we need to read some [Silice code](https://github.com/sylefeb/Silice/blob/master/projects/common/hdmi.ice).
 The key is in `algorithm hdmi_ddr_shifter`, it generates `p_outbits` and `n_outbits`. It uses the 125 MHz clock to shift 2 bits at a time,
 I think I got it !
+
+References
+----------
+
+[Silice HDMI walkthrough](https://github.com/sylefeb/Silice/tree/master/projects/hdmi_test)
