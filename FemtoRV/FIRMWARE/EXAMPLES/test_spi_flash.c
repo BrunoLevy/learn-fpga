@@ -9,19 +9,25 @@
 
 #include <femtorv32.h>
 
-#define BUSY 256
+// Two different modes for accessing the SPI flash, depends
+// on what's configured in RTL/femtosoc_config.v
 
-int get_spi_byte(int addr) {
-   int result = BUSY;
-   while(result & BUSY) {
-       result = IO_IN(IO_SPI_FLASH);
-   }
+// Access through mapped IO register: read bytes one by one
+int get_spi_byte_io(int addr) {
    IO_OUT(IO_SPI_FLASH, addr);
-   result = BUSY;
-   while(result & BUSY) {
-       result = IO_IN(IO_SPI_FLASH);
-   }
-   return result & 255;
+   return IO_IN(IO_SPI_FLASH);
+}
+
+// Access through mapped address space
+#define SPI_FLASH_BASE ((uint32_t*)(1 << 23))
+int get_spi_byte_mapped(int addr) {
+  addr -= (1024*1024);
+  union {
+    uint32_t word;
+    uint8_t bytes[4];
+  } u;
+  u.word = SPI_FLASH_BASE[addr >> 2];
+  return u.bytes[addr & 3];
 }
 
 void printb(int x) {
@@ -31,18 +37,22 @@ void printb(int x) {
 }
 
 int main() {
-   int addr = 1024*1024;
-   int data;
-   GL_tty_init(); // uncomment if using OLED display instead of tty output.
-   printf("Testing SPI flash\n");
-   for(int i=0; i<14; ++i) {
-      data = get_spi_byte(addr);
-      printf("%x:",data);
-      printb(data);
-      putchar(':');
-      putchar(data);
-      printf("\n");
-      ++addr;
-   }
-   return 0;
+  
+  // Test whether mapped memory space is activated
+  int mapped = IO_IN(IO_DEVICES_FREQ) & (1 << MAPPED_DEVICE_SPI_FLASH_BIT);
+  
+  int addr = 1024*1024;
+  int data;
+  GL_tty_init(); // uncomment if using OLED display instead of tty output.
+  printf("Testing SPI flash\n");
+  for(int i=0; i<14; ++i) {
+    data = mapped ? get_spi_byte_mapped(addr) : get_spi_byte_io(addr) ;
+    printf("%x:",data);
+    printb(data);
+    putchar(':');
+    putchar(data);
+    printf("\n");
+    ++addr;
+  }
+  return 0;
 }

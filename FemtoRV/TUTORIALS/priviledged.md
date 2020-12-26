@@ -43,7 +43,7 @@ CSR registers
 |-----------|---------------------------------------------------------|
 |mepc       | machine exception program counter                 
 |mcause     | machine trap cause              
-|msr        | ??
+|msr        | machine status register
 |mpriv      | current privilege level (non-standard)
 |mtvec      | machine trap handler base address (also called mevec)
 |mtval      | machine bad address or instruction
@@ -90,7 +90,101 @@ file and write its table of contents:
 - _line 2233 to 2281_: interrupt set/clear, *we need to understand*
 - _line 2282 to 2308_: statistics
 
-_TO BE CONTINUED_
+Now I take a look again at _volume II_. Most of what we want to learn is in the description of 
+`msr`, the machine status register. In step 1, we have a simple configuration, with only machine mode.
+We make it even simpler, with no interruptions, and only exceptions. Then we only need the following
+CSRs:
+
+| name      | description                                             |
+|-----------|---------------------------------------------------------|
+|mepc       | machine exception program counter                 
+|mcause     | machine trap cause              
+|msr        | machine status register
+|mtvec      | machine trap handler base address (also called mevec)
+|mtval      | machine bad address or instruction
+(in addition there is a `mscratch` scratch register that can be used by the exception handlers).
+
+Let us take a look now at the code that handles exceptions, line 755. Since we only have machine mode,
+we directly jump to line 800:
+```
+        uint32_t s = m_csr_msr;
+
+        // Interrupt save and disable
+        s &= ~SR_MPIE;
+        s |= (s & SR_MIE) ? SR_MPIE : 0;
+        s &= ~SR_MIE;
+
+        // Record previous priviledge level
+        s &= ~SR_MPP;
+        s |= (m_csr_mpriv << SR_MPP_SHIFT);
+
+        // Raise priviledge to machine level
+        m_csr_mpriv  = PRIV_MACHINE;
+
+        m_csr_msr    = s;
+        m_csr_mepc   = pc;
+        m_csr_mcause = cause;
+        m_csr_mtval  = badaddr;
+
+        log_exception(pc, m_csr_mevec, cause);
+
+        // Set new PC
+        m_pc = m_csr_mevec;
+```
+In a nutshell, calling the exception means _doing something with the machine status register_ (we'll see later),
+then setting `mepc` (to the current or the next instruction ? we'll see later), `mcause` and `mtval`, then jumping
+to `mevec` (and also changing privilege level, but at step 1 we do not do that).
+
+
+and we take a look at the way `MRET` is handled, line 1363:
+
+```
+        DPRINTF(LOG_INST,("%08x: mret\n", pc));
+        INST_STAT(ENUM_INST_MRET);
+
+        assert(m_csr_mpriv == PRIV_MACHINE);
+
+        uint32_t s        = m_csr_msr;
+        uint32_t prev_prv = SR_GET_MPP(m_csr_msr);
+
+        // Interrupt enable pop
+        s &= ~SR_MIE;
+        s |= (s & SR_MPIE) ? SR_MIE : 0;
+        s |= SR_MPIE;
+
+        // Set next MPP to user mode
+        s &= ~SR_MPP;
+        s |=  SR_MPP_U;
+
+        // Set privilege level to previous MPP
+        m_csr_mpriv   = prev_prv;
+        m_csr_msr     = s;
+
+        // Return to EPC
+        pc = m_csr_mepc;
+    }
+```
+OK, more or less what I expected, that is _undoing the stuff with the machine status register_, and jumping to the
+previously stored address in `mepc` (and also changing privilege level but we do not need to do that in step 1).
+
+Two questions remain to be answered:
+- is `mepc` set to the instruction that caused the exception or to the next instruction ? Seeing what `MRET` does, it seems
+  to be the next instruction, but we need to make sure: imagine we use compressed mode instructions implanted in an exception
+  handler, then we would need to determine whether the instruction that caused the exception was `mepc-4` or `mepc-2`, painful !
+  (but I think it is the case)
+- what is the stuff to be done and undone with the machine status register ? There are some bit manipulations with `SR_MIE` and `SR_MPIE`
+  (probably for _machine interrupt enable_ and _machine pending interrupt enable_ or something). For now we can ignore them, since we mainly
+  want to implement `ECALL`. We will see interrupts after. Then there is something with `MPP`, what's that ? It is defined in `rv32_isa.h` but
+  there is no comment (the author supposes you are familiar with it already, which is not my case !), so let's dig in _volume II_: it is page 20,
+  on `mstatus`: it is a stack used to keep track of the privilege level (and again, in our step 1 we can ignore this).
+
+
+Two things: 
+1) "interrupt enable stack" (depth 3, in fact 2), stored in machine status register.
+   MIE : Machine Interrupt Enable
+   MPIE: Machine Previous Interrupt Enable
+2) MPP (Machine Privilege P?) ?   
+
 
 References
 ----------

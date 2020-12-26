@@ -115,13 +115,14 @@ void GL_putchar_xy(int x, int y, char c);
 #define IO_BUTTONS     4096   /* ULX3S buttons                                          */
 
 /* To test the presence of a device, use IO_IN(IO_DEVICES_FREQ) & (1 << XXXX_BIT) */
-#define IO_DEVICE_LEDS_BIT      0  
-#define IO_DEVICE_SSD1351_BIT   1  
-#define IO_DEVICE_UART_BIT      5 
-#define IO_DEVICE_MAX2719_BIT   7
-#define IO_DEVICE_SPI_FLASH_BIT 8
-#define IO_DEVICE_SDCARD_BIT    9
-#define IO_DEVICE_BUTTONS_BIT   10
+#define IO_DEVICE_LEDS_BIT          0  
+#define IO_DEVICE_SSD1351_BIT       1  
+#define IO_DEVICE_UART_BIT          5  
+#define IO_DEVICE_MAX2719_BIT       7
+#define IO_DEVICE_SPI_FLASH_BIT     8
+#define IO_DEVICE_SDCARD_BIT        9
+#define IO_DEVICE_BUTTONS_BIT       10
+#define MAPPED_DEVICE_SPI_FLASH_BIT 15
 
 #define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
 #define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)

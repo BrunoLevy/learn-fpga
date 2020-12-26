@@ -14,6 +14,7 @@
 `include "DEVICES/uart.v"           // The UART (serial port over USB)
 `include "DEVICES/SSD1351.v"        // The OLED display
 `include "DEVICES/SPIFlash.v"       // Read data from the serial flash chip
+`include "DEVICES/MappedSPIFlash.v" // Idem, but mapped in memory
 `include "DEVICES/MAX7219.v"        // 8x8 led matrix driven by a MAX7219 chip
 `include "DEVICES/LEDs.v"           // Driver for 4 leds
 `include "DEVICES/SDCard.v"         // Driver for SDCard (just for bitbanging for now)
@@ -35,7 +36,7 @@ module femtosoc(
 `ifdef NRV_IO_MAX7219	   
    output ledmtx_DIN, ledmtx_CS, ledmtx_CLK,
 `endif
-`ifdef NRV_IO_SPI_FLASH
+`ifdef NRV_SPI_FLASH
    output spi_mosi, input spi_miso, output spi_cs_n,
  `ifndef ULX3S	
    output spi_clk, // ULX3S has spi clk shared with ESP32, using USRMCLK (below)	
@@ -65,14 +66,14 @@ module femtosoc(
 // On the ULX3S, the CLK pin of the SPI is multiplexed with the ESP32.
 // It can be accessed using the USRMCLK primitive of the ECP5
 // as follows.   
-`ifdef NRV_IO_SPI_FLASH
+`ifdef NRV_SPI_FLASH
  `ifdef ULX3S
    wire   spi_clk;
    wire   tristate = 1'b0;
    USRMCLK u1 (.USRMCLKI(spi_clk), .USRMCLKTS(tristate));
  `endif   
 `endif
-   
+
   wire  clk;
 
   femtoPLL #(
@@ -114,8 +115,8 @@ module femtosoc(
  * Memory and memory interface
  * memory map:
  *   address[21:2] RAM word address (4 Mb max).
- *   address[22]   IO page (1-hot)
- *   address[23]   (future) SPI page (1-hot)
+ *   address[22]   IO page  (1-hot)
+ *   address[23]   SPI page (1-hot)
  */ 
 
    // The memory bus.
@@ -128,20 +129,48 @@ module femtosoc(
    wire        mem_wbusy;   // processor <- (mem and peripherals). Stays high until a write transfer is finished.
 
    wire        mem_wstrb = |mem_wmask; // mem write strobe, goes high to initiate memory write (deduced from wmask)
-   
-   // IO bus. 
-   wire        mem_address_is_io = mem_address[22];
+
+   // IO bus.
+`ifdef NRV_MAPPED_SPI_FLASH
+   wire mem_address_is_ram       = (mem_address[23:22] == 2'b00);   
+   wire mem_address_is_io        = (mem_address[23:22] == 2'b01);
+   wire mem_address_is_spi_flash = (mem_address[23:22] == 2'b10);
+   wire mapped_spi_flash_rbusy;
+   wire [31:0] mapped_spi_flash_rdata;
+   MappedSPIFlash mapped_spi_flash(
+      .clk(clk),
+      .rstrb(mem_rstrb && mem_address_is_spi_flash),
+      .word_address(mem_address[19:2]),
+      .rdata(mapped_spi_flash_rdata),
+      .rbusy(mapped_spi_flash_rbusy),
+      .CLK(spi_clk),
+      .CS_N(spi_cs_n),
+      .MOSI(spi_mosi),
+      .MISO(spi_miso)		      
+   );
+`else   
+   wire mem_address_is_io  =  mem_address[22];
+   wire mem_address_is_ram = !mem_address[22];
+`endif
+      
    reg  [31:0] io_rdata; 
    wire [31:0] io_wdata = mem_wdata;
    wire        io_rstrb = mem_rstrb && mem_address_is_io;
    wire        io_wstrb = mem_wstrb && mem_address_is_io;
    wire [10:0] io_word_address = mem_address[12:2]; // word offset in io page
    wire	       io_rbusy; 
-   wire        io_wbusy; 
-   assign      mem_rbusy = io_rbusy; // TODO: OR with mapped SPI page here
-   assign      mem_wbusy = io_wbusy; // TODO: OR with mapped SPI page here
+   wire        io_wbusy;
+   
+   assign      mem_rbusy = io_rbusy
+`ifdef NRV_MAPPED_SPI_FLASH
+    | mapped_spi_flash_rbusy			   
+`endif 			   
+    ;
+   
+   assign      mem_wbusy = io_wbusy; 
 
-   wire        mem_address_is_ram = !mem_address[22]; // TODO: AND! with mapped SPI
+
+   
    wire [19:0] ram_word_address = mem_address[21:2];
    reg [31:0] RAM[(`NRV_RAM/4)-1:0];
    reg [31:0] ram_rdata;
@@ -163,8 +192,13 @@ module femtosoc(
       end 
       ram_rdata <= RAM[ram_word_address];
    end
+`ifdef NRV_MAPPED_SPI_FLASH
+   assign mem_rdata = mem_address_is_io  ? io_rdata  : 
+		      mem_address_is_ram ? ram_rdata : 
+		      mapped_spi_flash_rdata;   
+`else   
    assign mem_rdata = mem_address_is_io ? io_rdata : ram_rdata;
-   
+`endif   
    
 /***************************************************************************************************
 /*

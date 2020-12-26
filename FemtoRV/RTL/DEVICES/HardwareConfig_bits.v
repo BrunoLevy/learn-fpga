@@ -16,6 +16,9 @@ localparam SPI_SDCARD_bit   = 9; // write: bit 0: mosi  bit 1: clk   bit 2: csn
 
 localparam BUTTONS_bit      = 10; // read: buttons state
 
+
+localparam MAPPED_SPI_FLASH_bit = 15; // Does not have any mapped reg. Bit is there for querying presence of device.
+
 localparam HW_CONFIG_RAM_bit          = 6;  // read: total quantity of RAM, in bytes
 
 localparam HW_CONFIG_DEVICES_FREQ_bit = 4;  // read: configured derives (16 LSB) and freq (16 MSB) 
@@ -41,5 +44,8 @@ localparam NRV_DEVICES = 0
 `endif			    
 `ifdef NRV_IO_BUTTONS
    | (1 << BUTTONS_bit) 			 			 			 
-`endif			    
+`endif 
+`ifdef NRV_MAPPED_SPI_FLASH
+   | (1 << MAPPED_SPI_FLASH_bit)		  
+`endif			 
 ;
