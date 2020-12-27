@@ -62,8 +62,8 @@ module FemtoRV32 #(
    wire 	 writeBackEn;    // Needs to be asserted for writing back to reg.
    wire          writeBackALU;     // \
    wire          writeBackAplusB;  //  | data source for register write-back (if
-   wire          writeBackPCplus4; //  | register write-back is enabled)
-   wire          writeBackCSR;     // /
+   wire          writeBackPCplus4; // /  register write-back is enabled)
+   
    wire [4:0] 	 regId1;       // Register output 1
    wire [4:0] 	 regId2;       // Register output 2
    
@@ -72,7 +72,6 @@ module FemtoRV32 #(
    wire [2:0] 	 func;         // operation done by the ALU, tests, load/store mode
    wire 	 funcQual;     // 'qualifier' used by some operations (+/-, logic/arith shifts)
    wire [31:0] 	 imm;          // immediate value decoded from the instruction
-   wire          needWaitALU;  // asserted if instruction uses at least 1  cycle in ALU
    
    wire          isALU;        // \
    wire 	 isLoad;       // | 
@@ -90,14 +89,12 @@ module FemtoRV32 #(
      .writeBackALU(writeBackALU),
      .writeBackAplusB(writeBackAplusB),		      
      .writeBackPCplus4(writeBackPCplus4),
-     .writeBackCSR(writeBackCSR),		      		      
      .inRegId1(regId1),
      .inRegId2(regId2),
      .aluInSel1(aluInSel1), 
      .aluInSel2(aluInSel2),
      .func(func),
      .funcQual(funcQual),
-     .needWaitALU(needWaitALU),
      .isALU(isALU),		      
      .isLoad(isLoad),
      .isStore(isStore),
@@ -298,19 +295,19 @@ module FemtoRV32 #(
 	end
 	
         // *********************************************************************	
-	// Does 1-cycle ALU ops, or handles jump/branch, or transitions to waitALU, load, store
+	// Handles jump/branch, or transitions to waitALU, load, store
 	state[EXECUTE_bit]: begin
 	   addressReg <= aluAplusB; // Needed for LOAD,STORE,jump,branch
 	   PC <= PCplus4;
 	   
 	   (* parallel_case, full_case *)	   
 	   case (1'b1)
-	     isLoad:        state <= LOAD;
-	     isStore:       begin
+	     isLoad: state <= LOAD;
+	     isStore: begin
 		state <= STORE;
 		wdataReg <= STORE_data_aligned_for_MEM;
 	     end
-	     needWaitALU:   state <= WAIT_ALU_OR_DATA;	     
+	     isALU: state <= WAIT_ALU_OR_DATA;	     
 	     jump_or_take_branch: begin
 		PC <= aluAplusB;
 		state <= FETCH_INSTR;

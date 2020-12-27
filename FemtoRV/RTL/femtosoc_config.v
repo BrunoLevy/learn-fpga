@@ -29,7 +29,7 @@
 `define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count
 
 `ifdef NRV_MINIRV32
-`define NRV_LATCH_ALU 
+`define NRV_LATCH_ALU // ALU always latched in minirv32 configuration (reduces LUT count)
 `else 
 /************************* Control and Status Registers *************************************************************/
 //`define NRV_CSR         // Uncomment if using something below (counters,...)

@@ -14,8 +14,7 @@ module NrvDecoder(
 		  
     output reg 	      writeBackALU,    // \
     output reg 	      writeBackPCplus4,// | Data source for register
-    output reg 	      writeBackAplusB, // | write-back (if enabled)
-    output reg 	      writeBackCSR,    // /
+    output reg 	      writeBackAplusB, // / write-back (if enabled)
 		  
     output wire [4:0] inRegId1, // Register output 1
     output wire [4:0] inRegId2, // Register output 2
@@ -30,8 +29,6 @@ module NrvDecoder(
     output reg 	      isStore,   // ) Guess what !
     output reg 	      isBranch,  // |
     output reg 	      isJump,    // /
-		  
-    output reg 	      needWaitALU, // asserted if instruction uses at least 1  cycle in ALU
 		  
     output reg [31:0] imm,   // immediate value decoded from the instruction
 		  
@@ -68,7 +65,7 @@ module NrvDecoder(
 
    // The rest of instruction decoding, for the following signals:
    // writeBackEn
-   // writeBack source: one of writeBackALU, writeBackPCplus4, writeBackAplusB, writeBackCSR,
+   // writeBack source: one of writeBackALU, writeBackPCplus4, writeBackAplusB,
    // inRegId1Sel    0: zero   1: regId
    // aluInSel1      0: reg    1: PC 
    // aluInSel2      0: reg    1: imm
@@ -99,17 +96,15 @@ module NrvDecoder(
        isBranch = 1'b0;
        isJump = 1'b0;
        funcQual = 1'b0;
-       needWaitALU = 1'b0;
        
        writeBackEn  = 1'b0;
        writeBackALU = 1'b0;
        writeBackPCplus4 = 1'b0;
        writeBackAplusB = 1'b0;
-       writeBackCSR = 1'b0;
       
        (* parallel_case, full_case *)
-       case(instr[6:0])
-	   7'b0110111: begin // LUI
+       case(instr[6:2])
+	   5'b01101: begin // LUI
 	      writeBackEn  = 1'b1;    // enable write back
 	      writeBackAplusB = 1'b1; // write back source = A+B
 	      inRegId1Sel = 1'b0;     // reg 1 Id = 0
@@ -118,7 +113,7 @@ module NrvDecoder(
 	      imm = Uimm;             // imm format = U
 	   end
 	 
-	   7'b0010111: begin // AUIPC
+	   5'b00101: begin // AUIPC
 	      writeBackEn  = 1'b1;    // enable write back
 	      writeBackAplusB = 1'b1;    // write back source = A+B
 	      inRegId1Sel = 1'bx;     // reg 1 Id : don't care (we use PC)	      
@@ -127,7 +122,7 @@ module NrvDecoder(
 	      imm = Uimm;             // imm format = U
 	   end
 	 
-	   7'b1101111: begin // JAL
+	   5'b11011: begin // JAL
 	      writeBackEn  = 1'b1;     // enable write back
 	      writeBackPCplus4 = 1'b1; // write back source = PC+4
 	      inRegId1Sel = 1'bx;      // reg 1 Id : don't care (we use PC)	      	      
@@ -137,7 +132,7 @@ module NrvDecoder(
 	      imm = Jimm;              // imm format = J
 	   end
 	 
-	   7'b1100111: begin // JALR
+	   5'b11001: begin // JALR
 	      writeBackEn  = 1'b1;     // enable write back
 	      writeBackPCplus4 = 1'b1; // write back source = PC+4
 	      aluInSel1 = 1'b0;        // ALU source 1 = reg	      
@@ -146,37 +141,35 @@ module NrvDecoder(
 	      imm = Iimm;              // imm format = I
 	   end
 	 
-	   7'b1100011: begin // Branch
+	   5'b11000: begin // Branch
 	      aluInSel1 = 1'b1;       // ALU source 1 : PC
 	      aluInSel2 = 1'b1;       // ALU source 2 : imm
 	      isBranch = 1'b1;        // PC <- pred ? ALU : PC+4	       
 	      imm = Bimm;             // imm format = B
 	   end
 	   
-	   7'b0010011: begin // ALU operation: Register,Immediate
+	   5'b00100: begin // ALU operation: Register,Immediate
 	      writeBackEn = 1'b1;     // enable write back
 	      writeBackALU = 1'b1;    // write back source = ALU
 	      aluInSel1 = 1'b0;       // ALU source 1 : reg
 	      aluInSel2 = 1'b1;       // ALU source 2 : imm
 	                              // Qualifier for ALU op: SRLI/SRAI
 	      funcQual = funcIsShift ? instr[30] : 1'b0;
-	      needWaitALU = 1'b1;  // funcIsShift;
 	      isALU = 1'b1;           // ALU op : from instr
 	      imm = Iimm;             // imm format = I
 	   end
 	   
-	   7'b0110011: begin // ALU operation: Register,Register
+	   5'b01100: begin // ALU operation: Register,Register
 	      writeBackEn = 1'b1;     // enable write back
 	      writeBackALU = 1'b1;    // write back source = ALU
 	      aluInSel1 = 1'b0;       // ALU source 1 : reg
 	      aluInSel2 = 1'b0;       // ALU source 2 : reg
 	      funcQual = instr[30];   // Qualifier for ALU op: +/- SRL/SRA
 	      isALU = 1'b1;           // ALU op : from instr
-	      needWaitALU = 1'b1;  // funcIsShift;
 	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; // don't care
 	   end
 	   
-           7'b0000011: begin // Load
+           5'b00000: begin // Load
 	      writeBackEn = 1'b1;     // enable write back
 	      aluInSel1 = 1'b0;       // ALU source 1 = reg
 	      aluInSel2 = 1'b1;       // ALU source 2 = imm
@@ -184,7 +177,7 @@ module NrvDecoder(
 	      isLoad = 1'b1;
 	   end
 	 
-           7'b0100011: begin // Store
+           5'b01000: begin // Store
 	      writeBackEn = 1'b0;     // disable write back
 	      aluInSel1 = 1'b0;       // ALU source 1 = reg
 	      aluInSel2 = 1'b1;       // ALU source 2 = imm
