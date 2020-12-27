@@ -41,7 +41,7 @@ module FemtoRV32 #(
    reg [ADDR_WIDTH-1:0] addressReg;
    assign mem_addr = addressReg;
    
-   // The program counter (not storing the two LSBs, always aligned)
+   // The program counter.
    reg [ADDR_WIDTH-1:0] PC;
 
    // The write data register, directly wired to the outgoing data bus.
@@ -55,6 +55,7 @@ module FemtoRV32 #(
    // Next program counter in normal operation: advance one word
    // I do not use the ALU, I create an additional adder for that.
    wire [ADDR_WIDTH-1:0] PCplus4 = PC + 4;
+   // This one is used for prefetching next instr in EXECUTE.
    wire [ADDR_WIDTH-1:0] PCplus8 = PC + 8;
 
    /***************************************************************************/
@@ -406,7 +407,7 @@ module FemtoRV32 #(
 	state[STORE_bit]: begin
 	   instr <= nextInstr;
 	   addressReg <= PCplus4;
-	   // If storing to IO device or mapped SPI flash, use wait state.
+	   // If storing to IO device, use wait state.
 	   // (needed because mem_wbusy will be available at next cycle).
 	   state <= aluAplusB[22] ? WAIT_IO_STORE : FETCH_REGS;
 	end

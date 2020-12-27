@@ -39,7 +39,7 @@ module FemtoRV32 #(
    reg [ADDR_WIDTH-1:0] addressReg;
    assign mem_addr = addressReg;
    
-   // The program counter (not storing the two LSBs, always aligned)
+   // The program counter.
    reg [ADDR_WIDTH-1:0] PC;
 
    // The write data register, directly wired to the outgoing data bus.
