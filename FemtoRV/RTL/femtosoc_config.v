@@ -26,7 +26,7 @@
 `define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
 //`define NRV_RAM 1024   // small ICESTICK config (to further save LUTs if need be)
 
-//`define NRV_MINIRV32 // minimalistic configuration, reduces LUT count
+`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count
 
 `ifndef NRV_MINIRV32
 /************************* Control and Status Registers *************************************************************/

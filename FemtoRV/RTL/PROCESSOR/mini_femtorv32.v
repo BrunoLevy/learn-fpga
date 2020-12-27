@@ -32,6 +32,7 @@ module FemtoRV32 #(
    input wire 	     reset, // set to 0 to reset the processor
    output wire 	     error  // 1 if current instruction could not be decoded
 );
+   assign error = 1'b0; // mini-femtorv32 Does not check for errors.
 
 
    // The internal register that stores the current address,
@@ -79,8 +80,6 @@ module FemtoRV32 #(
    wire          isBranch;     // |
    wire          isJump;       // /
    
-   wire          decoderError; // true if instr has invalid opcode
-
    // The instruction decoder, that reads the current instruction 
    // and generates all the signals from it. It is in fact just a
    // big combinatorial function.
@@ -104,15 +103,8 @@ module FemtoRV32 #(
      .isStore(isStore),
      .isJump(isJump),
      .isBranch(isBranch),
-     .imm(imm),
-     .error(decoderError)     		     
+     .imm(imm) 
    );
-
-   /***************************************************************************/
-   // Maybe not necessary, but I'd rather latch this one,
-   // if this one glitches, then it will break everything...
-   reg error_latched;
-   assign error = error_latched;
 
    /***************************************************************************/
    // The register file. At each cycle, it can read two
@@ -226,16 +218,15 @@ module FemtoRV32 #(
    // The states, using 1-hot encoding (reduces
    // both LUT count and critical path).
    
-   localparam INITIAL              = 9'b000000000;
-   localparam FETCH_INSTR          = 9'b000000001;
-   localparam WAIT_INSTR           = 9'b000000010;
-   localparam FETCH_REGS           = 9'b000000100;
-   localparam EXECUTE              = 9'b000001000;
-   localparam LOAD                 = 9'b000010000;
-   localparam WAIT_ALU_OR_DATA     = 9'b000100000;
-   localparam STORE                = 9'b001000000;
-   localparam WAIT_IO_STORE        = 9'b010000000;   
-   localparam ERROR                = 9'b100000000;
+   localparam INITIAL              = 8'b00000000;
+   localparam FETCH_INSTR          = 8'b00000001;
+   localparam WAIT_INSTR           = 8'b00000010;
+   localparam FETCH_REGS           = 8'b00000100;
+   localparam EXECUTE              = 8'b00001000;
+   localparam LOAD                 = 8'b00010000;
+   localparam WAIT_ALU_OR_DATA     = 8'b00100000;
+   localparam STORE                = 8'b01000000;
+   localparam WAIT_IO_STORE        = 8'b10000000;   
 
 
    localparam FETCH_INSTR_bit          = 0;   
@@ -246,9 +237,8 @@ module FemtoRV32 #(
    localparam WAIT_ALU_OR_DATA_bit     = 5;
    localparam STORE_bit                = 6;
    localparam WAIT_IO_STORE_bit        = 7;   
-   localparam ERROR_bit                = 8;
    
-   reg [9:0] state = INITIAL;
+   reg [7:0] state = INITIAL;
    
    // the internal signals that are determined combinatorially from
    // state and other signals.
@@ -281,6 +271,7 @@ module FemtoRV32 #(
 	 PC <= 0;
       end else
 
+      (* parallel_case, full_case *)	
       case(1'b1)
 
         // *********************************************************************
@@ -301,11 +292,9 @@ module FemtoRV32 #(
 	end
 
         // *********************************************************************
-        // 1) Fetch registers (instr is ready, as well as register ids)
-	// 2) Latch decoder error flag
+        // Fetch registers (instr is ready, as well as register ids)
 	state[FETCH_REGS_bit]: begin
 	   state <= EXECUTE;
-	   error_latched <= decoderError;
 	end
 	
         // *********************************************************************	
@@ -316,7 +305,6 @@ module FemtoRV32 #(
 	   
 	   (* parallel_case, full_case *)	   
 	   case (1'b1)
-	     error_latched: state <= ERROR;
 	     isLoad:        state <= LOAD;
 	     isStore:       begin
 		state <= STORE;
@@ -371,7 +359,8 @@ module FemtoRV32 #(
 	   end
 	end
 
-	default: state <= ERROR;
+	default: begin 
+	end
 	
       endcase
   end   

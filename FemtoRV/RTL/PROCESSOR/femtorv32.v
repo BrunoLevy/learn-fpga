@@ -298,7 +298,7 @@ module FemtoRV32 #(
    localparam WAIT_IO_STORE_bit        = 7;   
    localparam ERROR_bit                = 8;
    
-   reg [9:0] state = INITIAL;
+   reg [8:0] state = INITIAL;
    
    // the internal signals that are determined combinatorially from
    // state and other signals.
