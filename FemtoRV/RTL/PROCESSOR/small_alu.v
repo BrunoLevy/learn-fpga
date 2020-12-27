@@ -7,15 +7,15 @@ module NrvSmallALU #(
    // optional twostage shifter, makes shifts faster (but eats up 60 LUTs or so)
    parameter [0:0] TWOSTAGE_SHIFTER = 0 
 )(
-  input 	    clk, 
-  input [31:0] 	    in1,
-  input [31:0] 	    in2,
-  input [2:0] 	    func,     // Operation
-  input 	    funcQual, // Operation qualification (+/-, Logical/Arithmetic)
-  output reg [31:0] out,    // ALU result. Latched if operation is a shift
-  output 	    busy,   // 1 if ALU is currently computing (that is, shift)
-  input 	    wr,     // Raise to write ALU inputs and start computing
-  output wire [31:0] AplusB // Direct access to the adder, used by address computation
+  input 	     clk, 
+  input [31:0] 	     in1,
+  input [31:0] 	     in2,
+  input [2:0] 	     func,     // Operation
+  input 	     funcQual, // Operation qualification (+/-, Logical/Arithmetic)
+  output reg [31:0]  out,      // ALU result. Latched if operation is a shift
+  output 	     busy,     // 1 if ALU is currently computing (that is, shift)
+  input 	     wr,       // Raise to write ALU inputs and start computing
+  output wire [31:0] AplusB    // Direct access to the adder, used by address computation
 );
 
    assign AplusB = in1 + in2;
@@ -89,7 +89,7 @@ module NrvSmallALU #(
 	    case(func)
 	      3'b001: ALUreg <= ALUreg << 4;                               // SLL
 	      3'b101: ALUreg <= funcQual ? {{4{ALUreg[31]}}, ALUreg[31:4]} : // SRL/SRA 
-                                         { 4'b0000,        ALUreg[31:4]} ; 
+                                           { 4'b0000,        ALUreg[31:4]} ; 
 	    endcase 
 	 end else  
 	   if (shamt != 0) begin
@@ -97,7 +97,7 @@ module NrvSmallALU #(
 	      case(func)
 		3'b001: ALUreg <= ALUreg << 1;                          // SLL
 		3'b101: ALUreg <= funcQual ? {ALUreg[31], ALUreg[31:1]} : // SRL/SRA 
-				           {1'b0,       ALUreg[31:1]} ; 
+				             {1'b0,       ALUreg[31:1]} ; 
 	      endcase 
 	   end
       end 

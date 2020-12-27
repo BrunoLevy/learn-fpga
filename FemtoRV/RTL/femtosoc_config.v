@@ -48,7 +48,7 @@
 /*
  * Uncomment to systematically latch ALU output, 
  * this augments CPI (from 2 to 3), but may reduce
- * critical path (overclocking to 90MHz on IceStick works with OLED display and SPI flash)
+ * critical path (overclocking to 85-90MHz on IceStick works with OLED display and SPI flash)
  */
 //`define NRV_LATCH_ALU
 

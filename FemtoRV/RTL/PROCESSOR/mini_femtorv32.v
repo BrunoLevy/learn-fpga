@@ -11,7 +11,7 @@
 `include "register_file.v"         // The 31 general-purpose registers
 `include "small_alu.v"             // Used on IceStick, RV32I   
 `include "branch_predicates.v"     // Tests for branch instructions
-`include "decoder.v"               // The instruction decoder
+`include "mini_decoder.v"          // The instruction decoder
 `include "aligned_memory_access.v" // R/W bytes, hwords and words from memory
 
 /********************* Nrv processor *******************************/
@@ -287,14 +287,14 @@ module FemtoRV32 #(
         // Initial state
 	(state == INITIAL):     state <= FETCH_INSTR;
 	
-        // *********************************************************************	
-	// Additional wait state for instruction fetch. 
-	// Required by jumps and taken branch.	
+        // *********************************************************************
+        // Fetch instruction. Address was updated by previous state, and
+	// instruction is arriving during this state. It is available at
+	// next state.
 	state[FETCH_INSTR_bit]:  state <= WAIT_INSTR; 
 
         // *********************************************************************
-        // Fetch instr and prepare instr lookahead
-	//   (instr lookahead is fetched during FETCH_REGS and ready in EXECUTE)	   
+	// Additional wait state for instruction fetch. 
 	state[WAIT_INSTR_bit]: begin
 	   instr <= mem_rdata;
 	   state <= FETCH_REGS;
@@ -310,7 +310,6 @@ module FemtoRV32 #(
 	
         // *********************************************************************	
 	// Does 1-cycle ALU ops, or handles jump/branch, or transitions to waitALU, load, store
-	//    If linear execution flow, update instr with lookahead and prepare next lookahead	
 	state[EXECUTE_bit]: begin
 	   addressReg <= aluAplusB; // Needed for LOAD,STORE,jump,branch
 	   PC <= PCplus4;
@@ -342,7 +341,7 @@ module FemtoRV32 #(
 
         // *********************************************************************
         // Data is written to memory by 'NrvStoreToMemory store_to_mem' (see beginning of file)
-	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
+	//    Next state: linear execution flow
 	state[STORE_bit]: begin
 	   addressReg <= PC;
 	   // If storing to IO device, use wait state.
