@@ -42,7 +42,7 @@ module FemtoRV32 #(
    assign mem_addr = addressReg;
    
    // The program counter (not storing the two LSBs, always aligned)
-   reg [ADDR_WIDTH-3:0] PC;
+   reg [ADDR_WIDTH-1:0] PC;
 
    // The write data register, directly wired to the outgoing data bus.
    reg [31:0] wdataReg;
@@ -54,8 +54,8 @@ module FemtoRV32 #(
  
    // Next program counter in normal operation: advance one word
    // I do not use the ALU, I create an additional adder for that.
-   // (not that the two LSBs are not stored, always aligned).
-   wire [ADDR_WIDTH-3:0] PCplus4 = PC + 1;
+   wire [ADDR_WIDTH-1:0] PCplus4 = PC + 4;
+   wire [ADDR_WIDTH-1:0] PCplus8 = PC + 8;
 
    /***************************************************************************/
    // Instruction decoding.
@@ -146,7 +146,7 @@ module FemtoRV32 #(
    wire [31:0] aluAplusB;   
    wire        aluBusy;
    wire        alu_wenable;
-   wire [31:0] aluIn1 = aluInSel1 ? {PC, 2'b00} : regOut1;
+   wire [31:0] aluIn1 = aluInSel1 ? PC  : regOut1;
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
 
    // Select the ALU for RV32M (large ALU) or plain RV32I (small ALU)
@@ -249,7 +249,7 @@ module FemtoRV32 #(
       case(1'b1)
 	writeBackALU :    writeBackData = aluOut;
 	writeBackAplusB:  writeBackData = aluAplusB;	
-	writeBackPCplus4: writeBackData = {PCplus4, 2'b00};
+	writeBackPCplus4: writeBackData = PCplus4;
 	isLoad:           writeBackData = LOAD_data_aligned_for_CPU;
 `ifdef NRV_CSR
 	writeBackCSR:     writeBackData = CSR_rdata;	
@@ -353,7 +353,7 @@ module FemtoRV32 #(
 	//   (instr lookahead is fetched during FETCH_REGS and ready in EXECUTE)	   
 	state[WAIT_INSTR_bit]: begin
 	   instr <= mem_rdata;
-	   addressReg <= {PCplus4, 2'b00};
+	   addressReg <= PCplus4;
 	   state <= FETCH_REGS;
 	end
 
@@ -384,13 +384,13 @@ module FemtoRV32 #(
 	     end
 	     needWaitALU:   state <= WAIT_ALU_OR_DATA;	     
 	     jump_or_take_branch: begin
-		PC <= aluAplusB[31:2];
+		PC <= aluAplusB;
 		state <= FETCH_INSTR;
 	     end
 	     default: begin // Linear execution flow, use lookahead, prepare next lookahead
-		instr <= mem_rdata;  // Use looked-ahead instr.
-		addressReg <= {PC + 2'b10, 2'b00}; // Look-ahead: PC+8 (PC not updated yet)
-		state <= FETCH_REGS; // Cool, linear exec flow takes 2 CPIs !
+		instr <= mem_rdata;    // Use looked-ahead instr.
+		addressReg <= PCplus8; // Look-ahead: PC+8 (PC not updated yet)
+		state <= FETCH_REGS;   // Cool, linear exec flow takes 2 CPIs !
 	     end
 	   endcase
 	end 
@@ -405,10 +405,10 @@ module FemtoRV32 #(
 	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[STORE_bit]: begin
 	   instr <= nextInstr;
-	   addressReg <= {PCplus4, 2'b00};
+	   addressReg <= PCplus4;
 	   // If storing to IO device or mapped SPI flash, use wait state.
 	   // (needed because mem_wbusy will be available at next cycle).
-	   state <= (aluAplusB[22] | aluAplusB[23]) ? WAIT_IO_STORE : FETCH_REGS;
+	   state <= aluAplusB[22] ? WAIT_IO_STORE : FETCH_REGS;
 	end
 
 	// *********************************************************************
@@ -428,7 +428,7 @@ module FemtoRV32 #(
 	   `verbose($display("        mem_rbusy:%b",mem_rbusy));
 	   if(!aluBusy && !mem_rbusy) begin
 	      instr <= nextInstr;
-	      addressReg <= {PCplus4, 2'b00};
+	      addressReg <= PCplus4;
 	      state <= FETCH_REGS;
 	   end
 	end
@@ -442,7 +442,7 @@ module FemtoRV32 #(
 // Debugging, test-bench
 
 `define show_state(state)   `verbose($display("    %s",state))
-`define show_opcode(opcode) `verbose($display("%x: %s",{PC,2'b00},opcode))
+`define show_opcode(opcode) `verbose($display("%x: %s",PC,opcode))
    
 `ifdef BENCH
    always @(posedge clk) begin

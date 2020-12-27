@@ -2,7 +2,7 @@
 
 /************************* Devices **********************************************************************************/
 `define NRV_IO_LEDS         // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART       // Mapped IO, virtual UART (USB)
+`define NRV_IO_UART       // Mapped IO, virtual UART (USB)
 //`define NRV_IO_SSD1351    // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX7219      // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
@@ -13,7 +13,7 @@
 
 
 /************************* Frequency ********************************************************************************/
-`define NRV_FREQ 80       // Frequency in MHz. 
+`define NRV_FREQ 50       // Frequency in MHz. 
                           // Can overclock it up to 75-80 MHz on the ICEStick and 80-100MHz on ULX3S.
                           // Yosys says OK between 40MHz and 50MHz. 
 
@@ -23,10 +23,10 @@
 // 6K max on the ICEstick
 //`define NRV_RAM 393216 // bigger config for ULX3S
 //`define NRV_RAM 262144 // default for ULX3S
-//`define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
+`define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
 //`define NRV_RAM 1024   // small ICESTICK config (to further save LUTs if need be)
 
-`define NRV_MINIRV32 // minimalistic configuration, reduces LUT count
+//`define NRV_MINIRV32 // minimalistic configuration, reduces LUT count
 
 `ifndef NRV_MINIRV32
 /************************* Control and Status Registers *************************************************************/
