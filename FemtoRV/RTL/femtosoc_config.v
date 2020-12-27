@@ -3,12 +3,13 @@
 /************************* Devices **********************************************************************************/
 `define NRV_IO_LEDS         // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART       // Mapped IO, virtual UART (USB)
-`define NRV_IO_SSD1351    // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_SSD1351    // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX7219      // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
 //`define NRV_IO_SPI_SDCARD // Mapped IO, SPI SDCARD
 //`define NRV_IO_BUTTONS    // Mapped IO, buttons
-`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space 
+//`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space 
+//`define NRV_RUN_FROM_SPI
 
 
 /************************* Frequency ********************************************************************************/
@@ -22,9 +23,12 @@
 // 6K max on the ICEstick
 //`define NRV_RAM 393216 // bigger config for ULX3S
 //`define NRV_RAM 262144 // default for ULX3S
-`define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
+//`define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
 //`define NRV_RAM 1024   // small ICESTICK config (to further save LUTs if need be)
 
+`define NRV_MINIRV32 // minimalistic configuration, reduces LUT count
+
+`ifndef NRV_MINIRV32
 /************************* Control and Status Registers *************************************************************/
 //`define NRV_CSR         // Uncomment if using something below (counters,...)
 //`define NRV_COUNTERS    // Uncomment for instr and cycle counters (won't fit on the ICEStick)
@@ -47,6 +51,9 @@
  * critical path (overclocking to 90MHz on IceStick works with OLED display and SPI flash)
  */
 //`define NRV_LATCH_ALU
+
+`endif
+
 
 /* 
  * Uncomment if the RESET button is wired and active low:

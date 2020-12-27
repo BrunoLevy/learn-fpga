@@ -8,7 +8,11 @@
 /*************************************************************************************/
 
 `include "femtosoc_config.v"        // User configuration of processor and SOC.
+`ifdef NRV_MINIRV32
+`include "PROCESSOR/mini_femtorv32.v" // Minimalistic version of the processor
+`else
 `include "PROCESSOR/femtorv32.v"    // The processor
+`endif
 `include "DEVICES/femtopll.v"       // The PLL (generates clock at NRV_FREQ)
 `include "DEVICES/HardwareConfig.v" // Constant registers to query hardware config.
 `include "DEVICES/uart.v"           // The UART (serial port over USB)
@@ -422,11 +426,13 @@ end
   wire error;
    
   FemtoRV32 #(
-     .ADDR_WIDTH(24),
-`ifdef NRV_RV32M
-     .RV32M(1)
-`else
-     .RV32M(0)	      
+     .ADDR_WIDTH(24)
+`ifndef NRV_MINIRV32	      
+ `ifdef NRV_RV32M
+     ,.RV32M(1)
+ `else
+     ,.RV32M(0)	      
+ `endif
 `endif	      
   ) processor(
     .clk(clk),			

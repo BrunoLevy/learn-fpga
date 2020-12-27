@@ -2,6 +2,7 @@
 //   (minus SYSTEM and FENCE that are not implemented)
 // Bruno Levy, May-June 2020
 //
+// Minimalistic version of the CPU, minimalist but slow (4-6 CPIs)
 // For more information, see README.md
 
 /*******************************************************************/
@@ -9,16 +10,13 @@
 `include "utils.v"                 // Utilities, macros for debugging
 `include "register_file.v"         // The 31 general-purpose registers
 `include "small_alu.v"             // Used on IceStick, RV32I   
-`include "large_alu.v"             // For larger FPGAs, RV32IM
 `include "branch_predicates.v"     // Tests for branch instructions
 `include "decoder.v"               // The instruction decoder
 `include "aligned_memory_access.v" // R/W bytes, hwords and words from memory
-`include "CSR_file.v"              // (Optional) Control and Status registers 
 
 /********************* Nrv processor *******************************/
 
 module FemtoRV32 #(
-  parameter [0:0] RV32M              = 0, // Set to 1 to support mul/div/rem
   parameter       ADDR_WIDTH         = 24 // width of the address bus
 ) (
    input 	     clk,
@@ -49,8 +47,6 @@ module FemtoRV32 #(
    assign mem_wdata = wdataReg;
    
    reg [31:0] instr;     // Latched instruction. 
-   reg [31:0] nextInstr; // Prefetched instruction.
-
  
    // Next program counter in normal operation: advance one word
    // I do not use the ALU, I create an additional adder for that.
@@ -75,7 +71,6 @@ module FemtoRV32 #(
    wire 	 aluInSel2;    // 0: register  1: imm
    wire [2:0] 	 func;         // operation done by the ALU, tests, load/store mode
    wire 	 funcQual;     // 'qualifier' used by some operations (+/-, logic/arith shifts)
-   wire          funcM;        // asserted if instr is RV32M.
    wire [31:0] 	 imm;          // immediate value decoded from the instruction
    wire          needWaitALU;  // asserted if instruction uses at least 1  cycle in ALU
    
@@ -104,7 +99,6 @@ module FemtoRV32 #(
      .aluInSel2(aluInSel2),
      .func(func),
      .funcQual(funcQual),
-     .funcM(funcM),		      
      .needWaitALU(needWaitALU),
      .isALU(isALU),		      
      .isLoad(isLoad),
@@ -149,41 +143,19 @@ module FemtoRV32 #(
    wire [31:0] aluIn1 = aluInSel1 ? {PC, 2'b00} : regOut1;
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
 
-   // Select the ALU for RV32M (large ALU) or plain RV32I (small ALU)
-   generate
-      if(RV32M) begin
-         NrvLargeALU alu(
-            .clk(clk),	      
-            .in1(aluIn1),
-            .in2(aluIn2),
-            .func(func),
-            .funcQual(funcQual),
-            .funcM(funcM),	 
-            .out(aluOut),
-	    .AplusB(aluAplusB),
-            .wr(alu_wenable), 
-            .busy(aluBusy)	      
-         );
-      end else begin 
-         NrvSmallALU #(
-`ifdef NRV_TWOSTAGE_SHIFTER	      
-          .TWOSTAGE_SHIFTER(1)
-`else
-          .TWOSTAGE_SHIFTER(0)	      
-`endif
-         ) alu(
-            .clk(clk),	      
-            .in1(aluIn1),
-            .in2(aluIn2),
-            .func(func),
-            .funcQual(funcQual),
-            .out(aluOut),
-	    .AplusB(aluAplusB),	    
-            .wr(alu_wenable), 
-            .busy(aluBusy)	      
-         );
-      end
-   endgenerate
+   NrvSmallALU #(
+      .TWOSTAGE_SHIFTER(0)	      
+   ) alu(
+         .clk(clk),	      
+         .in1(aluIn1),
+         .in2(aluIn2),
+         .func(func),
+         .funcQual(funcQual),
+         .out(aluOut),
+	 .AplusB(aluAplusB),	    
+         .wr(alu_wenable), 
+         .busy(aluBusy)	      
+   );
    
    /***************************************************************************/
    // Memory only does 32-bit aligned accesses. Internally we have two small
@@ -223,23 +195,6 @@ module FemtoRV32 #(
        .wr_enable(mem_wenable)                 // Write enable ('anded' with write mask)
    );
    
-   /*************************************************************************/
-   // Control and status registers
-   
-`ifdef NRV_CSR
-   wire [31:0] CSR_rdata;
-   wire        instr_retired;
-   NrvControlStatusRegisterFile CSR(
-      .clk(clk),                         // for counting cycles
-      .instr_cnt(instr_retired),         // for counting retired instructions
-      .reset(reset),                     // reset all CSRs to default value
-      .CSRid(instr[31:20]),              // CSR Id, extracted from instr
-      .rdata(CSR_rdata)                  // Read CSR value
-      // TODO: test for errors (.error)
-   );
-`endif   
-   // Note: writing to CSRs not implemented yet
-
  
    /*************************************************************************/
    // The value written back to the register file.
@@ -251,9 +206,6 @@ module FemtoRV32 #(
 	writeBackAplusB:  writeBackData = aluAplusB;	
 	writeBackPCplus4: writeBackData = {PCplus4, 2'b00};
 	isLoad:           writeBackData = LOAD_data_aligned_for_CPU;
-`ifdef NRV_CSR
-	writeBackCSR:     writeBackData = CSR_rdata;	
-`endif
       endcase
    end
 
@@ -318,13 +270,6 @@ module FemtoRV32 #(
    // require several cycles).
    assign alu_wenable = state[EXECUTE_bit];
 
-   // instr_retired is asserted during one cycle for each
-   // retired instructions. It is used to update the instruction
-   // counter 'instret' in the control and status registers
-`ifdef NRV_CSR   
-   assign instr_retired = state[FETCH_REGS_bit];
-`endif
-
    // when asserted, next PC is updated from ALU (instead of PC+4)
    wire jump_or_take_branch = isJump || (isBranch && predOut);
 
@@ -353,14 +298,12 @@ module FemtoRV32 #(
 	//   (instr lookahead is fetched during FETCH_REGS and ready in EXECUTE)	   
 	state[WAIT_INSTR_bit]: begin
 	   instr <= mem_rdata;
-	   addressReg <= {PCplus4, 2'b00};
 	   state <= FETCH_REGS;
 	end
 
         // *********************************************************************
         // 1) Fetch registers (instr is ready, as well as register ids)
-	// 2) Prefetch next instr, at PC+4 (addressReg is set by all transitions that land here)
-	// 3) Latch decoder error flag
+	// 2) Latch decoder error flag
 	state[FETCH_REGS_bit]: begin
 	   state <= EXECUTE;
 	   error_latched <= decoderError;
@@ -370,7 +313,6 @@ module FemtoRV32 #(
 	// Does 1-cycle ALU ops, or handles jump/branch, or transitions to waitALU, load, store
 	//    If linear execution flow, update instr with lookahead and prepare next lookahead	
 	state[EXECUTE_bit]: begin
-	   nextInstr <= mem_rdata;  // Looked-ahead instr.
 	   addressReg <= aluAplusB; // Needed for LOAD,STORE,jump,branch
 	   PC <= PCplus4;
 	   
@@ -387,10 +329,9 @@ module FemtoRV32 #(
 		PC <= aluAplusB[31:2];
 		state <= FETCH_INSTR;
 	     end
-	     default: begin // Linear execution flow, use lookahead, prepare next lookahead
-		instr <= mem_rdata;  // Use looked-ahead instr.
-		addressReg <= {PC + 2'b10, 2'b00}; // Look-ahead: PC+8 (PC not updated yet)
-		state <= FETCH_REGS; // Cool, linear exec flow takes 2 CPIs !
+	     default: begin
+		addressReg <= {PCplus4, 2'b00};		
+		state <= FETCH_INSTR;
 	     end
 	   endcase
 	end 
@@ -404,19 +345,19 @@ module FemtoRV32 #(
         // Data is written to memory by 'NrvStoreToMemory store_to_mem' (see beginning of file)
 	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[STORE_bit]: begin
-	   instr <= nextInstr;
-	   addressReg <= {PCplus4, 2'b00};
-	   // If storing to IO device or mapped SPI flash, use wait state.
+	   addressReg <= {PC, 2'b00};
+	   // If storing to IO device, use wait state.
 	   // (needed because mem_wbusy will be available at next cycle).
-	   state <= (aluAplusB[22] | aluAplusB[23]) ? WAIT_IO_STORE : FETCH_REGS;
+	   state <= aluAplusB[22] ? WAIT_IO_STORE : FETCH_INSTR;
 	end
 
 	// *********************************************************************
 	// wait-state for IO store 
 	state[WAIT_IO_STORE_bit]: begin
-	   `verbose($display("        mem_wbusy:%b",mem_wbusy));	   
+	   `verbose($display("        mem_wbusy:%b",mem_wbusy));
+	   addressReg <= {PC, 2'b00};	   
 	   if(!mem_wbusy) 
-	     state <= FETCH_REGS;
+	     state <= FETCH_INSTR;
 	end
 
 	
@@ -427,9 +368,8 @@ module FemtoRV32 #(
 	state[WAIT_ALU_OR_DATA_bit]: begin
 	   `verbose($display("        mem_rbusy:%b",mem_rbusy));
 	   if(!aluBusy && !mem_rbusy) begin
-	      instr <= nextInstr;
-	      addressReg <= {PCplus4, 2'b00};
-	      state <= FETCH_REGS;
+	      addressReg <= {PC, 2'b00};	      
+	      state <= FETCH_INSTR;
 	   end
 	end
 
