@@ -5,7 +5,8 @@
 
 module NrvSmallALU #(
    // optional twostage shifter, makes shifts faster (but eats up 60 LUTs or so)
-   parameter [0:0] TWOSTAGE_SHIFTER = 0 
+   parameter [0:0] TWOSTAGE_SHIFTER = 0,
+   parameter [0:0] LATCH_ALU = 0		     
 )(
   input 	     clk, 
   input [31:0] 	     in1,

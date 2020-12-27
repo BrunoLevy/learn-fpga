@@ -26,7 +26,7 @@
 `define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
 //`define NRV_RAM 1024   // small ICESTICK config (to further save LUTs if need be)
 
-`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count
+//`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count
 
 `ifdef NRV_MINIRV32
 `define NRV_LATCH_ALU // ALU always latched in minirv32 configuration (reduces LUT count)
@@ -45,7 +45,7 @@
  * comment-out if running out of LUTs (makes shifter faster, 
  * but uses 60-100 LUTs) (inspired by PICORV32). 
  */ 
-//`define NRV_TWOSTAGE_SHIFTER 
+`define NRV_TWOSTAGE_SHIFTER 
 
 /*
  * Uncomment to systematically latch ALU output, 
