@@ -28,7 +28,9 @@
 
 `define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count
 
-`ifndef NRV_MINIRV32
+`ifdef NRV_MINIRV32
+`define NRV_LATCH_ALU 
+`else 
 /************************* Control and Status Registers *************************************************************/
 //`define NRV_CSR         // Uncomment if using something below (counters,...)
 //`define NRV_COUNTERS    // Uncomment for instr and cycle counters (won't fit on the ICEStick)
@@ -43,7 +45,7 @@
  * comment-out if running out of LUTs (makes shifter faster, 
  * but uses 60-100 LUTs) (inspired by PICORV32). 
  */ 
-`define NRV_TWOSTAGE_SHIFTER 
+//`define NRV_TWOSTAGE_SHIFTER 
 
 /*
  * Uncomment to systematically latch ALU output, 
@@ -51,7 +53,6 @@
  * critical path (overclocking to 85-90MHz on IceStick works with OLED display and SPI flash)
  */
 //`define NRV_LATCH_ALU
-
 `endif
 
 
