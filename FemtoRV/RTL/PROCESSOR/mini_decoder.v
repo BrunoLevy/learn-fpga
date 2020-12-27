@@ -96,11 +96,16 @@ module NrvDecoder(
        isBranch = 1'b0;
        isJump = 1'b0;
        funcQual = 1'b0;
+
+       aluInSel1 = 1'bx;      
+       aluInSel2 = 1'bx;      
        
-       writeBackEn  = 1'b0;
+       writeBackEn  = 1'bx;
        writeBackALU = 1'b0;
        writeBackPCplus4 = 1'b0;
        writeBackAplusB = 1'b0;
+
+       imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
       
        (* parallel_case, full_case *)
        case(instr[6:2])
@@ -142,6 +147,7 @@ module NrvDecoder(
 	   end
 	 
 	   5'b11000: begin // Branch
+	      writeBackEn  = 1'b0;    // disable write back
 	      aluInSel1 = 1'b1;       // ALU source 1 : PC
 	      aluInSel2 = 1'b1;       // ALU source 2 : imm
 	      isBranch = 1'b1;        // PC <- pred ? ALU : PC+4	       
@@ -166,7 +172,6 @@ module NrvDecoder(
 	      aluInSel2 = 1'b0;       // ALU source 2 : reg
 	      funcQual = instr[30];   // Qualifier for ALU op: +/- SRL/SRA
 	      isALU = 1'b1;           // ALU op : from instr
-	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; // don't care
 	   end
 	   
            5'b00000: begin // Load
@@ -178,19 +183,16 @@ module NrvDecoder(
 	   end
 	 
            5'b01000: begin // Store
-	      writeBackEn = 1'b0;     // disable write back
+	      writeBackEn  = 1'b0;    // disable write back
 	      aluInSel1 = 1'b0;       // ALU source 1 = reg
 	      aluInSel2 = 1'b1;       // ALU source 2 = imm
 	      imm = Simm;             // imm format = S
 	      isStore = 1'b1;
 	   end
-	    
+
            default: begin
-	      writeBackEn = 1'bx;
-	      aluInSel1 = 1'bx;      
-	      aluInSel2 = 1'bx;      
-	      imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
 	   end
+
        endcase
    end
 
