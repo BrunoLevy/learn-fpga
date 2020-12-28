@@ -34,8 +34,7 @@
 
 //`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count
                      // Can execute code stored in SPI flash from 1Mb offset (mapped to address 0x800000)
-                     // A bit slower though (4-6 CPIs instead of 2-4 CPIs)...
-                     // ... but supports higher overclocking (95 MHz with SSD1351 and mapped SPI flash on IceStick !)
+                     // A bit slower though (4-6 CPIs instead of 2-4 CPIs) ... but supports higher overclocking
 
 `ifndef NRV_MINIRV32 // The options below are not supported by minifemtorv32
 
