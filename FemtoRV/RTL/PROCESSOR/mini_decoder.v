@@ -106,7 +106,11 @@ module NrvDecoder(
        writeBackAplusB = 1'b0;
 
        imm = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
-      
+
+       // The two LSBs are always 11 in the base RV32I instruction
+       // set. In the mini decoder, we do not check for errors, so
+       // we only use instr[6:2] (5 bits) to determine the instruction.
+       
        (* parallel_case, full_case *)
        case(instr[6:2])
 	   5'b01101: begin // LUI

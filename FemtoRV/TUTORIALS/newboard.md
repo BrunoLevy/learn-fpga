@@ -31,9 +31,12 @@ First, you will need to find the following informations, from the datasheet of t
 Step 2: write a constraint file
 -------------------------------
 
-Then you will need to specify the FPGA pin numbers in a constraint file. For ICE40 constraint files have the `.pcf` extension,
-and for ECP5 the `.lpf` extension (and a different syntax !). Start from a constraint file of the same FPGA family as the one
-in your board, and modify the pin numbers.
+Then you will need to specify the FPGA pin numbers in a constraint
+file. For ICE40 constraint files have the `.pcf` extension, and for
+ECP5 the `.lpf` extension (and a different syntax !). The constraints
+file are in the `BOARDS` subdirectory. Start from a constraint file of
+the same FPGA family as the one in your board, and modify the pin
+numbers.
 
 Step 3: the PLL
 ---------------
@@ -62,8 +65,10 @@ At the end of the file, add the rule to define ICE40 or ECP5 for your board.
 Step 5: `Makefile`
 ------------------
 
-You will need to add yosys and nextpnr options for your board (at the beginning of the file), as well as `BOARD`,
-`BOARD.synth` and `BOARD.prog` targets.
+You will need to create a new `BOARDS/board.mk`, with yosys and
+nextpnr options for your board, as well as `BOARD`, `BOARD.synth` 
+and `BOARD.prog` targets. Start by copying the one that is mostly
+similar to yours and adapt it.
 
 Step 6: community
 -----------------
