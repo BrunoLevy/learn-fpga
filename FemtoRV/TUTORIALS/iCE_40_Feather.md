@@ -35,4 +35,6 @@ powershell / cmd and upload using the FPGA-Progtools bundle.
 
 Step 3: Configure femtosoc and femtorv32
 ========================================
+The pinmap and basic settings were imported following the procedure for [adding a new board](newboard.md) from original [iCE40-Feather repo](https://github.com/joshajohnson/iCE40-feather/). The D0 pin is used as RESET.
+
 Ideal configs for the iceFeather / UP5K are still being investigated. A known issue is `SB_PLL40_CORE` needing to be replaced with `SB_PLL40_PAD` with a packagepin for CLK instead of ReferenceCLK for initial gateware building to work.
