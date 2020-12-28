@@ -90,6 +90,10 @@
  `define ICE40
 `endif
 
+`ifdef ICE_FEATHER
+ `define ICE40
+`endif
+
 `ifdef ECP5_EVN
  `define ECP5 
 `endif

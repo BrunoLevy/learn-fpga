@@ -9,7 +9,7 @@ NEXTPNR_ICESTICK_OPT=--force --json $(PROJECTNAME).json --pcf icestick.pcf --asc
 # iCE40_Feather
 YOSYS_ICEFEATHER_OPT=-DICE_FEATHER -q -p "synth_ice40 -relut -top $(PROJECTNAME) -json $(PROJECTNAME).json"
 NEXTPNR_ICEFEATHER_OPT=--force --json $(PROJECTNAME).json --pcf icefeather.pcf --asc $(PROJECTNAME).asc \
-                       --freq 50 --up5k --package sg48
+                       --freq 12 --up5k --package sg48
 
 # ULX3S
 YOSYS_ULX3S_OPT=-DULX3S -q -p "synth_ecp5 -abc9 -top $(PROJECTNAME) -json $(PROJECTNAME).json"
