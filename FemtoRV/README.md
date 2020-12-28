@@ -7,6 +7,7 @@ Quick links:
 - [IceStick tutorial](TUTORIALS/IceStick.md)
 - [ULX3S tutorial](TUTORIALS/ULX3S.md)
 - [ECP5 eval board tutorial](TUTORIALS/ECP5_EVN.md)
+- [FOMU tutorial](TUTORIALS/FOMU.md)
 - [Adding a new board](TUTORIALS/newboard.md) 
 - [More documentation...](TUTORIALS/README.md)
 

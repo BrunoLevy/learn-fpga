@@ -15,9 +15,10 @@ processor design and RISC-V programming.
 Quick links:
   - [FemtoRV](FemtoRV/README.md)
   - [IceStick tutorial](FemtoRV/TUTORIALS/IceStick.md)
-  - [iCE40 Feather tutorial](FemtoRV/TUTORIALS/iCE_40_Feather.md)
+  - [iCE40 Feather tutorial](FemtoRV/TUTORIALS/iCE_40_Feather.md) _WIP_
   - [ULX3S tutorial](FemtoRV/TUTORIALS/ULX3S.md)
   - [ECP5 eval board tutorial](FemtoRV/TUTORIALS/ECP5_EVN.md)
+  - [FOMU tutorial](FemtoRV/TUTORIALS/FOMU.md)  
   - [Designing a RISC-V processor - the FemtoRV32](FemtoRV/TUTORIALS/FemtoRV32.md)      
   - [Notes on RISC-V software compilation](FemtoRV/TUTORIALS/software.md)
 
