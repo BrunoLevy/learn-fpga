@@ -1,0 +1,48 @@
+# 12 MHz clock
+set_io pclk        	35
+
+# User LED
+set_io nLED 		47
+
+# RGB LED
+set_io nLED_RED  	41
+set_io nLED_GRN  	40
+set_io nLED_BLU  	39
+
+# GPIO
+set_io D1 		26
+set_io D2 		27
+set_io D3 		28
+set_io D4 		36
+set_io D5 		31
+set_io D6 		32
+set_io D7 		37
+set_io D8 		38
+set_io D9 		43
+set_io D10 		44
+set_io D11 		48
+set_io D12 		2
+set_io D13 		3
+set_io D14 		4
+set_io D15 		6
+set_io D16 		9
+set_io D17		10
+set_io D18		11
+set_io D19 		12
+set_io D20 		46
+set_io D21 		13
+set_io D22 		42
+set_io D23 		45
+
+# UART
+set_io RXD 		23
+set_io TXD 		21
+
+# SPI Flash
+set_io spi_clk  	15
+set_io spi_cs_n  	16
+set_io spi_mosi  	14
+set_io spi_miso  	17
+
+# Use D0 as RESET
+set_io RESET       25
