@@ -8,9 +8,10 @@
 //`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
 //`define NRV_IO_SPI_SDCARD // Mapped IO, SPI SDCARD
 //`define NRV_IO_BUTTONS    // Mapped IO, buttons
-//`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space 
-//`define NRV_RUN_FROM_SPI
-
+//`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space
+                             // Note: to be able to run code from SPI flash directly, use NRV_MINIRV32 below
+                             //   the FSM of the 'mini' is simpler, was easy to add the required wait states there.
+                             //   larger cores should use an instr cache + page fault / exceptions to load from SPI flash
 
 /************************* Frequency ********************************************************************************/
 `define NRV_FREQ 50      // Frequency in MHz. 
@@ -26,18 +27,16 @@
 `define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
 //`define NRV_RAM 1024   // small ICESTICK config (to further save LUTs if need be)
 
-//`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count ... 892...889 with exec from SPI
+//`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count, and has "exec from mapped SPI flash".
 
-`ifdef NRV_MINIRV32
-`define NRV_LATCH_ALU // ALU always latched in minirv32 configuration (reduces LUT count)
-`else 
+`ifndef NRV_MINIRV32
 /************************* Control and Status Registers *************************************************************/
-`define NRV_CSR         // Uncomment if using something below (counters,...)
-`define NRV_COUNTERS    // Uncomment for instr and cycle counters (won't fit on the ICEStick)
-`define NRV_COUNTERS_64 // ... and uncomment this one as well if you want 64-bit counters
+//`define NRV_CSR         // Uncomment if using something below (counters,...)
+//`define NRV_COUNTERS    // Uncomment for instr and cycle counters (won't fit on the ICEStick)
+//`define NRV_COUNTERS_64 // ... and uncomment this one as well if you want 64-bit counters
 
 /************************* Instruction set **************************************************************************/
-`define NRV_RV32M       // Uncomment for hardware mul and div support (RV32M instructions)
+//`define NRV_RV32M       // Uncomment for hardware mul and div support (RV32M instructions)
 
 /************************* Other ************************************************************************************/
 /*
@@ -66,6 +65,13 @@
 `endif
 
 /************************ Normally you do not need to change anything beyond that point ****************************/
+
+// minirv32 systematically latches ALU (simplifies FSM, lower LUT count)
+`ifdef NRV_MINIRV32
+ `ifndef NRV_LATCH_ALU
+  `define NRV_LATCH_ALU
+ `endif
+`endif
 
 `ifdef NRV_IO_SPI_FLASH
 `define NRV_SPI_FLASH

@@ -246,17 +246,16 @@ module FemtoRV32 #(
 
    // The memory-read signal. It is only needed for IO, hence it is only enabled
    // right before the LOAD state. To allow execution from IO-mapped devices, it
-   // will be necessary to also enable it before instruction fetch.
+   // is necessary to also enable it before instruction fetch.
    assign mem_rstrb = state[LOAD_bit] | state[FETCH_INSTR_bit];
 
    // See also how load_from_mem and store_to_mem are wired.
    assign mem_wenable = state[STORE_bit];
 
-   // alu_wenable starts computation in the ALU (for functions that
-   // require several cycles).
+   // alu_wenable starts computation in the ALU.
    assign alu_wenable = state[EXECUTE_bit];
 
-   // when asserted, next PC is updated from ALU (instead of PC+4)
+   // when asserted, next PC is updated from ALU (instead of PC+4).
    wire jump_or_take_branch = isJump || (isBranch && predOut);
 
    // And now the state machine
