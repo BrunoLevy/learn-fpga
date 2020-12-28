@@ -6,6 +6,11 @@ YOSYS_ICESTICK_OPT=-DICE_STICK -q -p "synth_ice40 -relut -top $(PROJECTNAME) -js
 NEXTPNR_ICESTICK_OPT=--force --json $(PROJECTNAME).json --pcf icestick.pcf --asc $(PROJECTNAME).asc \
                      --freq 12 --hx1k --package tq144
 
+# iCE40_Feather
+YOSYS_ICEFEATHER_OPT=-DICE_FEATHER -q -p "synth_ice40 -relut -top $(PROJECTNAME) -json $(PROJECTNAME).json"
+NEXTPNR_ICEFEATHER_OPT=--force --json $(PROJECTNAME).json --pcf icefeather.pcf --asc $(PROJECTNAME).asc \
+                       --freq 12 --up5k --package sg48
+
 # ULX3S
 YOSYS_ULX3S_OPT=-DULX3S -q -p "synth_ecp5 -abc9 -top $(PROJECTNAME) -json $(PROJECTNAME).json"
 NEXTPNR_ULX3S_OPT=--force --timing-allow-fail --json $(PROJECTNAME).json --lpf ulx3s.lpf \
@@ -22,7 +27,7 @@ NEXTPNR_ECP5_EVN_OPT=--force --json $(PROJECTNAME).json --lpf ecp5_evn.lpf \
         ICESTICK ICESTICK.synth ICESTICK.prog
 
 all:
-	@echo "make one of ICESTICK, ULX3S, ECP5_EVN (or .synth / .prog)"
+	@echo "make one of ICESTICK, ICEFEATHER, ULX3S, ECP5_EVN (or .synth / .prog)"
 
 
 clean:
@@ -56,6 +61,23 @@ ICESTICK.show: FIRMWARE/firmware.hex
 	nextpnr-ice40 $(NEXTPNR_ICESTICK_OPT) --gui
 
 ICESTICK.prog:
+	iceprog $(PROJECTNAME).bin
+
+#######################################################################################################################
+
+ICEFEATHER: ICEFEATHER.synth ICEFEATHER.prog
+
+ICEFEATHER.synth: FIRMWARE/firmware.hex
+	yosys $(YOSYS_ICEFEATHER_OPT) $(VERILOGS)
+	nextpnr-ice40 $(NEXTPNR_ICEFEATHER_OPT)
+	icetime -p icefeather.pcf -P sg48 -r $(PROJECTNAME).timings -d up5k -t $(PROJECTNAME).asc
+	icepack $(PROJECTNAME).asc $(PROJECTNAME).bin
+
+ICEFEATHER.show: FIRMWARE/firmware.hex
+	yosys $(YOSYS_ICEFEATHER_OPT) $(VERILOGS)
+	nextpnr-ice40 $(NEXTPNR_ICEFEATHER_OPT) --gui
+
+ICEFEATHER.prog:
 	iceprog $(PROJECTNAME).bin
 
 #######################################################################################################################
