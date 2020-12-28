@@ -72,6 +72,10 @@
 //`define NRV_NEGATIVE_RESET 
 `endif
 
+`ifdef FOMU
+`define NRV_NEGATIVE_RESET
+`endif
+
 /************************ Normally you do not need to change anything beyond that point ****************************/
 
 // minirv32 systematically latches ALU (simplifies FSM, lower LUT count)
@@ -105,6 +109,10 @@
 `endif
 
 `ifdef ICE_FEATHER
+ `define ICE40
+`endif
+
+`ifdef FOMU
  `define ICE40
 `endif
 

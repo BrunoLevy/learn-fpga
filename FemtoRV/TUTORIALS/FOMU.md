@@ -120,6 +120,22 @@ Please report bugs to http://sourceforge.net/p/dfu-util/tickets/
 Found DFU: [1209:5bf0] ver=0101, devnum=20, cfg=1, intf=0, path="1-1", alt=0, name="Fomu PVT running DFU Bootloader v1.9.1", serial="UNKNOWN"
 ```
 
+Step 3: Test a simple FOMU design (optional)
+============================================
+
+```
+$ cd learn_fpga/Basic/FomuBlink
+$ ./make_it.sh
+```
+
+The FOMU should nicely glow in blue while downloading the
+bitstream, then blinking in different colors. With the FOMU,
+you only have one LED to output something, but it is in
+*colors* !
+
+
+
+
 Links
 -----
 [FOMU tutorials](https://workshop.fomu.im/en/latest/)

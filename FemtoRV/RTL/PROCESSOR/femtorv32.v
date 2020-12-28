@@ -21,7 +21,7 @@ module FemtoRV32 #(
   parameter [0:0] RV32M              = 0, // Set to 1 to support mul/div/rem
   parameter       ADDR_WIDTH         = 24 // width of the address bus
 ) (
-   input 	     clk,
+   input 	      clk,
 
    output [31:0]      mem_addr,  // address bus, only ADDR_WIDTH bits are used
    output wire [31:0] mem_wdata, // data to be written
@@ -29,10 +29,10 @@ module FemtoRV32 #(
    input [31:0]       mem_rdata, // input lines for both data and instr
    output wire 	      mem_rstrb, // active to initiate memory read (used by IO)
    input wire 	      mem_rbusy, // asserted if memory is busy reading value
-   input wire         mem_wbusy, // asserted if memory is busy writing value
-   
-   input wire 	     reset, // set to 0 to reset the processor
-   output wire 	     error  // 1 if current instruction could not be decoded
+   input wire 	      mem_wbusy, // asserted if memory is busy writing value
+
+   input wire 	      reset, // set to 0 to reset the processor
+   output wire 	      error  // 1 if current instruction could not be decoded
 );
 
 

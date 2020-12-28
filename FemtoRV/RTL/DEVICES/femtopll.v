@@ -138,8 +138,7 @@ EHXPLLL #(
         .ENCLKOP(1'b0)
 	);
 
-`elsif ICE40 // ICE40 with 12MHz clock
-
+`elsif ICE_STICK // ICE40 with 12MHz clock
    // Use DIVF and DIVQ values from 'icepll -i 12 -o freq'
    generate
       case(freq)
@@ -213,13 +212,11 @@ EHXPLLL #(
    );
 
 `elsif ECP5_EVN
-   
       // I think that: output freq = 12 Mhz * CLKFB_DIV * (12 / CLKI_DIV) / CLKOP_DIV
       // (to be double-checked...)
       // CLKI_DIV = 2 -> 150 MHz
       // CLKI_DIV = 5 -> 60 MHz      
       // CLKI_DIV = 6 -> 50 MHz
-
     (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
     EHXPLLL #(
         .PLLRST_ENA("DISABLED"),
@@ -247,5 +244,13 @@ EHXPLLL #(
         .PLLWAKESYNC(1'b0),
         .ENCLKOP(1'b0),
     );
+`elsif FOMU
+   // pclk: 48 MHz -> clk: 24 MHz
+   reg cnt;
+   always @(posedge pclk) begin
+      cnt <= ~cnt;
+   end
+   assign clk = cnt;
 `endif
+   
 endmodule  

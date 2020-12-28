@@ -27,8 +27,12 @@
 /*************************************************************************************/
 
 module femtosoc(
-`ifdef NRV_IO_LEDS	      
+`ifdef NRV_IO_LEDS
+ `ifdef FOMU
+   output rgb0,rgb1,rgb2,
+ `else
    output D1,D2,D3,D4,D5,
+ `endif
 `endif	      
 `ifdef NRV_IO_SSD1351	      
    output oled_DIN, oled_CLK, oled_CS, oled_DC, oled_RST,
@@ -56,7 +60,10 @@ module femtosoc(
    output wifi_en,		
 `endif		
    input  RESET,
-   input  pclk
+`ifdef FOMU
+   output usb_dp, usb_dn, usb_dp_pu, 
+`endif
+   input pclk
 );
 
 /********************* Technicalities **************************************/
@@ -80,6 +87,17 @@ module femtosoc(
 
   wire  clk;
 
+
+`ifdef FOMU
+   // Internal wires for the LEDs, 
+   // need to convert to signal for RGB led
+   wire D1,D2,D3,D4,D5;
+   // On the FOMU, USB pins should be statically driven if not used   
+   assign usb_dp    = 1'b0;
+   assign usb_dn    = 1'b0;
+   assign usb_dp_pu = 1'b0;
+`endif
+   
   femtoPLL #(
     .freq(`NRV_FREQ)	     
   ) pll(
@@ -91,8 +109,12 @@ module femtosoc(
   // signal after startup. 
   // Explanation here: (ice40 BRAM reads incorrect values during
   // first cycles).
-  // http://svn.clifford.at/handicraft/2017/ice40bramdelay/README 
-  reg [11:0] reset_cnt = 0;
+  // http://svn.clifford.at/handicraft/2017/ice40bramdelay/README
+`ifdef ICE_STICK
+  reg [11:0] reset_cnt = 0;   
+`else   
+  reg [15:0] reset_cnt = 0;
+`endif   
   wire       reset = &reset_cnt;
 
    
@@ -443,14 +465,29 @@ end
     .mem_rstrb(mem_rstrb),
     .mem_rbusy(mem_rbusy),
     .mem_wbusy(mem_wbusy),	      
-    .reset(reset),
+    .reset(reset), 
     .error(error)
   );
-   
-`ifdef NRV_IO_LEDS  
-     assign D5 = error;
-`endif
-   
 
+`ifdef NRV_IO_LEDS  
+   assign D5 = error;
+ `ifdef FOMU
+    SB_RGBA_DRV #(
+        .CURRENT_MODE("0b1"),       // half current
+        .RGB0_CURRENT("0b000011"),  // 4 mA
+        .RGB1_CURRENT("0b000011"),  // 4 mA
+        .RGB2_CURRENT("0b000011")   // 4 mA
+    ) RGBA_DRIVER (
+        .CURREN(1'b1),
+        .RGBLEDEN(1'b1),
+        .RGB0PWM(D1), 
+        .RGB1PWM(D2), 
+        .RGB2PWM(D3), 
+        .RGB0(rgb0),
+        .RGB1(rgb1),
+        .RGB2(rgb2)
+    );
+ `endif
+`endif
    
 endmodule
