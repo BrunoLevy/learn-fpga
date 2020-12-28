@@ -134,7 +134,7 @@ EHXPLLL #(
         .ENCLKOP(1'b0)
 	);
 
-`elsif ICE40
+`elsif ICE40 // ICE40 with 12MHz clock
 
    // Use DIVF and DIVQ values from 'icepll -i 12 -o freq'
    generate

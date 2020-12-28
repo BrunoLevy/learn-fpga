@@ -5,6 +5,7 @@ FemtoRV32 Tutorials
 - [ULX3S tutorial](ULX3S.md)
 - [ECP5 evaluation board tutorial](ECP5_EVN.md) _(WIP)_
 - [FOMU tutorial](FOMU.md) _(WIP)_
+- [Adding a new board](newboard.md) 
 
 FemtoRV32 Notes
 ===============

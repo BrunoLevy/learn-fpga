@@ -75,7 +75,8 @@ SPI Flash:
    * Maybe we can switch to high speed SPI
    * DDR mode does not seem to be supported (did not see mention of it in spec sheet)
    * Even if I don't manage to execute code from there, maybe we can put font data in the SPI Flash.
-   
+   * https://www.winbond.com/resource-files/w25q32jw%20spi%20revf%2009042018.pdf
+
    * Read instructions:
    
        Read data (03h) -> implemented

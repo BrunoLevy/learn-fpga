@@ -13,7 +13,7 @@
 
 
 /************************* Frequency ********************************************************************************/
-`define NRV_FREQ 50       // Frequency in MHz. 
+`define NRV_FREQ 50      // Frequency in MHz. 
                           // Can overclock it up to 75-80 MHz on the ICEStick and 80-100MHz on ULX3S.
                           // Yosys says OK between 40MHz and 50MHz. 
 
@@ -26,18 +26,18 @@
 `define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
 //`define NRV_RAM 1024   // small ICESTICK config (to further save LUTs if need be)
 
-//`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count
+//`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count ... 892...889 with exec from SPI
 
 `ifdef NRV_MINIRV32
 `define NRV_LATCH_ALU // ALU always latched in minirv32 configuration (reduces LUT count)
 `else 
 /************************* Control and Status Registers *************************************************************/
-//`define NRV_CSR         // Uncomment if using something below (counters,...)
-//`define NRV_COUNTERS    // Uncomment for instr and cycle counters (won't fit on the ICEStick)
-//`define NRV_COUNTERS_64 // ... and uncomment this one as well if you want 64-bit counters
+`define NRV_CSR         // Uncomment if using something below (counters,...)
+`define NRV_COUNTERS    // Uncomment for instr and cycle counters (won't fit on the ICEStick)
+`define NRV_COUNTERS_64 // ... and uncomment this one as well if you want 64-bit counters
 
 /************************* Instruction set **************************************************************************/
-//`define NRV_RV32M       // Uncomment for hardware mul and div support (RV32M instructions)
+`define NRV_RV32M       // Uncomment for hardware mul and div support (RV32M instructions)
 
 /************************* Other ************************************************************************************/
 /*
