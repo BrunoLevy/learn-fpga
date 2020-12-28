@@ -47,6 +47,11 @@ To find the magic values, there are some utilities (fortunately !):
 for ICE40 use `icepll -i inputfreq -o outputfreq`, and for ECP5, use
 `ecpll -i inoutfreq -o outputfreq -f tmp.v`.
 
+If finding the information is too hard, one option is to directly wire
+the board's clock `pclk` to the processor clock `clk` in
+`RTL/femtosoc.v`. If you do that, you will also need to define 
+`NRV_FREQ` as the board's frequency in `RTL/femtosoc_config.v`.
+
 Step 4: `RTL/femtosoc_config.v`
 -------------------------------
 
