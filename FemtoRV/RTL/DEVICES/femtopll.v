@@ -5,6 +5,10 @@
  * (for now, ICEStick, ULX3S and ECP5 evaluation boards supported).
  */ 
 
+`ifdef BENCH
+ `define PASSTHROUGH_PLL
+`endif
+
 module femtoPLL #(
  parameter freq = 60
 ) (
@@ -12,7 +16,7 @@ module femtoPLL #(
  output clk	   
 );
 
-`ifdef BENCH
+`ifdef PASSTHROUGH_PLL
 
   assign clk = pclk;
 

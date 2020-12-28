@@ -49,8 +49,10 @@ for ICE40 use `icepll -i inputfreq -o outputfreq`, and for ECP5, use
 
 If finding the information is too hard, one option is to directly wire
 the board's clock `pclk` to the processor clock `clk` in
-`RTL/femtosoc.v`. If you do that, you will also need to define 
-`NRV_FREQ` as the board's frequency in `RTL/femtosoc_config.v`.
+`RTL/femtosoc.v`. To do that, edit `RTL/femtosoc_config.v` and uncomment
+the line that defines `PASSTHROUGH_PLL`. You will also need to define 
+`NRV_FREQ` as the board's frequency (the UART used for serial communication
+at 115200 bauds depends on it).
 
 Step 4: `RTL/femtosoc_config.v`
 -------------------------------

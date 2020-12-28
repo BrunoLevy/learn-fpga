@@ -18,6 +18,11 @@
                           // Can overclock it up to 75-80 MHz on the ICEStick and 80-100MHz on ULX3S.
                           // Yosys says OK between 40MHz and 50MHz. 
 
+// `define PASSTHROUGH_PLL // Uncomment this line if you have difficulties configuring the PLL (e.g. on a board
+                           // that is not handled by default). In this case, femtorv32 will directly use the 
+                           // board's clock, at its native frequency. Then you need to make sure that NRV_FREQ 
+                           // has the correct value (UART depends on it).
+
 /************************* RAM **************************************************************************************/
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
@@ -36,7 +41,7 @@
 //`define NRV_COUNTERS_64 // ... and uncomment this one as well if you want 64-bit counters
 
 /************************* Instruction set **************************************************************************/
-//`define NRV_RV32M       // Uncomment for hardware mul and div support (RV32M instructions)
+//`define NRV_RV32M       // Uncomment for hardware mul and div support (RV32M instructions). Not supported on IceStick !
 
 /************************* Other ************************************************************************************/
 /*
