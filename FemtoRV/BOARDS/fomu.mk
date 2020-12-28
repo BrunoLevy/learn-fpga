@@ -16,7 +16,7 @@ FOMU.synth: FIRMWARE/firmware.hex
 
 FOMU.show: FIRMWARE/firmware.hex
 	yosys $(YOSYS_FOMU_OPT) $(VERILOGS)
-	nextpnr-ice40 $(NEXTPNR_FOMU_OPT) --gui
+	nextpnr-ice40 $(NEXTPNR_FOMU_OPT) --pcf-allow-unconstrained --gui
 
 FOMU.prog:
 	dfu-util -D $(PROJECTNAME).dfu
