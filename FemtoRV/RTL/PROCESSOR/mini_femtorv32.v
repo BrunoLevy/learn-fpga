@@ -124,6 +124,8 @@ module FemtoRV32 #(
 
    /***************************************************************************/
    // The ALU, partly combinatorial, partly state (for shifts).
+   // The ALU reads its operands when wr is set, then, at least at the next cycle,
+   // the result is available as soon as aluBusy is zero.
    wire [31:0] aluOut;
    wire [31:0] aluAplusB;   
    wire        aluBusy;
@@ -139,8 +141,8 @@ module FemtoRV32 #(
          .in2(aluIn2),
          .func(func),
          .funcQual(funcQual),
-         .out(aluOut),
-	 .AplusB(aluAplusB),	    
+         .out(aluOut),        // computed operation, as specified by func,funcQual
+	 .AplusB(aluAplusB),  // always output the sum of the operands (used by jumps)	    
          .wr(alu_wenable), 
          .busy(aluBusy)	      
    );
@@ -190,9 +192,9 @@ module FemtoRV32 #(
    always @(*) begin
       (* parallel_case, full_case *)
       case(1'b1)
-	writeBackALU :    writeBackData = aluOut;
-	writeBackAplusB:  writeBackData = aluAplusB;	
-	writeBackPCplus4: writeBackData = PCplus4;
+	writeBackALU :    writeBackData = aluOut;    // ALU reg reg and ALU reg imm
+	writeBackAplusB:  writeBackData = aluAplusB; // LUI, AUIPC
+	writeBackPCplus4: writeBackData = PCplus4;   // JAL, JALR
 	isLoad:           writeBackData = LOAD_data_aligned_for_CPU;
       endcase
    end
@@ -259,6 +261,28 @@ module FemtoRV32 #(
    wire jump_or_take_branch = isJump || (isBranch && predOut);
 
    // And now the state machine
+
+   // Important information about memory and register access (BRAM): 
+   // the data is available *one cycle after* the address is set. 
+   // It means that if you set the address at state 1, then the address is 
+   // ready at state 2, and the data is ready at state 3:
+   //
+   // state_1:
+   //    address <= ...
+   //    state <= state_2
+   // state_2:
+   //    state <= state_3
+   // state_3:
+   //    data <= memory[address]
+   //
+   // This concerns both instruction fetch, register fetch and load (in short, need a
+   // dummy state between the state where the address is set and the state where the
+   // data is loaded).
+   // In addition, during state_2, one can wait for memory-mapped devices if mem_rbusy
+   // is set (as in state WAIT_INSTR below, to execute code from mapped SPI flash).
+   // Note that femtorv32.v (without 'mini') makes a smarter use of the address register, 
+   // and overlaps register fetch with *next instruction* fetch (but the state machine is
+   // more complicated).
    
    always @(posedge clk) begin
       if(!reset) begin	
