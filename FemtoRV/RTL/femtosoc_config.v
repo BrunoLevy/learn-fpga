@@ -32,9 +32,13 @@
 `define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
 //`define NRV_RAM 1024   // small ICESTICK config (to further save LUTs if need be)
 
-//`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count, and has "exec from mapped SPI flash".
+//`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count
+                     // Can execute code stored in SPI flash from 1Mb offset (mapped to address 0x800000)
+                     // A bit slower though (4-6 CPIs instead of 2-4 CPIs)...
+                     // ... but supports higher overclocking (95 MHz with SSD1351 and mapped SPI flash on IceStick !)
 
-`ifndef NRV_MINIRV32
+`ifndef NRV_MINIRV32 // The options below are not supported by minifemtorv32
+
 /************************* Control and Status Registers *************************************************************/
 //`define NRV_CSR         // Uncomment if using something below (counters,...)
 //`define NRV_COUNTERS    // Uncomment for instr and cycle counters (won't fit on the ICEStick)
