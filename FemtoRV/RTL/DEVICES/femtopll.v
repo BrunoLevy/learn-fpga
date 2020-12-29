@@ -197,7 +197,7 @@ EHXPLLL #(
       endcase
    endgenerate
 
-   SB_PLL40_CORE #(
+   SB_PLL40_PAD #(
       .FEEDBACK_PATH("SIMPLE"),
       .PLLOUT_SELECT("GENCLK"),
       .DIVR(4'b0000),
@@ -205,7 +205,7 @@ EHXPLLL #(
       .DIVQ(DIVQ), 
       .FILTER_RANGE(3'b001),
    ) pll (
-      .REFERENCECLK(pclk),
+	  .PACKAGEPIN(pclk),
       .PLLOUTCORE(clk),
       .RESETB(1'b1),
       .BYPASS(1'b0)
