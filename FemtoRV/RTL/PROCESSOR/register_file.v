@@ -10,6 +10,7 @@ module NrvRegisterFile(
   output reg [31:0] out1, // Data out 1, available one clock after outRegId1 is set
   output reg [31:0] out2  // Data out 2, available one clock after outRegId2 is set
 );
+   
    // Register file is duplicated so that we can read rs1 and rs2 simultaneously
    // It is a bit stupid, it wastes four (inferred) SB_RAM40_4K BRAMs, where a single
    // one would suffice, but it makes things simpler (and the CPU faster).

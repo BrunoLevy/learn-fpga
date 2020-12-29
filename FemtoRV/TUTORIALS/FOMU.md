@@ -204,8 +204,20 @@ $ make FOMU
 Quite a convoluted way of obtaining more or less the same blinky as in step 3, but this blinky is much cooler:
 it is written in assembly, stored in BRAMs, and executed by a RISC-V core !
 
+Coming next ...
+===============
+
+Now it would seem natural to activate the UART. However, the FOMU does not have the FTDI chip that implements
+serial over USB, here you are on your own, and need to implement the gateware for the USB stack. It can be
+done, [here](https://github.com/rob-ng15/Verilog-Playground/tree/master/j1eforth-verilog) there is an implementation of the J1 processor
+that has the UART-over-USB. It is a big things, with no less than
+[17 verilog files !](https://github.com/rob-ng15/Verilog-Playground/tree/master/j1eforth-verilog/tinyfpga_bx_usbserial/usb).
+Well, if somebody wants to interface it, you can put it in `RTL/DEVICES/USB` and send me a PR once it works.
+
 There is much more that we can do with the FOMU, it has ample room for more functionalities, it has hardware
-mutlipliers (DSP blocs) that we can use to implement RV32IM, it has ample quantities of RAM that we can use.
+mutlipliers (DSP blocs), and RV32IM works without needing any modification (activate it in `RTL/femtosoc_config.v`).
+It has ample quantities of RAM that we can use (single-ported RAM), using a special `SB_SPRAM256KA` bloc, see
+[here](https://github.com/rob-ng15/Verilog-Playground/blob/master/j1eforth-verilog/j1eforth.v).
 It is also possible to talk to it through the USB port, but will require some gateware to be written, since
 it does not have the usual FTDI chip that converts USB to serial. 
 

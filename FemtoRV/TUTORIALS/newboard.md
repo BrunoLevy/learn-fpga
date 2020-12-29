@@ -41,19 +41,38 @@ numbers.
 Step 3: the PLL
 ---------------
 
-The PLL is a specialized block in the FPGA that converts the board's clock to other frequencies. Femtorv32 uses a wrapper
-module `femtopll`, in `RTL/PLL/femtopll.v`, that redirects to board-dependent implementatons in `RTL/PLL/pll_xxx.v`.
-Start by copying the one that most resembles your board. To find the magic values, there are some utilities (fortunately !):
-for ICE40 use `icepll -i inputfreq -o outputfreq`, and for ECP5, use
-`ecpll -i inoutfreq -o outputfreq -f tmp.v`.
+The PLL is a specialized block in the FPGA that converts the board's
+clock to other frequencies. Femtorv32 uses a wrapper module
+`femtopll`, in `RTL/PLL/femtopll.v`, that redirects to board-dependent
+implementatons in `RTL/PLL/pll_xxx.v`.
 
-If finding the information is too hard, one option is to directly wire
-the board's clock `pclk` to the processor clock `clk` in
-`RTL/femtosoc.v`. To do that, edit `RTL/femtosoc_config.v` and uncomment
-the line that defines `PASSTHROUGH_PLL`. You will also need to define 
-`NRV_FREQ` as the board's frequency (the UART used for serial communication
-at 115200 bauds depends on it). If the board's clock is too fast, then you
-may divide it using a counter (see e.g. `RTL/PLL/pll_fomu.v`).
+The first thing you may do is starting from the board's native
+frequency, by defining `PASSTHROUGH_PLL` in
+`RTL/femtosoc_config.v`. This directly wires the board's clock `pclk`
+to the processor clock `clk` in `RTL/femtosoc.v`. You will also need
+to define `NRV_FREQ` as the board's frequency (the UART used for
+serial communication at 115200 bauds depends on it). If the board's
+clock is too fast, then you may divide it using a counter (see
+e.g. `RTL/PLL/pll_fomu.v`).
+
+Then, once this works, you'll probably want to use a true PLL instead,
+because it lets you fine-tune the frequency.  Start by copying the one
+that most resembles your board. To find the magic values, there are
+some utilities (fortunately !): for ICE40 use `icepll -i inputfreq -o
+outputfreq`, and for ECP5, use `ecpll -i inoutfreq -o outputfreq -f
+tmp.v`.  There is even better: I wrote a script that does it
+automatically for you: ``` $ cd RTL/PLL $ ./gen_pll.sh FPGA_type
+board_freq > pll_boardname.pll ``` where `FPGA_type` is `ICE40` or
+`ECP5`, and where `board_freq` is the native frequency of the
+board. It will generate all magic values for you ! Then you need to
+edit `femtopll.v` and add a statement to include your new file.
+
+Note for ICE-40: you may need to edit the generated file, and replace
+`SB_PLL40_CORE` with `SB_PLL40_PAD` and `.REFERENCECLK` with
+`.PACKAGEPIN`. More explanations about that are given
+[here](https://github.com/mystorm-org/BlackIce-II/wiki/PLLs-Improved)
+
+
 
 Step 4: `RTL/femtosoc_config.v`
 -------------------------------
