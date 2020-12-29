@@ -61,9 +61,12 @@ that most resembles your board. To find the magic values, there are
 some utilities (fortunately !): for ICE40 use `icepll -i inputfreq -o
 outputfreq`, and for ECP5, use `ecpll -i inoutfreq -o outputfreq -f
 tmp.v`.  There is even better: I wrote a script that does it
-automatically for you: ``` $ cd RTL/PLL $ ./gen_pll.sh FPGA_type
-board_freq > pll_boardname.pll ``` where `FPGA_type` is `ICE40` or
-`ECP5`, and where `board_freq` is the native frequency of the
+automatically for you:
+```
+ $ cd RTL/PLL
+ $ ./gen_pll.sh FPGA_type board_freq > pll_boardname.pll
+```
+where `FPGA_type` is `ICE40` or `ECP5`, and where `board_freq` is the native frequency of the
 board. It will generate all magic values for you ! Then you need to
 edit `femtopll.v` and add a statement to include your new file.
 
