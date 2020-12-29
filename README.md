@@ -19,7 +19,7 @@ Quick links:
   - [ULX3S tutorial](FemtoRV/TUTORIALS/ULX3S.md)
   - [ECP5 eval board tutorial](FemtoRV/TUTORIALS/ECP5_EVN.md)
   - [FOMU tutorial](FemtoRV/TUTORIALS/FOMU.md)  
-  - [Designing a RISC-V processor - the FemtoRV32](FemtoRV/TUTORIALS/FemtoRV32.md)      
+  - [Designing a RISC-V processor - the FemtoRV32](FemtoRV/TUTORIALS/DESIGN/FemtoRV32.md)      
   - [Notes on RISC-V software compilation](FemtoRV/TUTORIALS/software.md)
 
 Basic: more basic things I wrote during May 2020 - June 2020  
