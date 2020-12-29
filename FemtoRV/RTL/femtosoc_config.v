@@ -31,7 +31,7 @@
                      // Can execute code stored in SPI flash from 1Mb offset (mapped to address 0x800000)
                      // A bit slower though (4-6 CPIs instead of 2-4 CPIs) ... but supports higher overclocking
 
-`ifndef NRV_MINIRV32 // The options below are not supported by minifemtorv32
+//`ifndef NRV_MINIRV32 // The options below are not supported by minifemtorv32
 
 /************************* Control and Status Registers *************************************************************/
 //`define NRV_CSR         // Uncomment if using something below (counters,...)
@@ -59,9 +59,11 @@
 
 /************************ Advanced processor configuration ************************************************/
 
-`define NRV_RESET_ADDR 0            // The address the processor jumps to on reset 
-// `define NRV_RESET_ADDR 0x800000  // If using NRV_MINIRV32 and mapped SPI Flash, you may want to jump to
-                                    // a bootloader or firmware stored there.
+`define NRV_RESET_ADDR 0                // The address the processor jumps to on reset 
+//`define NRV_RESET_ADDR 32'h00800000  // If using NRV_MINIRV32 and mapped SPI Flash, you may want to jump to
+                                        // a bootloader or firmware stored there.
+
+`define NRV_IO_HARDWARE_CONFIG // Comment-out to disable hardware config registers mapped in IO-Space
 
 /* 
  * Uncomment if the RESET button is wired and active low:

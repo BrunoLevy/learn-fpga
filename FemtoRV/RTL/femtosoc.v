@@ -272,6 +272,7 @@ module femtosoc(
  * client code to query installed RAM and configured devices
  * (this one does not use any pin, of course).
  */
+`ifdef NRV_IO_HARDWARE_CONFIG   
 wire [31:0] hwconfig_rdata;
 HardwareConfig hwconfig(
    .clk(clk),			
@@ -279,6 +280,7 @@ HardwareConfig hwconfig(
    .sel_devices_freq(io_word_address[HW_CONFIG_DEVICES_FREQ_bit]),
    .rdata(hwconfig_rdata)			 
 );
+`endif
    
 /*********************** Four LEDs ************************/
 `ifdef NRV_IO_LEDS
@@ -409,7 +411,10 @@ HardwareConfig hwconfig(
  * io_rdata is latched. Not mandatory, but probably allow higher freq, to be tested.
  */ 
 always @(posedge clk) begin
-   io_rdata <= hwconfig_rdata
+   io_rdata <= 0
+`ifdef NRV_IO_HARDWARE_CONFIG	       
+            | hwconfig_rdata
+`endif	       
 `ifdef NRV_IO_LEDS      
 	    | leds_rdata
 `endif

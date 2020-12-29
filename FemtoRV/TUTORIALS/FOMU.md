@@ -218,8 +218,6 @@ There is much more that we can do with the FOMU, it has ample room for more func
 mutlipliers (DSP blocs), and RV32IM works without needing any modification (activate it in `RTL/femtosoc_config.v`).
 It has ample quantities of RAM that we can use (single-ported RAM), using a special `SB_SPRAM256KA` bloc, see
 [here](https://github.com/rob-ng15/Verilog-Playground/blob/master/j1eforth-verilog/j1eforth.v).
-It is also possible to talk to it through the USB port, but will require some gateware to be written, since
-it does not have the usual FTDI chip that converts USB to serial. 
 
 I'd like also to wire a 8x8 led matrix. It requires soldering 3 wires to the pads, and two additional wires
 (gnd and vcc) on the other side. 
