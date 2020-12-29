@@ -14,14 +14,9 @@
                              //   larger cores should use an instr cache + page fault / exceptions to load from SPI flash
 
 /************************* Frequency ********************************************************************************/
-`define NRV_FREQ 50      // Frequency in MHz. 
+`define NRV_FREQ 50       // Frequency in MHz. 
                           // Can overclock it up to 75-80 MHz on the ICEStick and 80-100MHz on ULX3S.
                           // Yosys says OK between 40MHz and 50MHz. 
-
-// `define PASSTHROUGH_PLL // Uncomment this line if you have difficulties configuring the PLL (e.g. on a board
-                           // that is not handled by default). In this case, femtorv32 will directly use the 
-                           // board's clock, at its native frequency. Then you need to make sure that NRV_FREQ 
-                           // has the correct value (UART depends on it).
 
 /************************* RAM **************************************************************************************/
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
@@ -32,7 +27,7 @@
 `define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
 //`define NRV_RAM 1024   // small ICESTICK config (to further save LUTs if need be)
 
-//`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count
+//`define NRV_MINIRV32 // Minimalistic configuration, reduces LUT count // PAR: 889 LUTs (Icestick, LEDS, 1KbRAM, 50MHz)
                      // Can execute code stored in SPI flash from 1Mb offset (mapped to address 0x800000)
                      // A bit slower though (4-6 CPIs instead of 2-4 CPIs) ... but supports higher overclocking
 
