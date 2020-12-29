@@ -134,7 +134,8 @@ module FemtoRV32 #(
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
 
    NrvSmallALU #(
-      .TWOSTAGE_SHIFTER(0)
+      .TWOSTAGE_SHIFTER(0),
+      .LATCH_ALU(1)		 
    ) alu(
          .clk(clk),	      
          .in1(aluIn1),

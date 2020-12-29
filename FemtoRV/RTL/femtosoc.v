@@ -454,15 +454,31 @@ end
 /* And last but not least, the processor                        */
    
   wire error;
+
+`ifdef NRV_RV32M
+   parameter RV32M = 1;   
+`else
+   parameter RV32M = 0;      
+`endif
+   
+`ifdef NRV_TWOSTAGE_SHIFTER
+   parameter TWOSTAGE_SHIFTER = 1;
+`else
+   parameter TWOSTAGE_SHIFTER = 0;
+`endif   
+
+`ifdef NRV_LATCH_ALU
+   parameter LATCH_ALU = 1;
+`else
+   parameter LATCH_ALU = 0;
+`endif   
    
   FemtoRV32 #(
      .ADDR_WIDTH(24)
 `ifndef NRV_MINIRV32	      
- `ifdef NRV_RV32M
-     ,.RV32M(1)
- `else
-     ,.RV32M(0)	      
- `endif
+     ,.RV32M(RV32M)
+     ,.TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER)
+     ,.LATCH_ALU(LATCH_ALU)
 `endif	      
   ) processor(
     .clk(clk),			

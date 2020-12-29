@@ -18,8 +18,10 @@
 /********************* Nrv processor *******************************/
 
 module FemtoRV32 #(
-  parameter [0:0] RV32M              = 0, // Set to 1 to support mul/div/rem
-  parameter       ADDR_WIDTH         = 24 // width of the address bus
+  parameter [0:0] RV32M            = 0,  // Set to 1 to support mul/div/rem
+  parameter       ADDR_WIDTH       = 24, // width of the address bus
+  parameter [0:0] LATCH_ALU        = 0,
+  parameter [0:0] TWOSTAGE_SHIFTER = 1		   
 ) (
    input 	      clk,
 
@@ -153,7 +155,9 @@ module FemtoRV32 #(
    // Select the ALU for RV32M (large ALU) or plain RV32I (small ALU)
    generate
       if(RV32M) begin
-         NrvLargeALU alu(
+         NrvLargeALU #(
+          .LATCH_ALU(LATCH_ALU)
+	 ) alu(
             .clk(clk),	      
             .in1(aluIn1),
             .in2(aluIn2),
@@ -167,11 +171,8 @@ module FemtoRV32 #(
          );
       end else begin 
          NrvSmallALU #(
-`ifdef NRV_TWOSTAGE_SHIFTER	      
-          .TWOSTAGE_SHIFTER(1)
-`else
-          .TWOSTAGE_SHIFTER(0)	      
-`endif
+          .LATCH_ALU(LATCH_ALU),
+          .TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER)
          ) alu(
             .clk(clk),	      
             .in1(aluIn1),

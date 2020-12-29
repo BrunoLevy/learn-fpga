@@ -31,7 +31,7 @@
                      // Can execute code stored in SPI flash from 1Mb offset (mapped to address 0x800000)
                      // A bit slower though (4-6 CPIs instead of 2-4 CPIs) ... but supports higher overclocking
 
-//`ifndef NRV_MINIRV32 // The options below are not supported by minifemtorv32
+`ifndef NRV_MINIRV32 // The options below are not supported by minifemtorv32
 
 /************************* Control and Status Registers *************************************************************/
 //`define NRV_CSR         // Uncomment if using something below (counters,...)

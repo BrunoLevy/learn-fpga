@@ -3,7 +3,9 @@
 // Implements the RV32IM instruction set, with MUL,DIV,REM
 // Includes a barrel shifter (that shifts in 1 clock)
 
-module NrvLargeALU (
+module NrvLargeALU #(
+   parameter [0:0] LATCH_ALU = 0		     
+)( 
   input 	     clk,      // clock
   input [31:0] 	     in1,      // <- The two inputs
   input [31:0] 	     in2,      // <-
@@ -69,25 +71,25 @@ module NrvLargeALU (
 	   3'b111: out <= dividend;                         // REMU
 	 endcase
       end else begin 
-`ifdef NRV_LATCH_ALU
-	 out = ALUreg;
-`else	   
+	 if(LATCH_ALU) begin
+	    out = ALUreg;
+	 end else begin
 	 (* parallel_case, full_case *)
-	 case(func)
-           3'b000: out = funcQual ? minus[31:0] : AplusB;   // ADD/SUB
-           3'b010: out = LT ;                               // SLT
-           3'b011: out = LTU;                               // SLTU
-           3'b100: out = in1 ^ in2;                         // XOR
-           3'b110: out = in1 | in2;                         // OR
-           3'b111: out = in1 & in2;                         // AND
+	    case(func)
+              3'b000: out = funcQual ? minus[31:0] : AplusB;   // ADD/SUB
+              3'b010: out = LT ;                               // SLT
+              3'b011: out = LTU;                               // SLTU
+              3'b100: out = in1 ^ in2;                         // XOR
+              3'b110: out = in1 | in2;                         // OR
+              3'b111: out = in1 & in2;                         // AND
 	   
-	   // We could generate the barrel shifter here, but doing so
-	   // makes the critical path too long, so we keep a two-phase
-	   // ALU instead.
-           3'b001: out = ALUreg;                           // SLL	   
-           3'b101: out = ALUreg;                           // SRL/SRA
-	 endcase 
-`endif	 
+	      // We could generate the barrel shifter here, but doing so
+	      // makes the critical path too long, so we keep a two-phase
+	      // ALU instead.
+              3'b001: out = ALUreg;                           // SLL	   
+              3'b101: out = ALUreg;                           // SRL/SRA
+	    endcase 
+	 end
       end
    end 
 
@@ -149,18 +151,23 @@ module NrvLargeALU (
 	    quotient_msk <= quotient_msk >> 1;
 	 end
       end else if(wr) begin // Barrel shifter, latched to reduce combinatorial depth.
-	 case(func)
-`ifdef NRV_LATCH_ALU
-	   3'b000: ALUreg <= funcQual ? minus[31:0] : AplusB;   // ADD/SUB
-	   3'b010: ALUreg <= LT ;                               // SLT
-	   3'b011: ALUreg <= LTU;                               // SLTU
-	   3'b100: ALUreg <= in1 ^ in2;                         // XOR
-	   3'b110: ALUreg <= in1 | in2;                         // OR
-	   3'b111: ALUreg <= in1 & in2;                         // AND
-`endif
-	   3'b001: ALUreg <= in1 << in2[4:0];                                        // SLL	   
-	   3'b101: ALUreg <= $signed({funcQual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
-	 endcase 
+	 if(LATCH_ALU) begin
+	    case(func)
+	      3'b000: ALUreg <= funcQual ? minus[31:0] : AplusB;   // ADD/SUB
+	      3'b010: ALUreg <= LT ;                               // SLT
+	      3'b011: ALUreg <= LTU;                               // SLTU
+	      3'b100: ALUreg <= in1 ^ in2;                         // XOR
+	      3'b110: ALUreg <= in1 | in2;                         // OR
+	      3'b111: ALUreg <= in1 & in2;                         // AND
+	      3'b001: ALUreg <= in1 << in2[4:0];                                        // SLL	   
+	      3'b101: ALUreg <= $signed({funcQual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
+	    endcase 
+	 end else begin 
+	    case(func)
+	      3'b001: ALUreg <= in1 << in2[4:0];                                        // SLL	   
+	      3'b101: ALUreg <= $signed({funcQual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
+	    endcase 
+	 end
       end 
       /* verilator lint_on WIDTH */
       /* verilator lint_on CASEINCOMPLETE */
