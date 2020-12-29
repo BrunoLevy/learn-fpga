@@ -286,9 +286,9 @@ module FemtoRV32 #(
    
    always @(posedge clk) begin
       if(!reset) begin	
-	 state <= INITIAL;
-	 addressReg <= 0;
-	 PC <= 0;
+	 state      <= INITIAL;
+	 addressReg <= `NRV_RESET_ADDR;
+	 PC         <= `NRV_RESET_ADDR;
       end else
 
       (* parallel_case, full_case *)	

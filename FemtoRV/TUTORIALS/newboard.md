@@ -12,7 +12,7 @@ First, you will need to find the following informations, from the datasheet of t
    - ECP5 variant: 25k, 85k, um5g-85k (fast version of 85k), ...
    - Package (what the ship looks like): e.g., tq144 for ICE40 (SMC with pins on 4 sides), CABGA381 for ECP5 (ball grid array SMC), ...
 
-- the frequency used by the board (e.g., 12MHz for Ice40 is common)
+- the frequency used by the board (e.g., 12MHz for the IceStick ...)
 
 - FPGA pin numbers _(start with the first two of the list, then add what you need, one device at a time)_:
    - 1 pin for the clock (mandatory)

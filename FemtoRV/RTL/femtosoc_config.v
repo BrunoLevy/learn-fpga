@@ -62,6 +62,11 @@
 //`define NRV_LATCH_ALU
 `endif
 
+/************************ Advanced processor configuration ************************************************/
+
+`define NRV_RESET_ADDR 0            // The address the processor jumps to on reset 
+// `define NRV_RESET_ADDR 0x800000  // If using NRV_MINIRV32 and mapped SPI Flash, you may want to jump to
+                                    // a bootloader or firmware stored there.
 
 /* 
  * Uncomment if the RESET button is wired and active low:
