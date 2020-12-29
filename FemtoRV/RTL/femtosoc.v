@@ -8,12 +8,15 @@
 /*************************************************************************************/
 
 `include "femtosoc_config.v"        // User configuration of processor and SOC.
+
 `ifdef NRV_MINIRV32
 `include "PROCESSOR/mini_femtorv32.v" // Minimalistic version of the processor
 `else
-`include "PROCESSOR/femtorv32.v"    // The processor
+`include "PROCESSOR/femtorv32.v"      // The processor
 `endif
-`include "DEVICES/femtopll.v"       // The PLL (generates clock at NRV_FREQ)
+
+`include "PLL/femtopll.v"           // The PLL (generates clock at NRV_FREQ)
+
 `include "DEVICES/HardwareConfig.v" // Constant registers to query hardware config.
 `include "DEVICES/uart.v"           // The UART (serial port over USB)
 `include "DEVICES/SSD1351.v"        // The OLED display
@@ -105,11 +108,11 @@ module femtosoc(
     .clk(clk)
   );
    
-  // A little delay for sending the reset
-  // signal after startup. 
+  // A little delay for sending the reset signal after startup.
   // Explanation here: (ice40 BRAM reads incorrect values during
   // first cycles).
   // http://svn.clifford.at/handicraft/2017/ice40bramdelay/README
+  // On the ICE40-UP5K, 4096 cycles do not suffice (-> 65536 cycles)
 `ifdef ICE_STICK
   reg [11:0] reset_cnt = 0;   
 `else   

@@ -42,11 +42,8 @@ Step 3: the PLL
 ---------------
 
 The PLL is a specialized block in the FPGA that converts the board's clock to other frequencies. Femtorv32 uses a wrapper
-module `femtopll`, in `RTL/DEVICES/femtopll.v`. If you are lucky (that is, if your board uses the same frequency as something
-already programed here), then you can probably directly reuse what is written there, by making sure you define the right macro,
-else you will need to add your own values here. 
-
-To find the magic values, there are some utilities (fortunately !):
+module `femtopll`, in `RTL/PLL/femtopll.v`, that redirects to board-dependent implementatons in `RTL/PLL/pll_xxx.v`.
+Start by copying the one that most resembles your board. To find the magic values, there are some utilities (fortunately !):
 for ICE40 use `icepll -i inputfreq -o outputfreq`, and for ECP5, use
 `ecpll -i inoutfreq -o outputfreq -f tmp.v`.
 
@@ -55,7 +52,8 @@ the board's clock `pclk` to the processor clock `clk` in
 `RTL/femtosoc.v`. To do that, edit `RTL/femtosoc_config.v` and uncomment
 the line that defines `PASSTHROUGH_PLL`. You will also need to define 
 `NRV_FREQ` as the board's frequency (the UART used for serial communication
-at 115200 bauds depends on it).
+at 115200 bauds depends on it). If the board's clock is too fast, then you
+may divide it using a counter (see e.g. `RTL/PLL/pll_fomu.v`).
 
 Step 4: `RTL/femtosoc_config.v`
 -------------------------------
