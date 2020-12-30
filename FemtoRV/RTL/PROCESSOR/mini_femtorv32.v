@@ -134,8 +134,8 @@ module FemtoRV32 #(
    wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
 
    NrvSmallALU #(
-      .TWOSTAGE_SHIFTER(0),
-      .LATCH_ALU(1)		 
+      .TWOSTAGE_SHIFTER(0), // Makes shifts faster but uses too many LUTs
+      .LATCH_ALU(1)	    // Always latch ALU ops, makes FSM simpler	 
    ) alu(
          .clk(clk),	      
          .in1(aluIn1),
@@ -308,7 +308,7 @@ module FemtoRV32 #(
         // *********************************************************************
 	// Additional wait state for instruction fetch. 
 	state[WAIT_INSTR_bit]: begin
-	   if(!mem_rbusy) begin // The test is used by exec from SPI
+	   if(!mem_rbusy) begin // rbusy may be high when executing from SPI flash
 	      instr <= mem_rdata;
 	      state <= FETCH_REGS;
 	   end
@@ -355,7 +355,7 @@ module FemtoRV32 #(
 	//    Next state: linear execution flow
 	state[STORE_bit]: begin
 	   addressReg <= PC;
-	   // If storing to IO device, use wait state.
+	   // If storing to IO device (IO page has bit 22 on), use wait state.
 	   // (needed because mem_wbusy will be available at next cycle).
 	   state <= aluAplusB[22] ? WAIT_IO_STORE : FETCH_INSTR;
 	end
