@@ -6,6 +6,7 @@
 module NrvSmallALU #(
    // optional twostage shifter, makes shifts faster (but eats up 60 LUTs or so)
    parameter [0:0] TWOSTAGE_SHIFTER = 0,
+   // optionally latch all ALU operations (may improve both maxfreq and LUT count)		     
    parameter [0:0] LATCH_ALU = 0		     
 )(
   input 	     clk, 
@@ -13,7 +14,7 @@ module NrvSmallALU #(
   input [31:0] 	     in2,
   input [2:0] 	     func,     // Operation
   input 	     funcQual, // Operation qualification (+/-, Logical/Arithmetic)
-  output reg [31:0]  out,      // ALU result. Latched if operation is a shift
+  output reg [31:0]  out,      // ALU result. Always latched if operation is a shift
   output 	     busy,     // 1 if ALU is currently computing (that is, shift)
   input 	     wr,       // Raise to write ALU inputs and start computing
   output wire [31:0] AplusB    // Direct access to the adder, used by address computation
@@ -40,14 +41,10 @@ module NrvSmallALU #(
    wire        LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
    wire        LTU = minus[32];
 
-
-generate
-   if(LATCH_ALU) begin
-      always @(*) begin
-	 out = ALUreg;
-      end
-   end else begin
-      always @(*) begin
+   always @(*) begin
+      if(LATCH_ALU) begin
+	 out = ALUreg;	 
+      end else begin
 	 (* parallel_case, full_case *)
 	 case(func)
 	   3'b000: out = funcQual ? minus[31:0] : AplusB;   // ADD/SUB
@@ -60,10 +57,9 @@ generate
 	   // Shift operations, get result from the shifter
 	   3'b001: out = ALUreg;                           // SLL	   
 	   3'b101: out = ALUreg;                           // SRL/SRA
-	 endcase // case (func)
-      end // always @ (*)
+	 endcase 
+      end
    end
-endgenerate   
 
    always @(posedge clk) begin
       
@@ -92,7 +88,7 @@ endgenerate
 	 if (TWOSTAGE_SHIFTER && shamt > 4) begin
 	    shamt <= shamt - 4;
 	    case(func)
-	      3'b001: ALUreg <= ALUreg << 4;                               // SLL
+	      3'b001: ALUreg <= ALUreg << 4;                                 // SLL
 	      3'b101: ALUreg <= funcQual ? {{4{ALUreg[31]}}, ALUreg[31:4]} : // SRL/SRA 
                                            { 4'b0000,        ALUreg[31:4]} ; 
 	    endcase 

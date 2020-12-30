@@ -4,6 +4,7 @@
 // Includes a barrel shifter (that shifts in 1 clock)
 
 module NrvLargeALU #(
+   // optionally latch all ALU operations (may improve both maxfreq and LUT count)		     
    parameter [0:0] LATCH_ALU = 0		     
 )( 
   input 	     clk,      // clock
@@ -49,7 +50,7 @@ module NrvLargeALU #(
    // Implementation of MUL instructions: using a single 33 * 33
    // multiplier, and doing sign extension or not according to
    // the signedness of the operands in instruction.
-   // On the ECP5, yosys infers four 18x18 DSPs.
+   // On the ECP5 and ICE40-up5k yosys infers DSPs.
    // For FPGAs that don't have DSP blocks, we could use an
    // iterative algorithm instead (e.g., the one in FIRMWARE/LIB/mul.s)
    wire               in1U = (func == 3'b011);
@@ -150,8 +151,8 @@ module NrvLargeALU #(
 	    divisor <= divisor >> 1;
 	    quotient_msk <= quotient_msk >> 1;
 	 end
-      end else if(wr) begin // Barrel shifter, latched to reduce combinatorial depth.
-	 if(LATCH_ALU) begin
+      end else if(wr) begin 
+	 if(LATCH_ALU) begin // optionally latched RV32I instructions
 	    case(func)
 	      3'b000: ALUreg <= funcQual ? minus[31:0] : AplusB;   // ADD/SUB
 	      3'b010: ALUreg <= LT ;                               // SLT
@@ -162,7 +163,7 @@ module NrvLargeALU #(
 	      3'b001: ALUreg <= in1 << in2[4:0];                                        // SLL	   
 	      3'b101: ALUreg <= $signed({funcQual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA
 	    endcase 
-	 end else begin 
+	 end else begin // Barrel shifter, always latched to reduce combinatorial depth.
 	    case(func)
 	      3'b001: ALUreg <= in1 << in2[4:0];                                        // SLL	   
 	      3'b101: ALUreg <= $signed({funcQual ? in1[31] : 1'b0, in1}) >>> in2[4:0]; // SRL/SRA

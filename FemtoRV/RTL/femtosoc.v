@@ -88,9 +88,6 @@ module femtosoc(
  `endif   
 `endif
 
-  wire  clk;
-
-
 `ifdef FOMU
    // Internal wires for the LEDs, 
    // need to convert to signal for RGB led
@@ -100,6 +97,8 @@ module femtosoc(
    assign usb_dn    = 1'b0;
    assign usb_dp_pu = 1'b0;
 `endif
+
+  wire  clk;
    
   femtoPLL #(
     .freq(`NRV_FREQ)	     

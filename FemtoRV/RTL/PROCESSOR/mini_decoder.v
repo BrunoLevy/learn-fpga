@@ -124,7 +124,7 @@ module NrvDecoder(
 	 
 	   5'b00101: begin // AUIPC
 	      writeBackEn  = 1'b1;    // enable write back
-	      writeBackAplusB = 1'b1;    // write back source = A+B
+	      writeBackAplusB = 1'b1; // write back source = A+B
 	      inRegId1Sel = 1'bx;     // reg 1 Id : don't care (we use PC)	      
 	      aluInSel1 = 1'b1;       // ALU source 1 = PC	      
 	      aluInSel2 = 1'b1;       // ALU source 2 = imm
