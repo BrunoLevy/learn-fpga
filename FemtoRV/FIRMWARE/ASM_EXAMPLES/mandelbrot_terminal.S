@@ -101,6 +101,10 @@ exit_Z:
         la   a0, string1
 	call print_string
         call getchar
+
+#       li a0, 1000
+#	call milliwait
+	
 	call putchar
         li a0,13
 	call putchar
