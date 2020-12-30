@@ -12,7 +12,7 @@
 
 /**********************************************************************/
 
-`ifdef PASSTHROUG_PLL
+`ifdef PASSTHROUGH_PLL
 module femtoPLL #(
  parameter freq = 60
 ) (

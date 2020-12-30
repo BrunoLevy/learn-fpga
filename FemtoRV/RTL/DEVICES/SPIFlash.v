@@ -7,6 +7,7 @@
 //
 // TODO: - we could use wmask to read/write directly 16 bits or 32 bits of data
 //       - QSPI mode
+// DataSheet: https://www.winbond.com/resource-files/w25q128jv%20spi%20revc%2011162016.pdf
 
 module SPIFlash(
     input wire 	       clk,   // system clock

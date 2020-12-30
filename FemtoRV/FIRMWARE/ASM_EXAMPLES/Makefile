@@ -1,12 +1,12 @@
 include ../makefile.inc
 
 ALL_PROGRAMS=\
-blinker_shift.bin blinker_wait.bin hello.bin\
-mandelbrot_OLED.bin mandelbrot_terminal.bin\
-test_led_matrix.bin test_OLED.bin test_serial.bin
+blinker_shift.elf blinker_wait.elf hello.elf\
+mandelbrot_OLED.elf mandelbrot_terminal.elf\
+test_led_matrix.elf test_OLED.elf test_serial.elf
 
 all:
-	@echo "Please specify target (progname.bin or progname.hex) or 'everything'"
+	@echo "Please specify target (progname.elf or progname.hex) or 'everything'"
 
 everything: $(ALL_PROGRAMS)
 

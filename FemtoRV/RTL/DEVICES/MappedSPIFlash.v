@@ -6,6 +6,7 @@
 // This file: driver for SPI Flash, projected in memory space (readonly)
 //
 // TODO: QSPI mode
+// DataSheet: https://www.winbond.com/resource-files/w25q128jv%20spi%20revc%2011162016.pdf
 
 module MappedSPIFlash(
     input wire 	       clk,          // system clock

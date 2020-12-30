@@ -23,6 +23,7 @@ localparam HW_CONFIG_RAM_bit          = 6;  // read: total quantity of RAM, in b
 
 localparam HW_CONFIG_DEVICES_FREQ_bit = 4;  // read: configured derives (16 LSB) and freq (16 MSB) 
 
+// configured devices
 localparam NRV_DEVICES = 0
 `ifdef NRV_IO_LEDS
    | (1 << LEDs_bit)			 
@@ -49,3 +50,18 @@ localparam NRV_DEVICES = 0
    | (1 << MAPPED_SPI_FLASH_bit)		  
 `endif			 
 ;
+
+// CPL (Cycles per Loop)
+// number of cycles for each
+// iteration of:
+// wait: sub a0, a0, a1
+//       bgt a0, zero, wait
+`ifdef NRV_MINIRV32
+ `define NRV_CPL 9
+`else
+ `ifdef NRV_LATCH_ALU
+  `define NRV_CPL 7
+ `else
+  `define NRV_CPL 6
+ `endif
+`endif

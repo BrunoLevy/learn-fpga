@@ -9,11 +9,11 @@ main:   add sp,sp,-4
 anim:   la a0,face1data
 	call MAX7219_image
 	li a0, 500
-        call delay
+        call milliwait
 	la a0,face2data
 	call MAX7219_image
 	li a0,500
-	call delay
+	call milliwait
 	j anim
 	li a0,0
 	lw ra, 0(sp)

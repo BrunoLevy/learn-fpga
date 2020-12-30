@@ -318,7 +318,7 @@ module FemtoRV32 #(
 
    // alu_wenable starts computation in the ALU (for functions that
    // require several cycles).
-   assign alu_wenable = state[EXECUTE_bit];
+   assign alu_wenable = state[EXECUTE_bit] && isALU;
 
    // instr_retired is asserted during one cycle for each
    // retired instructions. It is used to update the instruction
@@ -427,7 +427,7 @@ module FemtoRV32 #(
 	//    also waits from data from IO (listens to mem_rbusy)
 	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[WAIT_ALU_OR_DATA_bit]: begin
-	   `verbose($display("        mem_rbusy:%b",mem_rbusy));
+	   `verbose($display("        mem_rbusy:%b  alu_busy:%b",mem_rbusy,alu_busy));
 	   if(!aluBusy && !mem_rbusy) begin
 	      instr <= nextInstr;
 	      addressReg <= PCplus4;

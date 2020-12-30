@@ -9,6 +9,15 @@ TODO:
       * ULX3S USB keyboard (or tiny I2C keyboard before then)
       * pipeline !
       * compliance test ! https://github.com/riscv/riscv-compliance/
+      
+      * Rename some signals
+               register file, decoder:
+                   reg_s1,reg_s2,reg_d,reg_s1_data,reg_s2_data,reg_d_data,
+               ALU:
+	         in1,in2,aluInSel1(reg/pc),aluInSel2(reg/imm)
+		 A,B,A_is_pc,B_is_imm
+                 
+      
       * register using combinatorial RAM.
       * print_float, printf("%f")
       * A 90-ish "megademo" on the OLED display !
@@ -122,6 +131,10 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - Timing was VERY different between mini-femtorv32 and femtorv32,
+	       it was because I was *always* writing to the ALU in EXECUTE state,
+	       randomly loading shift operations and causing wait alu waiting !
+	       
              - Had several difficulties introducing a wait state for IOs:
 	        STORE:
 	           a) everything can't be done in the STORE state, because
@@ -135,7 +148,7 @@ RISC-V notes:
 		   ... still not there (mandelbrot demo displays garbage when removing
 		         wait state from functions), does not enter wait loop, to be
 			 checked with simulation.
-	           ---> OK, need to use SSD1351_is_sensing instead of !SSD1351_CS for
+	           ---> OK, need to use SSD1351_is_sending instead of !SSD1351_CS for
 		         memory_wrbusy
 		   ---> Still had problems at 80MHz with asm programs, removed the 'else
 		         branch' in register file, seems OK now.

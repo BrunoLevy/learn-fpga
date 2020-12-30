@@ -1,10 +1,10 @@
 /* 
  * PLL for FOMU board 
- * Did not manage to make it work with SB_PLL40_CORE, so using a divider 
- * Input frequency: 48 MHz 
+ * If using ./gen_pll.sh ICE40 48 > pll_fomu.v, can make it work at
+ * 16 MHz but not at 24 MHz (I don't understand why), so using a 
+ * simple divider instead for now. 
  * Supported output frequencies: 48 MHz, 24 MHz, 12 MHz, 6 MHz, 3 MHz 
  */
-
 
 module femtoPLL #(
  parameter freq = 60

@@ -110,7 +110,7 @@ module FemtoRV32 #(
    wire writeBack; // asserted if register write back is done.
    reg  [31:0] writeBackData;
    wire [31:0] regOut1;
-   wire [31:0] regOut2;   
+   wire [31:0] regOut2;
    NrvRegisterFile regs(
     .clk(clk),
     .in(writeBackData),
@@ -119,7 +119,7 @@ module FemtoRV32 #(
     .outRegId1(regId1),
     .outRegId2(regId2),
     .out1(regOut1),
-    .out2(regOut2) 
+    .out2(regOut2)
    );
 
    /***************************************************************************/
@@ -256,7 +256,7 @@ module FemtoRV32 #(
    assign mem_wenable = state[STORE_bit];
 
    // alu_wenable starts computation in the ALU.
-   assign alu_wenable = state[EXECUTE_bit];
+   assign alu_wenable = state[EXECUTE_bit] && isALU;
 
    // when asserted, next PC is updated from ALU (instead of PC+4).
    wire jump_or_take_branch = isJump || (isBranch && predOut);
@@ -316,9 +316,7 @@ module FemtoRV32 #(
 
         // *********************************************************************
         // Fetch registers (instr is ready, as well as register ids)
-	state[FETCH_REGS_bit]: begin
-	   state <= EXECUTE;
-	end
+	state[FETCH_REGS_bit]: state <= EXECUTE;
 	
         // *********************************************************************	
 	// Handles jump/branch, or transitions to waitALU, load, store
@@ -375,8 +373,8 @@ module FemtoRV32 #(
 	//    also waits from data from IO (listens to mem_rbusy)
 	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[WAIT_ALU_OR_DATA_bit]: begin
-	   `verbose($display("        mem_rbusy:%b",mem_rbusy));
-	   if(!aluBusy && !mem_rbusy) begin
+	   `verbose($display("        mem_rbusy:%b alu_busy:%b",mem_rbusy,aluBusy));
+	   if((!isALU || !aluBusy) && !mem_rbusy) begin
 	      addressReg <= PC;	      
 	      state <= FETCH_INSTR;
 	   end
@@ -406,7 +404,6 @@ module FemtoRV32 #(
 	state[STORE_bit]:            `show_state("store");
 	state[WAIT_ALU_OR_DATA_bit]: `show_state("wait_alu_or_data");
 	state[WAIT_IO_STORE_bit]:    `show_state("wait_IO_store");	
-	state[ERROR_bit]:   	     `bench($display("ERROR"));	   	   	   
 	default:  	             `bench($display("UNKNOWN STATE: %b",state));	   	   	   
       endcase
    
@@ -416,8 +413,8 @@ module FemtoRV32 #(
 	   7'b0010111: `show_opcode("AUIPC");
 	   7'b1101111: `show_opcode("JAL");
 	   7'b1100111: `show_opcode("JALR");
-	   7'b1100011: `show_opcode("BRANCH");
-	   7'b0010011: `show_opcode("ALU reg imm");
+	   7'b1100011: begin `show_opcode("BRANCH");      $display("      predOut=%b",predOut);      end
+	   7'b0010011: begin `show_opcode("ALU reg imm"); $display("      func=%b imm=%d",func,imm); end
 	   7'b0110011: `show_opcode("ALU reg reg");
 	   7'b0000011: `show_opcode("LOAD");
 	   7'b0100011: `show_opcode("STORE");

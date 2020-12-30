@@ -38,7 +38,7 @@ main:
         call oled_write_window
 
         li   a0,250
-	call delay
+	call milliwait
 	li   t0, 0
 	sw   t0, IO_LEDS(gp)
 

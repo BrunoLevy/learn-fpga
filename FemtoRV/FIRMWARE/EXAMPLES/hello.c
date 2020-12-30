@@ -1,6 +1,13 @@
 #include <femtorv32.h>
 
+extern void wait_cycles(int ncycles);
+
 int main() {
+  /*
+  wait_cycles(90);
+  return 0;
+  */
+  
    /*
     * redirects display to UART (default), OLED display
     * or led matrix, based on configured devices (in femtosoc.v).
@@ -14,9 +21,10 @@ int main() {
    femtosoc_tty_init();
    for(;;) {
       printf("Hello world !!\n Let me introduce myself, I am FemtoRV32, one of the smallest RISC-V cores\n");
-      delay(1000);
-      printf("I am running at %d MHz\n", IO_IN(IO_DEVICES_FREQ) >> 16);
-      delay(1000);
+      wait_cycles(FEMTORV32_FREQ * 1000 * 1000);
+      //  delay(1000);
+      printf("I am running at %d MHz\n", FEMTORV32_FREQ);
+      // delay(1000);
    }
    return 0;
 }

@@ -19,9 +19,11 @@ extern int  getchar();
 extern int  putchar(int c);
 extern int  puts(const char* s);
 
-extern void delay(int ms);     /* waits an (approximate) number of milliseconds. */
-extern void microwait(int ns); /* waits an (approximate) number of microseconds.  */
-extern uint64_t cycles(); /* gets the number of cycles since last reset (needs NRV_COUNTERS_64) */
+extern uint64_t cycles();      /* gets the number of cycles since last reset (needs NRV_COUNTERS_64) */
+extern void wait_cycles(int cycles); /* waits for a number of cycles. */
+extern void milliwait(int ms);       /* waits for a number of milliseconds. */
+extern void microwait(int ns);       /* waits for a number of microseconds. */
+#define delay(ms) milliwait(ms)
 
 /* System */
 
@@ -127,6 +129,10 @@ void GL_putchar_xy(int x, int y, char c);
 #define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
 #define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)
 #define LEDS(val)         IO_OUT(IO_LEDS,val)
+
+#define FEMTOSOC_HAS_DEVICE(bit) (IO_IN(IO_DEVICES_FREQ) & (1 << bit))
+#define FEMTORV32_FREQ           ((IO_IN(IO_DEVICES_FREQ) >> 16) & 1023)
+#define FEMTORV32_CPL            (IO_IN(IO_DEVICES_FREQ) >> 26)
 
 /* SSD1351 Oled display on 4-wire SPI bus */
 extern void oled_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
