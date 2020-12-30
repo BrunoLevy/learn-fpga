@@ -14,7 +14,7 @@ all:
 
 
 clean:
-	rm -f *.timings *.asc *.bin *.bit *config *.json *.svf *~ *.vvp
+	rm -f *.timings *.asc *.bin *.bit *config *.json *.svf *~ *.vvp *.dfu *.rpt
 
 #######################################################################################################################
 
