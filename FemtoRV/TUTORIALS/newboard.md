@@ -52,8 +52,7 @@ frequency, by defining `PASSTHROUGH_PLL` in
 to the processor clock `clk` in `RTL/femtosoc.v`. You will also need
 to define `NRV_FREQ` as the board's frequency (the UART used for
 serial communication at 115200 bauds depends on it). If the board's
-clock is too fast, then you may divide it using a counter (see
-e.g. `RTL/PLL/pll_fomu.v`).
+clock is too fast, then you may divide it using a counter.
 
 Then, once this works, you'll probably want to use a true PLL instead,
 because it lets you fine-tune the frequency.  Start by copying the one

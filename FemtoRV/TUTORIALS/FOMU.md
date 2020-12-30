@@ -153,7 +153,7 @@ We configure `FemtoRV/RTL/femtosoc_config.v` as follows (we keep unused options 
 //`define NRV_IO_SPI_SDCARD   // Mapped IO, SPI SDCARD
 //`define NRV_IO_BUTTONS      // Mapped IO, buttons
 
-`define NRV_FREQ 24         // Frequency in MHz. 
+`define NRV_FREQ 16         // Frequency in MHz. 
                                                   
 // Quantity of RAM in bytes. Needs to be a multiple of 4. 
 // Can be decreased if running out of LUTs (address decoding consumes some LUTs).
@@ -206,6 +206,10 @@ it is written in assembly, stored in BRAMs, and executed by a RISC-V core !
 
 Coming next ...
 ===============
+
+There are still things that I do not understand: at 24 MHz, it blinks
+slowlier than at 16 MHz, and at 20 MHz, it gets stuck. _To be
+understood_.
 
 Now it would seem natural to activate the UART. However, the FOMU does not have the FTDI chip that implements
 serial over USB, here you are on your own, and need to implement the gateware for the USB stack. It can be

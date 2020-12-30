@@ -49,11 +49,11 @@ static inline int MISO() {
 }
 
 static inline void CLK_DELAY() {
-   microwait(0); 
+  microwait(0);
 }
 
 static inline void DLY_US(int t) {
-   microwait(t); 
+  microwait(t); 
 }
 
 void spi_send (uint8_t d) {

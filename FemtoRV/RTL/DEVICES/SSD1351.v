@@ -51,14 +51,18 @@ module SSD1351(
    localparam cnt_max = 2'b11;
  `else   
    generate
-      if(`NRV_FREQ <= 60) begin // Divide by 2-> 30 MHz
+      if(`NRV_FREQ <= 60) begin           // Divide by 2-> 30 MHz
 	 reg slow_cnt;
 	 localparam cnt_bit = 0;
 	 localparam cnt_max = 1'b1;
-      end else begin            // Divide by 4
+      end else if(`NRV_FREQ <= 120) begin // Divide by 4
 	 reg[1:0] slow_cnt;
 	 localparam cnt_bit = 1;
 	 localparam cnt_max = 2'b11;
+      end else begin                      // Divide by 8
+	 reg[2:0] slow_cnt;
+	 localparam cnt_bit = 2;
+	 localparam cnt_max = 3'b111;
       end
    endgenerate
  `endif
