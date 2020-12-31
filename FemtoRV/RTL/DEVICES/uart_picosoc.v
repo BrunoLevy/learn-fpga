@@ -19,8 +19,7 @@
 
  // October 2019, Matthias Koch: Renamed wires
  // December 2020, Bruno Levy: parameterization with freq and bauds
- //                            removed reset logic
- //                            gained 20-30 LUTs
+ //                            Factorized recv_divcnt and send_divcnt 
 
 module buart #(
   parameter FREQ_MHZ = 60,
@@ -39,36 +38,40 @@ module buart #(
 
     output busy,
     output valid
-   
 );
 
+    // Generates the bauds clock, and the 
+    // half-cycle for the receiver.
     parameter divider = FREQ_MHZ * 1000000 / BAUDS;
+    reg [$clog2(divider)-1:0] divcnt; 
+    wire baud_clk  = (divcnt == divider + 1);
+    wire half_baud_clk = (divcnt > divider/2);
+    always @(posedge clk) begin
+       if(
+	  (wr && !send_bitcnt) ||
+	  (recv_state == 1 && half_baud_clk) ||
+	  baud_clk 
+       ) begin
+          divcnt <= 0;
+       end else begin
+	  divcnt <= divcnt + 1;
+       end
+    end   
 
-   /********************************** Receive ******************************/
-   
+    reg [3:0] recv_state;
+    reg [7:0] recv_pattern;
     reg [7:0] recv_buf_data;
     reg recv_buf_valid;
 
+    reg [9:0] send_pattern;
+    reg [3:0] send_bitcnt;
+
     assign rx_data = recv_buf_data;
     assign valid = recv_buf_valid;
-   
-    reg [3:0] recv_state;
-    reg [7:0] recv_pattern;
+    assign busy = |send_bitcnt;
 
-    // Counts to divider. Reserve enough bytes !   
-    reg [$clog2(divider)-1:0] recv_divcnt;   
-   
-    wire recv_baudclk      = (recv_divcnt == divider + 1);
-    wire recv_half_baudclk = recv_divcnt > divider/2;
-    // If I replace with:
-    // wire  recv_half_baudclk = (recv_divcnt == divider/2 + 1);
-    // it saves additional LUTs, but sometimes received character 
-    // is garbage (and I do not understand why, because I think
-    // it is equivalent).
-   
     always @(posedge clk) begin
-       recv_divcnt <= recv_divcnt + 1;
-       
+
        if (rd) recv_buf_valid <= 0;
 
        case (recv_state)
@@ -77,50 +80,35 @@ module buart #(
               recv_state <= 1;
          end
          1: begin
-            if (recv_half_baudclk) begin
+            if (half_baud_clk) begin
                recv_state <= 2;
-               recv_divcnt <= 0;
             end
          end
          10: begin
-            if (recv_baudclk) begin
+            if (baud_clk) begin
                recv_buf_data <= recv_pattern;
                recv_buf_valid <= 1;
                recv_state <= 0;
             end
          end
          default: begin
-            if (recv_baudclk) begin
+            if (baud_clk) begin
                recv_pattern <= {rx, recv_pattern[7:1]};
                recv_state <= recv_state + 1;
-               recv_divcnt <= 0;
             end
          end
        endcase
     end
 
-   /********************************** Send *********************************/
-   
-    reg [9:0] send_pattern;
-    reg [3:0] send_bitcnt;
-
     assign tx = send_pattern[0];
-    assign busy = (send_bitcnt != 0);
-
-    // Counts to divider. Reserve enough bytes !   
-    reg [$clog2(divider)-1:0] send_divcnt;   
-    wire send_baudclk = (send_divcnt == divider + 1);
 
     always @(posedge clk) begin
-       send_divcnt <= send_divcnt + 1;
        if (wr && !send_bitcnt) begin
           send_pattern <= {1'b1, tx_data[7:0], 1'b0};
           send_bitcnt <= 10;
-          send_divcnt <= 0;
-       end else if ((send_divcnt == divider + 1) && (send_bitcnt != 0)) begin
+       end else if (baud_clk && send_bitcnt) begin
           send_pattern <= {1'b1, send_pattern[9:1]};
           send_bitcnt <= send_bitcnt - 1;
-          send_divcnt <= 0;
        end
     end
 
