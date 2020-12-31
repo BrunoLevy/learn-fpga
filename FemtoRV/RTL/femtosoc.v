@@ -57,7 +57,10 @@ module femtosoc(
    output sd_mosi, input sd_miso, output sd_cs_n, output sd_clk,
 `endif
 `ifdef NRV_IO_BUTTONS
-   input [5:0] buttons,
+   `ifdef ICE_FEATHER
+      input [3:0] buttons, 
+   `else
+      input [5:0] buttons,
 `endif
 `ifdef ULX3S
    output wifi_en,		
