@@ -34,3 +34,7 @@ testbench:
 	vvp femtosoc_bench.vvp
 
 #######################################################################################################################
+
+lint:
+	verilator --lint-only -DPASSTHROUGH_PLL --top-module $(PROJECTNAME) -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL $(VERILOGS)
+#######################################################################################################################
