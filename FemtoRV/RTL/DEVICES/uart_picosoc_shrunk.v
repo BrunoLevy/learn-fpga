@@ -41,11 +41,13 @@ module buart #(
     output valid
 );
 
+   /************** Baud frequency generator *******************/
+   
     // Generates the bauds clock, and the 
     // half-cycle for the receiver.
     parameter divider = FREQ_MHZ * 1000000 / BAUDS;
     parameter divwidth = $clog2(divider);
-    // Olof Kindgren: use n+1 bit, decrement instead of
+    // Trick from Olof Kindgren: use n+1 bit and decrement instead of
     // incrementing, and test the sign bit.
     reg [divwidth:0] divcnt; 
     wire baud_clk  = divcnt[divwidth];
@@ -53,9 +55,8 @@ module buart #(
        if((recv_state == 0) && !rx) begin
            // half period for the first received bit
            divcnt <= divider/2+1;
-       end else if(
-	  (wr && !send_bitcnt) ||
-	  baud_clk 
+       end else if(  
+           (wr && !send_bitcnt) || baud_clk 
        ) begin
           divcnt <= divider;
        end else begin
@@ -63,29 +64,31 @@ module buart #(
        end
     end   
 
+   /************* Receiver ***********************************/
+   
     reg [3:0] recv_state;
     reg [7:0] recv_pattern;
     reg [7:0] recv_buf_data;
     reg recv_buf_valid;
 
-    reg [9:0] send_pattern;
-    reg [3:0] send_bitcnt;
-
     assign rx_data = recv_buf_data;
     assign valid = recv_buf_valid;
-    assign busy = |send_bitcnt;
 
     always @(posedge clk) begin
 
-       if (rd) recv_buf_valid <= 0;
+       if (rd) begin
+	  recv_buf_valid <= 0;
+       end
 
        case (recv_state)
          0: begin
-            if (!rx)
-              recv_state <= 1;
+            if (!rx) begin
+               recv_state <= 1;
+	    end
          end
          1: begin
-	    // This one is triggered after a half-period	 
+	    // This one is triggered after a half-period
+	    // (state 0 initializes the counter with divider/2+1)
             if (baud_clk) begin 
                recv_state <= 2;
             end
@@ -106,6 +109,11 @@ module buart #(
        endcase
     end
 
+   /************* Transmitter ******************************/
+   
+    reg [9:0] send_pattern;
+    reg [3:0] send_bitcnt;
+    assign busy = |send_bitcnt;
     assign tx = send_pattern[0];
 
     always @(posedge clk) begin
