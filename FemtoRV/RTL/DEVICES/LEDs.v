@@ -25,7 +25,7 @@ module LEDDriver(
    
    always @(posedge clk) begin
       if(sel && wstrb) begin
-	 led_state <= wdata;
+	 led_state <= wdata[3:0];
 	 `bench($display("****************** LEDs = %b  0x%h %d", wdata[3:0],wdata,$signed(wdata)));
       end
    end

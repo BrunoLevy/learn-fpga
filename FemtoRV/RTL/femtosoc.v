@@ -123,7 +123,7 @@ module femtosoc(
 `endif   
   wire       reset = &reset_cnt;
 
-   
+/* verilator lint_off WIDTH */   
 `ifdef NRV_NEGATIVE_RESET
    always @(posedge clk,negedge RESET) begin
       if(!RESET) begin
@@ -141,7 +141,8 @@ module femtosoc(
       end
    end
 `endif
-
+/* verilator lint_on WIDTH */   
+   
 /***************************************************************************************************
 /*
  * Memory and memory interface
@@ -215,6 +216,7 @@ module femtosoc(
 
    // The power of YOSYS: it infers SB_RAM40_4K BRAM primitives automatically ! (and recognizes
    // masked writes, amazing ...)
+   /* verilator lint_off WIDTH */
    always @(posedge clk) begin
       if(mem_address_is_ram) begin
 	 if(mem_wmask[0]) RAM[ram_word_address][ 7:0 ] <= mem_wdata[ 7:0 ];
@@ -224,6 +226,8 @@ module femtosoc(
       end 
       ram_rdata <= RAM[ram_word_address];
    end
+   /* verilator lint_on WIDTH */
+   
 `ifdef NRV_MAPPED_SPI_FLASH
    assign mem_rdata = mem_address_is_io  ? io_rdata  : 
 		      mem_address_is_ram ? ram_rdata : 

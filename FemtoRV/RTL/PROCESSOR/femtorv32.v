@@ -41,7 +41,8 @@ module FemtoRV32 #(
    // The internal register that stores the current address,
    // directly wired to the address bus.
    reg [ADDR_WIDTH-1:0] addressReg;
-   assign mem_addr = addressReg;
+   parameter ADDR_PAD= {(32-ADDR_WIDTH){1'b0}};
+   assign mem_addr = {ADDR_PAD,addressReg};
    
    // The program counter.
    reg [ADDR_WIDTH-1:0] PC;
@@ -149,9 +150,9 @@ module FemtoRV32 #(
    wire [31:0] aluAplusB;   
    wire        aluBusy;
    wire        alu_wenable;
-   wire [31:0] aluIn1 = aluInSel1 ? PC  : regOut1;
-   wire [31:0] aluIn2 = aluInSel2 ? imm : regOut2;
-
+   wire [31:0] aluIn1 = aluInSel1 ? {ADDR_PAD,PC}  : regOut1;
+   wire [31:0] aluIn2 = aluInSel2 ? imm            : regOut2;
+   
    // Select the ALU for RV32M (large ALU) or plain RV32I (small ALU)
    generate
       if(RV32M) begin
@@ -249,9 +250,9 @@ module FemtoRV32 #(
    always @(*) begin
       (* parallel_case, full_case *)
       case(1'b1)
-	writeBackALU :    writeBackData = aluOut;
-	writeBackAplusB:  writeBackData = aluAplusB;	
-	writeBackPCplus4: writeBackData = PCplus4;
+	writeBackALU :    writeBackData = aluOut; // ALU reg reg and ALU reg imm
+	writeBackAplusB:  writeBackData = aluAplusB;	      // LUI, AUIPC
+	writeBackPCplus4: writeBackData = {ADDR_PAD,PCplus4}; // JAL, JALR
 	isLoad:           writeBackData = LOAD_data_aligned_for_CPU;
 `ifdef NRV_CSR
 	writeBackCSR:     writeBackData = CSR_rdata;	
@@ -373,7 +374,7 @@ module FemtoRV32 #(
 	//    If linear execution flow, update instr with lookahead and prepare next lookahead	
 	state[EXECUTE_bit]: begin
 	   nextInstr <= mem_rdata;  // Looked-ahead instr.
-	   addressReg <= aluAplusB; // Needed for LOAD,STORE,jump,branch
+	   addressReg <= aluAplusB[ADDR_WIDTH-1:0]; // Needed for LOAD,STORE,jump,branch
 	   PC <= PCplus4;
 	   
 	   (* parallel_case, full_case *)	   
@@ -386,7 +387,7 @@ module FemtoRV32 #(
 	     end
 	     needWaitALU:   state <= WAIT_ALU_OR_DATA;	     
 	     jump_or_take_branch: begin
-		PC <= aluAplusB;
+		PC <= aluAplusB[ADDR_WIDTH-1:0];
 		state <= FETCH_INSTR;
 	     end
 	     default: begin // Linear execution flow, use lookahead, prepare next lookahead

@@ -47,6 +47,12 @@ module buart #(
     // half-cycle for the receiver.
     parameter divider = FREQ_MHZ * 1000000 / BAUDS;
     parameter divwidth = $clog2(divider);
+   
+    /* verilator lint_off WIDTH */
+    parameter [divwidth:0] baud_init = divider;
+    parameter [divwidth:0] half_baud_init = divider/2+1; 
+    /* verilator lint_on WIDTH */
+   
     // Trick from Olof Kindgren: use n+1 bit and decrement instead of
     // incrementing, and test the sign bit.
     reg [divwidth:0] divcnt; 
@@ -54,11 +60,11 @@ module buart #(
     always @(posedge clk) begin
        if((recv_state == 0) && !rx) begin
            // half period for the first received bit
-           divcnt <= divider/2+1;
+          divcnt <= half_baud_init;
        end else if(  
-           (wr && !send_bitcnt) || baud_clk 
+           (wr && (send_bitcnt == 0)) || baud_clk 
        ) begin
-          divcnt <= divider;
+          divcnt <= baud_init;
        end else begin
 	  divcnt <= divcnt - 1;
        end
@@ -117,10 +123,10 @@ module buart #(
     assign tx = send_pattern[0];
 
     always @(posedge clk) begin
-       if (wr && !send_bitcnt) begin
+       if (wr && !busy) begin
           send_pattern <= {1'b1, tx_data[7:0], 1'b0};
           send_bitcnt <= 10;
-       end else if (baud_clk && send_bitcnt) begin
+       end else if (baud_clk && busy) begin
           send_pattern <= {1'b1, send_pattern[9:1]};
           send_bitcnt <= send_bitcnt - 1;
        end

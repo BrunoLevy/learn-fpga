@@ -78,8 +78,8 @@ module NrvLargeALU #(
 	 (* parallel_case, full_case *)
 	    case(func)
               3'b000: out = funcQual ? minus[31:0] : AplusB;   // ADD/SUB
-              3'b010: out = LT ;                               // SLT
-              3'b011: out = LTU;                               // SLTU
+	      3'b010: out = {31'b0, LT} ;                      // SLT
+	      3'b011: out = {31'b0, LTU};                      // SLTU
               3'b100: out = in1 ^ in2;                         // XOR
               3'b110: out = in1 | in2;                         // OR
               3'b111: out = in1 & in2;                         // AND
@@ -155,8 +155,8 @@ module NrvLargeALU #(
 	 if(LATCH_ALU) begin // optionally latched RV32I instructions
 	    case(func)
 	      3'b000: ALUreg <= funcQual ? minus[31:0] : AplusB;   // ADD/SUB
-	      3'b010: ALUreg <= LT ;                               // SLT
-	      3'b011: ALUreg <= LTU;                               // SLTU
+	      3'b010: ALUreg <= {31'b0, LT} ;                      // SLT
+	      3'b011: ALUreg <= {31'b0, LTU};                      // SLTU
 	      3'b100: ALUreg <= in1 ^ in2;                         // XOR
 	      3'b110: ALUreg <= in1 | in2;                         // OR
 	      3'b111: ALUreg <= in1 & in2;                         // AND

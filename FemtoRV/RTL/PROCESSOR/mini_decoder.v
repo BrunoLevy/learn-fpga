@@ -30,11 +30,8 @@ module NrvDecoder(
     output reg 	      isBranch,  // |
     output reg 	      isJump,    // /
 		  
-    output reg [31:0] imm,   // immediate value decoded from the instruction
-		  
-    output wire       error  // always 0 in this version that does not detect errors
+    output reg [31:0] imm        // immediate value decoded from the instruction
 );
-   assign error = 1'b0;
    
    reg inRegId1Sel; // 0: force inRegId1 to zero 1: use inRegId1 instr field
 
