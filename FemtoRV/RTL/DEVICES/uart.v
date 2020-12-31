@@ -11,7 +11,7 @@
 
 `ifdef USE_CLAIRE_UART
 
-`include "uart_picosoc.v"
+`include "uart_picosoc_shrunk.v"
 
 module UART(
     input wire 	       clk,      // system clock

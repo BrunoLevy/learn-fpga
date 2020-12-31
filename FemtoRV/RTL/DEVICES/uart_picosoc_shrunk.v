@@ -19,8 +19,9 @@
 
  // October 2019, Matthias Koch: Renamed wires
  // December 2020, Bruno Levy: parameterization with freq and bauds
- //                            Factorized recv_divcnt and send_divcnt 
-
+ //                            Factorized recv_divcnt and send_divcnt
+ //                            Additional LUT golfing tricks
+ 
 module buart #(
   parameter FREQ_MHZ = 60,
   parameter BAUDS    = 115200	       
@@ -43,18 +44,22 @@ module buart #(
     // Generates the bauds clock, and the 
     // half-cycle for the receiver.
     parameter divider = FREQ_MHZ * 1000000 / BAUDS;
-    reg [$clog2(divider)-1:0] divcnt; 
-    wire baud_clk  = (divcnt == divider + 1);
-    wire half_baud_clk = (divcnt > divider/2);
+    parameter divwidth = $clog2(divider);
+    // Olof Kindgren: use n+1 bit, decrement instead of
+    // incrementing, and test the sign bit.
+    reg [divwidth:0] divcnt; 
+    wire baud_clk  = divcnt[divwidth];
     always @(posedge clk) begin
-       if(
+       if((recv_state == 0) && !rx) begin
+           // half period for the first received bit
+           divcnt <= divider/2+1;
+       end else if(
 	  (wr && !send_bitcnt) ||
-	  (recv_state == 1 && half_baud_clk) ||
 	  baud_clk 
        ) begin
-          divcnt <= 0;
+          divcnt <= divider;
        end else begin
-	  divcnt <= divcnt + 1;
+	  divcnt <= divcnt - 1;
        end
     end   
 
@@ -80,7 +85,8 @@ module buart #(
               recv_state <= 1;
          end
          1: begin
-            if (half_baud_clk) begin
+	    // This one is triggered after a half-period	 
+            if (baud_clk) begin 
                recv_state <= 2;
             end
          end
