@@ -38,3 +38,28 @@ Step 3: Configure femtosoc and femtorv32
 The pinmap and basic settings were imported following the procedure for [adding a new board](newboard.md) from original [iCE40-Feather repo](https://github.com/joshajohnson/iCE40-feather/). The D0 pin is used as RESET.
 
 Ideal configs for the iceFeather / UP5K are still being investigated. A known issue is `SB_PLL40_CORE` needing to be replaced with `SB_PLL40_PAD` with a packagepin for CLK instead of ReferenceCLK for initial gateware building to work.
+
+The ice-feather comes with an SPI Flash and a stock [led wing](https://github.com/joshajohnson/iCE40-feather/tree/master/hardware/led-wing) with a 6x6 LED Matrix , a second RGB LED and 4 buttons.
+
+Set up the `femtosoc_config.v` to support the SPI flash by enabling / uncommenting this line.
+
+```
+//`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash 
+```
+
+Setup support for the wing based buttons by uncommenting this line
+
+```
+//`define NRV_IO_BUTTONS    // Mapped IO, buttons
+```
+
+The LED matrix shield in action and buttons are shown in the images
+below.
+
+![LED wing](Images/ice40_Feather_led_blank.jpg)
+
+![LED wing lit](Images/ice40_Feather_led_lit.jpg)
+
+The x2 RGB led's spread across the Base feather and the LED Wing are mapped to pins D1-D6 and when the FemtoRV Soc is loaded these light up as shown below.
+
+![FemtoRV loaded lit](Images/ice40_Feather_led_femto.jpg)
