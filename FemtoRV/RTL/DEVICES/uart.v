@@ -14,12 +14,13 @@
 `include "uart_picosoc.v"
 
 module UART(
-    input wire 	       clk,   // system clock
-    input wire 	       rstrb, // read strobe		
-    input wire 	       wstrb, // write strobe
-    input wire 	       sel,   // select data (rw) 	       
-    input wire [31:0]  wdata, // data to be written
-    output wire [31:0] rdata, // data read
+    input wire 	       clk,      // system clock
+    input wire 	       rstrb,    // read strobe		
+    input wire 	       wstrb,    // write strobe
+    input wire 	       sel_dat,  // select data reg (rw)
+    input wire 	       sel_cntl, // select control reg (r) 	       	    
+    input wire [31:0]  wdata,    // data to be written
+    output wire [31:0] rdata,    // data read
 
     input wire 	       RXD, // UART pins
     output wire        TXD	    
@@ -42,11 +43,13 @@ buart #(
    .rx_data(rx_data),
    .busy(serial_tx_busy),
    .valid(serial_valid),
-   .wr(sel && wstrb),
-   .rd(sel && rstrb)
+   .wr(sel_dat && wstrb),
+   .rd(sel_dat && rstrb)
 );
 
-assign rdata = sel ? {22'b0, serial_tx_busy, serial_valid, rx_data} : 32'b0;   
+assign rdata =   sel_dat  ? {22'b0, serial_tx_busy, serial_valid, rx_data} 
+               : sel_cntl ? {22'b0, serial_tx_busy, serial_valid, 8'b0   } 
+               : 32'b0;   
    
 endmodule
 

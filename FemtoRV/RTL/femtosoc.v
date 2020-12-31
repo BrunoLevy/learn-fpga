@@ -189,7 +189,7 @@ module femtosoc(
    wire [31:0] io_wdata = mem_wdata;
    wire        io_rstrb = mem_rstrb && mem_address_is_io;
    wire        io_wstrb = mem_wstrb && mem_address_is_io;
-   wire [10:0] io_word_address = mem_address[12:2]; // word offset in io page
+   wire [19:0] io_word_address = mem_address[21:2]; // word offset in io page
    wire	       io_rbusy; 
    wire        io_wbusy;
    
@@ -325,7 +325,8 @@ HardwareConfig hwconfig(
       .clk(clk),
       .rstrb(io_rstrb),	     	     
       .wstrb(io_wstrb),
-      .sel(io_word_address[UART_DAT_bit]),
+      .sel_dat(io_word_address[UART_DAT_bit]),
+      .sel_cntl(io_word_address[UART_CNTL_bit]),	     
       .wdata(io_wdata),
       .rdata(uart_rdata),
       .RXD(RXD),

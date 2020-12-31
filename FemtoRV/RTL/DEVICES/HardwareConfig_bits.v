@@ -4,7 +4,8 @@ localparam SSD1351_CNTL_bit = 1; // (write) Oled display control
 localparam SSD1351_CMD_bit  = 2; // (write) Oled display commands (8 bits)
 localparam SSD1351_DAT_bit  = 3; // (write) Oled display data (8 bits)
 
-localparam UART_DAT_bit     = 5; // (read/write) received data / data to send (8 bits)
+localparam UART_DAT_bit     = 5;  // (read/write) received data / data to send (8 bits)
+localparam UART_CNTL_bit    = 11; // (read) status. bit 8: valid read data. bit 9: busy sending
 
 localparam MAX7219_DAT_bit  = 7; // (write) led matrix data (16 bits)
 
