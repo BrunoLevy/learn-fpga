@@ -61,6 +61,7 @@ module femtosoc(
       input [3:0] buttons, 
    `else
       input [5:0] buttons,
+   `endif		
 `endif
 `ifdef ULX3S
    output wifi_en,		

@@ -4,11 +4,13 @@
 //
 // This file: driver for UART (serial over USB)
 
-//`define USE_CLAIRE_UART
+// Uncomment to use Claire Wolf's picosoc UART
+// (eats up more LUTs, but more stable at high freq)
+
+`define USE_CLAIRE_UART
 
 `ifdef USE_CLAIRE_UART
 
-`define cfg_divider (`NRV_FREQ * 1000 * 1000 / 115200)
 `include "uart_picosoc.v"
 
 module UART(
@@ -50,8 +52,10 @@ endmodule
 
 `else
 
+// Use James Bowman's UART (smaller, but less stable at higher freqs)
+
 `define CLKFREQ   (`NRV_FREQ*1000000) // Used by uart_impl.v (clk freq in Hz, NRV_FREQ is in MHz).
-`include "uart_impl.v"                // (uart_impl is borrowed from J1 swapforth)
+`include "uart_J1.v"                  // (uart_impl is borrowed from J1 swapforth)
 
 module UART(
     input wire 	       clk,   // system clock
