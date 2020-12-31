@@ -5,34 +5,55 @@ set_io pclk        	35
 set_io nLED 		47
 
 # RGB LED
-set_io nLED_RED  	41
-set_io nLED_GRN  	40
-set_io nLED_BLU  	39
+set_io rgb0  	41
+set_io rgb1  	40
+set_io rgb2  	39
 
-# GPIO
-set_io D1 		26
-set_io D2 		27
-set_io D3 		28
-set_io D4 		36
-set_io D5 		31
-set_io D6 		32
-set_io D7 		37
-set_io D8 		38
-set_io D9 		43
-set_io D10 		44
-set_io D11 		48
-set_io D12 		2
-set_io D13 		3
-set_io D14 		4
-set_io D15 		6
-set_io D16 		9
-set_io D17		10
-set_io D18		11
-set_io D19 		12
-set_io D20 		46
-set_io D21 		13
-set_io D22 		42
-set_io D23 		45
+# LED Matrix RGB LED
+set_io rgb0_fw  6
+set_io rgb1_fw  4
+set_io rgb2_fw	3
+
+# LED Wing Buttons
+set_io buttons[0] 	43
+set_io buttons[1]   44
+set_io buttons[2]	2
+set_io buttons[3] 	48
+
+# LED Matrix Pins
+set_io row[0]		38
+set_io row[1]		37
+set_io row[2]		32
+set_io row[3]		26
+set_io row[4]		27
+set_io row[5]		25
+
+set_io col[0]		12
+set_io col[1]		11
+set_io col[2]		10
+set_io col[3]		9
+set_io col[4]		36
+set_io col[5]		28
+
+# GPIO (x2 RGB LED's are lumped D1-D6)
+set_io D1  	    41
+set_io D2  	    40
+set_io D3  	    39
+set_io D4       6
+set_io D5       4
+set_io D6	    3
+set_io D7 		31
+set_io D8 		3
+set_io D9 		4
+set_io D10 		6
+set_io D11		9
+set_io D12		10
+set_io D13		11
+set_io D14 		12
+set_io D15 		46
+set_io D16 		13
+set_io D17 		42
+set_io D18 		45
 
 # UART
 set_io RXD 		23
