@@ -1,4 +1,11 @@
-// Inspirations from https://github.com/sylefeb/Silice/blob/master/projects/common/hdmi_clock.v
+// A PLL that generates a 250MHz clock from the 25 MHz clock.
+// Generates also a 125 MHz clock (that can be used with the 
+// DDR-based shifter, that shifts two bits per clock, but I'm
+// not using it for now).
+//
+// Inspirations from:
+//   https://github.com/lawrie/ulx3s_examples/blob/master/hdmi/
+//   https://github.com/sylefeb/Silice/blob/master/projects/common/hdmi_clock.v
 
 module HDMI_clock (
         input  clk,            //  25 MHz
