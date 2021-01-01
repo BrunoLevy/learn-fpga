@@ -7,7 +7,7 @@ simple and self-contained design that works well with the ULX3S. There
 are several reasons, one of them is that we need to use some specialized
 blocks, that may differ from one FPGA to another. 
 
-First thing I found is the [fpga4fun](https://www.fpga4fun.com/HDMI.html) 
+First thing I found is the [fpga4fun](https://www.fpga4fun.com/HDMI.html)
 website. It has a nice explanation and example program (that will need
 to be adapted though). We learn there that the HDMI connector has 19
 pins, but that we need to generate signals on 8 of them, forming 4
@@ -28,7 +28,8 @@ signal, just like VGA.
 Now we need to serialize the red, green and blue signals, but there are
 some complications: we learn that the bits need to be scrambled in
 some way, and that there will be 2 additional bits per signal
-(maybe something like stop and parity bits in serial line). For that,
+(if you want to know, this is for minimizing the transitions between
+0 and 1, and for balancing the number of 0 and 1). For that,
 there is a `TMDS_encoder` module. It takes as input the pixel clock,
 the 8-bits channel data, two bits of control, and a VDE (Video Display
 Enable) signal (that goes zero when we are offscreen). The two bits of
@@ -98,5 +99,8 @@ I think I got it !
 
 References
 ----------
-
-[Silice HDMI walkthrough](https://github.com/sylefeb/Silice/tree/master/projects/hdmi_test)
+- [fpga4fun](https://www.fpga4fun.com/HDMI.html)
+- [UlatraEmbedded's core dvi FB](https://github.com/ultraembedded/core_dvi_framebuffer/blob/master/src_v/dvi.v)
+- [Silice HDMI walkthrough](https://github.com/sylefeb/Silice/tree/master/projects/hdmi_test)
+- [HDMI with audio](https://github.com/hdl-util/hdmi/)
+- [HDMI tutorial](https://purisa.me/blog/hdmi-on-fpga/)

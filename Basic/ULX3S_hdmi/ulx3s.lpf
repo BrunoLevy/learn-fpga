@@ -1,0 +1,30 @@
+# See https://github.com/emard/ulx3s/blob/master/doc/constraints/ulx3s_v20.lpf
+
+## Clock
+
+LOCATE COMP "pclk" SITE "G2";
+IOBUF PORT "pclk" PULLMODE=NONE IO_TYPE=LVCMOS33;
+FREQUENCY PORT "pclk" 25 MHZ;
+
+## HDMI
+# Note: if using IO_TYPE=LVCMOS33D, it automatically
+#   generates the negative (_dn[]) pins from the 
+#   positive ones.
+LOCATE COMP "gpdi_dp[0]" SITE "A16"; # Blue +
+LOCATE COMP "gpdi_dn[0]" SITE "B16"; # Blue -
+LOCATE COMP "gpdi_dp[1]" SITE "A14"; # Green +
+LOCATE COMP "gpdi_dn[1]" SITE "C14"; # Green -
+LOCATE COMP "gpdi_dp[2]" SITE "A12"; # Red +
+LOCATE COMP "gpdi_dn[2]" SITE "A13"; # Red -
+LOCATE COMP "gpdi_dp[3]" SITE "A17"; # Clock +
+LOCATE COMP "gpdi_dn[3]" SITE "B18"; # Clock -
+IOBUF PORT "gpdi_dp[0]" IO_TYPE=LVCMOS33D DRIVE=4;
+IOBUF PORT "gpdi_dn[0]" IO_TYPE=LVCMOS33D DRIVE=4;
+IOBUF PORT "gpdi_dp[1]" IO_TYPE=LVCMOS33D DRIVE=4;
+IOBUF PORT "gpdi_dn[1]" IO_TYPE=LVCMOS33D DRIVE=4;
+IOBUF PORT "gpdi_dp[2]" IO_TYPE=LVCMOS33D DRIVE=4;
+IOBUF PORT "gpdi_dn[2]" IO_TYPE=LVCMOS33D DRIVE=4;
+IOBUF PORT "gpdi_dp[3]" IO_TYPE=LVCMOS33D DRIVE=4;
+IOBUF PORT "gpdi_dn[3]" IO_TYPE=LVCMOS33D DRIVE=4;
+
+

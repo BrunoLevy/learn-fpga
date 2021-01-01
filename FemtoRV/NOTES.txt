@@ -16,8 +16,12 @@ TODO:
                ALU:
 	         in1,in2,aluInSel1(reg/pc),aluInSel2(reg/imm)
 		 A,B,A_is_pc,B_is_imm
-                 
-      
+		 
+      Pour augmenter FMAX:		 
+          on devrait peut-être latcher:
+              Les tests pour les branchements
+	      Le calcul d'adresses
+	  (et il faudrait aussi essayer d'utiliser pour ça la primitive ALU ECP5)    
       * register using combinatorial RAM.
       * print_float, printf("%f")
       * A 90-ish "megademo" on the OLED display !

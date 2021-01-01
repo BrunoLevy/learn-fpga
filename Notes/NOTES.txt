@@ -16,7 +16,8 @@ I2C bit-banging:
     
 
 https://github.com/ultraembedded/core_dvi_framebuffer
+  (+ TMDS encoder with permissive license)
 
-https://github.com/XarkLabs/Xosera
+https://github.com/XarkLabs/Xosera (text mode VGA, HDMI ... through PMOD)
 
 
