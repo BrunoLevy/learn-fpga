@@ -83,6 +83,9 @@ primitive (`ODDRX1F`) that can shift two bits per clock (then using a
 For now I'm not doing that, because it seems that the simpler code
 suffices.
 
+[Complete sources for ULX3S](https://github.com/BrunoLevy/learn-fpga/tree/master/Basic/ULX3S_hdmi)
+
+
 References
 ----------
 - [fpga4fun](https://www.fpga4fun.com/HDMI.html)
