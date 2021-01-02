@@ -50,7 +50,7 @@ void call_exec() {
 		    strcpy(buff, cwd);
 		    strcpy(buff+strlen(buff), dirent.filename);
 		    exec(buff);
-		    // exit(0); // workaround for executables that do not call exit().
+		    exit(0); // workaround for executables that do not call exit().
 		}
 		++cur;
             }

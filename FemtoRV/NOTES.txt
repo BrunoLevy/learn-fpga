@@ -135,6 +135,12 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - Everything seemed to be broken after I generated all IO
+               register IDs from VERILOG sources, in fact I was
+               reading frequency and "cycles per loop" from
+               DEVICES_FREQ_bit instead of DEVICES_FREQ (defines for
+               NRV_FREQ and NRV_CPL in femtorv32.h)
+  
              - Timing was VERY different between mini-femtorv32 and femtorv32,
 	       it was because I was *always* writing to the ALU in EXECUTE state,
 	       randomly loading shift operations and causing wait alu waiting !

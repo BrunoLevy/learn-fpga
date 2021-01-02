@@ -44,13 +44,13 @@ GL_init:
 	li a0,5
 	sw a0,IO_LEDS(gp)
         li a0,1                      # reset low during 0.25 s
-	sw a0,IO_OLED_CNTL(gp)
+	sw a0,IO_SSD1351_CNTL(gp)
 	li a0,250
 	call milliwait
 	li a0,10
 	sw a0,IO_LEDS(gp)
         li a0,3                      # reset high during 0.25 s
-	sw a0,IO_OLED_CNTL(gp)
+	sw a0,IO_SSD1351_CNTL(gp)
 	li a0,250
 	call milliwait
 	li a0,15
@@ -115,7 +115,7 @@ oled_write_window:
 .type	oled0, @function
 oled0:	add sp,sp,-4
         sw ra, 0(sp)
-	sw a0, IO_OLED_CMD(gp)
+	sw a0, IO_SSD1351_CMD(gp)
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
@@ -125,8 +125,8 @@ oled0:	add sp,sp,-4
 .type	oled1, @function
 oled1:	add sp,sp,-4
         sw ra, 0(sp)
-	sw a0, IO_OLED_CMD(gp)
-	sw a1, IO_OLED_DATA(gp)
+	sw a0, IO_SSD1351_CMD(gp)
+	sw a1, IO_SSD1351_DAT(gp)
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
@@ -136,9 +136,9 @@ oled1:	add sp,sp,-4
 .type	oled2, @function
 oled2:	add sp,sp,-4
         sw ra, 0(sp)
-	sw a0, IO_OLED_CMD(gp)
-	sw a1, IO_OLED_DATA(gp)
-	sw a2, IO_OLED_DATA(gp)
+	sw a0, IO_SSD1351_CMD(gp)
+	sw a1, IO_SSD1351_DAT(gp)
+	sw a2, IO_SSD1351_DAT(gp)
 	lw ra, 0(sp)	
         add sp,sp,4
 	ret
@@ -148,10 +148,10 @@ oled2:	add sp,sp,-4
 .type	oled3, @function
 oled3:	add sp,sp,-4
         sw ra, 0(sp)
-	sw a0, IO_OLED_CMD(gp)
-	sw a1, IO_OLED_DATA(gp)
-	sw a2, IO_OLED_DATA(gp)
-	sw a3, IO_OLED_DATA(gp)
+	sw a0, IO_SSD1351_CMD(gp)
+	sw a1, IO_SSD1351_DAT(gp)
+	sw a2, IO_SSD1351_DAT(gp)
+	sw a3, IO_SSD1351_DAT(gp)
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret

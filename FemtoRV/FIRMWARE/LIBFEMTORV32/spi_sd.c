@@ -16,36 +16,36 @@ int spi_state = CSN_MASK;
 
 static inline void CS_H() {
     spi_state |= CSN_MASK;
-    IO_OUT(IO_SPI_SDCARD, spi_state);    
+    IO_OUT(IO_SDCARD, spi_state);    
 }
 
 static inline void CS_L() {
     spi_state &= ~CSN_MASK;
-    IO_OUT(IO_SPI_SDCARD, spi_state);    
+    IO_OUT(IO_SDCARD, spi_state);    
 }
 
 static inline void CK_H() {
     spi_state |= CLK_MASK;
-    IO_OUT(IO_SPI_SDCARD, spi_state);    
+    IO_OUT(IO_SDCARD, spi_state);    
 }
 
 static inline void CK_L() {
     spi_state &= ~CLK_MASK;
-    IO_OUT(IO_SPI_SDCARD, spi_state);    
+    IO_OUT(IO_SDCARD, spi_state);    
 }
 
 static inline void MOSI_H() {
     spi_state |= MOSI_MASK;
-    IO_OUT(IO_SPI_SDCARD, spi_state);    
+    IO_OUT(IO_SDCARD, spi_state);    
 }
 
 static inline void MOSI_L() {
     spi_state &= ~MOSI_MASK;
-    IO_OUT(IO_SPI_SDCARD, spi_state);    
+    IO_OUT(IO_SDCARD, spi_state);    
 }
 
 static inline int MISO() {
-    return IO_IN(IO_SPI_SDCARD);
+    return IO_IN(IO_SDCARD);
 }
 
 static inline void CLK_DELAY() {

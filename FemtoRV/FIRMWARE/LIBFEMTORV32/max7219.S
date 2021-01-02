@@ -10,7 +10,7 @@
 MAX7219: # a0: register  a1: value
          slli t0, a0, 8
 	 or  t0, t0, a1
-         sw t0, IO_LEDMTX_DATA(gp)  
+         sw t0, IO_MAX7219_DAT(gp)  
 	 ret
 
 .global	MAX7219_init

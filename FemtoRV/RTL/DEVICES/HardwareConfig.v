@@ -12,6 +12,49 @@ module HardwareConfig(
 );
 
 `include "HardwareConfig_bits.v"   
+
+// configured devices
+localparam NRV_DEVICES = 0
+`ifdef NRV_IO_LEDS
+   | (1 << IO_LEDS_bit)			 
+`endif			    
+`ifdef NRV_IO_UART
+   | (1 << IO_UART_DAT_bit)			 
+`endif			    
+`ifdef NRV_IO_SSD1351
+   | (1 << IO_SSD1351_CNTL_bit) | (1 << IO_SSD1351_CMD_bit) | (1 << IO_SSD1351_DAT_bit)
+`endif			    
+`ifdef NRV_IO_MAX7219     
+   | (1 << IO_MAX7219_DAT_bit) 
+`endif			    
+`ifdef NRV_IO_SPI_FLASH
+   | (1 << IO_SPI_FLASH_bit) 			 
+`endif			    
+`ifdef NRV_IO_SPI_SDCARD
+   | (1 << IO_SDCARD_bit) 			 			 
+`endif			    
+`ifdef NRV_IO_BUTTONS
+   | (1 << IO_BUTTONS_bit) 			 			 			 
+`endif 
+`ifdef NRV_MAPPED_SPI_FLASH
+   | (1 << IO_MAPPED_SPI_FLASH_bit)		  
+`endif			 
+;
+
+// CPL (Cycles per Loop)
+// number of cycles for each
+// iteration of:
+// wait: sub a0, a0, a1
+//       bgt a0, zero, wait
+`ifdef NRV_MINIRV32
+ `define NRV_CPL 9
+`else
+ `ifdef NRV_LATCH_ALU
+  `define NRV_CPL 7
+ `else
+  `define NRV_CPL 6
+ `endif
+`endif
 	
    assign rdata = sel_memory       ? `NRV_RAM  :
 		  sel_devices_freq ? (NRV_DEVICES | (`NRV_FREQ << 16) | (`NRV_CPL << 26)) : 32'b0;

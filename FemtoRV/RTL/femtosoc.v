@@ -305,8 +305,8 @@ module femtosoc(
 wire [31:0] hwconfig_rdata;
 HardwareConfig hwconfig(
    .clk(clk),			
-   .sel_memory(io_word_address[HW_CONFIG_RAM_bit]),
-   .sel_devices_freq(io_word_address[HW_CONFIG_DEVICES_FREQ_bit]),
+   .sel_memory(io_word_address[IO_HW_CONFIG_RAM_bit]),
+   .sel_devices_freq(io_word_address[IO_HW_CONFIG_DEVICES_FREQ_bit]),
    .rdata(hwconfig_rdata)			 
 );
 `endif
@@ -318,7 +318,7 @@ HardwareConfig hwconfig(
       .clk(clk),
       .rstrb(io_rstrb),		  
       .wstrb(io_wstrb),			
-      .sel(io_word_address[LEDs_bit]),
+      .sel(io_word_address[IO_LEDS_bit]),
       .wdata(io_wdata),		  
       .rdata(leds_rdata),
       .LED({D4,D3,D2,D1})
@@ -331,9 +331,9 @@ HardwareConfig hwconfig(
    SSD1351 oled_display(
       .clk(clk),
       .wstrb(io_wstrb),			
-      .sel_cntl(io_word_address[SSD1351_CNTL_bit]),
-      .sel_cmd(io_word_address[SSD1351_CMD_bit]),
-      .sel_dat(io_word_address[SSD1351_DAT_bit]),
+      .sel_cntl(io_word_address[IO_SSD1351_CNTL_bit]),
+      .sel_cmd(io_word_address[IO_SSD1351_CMD_bit]),
+      .sel_dat(io_word_address[IO_SSD1351_DAT_bit]),
       .wdata(io_wdata),
       .wbusy(SSD1351_wbusy),
       .DIN(oled_DIN),
@@ -351,8 +351,8 @@ HardwareConfig hwconfig(
       .clk(clk),
       .rstrb(io_rstrb),	     	     
       .wstrb(io_wstrb),
-      .sel_dat(io_word_address[UART_DAT_bit]),
-      .sel_cntl(io_word_address[UART_CNTL_bit]),	     
+      .sel_dat(io_word_address[IO_UART_DAT_bit]),
+      .sel_cntl(io_word_address[IO_UART_CNTL_bit]),	     
       .wdata(io_wdata),
       .rdata(uart_rdata),
       .RXD(RXD),
@@ -366,7 +366,7 @@ HardwareConfig hwconfig(
    MAX7219 max7219(
       .clk(clk),
       .wstrb(io_wstrb),
-      .sel(io_word_address[MAX7219_DAT_bit]),
+      .sel(io_word_address[IO_MAX7219_DAT_bit]),
       .wdata(io_wdata),
       .wbusy(max7219_wbusy),
       .DIN(ledmtx_DIN),
@@ -388,7 +388,7 @@ HardwareConfig hwconfig(
       .clk(clk),
       .rstrb(io_rstrb),
       .wstrb(io_wstrb),
-      .sel(io_word_address[SPI_FLASH_bit]),
+      .sel(io_word_address[IO_SPI_FLASH_bit]),
       .wdata(io_wdata),
       .wbusy(spi_flash_wbusy),		      
       .rdata(spi_flash_rdata),
@@ -412,7 +412,7 @@ HardwareConfig hwconfig(
       .clk(clk),
       .rstrb(io_rstrb),
       .wstrb(io_wstrb), 
-      .sel(io_word_address[SPI_SDCARD_bit]),
+      .sel(io_word_address[IO_SDCARD_bit]),
       .wdata(io_wdata),
       .rdata(sdcard_rdata),
       .CLK(sd_clk),
@@ -429,7 +429,7 @@ HardwareConfig hwconfig(
 `ifdef NRV_IO_BUTTONS
    wire [31:0] buttons_rdata;
    Buttons buttons_driver(
-      .sel(io_word_address[BUTTONS_bit]),
+      .sel(io_word_address[IO_BUTTONS_bit]),
       .rdata(buttons_rdata),
       .BUTTONS(buttons)		   
    );

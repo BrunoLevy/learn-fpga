@@ -1,6 +1,8 @@
 #ifndef H__FEMTORV32__H
 #define H__FEMTORV32__H
 
+#include "HardwareConfig_bits.h"
+
 typedef unsigned char          uint8_t;
 typedef unsigned short         uint16_t;
 typedef unsigned int           uint32_t;
@@ -100,40 +102,35 @@ int  GL_putchar(int c);
 void GL_putchar_xy(int x, int y, char c);
 
 
-/* Memory-mapped IO */
-#define IO_BASE      0x400000 /* Base address of memory-mapped IO                       */
-#define IO_LEDS      4        /* 4 LSBs mapped to D1,D2,D3,D4                           */
-#define IO_OLED_CNTL 8        /* OLED display control.                                  */
-                              /*  wr: 01: reset low 11: reset high 00: normal operation */
-                              /*  rd:  0: ready  1: busy                                */
-#define IO_OLED_CMD      16   /* OLED display command. Only 8 LSBs used.                */
-#define IO_OLED_DATA     32   /* OLED display data. Only 8 LSBs used.                   */
-#define IO_DEVICES_FREQ  64   /* r: devices (16 LSBs) and frequency (16 MSBs)           */
-#define IO_UART_CNTL   8192   /* USB UART control (read)                                */
-#define IO_UART_DATA    128   /* USB UART RX data (read/write)                          */
+/********************* Memory-mapped IO *******************************************************/
 
-#define IO_RAM          256   /* r: Installed RAM                                       */
-#define IO_LEDMTX_DATA  512   /* LED matrix data (write)	                        */
-#define IO_SPI_FLASH   1024   /* Onboard SPI flash, can be used to stored data          */
-#define IO_SPI_SDCARD  2048   /* ULX3S SDCard                                           */
-#define IO_BUTTONS     4096   /* ULX3S buttons                                          */
+#define IO_BASE      0x400000 /* Base address of memory-mapped IO */
 
-#define IO_DEVICE_LEDS_BIT          0  
-#define IO_DEVICE_SSD1351_BIT       1  
-#define IO_DEVICE_UART_BIT          5  
-#define IO_DEVICE_MAX2719_BIT       7
-#define IO_DEVICE_SPI_FLASH_BIT     8
-#define IO_DEVICE_SDCARD_BIT        9
-#define IO_DEVICE_BUTTONS_BIT       10
-#define MAPPED_DEVICE_SPI_FLASH_BIT 15
+/* Converts a memory-mapped register bit into the corresponding offset to be added to IO_BASE */
+#define IO_BIT_TO_OFFSET(io_bit) (1 << (2+(io_bit)))  
+
+/* All the memory-mapped hardware registers */
+#define IO_LEDS                    IO_BIT_TO_OFFSET(IO_LEDs_bit)
+#define IO_SSD1351_CNTL            IO_BIT_TO_OFFSET(IO_SSD1351_CNTL_bit)
+#define IO_SSD1351_CMD             IO_BIT_TO_OFFSET(IO_SSD1351_CMD_bit)
+#define IO_SSD1351_DAT             IO_BIT_TO_OFFSET(IO_SSD1351_DAT_bit)
+#define IO_UART_CNTL               IO_BIT_TO_OFFSET(IO_UART_CNTL_bit)
+#define IO_UART_DAT                IO_BIT_TO_OFFSET(IO_UART_DAT_bit)
+#define IO_MAX2719                 IO_BIT_TO_OFFSET(IO_MAX2719_bit)
+#define IO_SPI_FLASH               IO_BIT_TO_OFFSET(IO_SPI_FLASH_bit)
+#define IO_SDCARD                  IO_BIT_TO_OFFSET(IO_SDCARD_bit)
+#define IO_BUTTONS                 IO_BIT_TO_OFFSET(IO_BUTTONS_bit)
+#define IO_MAPPED_SPI_FLASH        IO_BIT_TO_OFFSET(IO_MAPPED_SPI_FLASH_bit)
+#define IO_HW_CONFIG_RAM           IO_BIT_TO_OFFSET(IO_HW_CONFIG_RAM_bit)
+#define IO_HW_CONFIG_DEVICES_FREQ  IO_BIT_TO_OFFSET(IO_HW_CONFIG_DEVICES_FREQ_bit)
 
 #define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
 #define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)
 #define LEDS(val)         IO_OUT(IO_LEDS,val)
 
-#define FEMTOSOC_HAS_DEVICE(bit) (IO_IN(IO_DEVICES_FREQ) & (1 << bit))
-#define FEMTORV32_FREQ           ((IO_IN(IO_DEVICES_FREQ) >> 16) & 1023)
-#define FEMTORV32_CPL            (IO_IN(IO_DEVICES_FREQ) >> 26)
+#define FEMTOSOC_HAS_DEVICE(bit)  (IO_IN(IO_HW_CONFIG_DEVICES_FREQ) & (1 << bit))
+#define FEMTORV32_FREQ           ((IO_IN(IO_HW_CONFIG_DEVICES_FREQ) >> 16) & 1023)
+#define FEMTORV32_CPL             (IO_IN(IO_HW_CONFIG_DEVICES_FREQ) >> 26)
 
 /* SSD1351 Oled display on 4-wire SPI bus */
 extern void oled_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);

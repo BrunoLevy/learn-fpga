@@ -41,7 +41,7 @@ int exec_bin(const char* filename) {
     fseek(f, 0, SEEK_SET);
 
     void* start = (void*)0x10000;
-    int memsize = IO_IN(IO_RAM);
+    int memsize = IO_IN(IO_HW_CONFIG_RAM);
     memset(start, 0, memsize - 0x10000 - 1024); // -1024 to avoid touching the stack
     
     if(fread(start, 1, file_size, f) != file_size) {
@@ -74,7 +74,7 @@ int exec_elf(const char* filename) {
   // else because the stack is not there...
   {
     void* start = (void*)0x10000;
-    int memsize = IO_IN(IO_RAM);
+    int memsize = IO_IN(IO_HW_CONFIG_RAM);
     memset(start, 0, memsize - 0x10000 - 1024); // -1024 to avoid touching the stack
   }
   
