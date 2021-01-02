@@ -7,6 +7,7 @@
 `endif
 
 `ifdef BENCH
+ `define BENCH_OR_LINT
  `ifdef QUIET
   `define bench(command) 
  `else
@@ -16,3 +17,6 @@
   `define bench(command)
 `endif
 
+`ifdef verilator
+ `define BENCH_OR_LINT
+`endif

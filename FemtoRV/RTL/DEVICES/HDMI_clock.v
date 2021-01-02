@@ -14,6 +14,13 @@ module HDMI_clock (
         output half_hdmi_clk   // 125 MHz
     );
 
+`ifdef BENCH_OR_LINT
+   assign out_clk = clk;
+   assign hdmi_clk = clk;
+   assign half_hdmi_clk = clk;
+   
+`else
+   
 wire clkfb;
 wire locked;
 
@@ -56,6 +63,7 @@ EHXPLLL #(
         .ENCLKOP(1'b0),
         .LOCK(locked)
 	);
+`endif
     
 endmodule
 

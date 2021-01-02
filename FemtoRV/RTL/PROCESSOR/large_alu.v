@@ -62,14 +62,14 @@ module NrvLargeALU #(
    always @(*) begin
       if(funcM) begin
 	 case(func)
-	   3'b000: out <= ALUreg;                           // MUL
-	   3'b001: out <= ALUreg;                           // MULH
-	   3'b010: out <= ALUreg;                           // MULHSU
-	   3'b011: out <= ALUreg;                           // MULHU
-	   3'b100: out <= outsign ? -quotient : quotient;   // DIV
-	   3'b101: out <= quotient;                         // DIVU
-	   3'b110: out <= outsign ? -dividend : dividend;   // REM 
-	   3'b111: out <= dividend;                         // REMU
+	   3'b000: out = ALUreg;                           // MUL
+	   3'b001: out = ALUreg;                           // MULH
+	   3'b010: out = ALUreg;                           // MULHSU
+	   3'b011: out = ALUreg;                           // MULHU
+	   3'b100: out = outsign ? -quotient : quotient;   // DIV
+	   3'b101: out = quotient;                         // DIVU
+	   3'b110: out = outsign ? -dividend : dividend;   // REM 
+	   3'b111: out = dividend;                         // REMU
 	 endcase
       end else begin 
 	 if(LATCH_ALU) begin

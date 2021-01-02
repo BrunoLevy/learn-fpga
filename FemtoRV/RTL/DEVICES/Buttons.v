@@ -11,6 +11,6 @@ module Buttons(
     input wire[5:0]   BUTTONS // the six pins wired to the buttons
 );
 
-   assign rdata = (sel ? {27'b0, BUTTONS} : 32'b0);
+   assign rdata = (sel ? {26'b0, BUTTONS} : 32'b0);
 
 endmodule

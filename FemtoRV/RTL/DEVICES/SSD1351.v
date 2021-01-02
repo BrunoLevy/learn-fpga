@@ -44,8 +44,8 @@ module SSD1351(
    //   max freq = 1/(40ns) = 25 MHz
    //   experimentally, seems to work up to 30 Mhz (but not more)
    
-   // Seems that iverilog does not like the way I'm using 'generate' below.
- `ifdef BENCH 
+   // Seems that iverilog and verilator do not like the way I'm using 'generate' below.
+ `ifdef BENCH_OR_LINT
    reg[1:0] slow_cnt;
    localparam cnt_bit = 1;
    localparam cnt_max = 2'b11;

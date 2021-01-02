@@ -108,9 +108,9 @@ module FGA(
    // else we shift.
    reg [9:0] TMDS_shift_R=0, TMDS_shift_G=0, TMDS_shift_B=0;
    always @(posedge clk_TMDS) begin
-      TMDS_shift_R <= TMDS_shift_load ? TMDS_R : TMDS_shift_R[9:1];
-      TMDS_shift_G <= TMDS_shift_load ? TMDS_G : TMDS_shift_G[9:1];
-      TMDS_shift_B <= TMDS_shift_load ? TMDS_B : TMDS_shift_B[9:1];	
+      TMDS_shift_R <= TMDS_shift_load ? TMDS_R : {1'b0,TMDS_shift_R[9:1]};
+      TMDS_shift_G <= TMDS_shift_load ? TMDS_G : {1'b0,TMDS_shift_G[9:1]};
+      TMDS_shift_B <= TMDS_shift_load ? TMDS_B : {1'b0,TMDS_shift_B[9:1]};	
    end
 
    // HDMI signal, positive part of the differential pairs
