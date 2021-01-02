@@ -211,7 +211,6 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
    const float fov  = M_PI/3.;
    const int width  = 320;
    const int height = 200;
-   uint16_t* graph_ptr = (uint16_t *)(1 << 21);
    for (int j = 0; j<height; j++) { // actual rendering loop
       for (int i = 0; i<width; i++) {
 	 float dir_x =  (i + 0.5) -  width/2.;
@@ -220,9 +219,8 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
 	 vec3 C = cast_ray(make_vec3(0,0,0), vec3_normalize(make_vec3(dir_x, dir_y, dir_z)), spheres, nb_spheres, lights, nb_lights, 0);
 	 uint16_t R = (uint16_t)(255.0f * max(0.f, min(1.f, C.x))); 
 	 uint16_t G = (uint16_t)(255.0f * max(0.f, min(1.f, C.y))); 
-	 uint16_t B = (uint16_t)(255.0f * max(0.f, min(1.f, C.z))); 
-	 *graph_ptr = GL_RGB(R,G,B);
-	 graph_ptr++;
+	 uint16_t B = (uint16_t)(255.0f * max(0.f, min(1.f, C.z)));
+	 FGA_setpixel(i,j,R,G,B);
       }
    }
 }

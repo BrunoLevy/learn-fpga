@@ -63,7 +63,7 @@ extern uint16_t* font_3x5;    /* 2 bytes per char. 3 columns of 5 bits.         
 
 /* FemtoGL library */
 
-/* Converts three R,G,B components (between 0 and 255) into a 16 bits color value for the OLED screen. */
+/* Converts three R,G,B components (between 0 and 255) into a 16 bits color value for the OLED screen or FGA. */
 #define GL_RGB(R,G,B) ((((((R) & 0xF8) << 5) | ((G) & 0xF8)) << 3) | ((B) >> 3))
 
 extern uint16_t GL_fg;
@@ -151,6 +151,18 @@ extern void MAX7219(uint32_t address, uint32_t value);
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
 #define SGN(x)   (((x) > (0)) ? 1 : ((x) ? -1 : 0))
 
+/* Femto Graphics Adapter 
+ * 
+ * Flat 320x200x16bpp buffer, write-only 
+ * Color encoding same as SSD1351 (use GL_RGB() to encode colors)
+ */
+#define FGA_BASEMEM (void*)(1 << 21)
+
+static inline FGA_setpixel(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
+  ((uint16_t*)FGA_BASEMEM)[320*y+x] = GL_RGB(R,G,B);
+}
+
+/* FAT_IO_LIB */
 #define USE_FILELIB_STDIO_COMPAT_NAMES
 #define FAT_INLINE inline
 #include <fat_io_lib/fat_filelib.h>

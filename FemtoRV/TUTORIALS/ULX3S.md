@@ -411,6 +411,40 @@ configuration in which there is sufficient room to store additional
 data). It is used by the IceStick version. It works also on the ULX3S
 (see instructions in the source)._
 
+HDMI, FGA (Femto Graphics Adapter)
+==================================
+
+To enable HDMI display, edit `RTL/femtosoc_config.v` and uncomment the
+line with `NRV_FGA` (femto graphics adapter), keep the OLED display
+active (commander still needs it for now, I will make it display on
+the HDMI later). Then synthethize and flash the ULX3S.
+
+There are several programs that you can use, in `FIRMWARE/EXAMPLES`:
+
+| Program                                      | Description                                                                      |
+|----------------------------------------------|----------------------------------------------------------------------------------|
+| `EXAMPLES/test_FGA.c`                        | Displays an animated colored pattern.                                            |
+| `EXAMPLES/tinyrt_FGA.c`                      | A port from [TinyRaytracer](https://github.com/ssloy/tinyraytracer).             |
+
+Compile them by `cd FIRMWARE/EXAMPLES` then `make xxx.elf` where `xxx` is the name of the program. Copy the generated `.elf` executable to
+the SDCard. Plug the HDMI monitor to the ULX3S. Select the program using the up and down buttons, run it with the right button. The button
+near the SDCard is the reset button.
+
+If you want to write your own programs, it is very easy, just use `FGA_setpixel(X,Y,R,G,B)` where `X` and `Y` are the coordinates
+(resolution is 320x200) and `R`,`G`,`B` the color components, each in 0..255.
+
+If you want to do animations, you may need to directly write to the graphic memory.
+Graphic memory starts at address `FGA_BASEMEM`. Each pixel is encoded in 16 bits.
+The macro `GL_RGB` encodes a pixel from its r,g,b components (each of them between 0 and 255).
+The `FGA_setpixel` function is written as follows: 
+```
+static inline FGA_setpixel(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
+  ((uint16_t*)FGA_BASEMEM)[320*y+x] = GL_RGB(R,G,B);
+}
+```
+It tells you everyhting you need if you want to implement your own optimized graphic primitives.
+The GL_RGB macro shifts and combines the components. It uses the same encoding as for the small OLED screen.
+
 Epilogue
 ========
 
