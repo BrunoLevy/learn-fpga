@@ -26,6 +26,7 @@
 `include "DEVICES/LEDs.v"           // Driver for 4 leds
 `include "DEVICES/SDCard.v"         // Driver for SDCard (just for bitbanging for now)
 `include "DEVICES/Buttons.v"        // Driver for the buttons
+`include "DEVICES/FGA.v"            // Femto Graphic Adapter
 
 /*************************************************************************************/
 
@@ -70,6 +71,9 @@ module femtosoc(
 `ifdef FOMU
    output usb_dp, usb_dn, usb_dp_pu, 
 `endif
+`ifdef NRV_FGA		
+   output [3:0] gpdi_dp,
+`endif		
    input pclk
 );
 
@@ -214,11 +218,17 @@ module femtosoc(
       $readmemh("FIRMWARE/firmware.hex",RAM); 
    end
 
+`ifdef NRV_FGA
+   wire mem_address_is_vram = mem_address[21];
+`else
+   parameter mem_address_is_vram = 1'b0;
+`endif
+   
    // The power of YOSYS: it infers SB_RAM40_4K BRAM primitives automatically ! (and recognizes
    // masked writes, amazing ...)
    /* verilator lint_off WIDTH */
    always @(posedge clk) begin
-      if(mem_address_is_ram) begin
+      if(mem_address_is_ram && !mem_address_is_vram) begin
 	 if(mem_wmask[0]) RAM[ram_word_address][ 7:0 ] <= mem_wdata[ 7:0 ];
 	 if(mem_wmask[1]) RAM[ram_word_address][15:8 ] <= mem_wdata[15:8 ];
 	 if(mem_wmask[2]) RAM[ram_word_address][23:16] <= mem_wdata[23:16];
@@ -227,6 +237,18 @@ module femtosoc(
       ram_rdata <= RAM[ram_word_address];
    end
    /* verilator lint_on WIDTH */
+
+`ifdef NRV_FGA
+   FGA graphic_adapter(
+      .clk(clk),
+      .sel(mem_address_is_vram),
+      .mem_wmask(mem_wmask),
+      .mem_address(mem_address[16:0]),
+      .mem_wdata(mem_wdata),
+      .pixel_clk(pclk),
+      .gpdi_dp(gpdi_dp)		       
+   );
+`endif   
    
 `ifdef NRV_MAPPED_SPI_FLASH
    assign mem_rdata = mem_address_is_io  ? io_rdata  : 
