@@ -1,5 +1,5 @@
 /* A port of Dmitry Sokolov's tiny raytracer to C and to FemtoRV32 */
-/* Needs the small OLED display (SSD1351)                          */
+/* Needs FGA (Femto Graphic Adapter)                               */
 
 #include <math.h>
 #include <fenv.h>

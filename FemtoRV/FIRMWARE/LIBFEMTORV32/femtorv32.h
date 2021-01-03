@@ -135,11 +135,19 @@ void GL_putchar_xy(int x, int y, char c);
 
 /* SSD1351 Oled display on 4-wire SPI bus */
 extern void oled_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
-extern void oled_wait();
 extern void oled0(uint32_t cmd);
 extern void oled1(uint32_t cmd, uint32_t arg1);
 extern void oled2(uint32_t cmd, uint32_t arg1, uint32_t arg2);
 extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
+
+/* 
+ * low-level functions to send data to the OLED display
+ *    First, call oled_write_window()
+ *    Then send all the pixels using one of the three forms of OLED_WRITE_DATA
+ */ 
+#define OLED_WRITE_DATA_UINT8_UINT8(HI,LO) IO_OUT(IO_SSD1351_DAT,(HI)); IO_OUT(IO_SSD1351_DAT,(LO))
+#define OLED_WRITE_DATA_UINT16(RGB)        OLED_WRITE_DATA_UINT8_UINT8(RGB>>8, RGB)
+#define OLED_WRITE_DATA_RGB(R,G,B)         OLED_WRITE_DATA_UINT16(GL_RGB(R,G,B))
 
 /* MAX7219 led matrix */
 extern void MAX7219_init();
@@ -149,7 +157,8 @@ extern void MAX7219(uint32_t address, uint32_t value);
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
 #define SGN(x)   (((x) > (0)) ? 1 : ((x) ? -1 : 0))
 
-/* Femto Graphics Adapter 
+/* 
+ * Femto Graphics Adapter 
  * 
  * Flat 320x200x16bpp buffer, write-only 
  * Color encoding same as SSD1351 (use GL_RGB() to encode colors)

@@ -101,8 +101,7 @@ void GL_putchar_xy(int X, int Y, char c) {
    for(int row=0; row<8; ++row) {
       for(int col=0; col<8; ++col) {
 	 uint32_t BW = (car_ptr[col] & (1 << row)) ? 255 : 0;
-	 IO_OUT(IO_SSD1351_DAT,BW ? Fhi : Bhi);
-	 IO_OUT(IO_SSD1351_DAT,BW ? Flo : Blo);
+	 OLED_WRITE_DATA_UINT8_UINT8(BW ? Fhi : Bhi, BW ? Flo : Blo);
       }
    }
 #elif defined(FONT_5x6)
@@ -121,8 +120,7 @@ void GL_putchar_xy(int X, int Y, char c) {
 	       }
 	       BW = (coldata & (1 << row)) ? 255 : 0;
 	   }
-	   IO_OUT(IO_SSD1351_DAT,BW ? Fhi : Bhi);
-	   IO_OUT(IO_SSD1351_DAT,BW ? Flo : Blo);
+	   OLED_WRITE_DATA_UINT8_UINT8(BW ? Fhi : Bhi, BW ? Flo : Blo);
        }
    }
 #elif defined(FONT_3x5)
@@ -135,8 +133,7 @@ void GL_putchar_xy(int X, int Y, char c) {
 	      uint32_t coldata = (car_data >> (5 * col)) & 31;
 	      BW = (coldata & (1 << row)) ? 255 : 0;
 	  }
-	  IO_OUT(IO_SSD1351_DAT,BW ? Fhi : Bhi);
-	  IO_OUT(IO_SSD1351_DAT,BW ? Flo : Blo);
+	  OLED_WRITE_DATA_UINT8_UINT8(BW ? Fhi : Bhi, BW ? Flo : Blo);	 
       }
    }
 #endif

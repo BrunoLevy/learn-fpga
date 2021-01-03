@@ -223,10 +223,7 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
 	 uint16_t R = (uint16_t)(255.0f * max(0.f, min(1.f, C.x))); 
 	 uint16_t G = (uint16_t)(255.0f * max(0.f, min(1.f, C.y))); 
 	 uint16_t B = (uint16_t)(255.0f * max(0.f, min(1.f, C.z))); 
-	 
-	 uint16_t RGB = GL_RGB(R,G,B);
-	 IO_OUT(IO_SSD1351_DAT, RGB >> 8);
-	 IO_OUT(IO_SSD1351_DAT, RGB);	 
+	 OLED_WRITE_DATA_RGB(R,G,B);
       }
    }
 }

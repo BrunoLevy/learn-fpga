@@ -37,8 +37,7 @@ void mandel() {
 	     }
 	     --iter;
 	 }
-	 IO_OUT(IO_SSD1351_DAT,iter << 3);
-	 IO_OUT(IO_SSD1351_DAT,iter << 2);
+	 OLED_WRITE_DATA_UINT8_UINT8(iter << 3, iter << 2);
 	 Cr += dx;
       }
       Ci += dy;

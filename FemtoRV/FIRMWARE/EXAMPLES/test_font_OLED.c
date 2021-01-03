@@ -29,8 +29,7 @@ int main() {
 		uint32_t B = (-y+frame) & 63;
 	       
 		// pixel color: RRRRR GGGGG 0 BBBBB
-		IO_OUT(IO_SSD1351_DAT,BW & ((G>>2)|(R<<3)));
-		IO_OUT(IO_SSD1351_DAT,BW & (B|(G << 6)));
+		OLED_WRITE_DATA_UINT8_UINT8(BW & ((G>>2)|(R<<3)), BW & (B|(G << 6)));
 	    }
 	}
 	++frame;

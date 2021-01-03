@@ -2,9 +2,6 @@
 
 void GL_setpixel(int x, int y, uint16_t color) {
     oled_write_window(x,y,x,y);
-    IO_OUT(IO_SSD1351_DAT,color >> 8);
-    IO_OUT(IO_SSD1351_DAT,color);
+    OLED_WRITE_DATA_UINT16(color);
 }
-
-
 

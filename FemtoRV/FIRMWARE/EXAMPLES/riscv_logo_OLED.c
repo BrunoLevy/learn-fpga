@@ -79,8 +79,7 @@ void main() {
 	    int Y = Y0;
 	    for(int x=0; x<128; ++x) {
 	        unsigned char col = logo[(Y >> 18)&15][(X >> 18)&15];
-		IO_OUT(IO_SSD1351_DAT,cmap[col][0]);
-		IO_OUT(IO_SSD1351_DAT,cmap[col][1]);
+	        OLED_WRITE_DATA_UINT8_UINT8(cmap[col][0], cmap[col][1]);
 	        X += Ux;
 	        Y += Uy;
 	    }

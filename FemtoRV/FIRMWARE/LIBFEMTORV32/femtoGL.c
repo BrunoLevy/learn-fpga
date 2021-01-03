@@ -20,8 +20,7 @@ void GL_fill_rect(
     oled_write_window(x1,y1,x2,y2);
     for(int y=y1; y<=y2; ++y) {
 	for(int x=x1; x<=x2; ++x) {
-	   IO_OUT(IO_SSD1351_DAT,hi);
-	   IO_OUT(IO_SSD1351_DAT,lo);
+	   OLED_WRITE_DATA_UINT8_UINT8(hi,lo);
 	}
     }
 }

@@ -215,8 +215,7 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	int x2 = x_right[y];
 	oled_write_window(x1,y,x2,y);
 	for(int x=x1; x<=x2; ++x) {
-	    IO_OUT(IO_SSD1351_DAT,color_hi);
-	    IO_OUT(IO_SSD1351_DAT,color);
+	    OLED_WRITE_DATA_UINT8_UINT8(color_hi, color);
 	}
     }
     
