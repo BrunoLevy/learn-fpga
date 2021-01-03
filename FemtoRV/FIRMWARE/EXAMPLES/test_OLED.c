@@ -15,8 +15,8 @@ int main() {
 		uint32_t G = (x >> 3)  & 63;
 		uint32_t B = (y+frame) & 63;
 		// pixel color: RRRRR GGGGG 0 BBBBB
-		IO_OUT(IO_OLED_DATA,(G>>2)|(R<<3));
-		IO_OUT(IO_OLED_DATA,B|(G << 6));
+		IO_OUT(IO_SSD1351_DAT,(G>>2)|(R<<3));
+		IO_OUT(IO_SSD1351_DAT,B|(G << 6));
 	    }
 	}
 	++frame;

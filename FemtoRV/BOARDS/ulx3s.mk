@@ -8,6 +8,8 @@ NEXTPNR_ULX3S_OPT=--force --timing-allow-fail --json $(PROJECTNAME).json --lpf B
 
 ULX3S: ULX3S.synth ULX3S.prog_flash
 
+ULX3S.fast: ULX3S.synth ULX3S.prog
+
 ULX3S.synth: FIRMWARE/firmware.hex
 	yosys $(YOSYS_ULX3S_OPT) $(VERILOGS)
 	nextpnr-ecp5 $(NEXTPNR_ULX3S_OPT)

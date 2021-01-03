@@ -56,7 +56,7 @@ union {
  * Restarts reading from the beginning of the stream.
  */
 void spi_reset() {
-  spi_mapped_mode = IO_IN(IO_DEVICES_FREQ) & (1 << MAPPED_DEVICE_SPI_FLASH_BIT);
+  spi_mapped_mode = FEMTOSOC_HAS_DEVICE(IO_MAPPED_SPI_FLASH_bit);
   spi_addr = spi_mapped_mode ? 0 : 1024*1024;
   spi_word_addr = (uint32_t)(-1);
 }

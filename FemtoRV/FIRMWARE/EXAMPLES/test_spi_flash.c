@@ -19,14 +19,13 @@ int get_spi_byte_io(int addr) {
 }
 
 // Access through mapped address space
-#define SPI_FLASH_BASE ((uint32_t*)(1 << 23))
 int get_spi_byte_mapped(int addr) {
   addr -= (1024*1024);
   union {
     uint32_t word;
     uint8_t bytes[4];
   } u;
-  u.word = SPI_FLASH_BASE[addr >> 2];
+  u.word = ((uint32_t*)SPI_FLASH_BASE)[addr >> 2];
   return u.bytes[addr & 3];
 }
 
@@ -39,7 +38,7 @@ void printb(int x) {
 int main() {
   
   // Test whether mapped memory space is activated
-  int mapped = IO_IN(IO_DEVICES_FREQ) & (1 << MAPPED_DEVICE_SPI_FLASH_BIT);
+  int mapped = FEMTOSOC_HAS_DEVICE(IO_SPI_FLASH_bit);
   
   int addr = 1024*1024;
   int data;

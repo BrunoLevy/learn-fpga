@@ -232,13 +232,14 @@ module FemtoRV32 #(
 `ifdef NRV_CSR
    wire [31:0] CSR_rdata;
    wire        instr_retired;
+   wire        CSR_error;
    NrvControlStatusRegisterFile CSR(
       .clk(clk),                         // for counting cycles
       .instr_cnt(instr_retired),         // for counting retired instructions
       .reset(reset),                     // reset all CSRs to default value
       .CSRid(instr[31:20]),              // CSR Id, extracted from instr
-      .rdata(CSR_rdata)                  // Read CSR value
-      // TODO: test for errors (.error)
+      .rdata(CSR_rdata),                 // Read CSR value
+      .error(CSR_error)                  // Error (invalid CSR reg id)
    );
 `endif   
    // Note: writing to CSRs not implemented yet

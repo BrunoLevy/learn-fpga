@@ -110,27 +110,28 @@ void GL_putchar_xy(int x, int y, char c);
 #define IO_BIT_TO_OFFSET(io_bit) (1 << (2+(io_bit)))  
 
 /* All the memory-mapped hardware registers */
-#define IO_LEDS                    IO_BIT_TO_OFFSET(IO_LEDs_bit)
-#define IO_SSD1351_CNTL            IO_BIT_TO_OFFSET(IO_SSD1351_CNTL_bit)
-#define IO_SSD1351_CMD             IO_BIT_TO_OFFSET(IO_SSD1351_CMD_bit)
-#define IO_SSD1351_DAT             IO_BIT_TO_OFFSET(IO_SSD1351_DAT_bit)
-#define IO_UART_CNTL               IO_BIT_TO_OFFSET(IO_UART_CNTL_bit)
-#define IO_UART_DAT                IO_BIT_TO_OFFSET(IO_UART_DAT_bit)
-#define IO_MAX2719                 IO_BIT_TO_OFFSET(IO_MAX2719_bit)
-#define IO_SPI_FLASH               IO_BIT_TO_OFFSET(IO_SPI_FLASH_bit)
-#define IO_SDCARD                  IO_BIT_TO_OFFSET(IO_SDCARD_bit)
-#define IO_BUTTONS                 IO_BIT_TO_OFFSET(IO_BUTTONS_bit)
-#define IO_MAPPED_SPI_FLASH        IO_BIT_TO_OFFSET(IO_MAPPED_SPI_FLASH_bit)
-#define IO_HW_CONFIG_RAM           IO_BIT_TO_OFFSET(IO_HW_CONFIG_RAM_bit)
-#define IO_HW_CONFIG_DEVICES_FREQ  IO_BIT_TO_OFFSET(IO_HW_CONFIG_DEVICES_FREQ_bit)
+#define IO_LEDS              IO_BIT_TO_OFFSET(IO_LEDS_bit)
+#define IO_SSD1351_CNTL      IO_BIT_TO_OFFSET(IO_SSD1351_CNTL_bit)
+#define IO_SSD1351_CMD       IO_BIT_TO_OFFSET(IO_SSD1351_CMD_bit)
+#define IO_SSD1351_DAT       IO_BIT_TO_OFFSET(IO_SSD1351_DAT_bit)
+#define IO_UART_CNTL         IO_BIT_TO_OFFSET(IO_UART_CNTL_bit)
+#define IO_UART_DAT          IO_BIT_TO_OFFSET(IO_UART_DAT_bit)
+#define IO_MAX2719           IO_BIT_TO_OFFSET(IO_MAX2719_bit)
+#define IO_SPI_FLASH         IO_BIT_TO_OFFSET(IO_SPI_FLASH_bit)
+#define IO_SDCARD            IO_BIT_TO_OFFSET(IO_SDCARD_bit)
+#define IO_BUTTONS           IO_BIT_TO_OFFSET(IO_BUTTONS_bit)
+#define IO_MAPPED_SPI_FLASH  IO_BIT_TO_OFFSET(IO_MAPPED_SPI_FLASH_bit)
+#define IO_HW_CONFIG_RAM     IO_BIT_TO_OFFSET(IO_HW_CONFIG_RAM_bit)
+#define IO_HW_CONFIG_DEVICES IO_BIT_TO_OFFSET(IO_HW_CONFIG_DEVICES_bit)
+#define IO_HW_CONFIG_CPUINFO IO_BIT_TO_OFFSET(IO_HW_CONFIG_CPUINFO_bit)
 
 #define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
 #define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)
 #define LEDS(val)         IO_OUT(IO_LEDS,val)
 
-#define FEMTOSOC_HAS_DEVICE(bit)  (IO_IN(IO_HW_CONFIG_DEVICES_FREQ) & (1 << bit))
-#define FEMTORV32_FREQ           ((IO_IN(IO_HW_CONFIG_DEVICES_FREQ) >> 16) & 1023)
-#define FEMTORV32_CPL             (IO_IN(IO_HW_CONFIG_DEVICES_FREQ) >> 26)
+#define FEMTOSOC_HAS_DEVICE(bit)  (IO_IN(IO_HW_CONFIG_DEVICES) & (1 << bit))
+#define FEMTORV32_FREQ           ((IO_IN(IO_HW_CONFIG_CPUINFO) >> 16) & 1023)
+#define FEMTORV32_CPL             (IO_IN(IO_HW_CONFIG_CPUINFO) >> 26)
 
 /* SSD1351 Oled display on 4-wire SPI bus */
 extern void oled_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
@@ -158,6 +159,9 @@ extern void MAX7219(uint32_t address, uint32_t value);
 static inline FGA_setpixel(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
   ((uint16_t*)FGA_BASEMEM)[320*y+x] = GL_RGB(R,G,B);
 }
+
+/* Mapped SPI FLASH */
+#define SPI_FLASH_BASE ((void*)(1 << 23))
 
 /* FAT_IO_LIB */
 #define USE_FILELIB_STDIO_COMPAT_NAMES

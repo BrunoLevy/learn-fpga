@@ -66,13 +66,13 @@ loop_x:	add s0,s0,1
 	srl t1,s0,5
 	and t1,t1,7
 	or  t0,t0,t1
-	sw t0, IO_OLED_DATA(gp)
+	sw t0, IO_SSD1351_DAT(gp)
 	add t0,s1,s3
 	andi t0,t0,31
 	sll t1,s0,3
 	and t1,t1,192
 	or  t0,t0,t1
-	sw t0, IO_OLED_DATA(gp)
+	sw t0, IO_SSD1351_DAT(gp)
 	
 	bne s0,s2,loop_x
 	add s1,s1,1

@@ -79,10 +79,10 @@ loop_Z: mv a0,s4    # Zrr  <- (Zr*Zr) >> mandel_shift
 exit_Z:
 
 	sll  t0,s10,3
-	sw   t0,IO_OLED_DATA(gp)
+	sw   t0,IO_SSD1351_DAT(gp)
 
         sll  t0,s10,2
-	sw   t0, IO_OLED_DATA(gp)
+	sw   t0,IO_SSD1351_DAT(gp)
 	
 	add s0,s0,1
 	add s2,s2,dx

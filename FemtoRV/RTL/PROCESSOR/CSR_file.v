@@ -8,7 +8,7 @@ module NrvControlStatusRegisterFile(
    input wire 	     reset,     // resets CSRs to default value (aclive low)
    input wire [11:0] CSRid,     // 12-bits CSR ID
    output reg [31:0] rdata,     // read CSR value
-   output reg 	     error  // set to 1 if invalid CSR ID	
+   output reg 	     error      // set to 1 if invalid CSR ID	
 );
 
 `ifdef NRV_COUNTERS

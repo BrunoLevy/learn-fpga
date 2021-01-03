@@ -79,8 +79,8 @@ void main() {
 	    int Y = Y0;
 	    for(int x=0; x<128; ++x) {
 	        unsigned char col = logo[(Y >> 18)&15][(X >> 18)&15];
-		IO_OUT(IO_OLED_DATA,cmap[col][0]);
-		IO_OUT(IO_OLED_DATA,cmap[col][1]);
+		IO_OUT(IO_SSD1351_DAT,cmap[col][0]);
+		IO_OUT(IO_SSD1351_DAT,cmap[col][1]);
 	        X += Ux;
 	        Y += Uy;
 	    }

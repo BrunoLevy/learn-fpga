@@ -8,13 +8,14 @@ void show_config() {
   printf("  freq:    %d MHz\n", FEMTORV32_FREQ);
   printf("   CPL:    %d\n",     FEMTORV32_CPL);  
   printf("[RAM]\n");
-  printf("  %d bytes\n", IO_IN(IO_RAM));
+  printf("  %d bytes\n", IO_IN(IO_HW_CONFIG_RAM));
   printf("[Devices]\n");
-  printf("  LEDs     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_DEVICE_LEDS_BIT     ) ? '*' : ' ');
-  printf("  UART     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_DEVICE_UART_BIT     ) ? '*' : ' ');
-  printf("  OLED     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_DEVICE_SSD1351_BIT  ) ? '*' : ' ');
-  printf("  LedMtx   [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_DEVICE_MAX2719_BIT  ) ? '*' : ' ');
-  printf("  SPIFlash [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_DEVICE_SPI_FLASH_BIT) ? '*' : ' ');
+  printf("  LEDs     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_LEDS_bit       ) ? '*' : ' ');
+  printf("  UART     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_UART_DAT_bit   ) ? '*' : ' ');
+  printf("  OLED     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_SSD1351_DAT_bit) ? '*' : ' ');
+  printf("  LedMtx   [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_MAX7219_DAT_bit) ? '*' : ' ');
+  printf("  SPIFlash [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_SPI_FLASH_bit  ) ? '*' : ' ');
+  printf("  FGA      [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_FGA_CNTL_bit   ) ? '*' : ' ');
   printf("\n");
 }
 

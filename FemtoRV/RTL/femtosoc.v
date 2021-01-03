@@ -54,7 +54,7 @@ module femtosoc(
    output spi_clk, // ULX3S has spi clk shared with ESP32, using USRMCLK (below)	
  `endif		
 `endif
-`ifdef NRV_IO_SPI_SDCARD
+`ifdef NRV_IO_SDCARD
    output sd_mosi, input sd_miso, output sd_cs_n, output sd_clk,
 `endif
 `ifdef NRV_IO_BUTTONS
@@ -71,7 +71,7 @@ module femtosoc(
 `ifdef FOMU
    output usb_dp, usb_dn, usb_dp_pu, 
 `endif
-`ifdef NRV_FGA		
+`ifdef NRV_IO_FGA		
    output [3:0] gpdi_dp,
 `endif		
    input pclk
@@ -218,7 +218,7 @@ module femtosoc(
       $readmemh("FIRMWARE/firmware.hex",RAM); 
    end
 
-`ifdef NRV_FGA
+`ifdef NRV_IO_FGA
    wire mem_address_is_vram = mem_address[21];
 `else
    parameter mem_address_is_vram = 1'b0;
@@ -238,7 +238,7 @@ module femtosoc(
    end
    /* verilator lint_on WIDTH */
 
-`ifdef NRV_FGA
+`ifdef NRV_IO_FGA
    FGA graphic_adapter(
       .clk(clk),
       .sel(mem_address_is_vram),
@@ -306,7 +306,8 @@ wire [31:0] hwconfig_rdata;
 HardwareConfig hwconfig(
    .clk(clk),			
    .sel_memory(io_word_address[IO_HW_CONFIG_RAM_bit]),
-   .sel_devices_freq(io_word_address[IO_HW_CONFIG_DEVICES_FREQ_bit]),
+   .sel_devices(io_word_address[IO_HW_CONFIG_DEVICES_bit]),
+   .sel_cpuinfo(io_word_address[IO_HW_CONFIG_CPUINFO_bit]),			
    .rdata(hwconfig_rdata)			 
 );
 `endif
@@ -406,7 +407,7 @@ HardwareConfig hwconfig(
  * implements the SPI protocol by bit-banging (see FIRMWARE/LIBFEMTORV32/spi_sd.c).
  * One day I'll replace it with a hardware driver... if I have time !
  */
-`ifdef NRV_IO_SPI_SDCARD
+`ifdef NRV_IO_SDCARD
    wire [31:0] sdcard_rdata;
    SDCard sdcard(
       .clk(clk),
@@ -454,7 +455,7 @@ always @(posedge clk) begin
 `ifdef NRV_IO_SPI_FLASH
 	    | spi_flash_rdata
 `endif
-`ifdef NRV_IO_SPI_SDCARD
+`ifdef NRV_IO_SDCARD
 	    | sdcard_rdata
 `endif
 `ifdef NRV_IO_BUTTONS
