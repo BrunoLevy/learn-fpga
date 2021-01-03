@@ -1,8 +1,9 @@
 // Configuration file for femtosoc/femtorv32
 
-// Uncomment one of the following lines, OR fine-tune the options below.
+// Uncomment one of the following lines OR fine-tune the options below.
 //`include "CONFIGS/ulx3s_default.v"
 `include "CONFIGS/icestick_default.v"
+//`include "CONFIGS/my_config.v"
 
 `ifndef NRV_FEMTOSOC_CONFIGURED
 
@@ -25,8 +26,8 @@
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
 //`define NRV_RAM 393216 // bigger config for ULX3S
-`define NRV_RAM 262144 // default for ULX3S
-//`define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
+//`define NRV_RAM 262144 // default for ULX3S
+`define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
 //`define NRV_RAM 1024   // small ICESTICK config (to further save LUTs if need be)
 
 /************************* Processor configuration ******************************************************************/
