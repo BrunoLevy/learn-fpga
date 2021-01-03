@@ -38,3 +38,8 @@ testbench:
 lint:
 	verilator --lint-only -DPASSTHROUGH_PLL --top-module $(PROJECTNAME) -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL $(VERILOGS)
 #######################################################################################################################
+
+get_RAM_size:
+	(cd RTL; iverilog -IPROCESSOR -IDEVICES get_RAM_size.v -o get_RAM_size.vvp; vvp get_RAM_size.vvp > RAM_size.v; rm -f get_RAM_size.vvp)
+
+#######################################################################################################################

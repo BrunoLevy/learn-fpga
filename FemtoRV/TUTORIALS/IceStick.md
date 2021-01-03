@@ -98,6 +98,12 @@ $ make -j 4
 $ sudo make install
 ```
 
+icarus/iverilog and verilator
+-----------------------------
+```
+apt-get install iverilog verilator
+```
+
 Step 2: Configure USB rules
 ===========================
 We need to let normal users program the IceStick through USB. This

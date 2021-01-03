@@ -89,6 +89,12 @@ $ make -j 4
 $ sudo make install
 ```
 
+icarus/iverilog and verilator
+-----------------------------
+```
+apt-get install iverilog verilator
+```
+
 Step 2: Configure DFU and USB rules
 ===================================
 

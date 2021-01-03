@@ -1,9 +1,9 @@
-
+rm -f ../RTL/RAM_size.v
 
 echo "============> Compiling libs"
 (cd LIBFEMTORV32;  make clean all > /dev/null) # Compile hardware support lib
 (cd LIBFEMTOC;     make clean all > /dev/null) # Compile lib with printf() replacement function
-(cd CRT_BAREMETAL; make clean all > /dev/null) # Compile C runtime for baremetal 
+(cd CRT_BAREMETAL; make clean all > /dev/null) # Compile C runtime for baremetal
 # Note: I 'make clean' each time, because there is no much to recompile (and dependencies
 # are not specified)...
 

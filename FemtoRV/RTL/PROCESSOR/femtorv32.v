@@ -429,7 +429,7 @@ module FemtoRV32 #(
 	//    also waits from data from IO (listens to mem_rbusy)
 	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[WAIT_ALU_OR_DATA_bit]: begin
-	   `verbose($display("        mem_rbusy:%b  alu_busy:%b",mem_rbusy,alu_busy));
+	   `verbose($display("        mem_rbusy:%b  alu_busy:%b",mem_rbusy,aluBusy));
 	   if(!aluBusy && !mem_rbusy) begin
 	      instr <= nextInstr;
 	      addressReg <= PCplus4;

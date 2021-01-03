@@ -11,7 +11,21 @@ module TMDS_encoder(
 
    wire [3:0] Nb1s = VD[0] + VD[1] + VD[2] + VD[3] + VD[4] + VD[5] + VD[6] + VD[7];
    wire XNOR = (Nb1s>4'd4) || (Nb1s==4'd4 && VD[0]==1'b0);
-   wire [8:0] q_m = {~XNOR, q_m[6:0] ^ VD[7:1] ^ {7{XNOR}}, VD[0]};
+
+   // [Bruno Levy Jan 2021]
+   // Compact writing: wire [8:0] q_m = {~XNOR, q_m[6:0] ^ VD[7:1] ^ {7{XNOR}}, VD[0]};
+   // ... generates combinatorial loop warning, so I'd rather expand it (less compact,
+   // less elegant, but I did not like this combinatorial loop warning).
+   wire [8:0] q_m;
+   assign q_m[0] = VD[0];
+   assign q_m[1] = q_m[0] ^ VD[1] ^ XNOR;
+   assign q_m[2] = q_m[1] ^ VD[2] ^ XNOR;
+   assign q_m[3] = q_m[2] ^ VD[3] ^ XNOR;
+   assign q_m[4] = q_m[3] ^ VD[4] ^ XNOR;
+   assign q_m[5] = q_m[4] ^ VD[5] ^ XNOR;
+   assign q_m[6] = q_m[5] ^ VD[6] ^ XNOR;
+   assign q_m[7] = q_m[6] ^ VD[7] ^ XNOR;
+   assign q_m[8] = ~XNOR;
 
    reg [3:0] balance_acc = 0;
    wire [3:0] balance = q_m[0] + q_m[1] + q_m[2] + q_m[3] + q_m[4] + q_m[5] + q_m[6] + q_m[7] - 4'd4;

@@ -79,9 +79,12 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax
 # at address 0 (firmware for IceStick, or femtOS commander.c for ULX3S). The rules
 # to generate standard (.elf) or bare metal (.bm_elf) executables are in EXAMPLES/Makefile
 
-%.hex: %.bm_elf $(FIRMWARE_DIR)/TOOLS/firmware_words
-	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc_config.v -hex $@
+%.hex: %.bm_elf $(FIRMWARE_DIR)/TOOLS/firmware_words $(FIRMWARE_DIR)/../RTL/RAM_size.v
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/RAM_size.v -hex $@
 
+$(FIRMWARE_DIR)/../RTL/RAM_size.v:
+	(cd $(FIRMWARE_DIR)/..; make get_RAM_size)
+	
 ##############################################################################################
 .PHONY: root clean all get_riscv_toolchain
 

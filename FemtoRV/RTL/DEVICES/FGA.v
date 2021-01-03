@@ -60,8 +60,9 @@ module FGA(
 	    row_start   <= 0;
 	    pix_address <= 0;
 	 end else begin
+	    // Increment row address every 2 Y (2 because 320x200->640x400)
 	    if(Y[0]) begin
-	       row_start <= row_start + 640;
+	       row_start   <= row_start + 640;
 	       pix_address <= row_start + 640;
 	    end else begin
 	       pix_address <= row_start;	       
@@ -85,9 +86,6 @@ module FGA(
    // RGB TMDS encoding
    // Generate 10-bits TMDS red,green,blue signals. Blue embeds HSync/VSync in its 
    // control part.
-   //
-   // Note: Yosys finds a combinatorial loop here, but I do not understand why (and
-   // it seems to work though). TO BE UNDERSTOOD.
    wire [9:0] TMDS_R, TMDS_G, TMDS_B;
    TMDS_encoder encode_R(.clk(pixel_clk), .VD(R), .CD(2'b00)        , .VDE(DrawArea), .TMDS(TMDS_R));
    TMDS_encoder encode_G(.clk(pixel_clk), .VD(G), .CD(2'b00)        , .VDE(DrawArea), .TMDS(TMDS_G));
@@ -98,7 +96,7 @@ module FGA(
    wire clk_TMDS; // The 250 MHz clock used by the serializers.
    HDMI_clock hdmi_clock(.clk(pixel_clk), .hdmi_clk(clk_TMDS));
 
-   // Modulo-10 clock divider
+   // Modulo-10 clock divider (my version, using a 1-hot in a 10 bits ring)
    reg [9:0] TMDS_mod10=1;
    wire      TMDS_shift_load = TMDS_mod10[9];
    always @(posedge clk_TMDS) TMDS_mod10 <= {TMDS_mod10[8:0],TMDS_mod10[9]};

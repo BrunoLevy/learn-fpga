@@ -101,6 +101,12 @@ git clone https://github.com/emard/ulx3s-bin
 sudo cp ulx3s-bin/usb-jtag/linux-amd64/ujprog /usr/local/bin
 ```
 
+icarus/iverilog and verilator
+-----------------------------
+```
+apt-get install iverilog verilator
+```
+
 Step 2: Configure USB rules
 ===========================
 We need to let normal users program the ULX3S through USB. This

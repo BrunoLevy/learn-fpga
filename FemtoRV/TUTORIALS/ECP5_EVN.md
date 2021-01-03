@@ -107,6 +107,12 @@ Note that there are several alternatives, such as OpenOCD. If you prefer to use 
 you will need to edit `Makefile` (see commented-out line in 
 `ECP5_EVN.prog` target)
 
+icarus/iverilog and verilator
+-----------------------------
+```
+apt-get install iverilog verilator
+```
+
 Step 2: Configure USB rules
 ===========================
 We need to let normal users program the ULX3S through USB. This
