@@ -21,20 +21,17 @@ module femtoPLL #(
 );
    assign clk = pclk;   
 endmodule
+`else
+ `ifdef  ICE_STICK 
+  `include "pll_icestick.v"
+ `elsif ICE_FEATHER
+  `include "pll_icefeather.v"
+ `elsif ULX3S
+  `include "pll_ulx3s.v"
+ `elsif ECP5_EVN
+  `include "pll_ecp5_evn.v"
+ `elsif FOMU
+  `include "pll_fomu.v"
+ `endif
 `endif
-
-/**********************************************************************/
-
-`ifdef  ICE_STICK 
- `include "pll_icestick.v"
-`elsif ICE_FEATHER
- `include "pll_icefeather.v"
-`elsif ULX3S
- `include "pll_ulx3s.v"
-`elsif ECP5_EVN
- `include "pll_ecp5_evn.v"
-`elsif FOMU
- `include "pll_fomu.v"
-`endif
-   
 
