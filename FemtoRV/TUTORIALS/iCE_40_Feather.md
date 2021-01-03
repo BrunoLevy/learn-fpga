@@ -73,6 +73,11 @@ The full config block looks like this currently, however this may change as more
 //`define NRV_FGA // Femto Graphic Adapter (ULX3S only)
 ```
 
+The up5k can only support the minirv32. Disable this config block by uncommenting the `NRV_MINIRV32` define.
+```
+`define NRV_MINIRV32 // Mini config, can execute code stored in SPI flash from 1Mb offset (mapped to address 0x800000)
+```
+
 The LED matrix shield in action and buttons are shown in the images
 below.
 
