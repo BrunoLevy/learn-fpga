@@ -2,7 +2,6 @@
  *   FPGA kind      : ICE40
  *   Input frequency: 12 MHz
  */
-`ifndef PASSTHROUGH_PLL
  module femtoPLL #(
     parameter freq = 60
  ) (
@@ -184,4 +183,4 @@
       .BYPASS(1'b0)
    );
 endmodule
-`endif
+
