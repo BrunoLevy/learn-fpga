@@ -2,7 +2,7 @@
  *   FPGA kind      : ICE40
  *   Input frequency: 12 MHz
  */
-
+`ifndef PASSTHROUGH_PLL
  module femtoPLL #(
     parameter freq = 60
  ) (
@@ -11,6 +11,12 @@
  );
    generate
      case(freq)
+     16: begin
+      parameter DIVR = 4'b0010;
+      parameter DIVF = 7'b0111111;
+      parameter DIVQ = 3'b110;
+      parameter FILTER_RANGE = 3'b001;
+     end
      20: begin
       parameter DIVR = 4'b0000;
       parameter DIVF = 7'b0110100;
@@ -177,4 +183,5 @@
       .RESETB(1'b1),
       .BYPASS(1'b0)
    );
-endmodule  
+endmodule
+`endif

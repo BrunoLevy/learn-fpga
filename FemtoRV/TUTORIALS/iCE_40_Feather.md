@@ -39,6 +39,12 @@ The pinmap and basic settings were imported following the procedure for [adding 
 
 Ideal configs for the iceFeather / UP5K are still being investigated. A known issue is `SB_PLL40_CORE` needing to be replaced with `SB_PLL40_PAD` with a packagepin for CLK instead of ReferenceCLK for initial gateware building to work.
 
+To try the pass-through clock at 12MHz instead use the following configuration block.
+```
+`define NRV_FREQ 12      // Frequency in MHz. Recomm: 50 MHz (FOMU: 16MHz) Overclocking: 80-100 MHz (HX1K, ECP5)
+`define PASSTHROUGH_PLL
+```
+
 The ice-feather comes with an SPI Flash and a stock [led wing](https://github.com/joshajohnson/iCE40-feather/tree/master/hardware/led-wing) with a 6x6 LED Matrix , a second RGB LED and 4 buttons.
 
 Set up the `femtosoc_config.v` to support the SPI flash by enabling / uncommenting this line.
@@ -53,6 +59,25 @@ Setup support for the wing based buttons by uncommenting this line
 //`define NRV_IO_BUTTONS    // Mapped IO, buttons
 ```
 
+The full config block looks like this currently, however this may change as more features and support for more peripherals is added.
+
+```
+`define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
+`define NRV_IO_UART      // Mapped IO, virtual UART (USB)
+//`define NRV_IO_SSD1351    // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX7219      // Mapped IO, 8x8 led matrix
+`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
+//`define NRV_IO_SPI_SDCARD // Mapped IO, SPI SDCARD
+`define NRV_IO_BUTTONS    // Mapped IO, buttons
+//`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. Use with MINIRV32 to run code from SPI flash.
+//`define NRV_FGA // Femto Graphic Adapter (ULX3S only)
+```
+
+The up5k can only support the minirv32. Disable this config block by uncommenting the `NRV_MINIRV32` define.
+```
+`define NRV_MINIRV32 // Mini config, can execute code stored in SPI flash from 1Mb offset (mapped to address 0x800000)
+```
+
 The LED matrix shield in action and buttons are shown in the images
 below.
 
@@ -63,3 +88,18 @@ below.
 The x2 RGB led's spread across the Base feather and the LED Wing are mapped to pins D1-D6 and when the FemtoRV Soc is loaded these light up as shown below.
 
 ![FemtoRV loaded lit](Images/ice40_Feather_led_femto.jpg)
+
+Step 4: Configure a Firmware
+============================
+
+The ice40 parts have limited RAM and need firmware optimized for size. Edit `FemtoRV/FIRMWARE/makefile.inc` to use these options.
+
+```
+ARCH=rv32i
+ABI=ilp32
+OPTIMIZE=-Os
+```
+
+Then compile a sample firmware of your choice using `./make_firmware.sh ASM_EXAMPLES/mandelbrot_terminal.S` or similar for an
+assembly or C based sample. The firmware making script compiles the firmware and places it in `firmware.hex`, this is then
+packed into a bin file using `icepack` and sent to the board using `iceprog`.
