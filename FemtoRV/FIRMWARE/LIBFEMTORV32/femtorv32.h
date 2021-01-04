@@ -120,6 +120,7 @@ void GL_putchar_xy(int x, int y, char c);
 #define IO_SSD1351_CNTL      IO_BIT_TO_OFFSET(IO_SSD1351_CNTL_bit)
 #define IO_SSD1351_CMD       IO_BIT_TO_OFFSET(IO_SSD1351_CMD_bit)
 #define IO_SSD1351_DAT       IO_BIT_TO_OFFSET(IO_SSD1351_DAT_bit)
+#define IO_SSD1351_DAT16     IO_BIT_TO_OFFSET(IO_SSD1351_DAT16_bit)
 #define IO_UART_CNTL         IO_BIT_TO_OFFSET(IO_UART_CNTL_bit)
 #define IO_UART_DAT          IO_BIT_TO_OFFSET(IO_UART_DAT_bit)
 #define IO_MAX2719           IO_BIT_TO_OFFSET(IO_MAX2719_bit)
@@ -159,13 +160,10 @@ extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
  * Here we send the same graphic byte to the OLED display and FGA graphic board,
  * so that graphic programs work on both.
  */ 
-#define IO_GFX_DAT (IO_SSD1351_DAT | IO_FGA_DAT) 
 
-#define OLED_WRITE_DATA_UINT8_UINT8(HI,LO) IO_OUT(IO_GFX_DAT,(HI)); IO_OUT(IO_GFX_DAT,(LO));
-#define OLED_WRITE_DATA_UINT16(RGB)        OLED_WRITE_DATA_UINT8_UINT8(RGB>>8, RGB)
-#define OLED_WRITE_DATA_RGB(R,G,B)         OLED_WRITE_DATA_UINT16(GL_RGB(R,G,B))
-
-#define FGA_WRITE_DATA_UINT8_UINT8(HI,LO) IO_OUT(IO_FGA_DAT,(HI)); IO_OUT(IO_FGA_DAT,(LO));
+#define IO_GFX_DAT (IO_SSD1351_DAT16 | IO_FGA_DAT) 
+#define OLED_WRITE_DATA_UINT16(RGB) IO_OUT(IO_GFX_DAT,(RGB)) 
+#define OLED_WRITE_DATA_RGB(R,G,B)  OLED_WRITE_DATA_UINT16(GL_RGB(R,G,B))
 
 /* MAX7219 led matrix */
 extern void MAX7219_init();

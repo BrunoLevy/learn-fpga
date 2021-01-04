@@ -9,11 +9,12 @@
 //        of zeroes).
 
 module SSD1351(
-    input wire 	      clk,      // system clock
-    input wire 	      wstrb,    // write strobe (use one of sel_xxx to select dest)
-    input wire 	      sel_cntl, // wdata[0]: !CS;  wdata[1]: RST
-    input wire 	      sel_cmd,  // send 8-bits command to display
-    input wire 	      sel_dat,  // send 8-bits data to display
+    input wire 	      clk,       // system clock
+    input wire 	      wstrb,     // write strobe (use one of sel_xxx to select dest)
+    input wire 	      sel_cntl,  // wdata[0]: !CS;  wdata[1]: RST
+    input wire 	      sel_cmd,   // send 8-bits command to display
+    input wire 	      sel_dat,   // send 8-bits data to display
+    input wire 	      sel_dat16, // send 16-bits data to display
 
     input wire [31:0] wdata,    // data to be written
 
@@ -69,11 +70,11 @@ module SSD1351(
 
    // Currently sent bit, 1-based index
    // (0000 config. corresponds to idle)
-   reg[3:0] bitcount = 4'b0000;
-   reg[7:0] shifter = 0;
-   wire     sending = (bitcount != 0);
+   reg[4:0]  bitcount = 5'b0000;
+   reg[15:0] shifter  = 0;
+   wire      sending  = (bitcount != 0);
 
-   assign DIN = shifter[7];
+   assign DIN = shifter[15];
    assign CLK = slow_cnt[cnt_bit]; 
    assign wbusy = sending;
 
@@ -92,15 +93,22 @@ module SSD1351(
 	 if(sel_cmd) begin
 	    RST <= 1'b1;
 	    DC <= 1'b0;
-	    shifter <= wdata[7:0];
-	      bitcount <= 8;
+	    shifter <= {wdata[7:0],8'b0};
+	    bitcount <= 8;
 	    CS  <= 1'b1;
 	 end
 	 if(sel_dat) begin
  	    RST <= 1'b1;
 	    DC <= 1'b1;
-	    shifter <= wdata[7:0];
+	    shifter <= {wdata[7:0],8'b0};
 	    bitcount <= 8;
+	    CS  <= 1'b1;
+	 end
+	 if(sel_dat16) begin
+ 	    RST <= 1'b1;
+	    DC <= 1'b1;
+	    shifter <= wdata[15:0];
+	    bitcount <= 16;
 	    CS  <= 1'b1;
 	 end
       end else begin 
@@ -110,8 +118,8 @@ module SSD1351(
 	       if(CS) begin    // first tick activates CS (low)
 		  CS <= 1'b0;
 	       end else begin  // shift on falling edge
-		  bitcount <= bitcount - 4'd1;
-		  shifter <= {shifter[6:0], 1'b0};
+		  bitcount <= bitcount - 5'd1;
+		  shifter <= {shifter[14:0], 1'b0};
 	       end
 	    end else begin     // last tick deactivates CS (high) 
 	       CS  <= 1'b1;  

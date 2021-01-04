@@ -91,17 +91,13 @@ int GL_putchar(int c) {
 }
 
 void GL_putchar_xy(int X, int Y, char c) {
-   uint32_t Blo = (uint32_t)GL_bg;    
-   uint32_t Bhi = Blo >> 8;
-   uint32_t Flo = (uint32_t)GL_fg;    
-   uint32_t Fhi = Flo >> 8;
 #if defined(FONT_8x8)   
    oled_write_window(X,Y,X+7,Y+7);   
    uint8_t* car_ptr = font_8x8 + (int)c * 8;
    for(int row=0; row<8; ++row) {
       for(int col=0; col<8; ++col) {
 	 uint32_t BW = (car_ptr[col] & (1 << row)) ? 255 : 0;
-	 OLED_WRITE_DATA_UINT8_UINT8(BW ? Fhi : Bhi, BW ? Flo : Blo);
+	 OLED_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);
       }
    }
 #elif defined(FONT_5x6)
@@ -120,7 +116,7 @@ void GL_putchar_xy(int X, int Y, char c) {
 	       }
 	       BW = (coldata & (1 << row)) ? 255 : 0;
 	   }
-	   OLED_WRITE_DATA_UINT8_UINT8(BW ? Fhi : Bhi, BW ? Flo : Blo);
+	   OLED_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);
        }
    }
 #elif defined(FONT_3x5)
@@ -133,7 +129,7 @@ void GL_putchar_xy(int X, int Y, char c) {
 	      uint32_t coldata = (car_data >> (5 * col)) & 31;
 	      BW = (coldata & (1 << row)) ? 255 : 0;
 	  }
-	  OLED_WRITE_DATA_UINT8_UINT8(BW ? Fhi : Bhi, BW ? Flo : Blo);	 
+          OLED_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);	 
       }
    }
 #endif

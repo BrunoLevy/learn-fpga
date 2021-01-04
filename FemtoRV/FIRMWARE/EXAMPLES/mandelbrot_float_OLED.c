@@ -37,7 +37,7 @@ void mandel() {
 	     }
 	     --iter;
 	 }
-	 OLED_WRITE_DATA_UINT8_UINT8(iter << 3, iter << 2);
+	 OLED_WRITE_DATA_UINT16((iter << 19)|(iter << 2));
 	 Cr += dx;
       }
       Ci += dy;

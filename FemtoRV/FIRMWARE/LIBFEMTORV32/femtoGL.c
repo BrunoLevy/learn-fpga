@@ -15,12 +15,10 @@ void GL_set_bg(uint8_t r, uint8_t g, uint8_t b) {
 void GL_fill_rect(
     uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color
 ) {
-    uint32_t lo = (uint32_t)color;    
-    uint32_t hi = color >> 8;
     oled_write_window(x1,y1,x2,y2);
     for(int y=y1; y<=y2; ++y) {
 	for(int x=x1; x<=x2; ++x) {
-	   OLED_WRITE_DATA_UINT8_UINT8(hi,lo);
+	   OLED_WRITE_DATA_UINT16(color);
 	}
     }
 }

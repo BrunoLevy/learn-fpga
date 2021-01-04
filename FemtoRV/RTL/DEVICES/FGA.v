@@ -144,8 +144,8 @@ module FGA(
    //    MSB first, encoding follows SSD1351: RRRRR GGGGG 0 BBBBB
    
    reg[11:0] window_x1, window_x2, window_y1, window_y2, window_x, window_y;
-   reg[16:0] window_row_start;
-   reg[16:0] window_byte_address;   
+   reg[15:0] window_row_start;
+   reg[15:0] window_hword_address;   
 
    
    always @(posedge clk) begin
@@ -165,28 +165,25 @@ module FGA(
 		 window_y  <= mem_wdata[19:8];
 		 mem_busy  <= 1'b1;
 		 /* verilator lint_off WIDTH */
-		 window_row_start    <= (mem_wdata[19:8] * 320 + window_x1) << 1;
-		 window_byte_address <= (mem_wdata[19:8] * 320 + window_x1) << 1;
+		 window_row_start     <= mem_wdata[19:8] * 320 + window_x1;
+		 window_hword_address <= mem_wdata[19:8] * 320 + window_x1;
 		 /* verilator lint_on WIDTH */		 
 	      end
 	    endcase
 	    /* verilator lint_on CASEINCOMPLETE */	    
 	 end else if(sel_dat) begin // one byte of data sent to IO_FGA_DAT
 	                            // increment pixel address.
-	    window_byte_address <= window_byte_address + 1;
-	    if(window_byte_address[0]) begin
-	       if(window_x == window_x2) begin
-	          if(window_y == window_y2) begin
-		     mem_busy <= 1'b0;
-	          end else begin
-	             window_y <= window_y+1;
-		     window_x <= window_x1;
-		     window_byte_address <= window_row_start + 640;
-		     window_row_start    <= window_row_start + 640;
-	          end
+	    window_hword_address <= window_hword_address + 1;
+	    window_x             <= window_x + 1;	    
+	    if(window_x == window_x2) begin
+	       if(window_y == window_y2) begin
+		  mem_busy <= 1'b0;
 	       end else begin
-	          window_x <= window_x + 1;
-	       end 
+	          window_y <= window_y+1;
+		  window_x <= window_x1;
+		  window_hword_address <= window_row_start + 320;
+		  window_row_start     <= window_row_start + 320;
+	       end
 	    end 
          end // if (sel_dat)
       end // if (wstrb)
@@ -198,12 +195,9 @@ module FGA(
       if(io_wstrb) begin
          if(sel_dat && mem_busy) begin // one byte of data sent to IO_FGA_DAT
 	                               // write data to VRAM.
-	    case(window_byte_address[1:0])
-	       // Note: bytes are swapped (following SSD1351 norm)
-	       2'b00: VRAM[window_byte_address[16:2]][15:8 ] <= mem_wdata[7:0];
-	       2'b01: VRAM[window_byte_address[16:2]][ 7:0 ] <= mem_wdata[7:0];
-	       2'b10: VRAM[window_byte_address[16:2]][31:24] <= mem_wdata[7:0];
-	       2'b11: VRAM[window_byte_address[16:2]][23:16] <= mem_wdata[7:0];	   	   	   
+	    case(window_hword_address[0])
+	       1'b0: VRAM[window_hword_address[15:1]][15:0 ] <= mem_wdata[15:0];
+	       1'b1: VRAM[window_hword_address[15:1]][31:16] <= mem_wdata[15:0];
 	    endcase
 	 end
       end else if(sel && !mem_busy) begin

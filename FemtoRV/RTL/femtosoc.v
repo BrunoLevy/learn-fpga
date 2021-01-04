@@ -344,6 +344,7 @@ HardwareConfig hwconfig(
       .sel_cntl(io_word_address[IO_SSD1351_CNTL_bit]),
       .sel_cmd(io_word_address[IO_SSD1351_CMD_bit]),
       .sel_dat(io_word_address[IO_SSD1351_DAT_bit]),
+      .sel_dat16(io_word_address[IO_SSD1351_DAT16_bit]),			
       .wdata(io_wdata),
       .wbusy(SSD1351_wbusy),
       .DIN(oled_DIN),

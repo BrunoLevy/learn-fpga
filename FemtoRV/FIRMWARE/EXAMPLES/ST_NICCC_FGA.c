@@ -98,9 +98,9 @@ int read_frame() {
     FGA_wait_vbl();
    
     if(wireframe) {
-       // GL_clear(); // TODO
+       // FGA_clear(); // TODO
     } else {
-	if(frame_flags & CLEAR_BIT) {
+        if(frame_flags & CLEAR_BIT) {
 	   // FGA_clear(); // Too much flickering, commented-out for now
 	}
     }
@@ -179,8 +179,8 @@ int main() {
         FGA_clear();
 	GL_polygon_mode(wireframe ? GL_POLY_LINES: GL_POLY_FILL);	
 	while(read_frame()) {
-	    // delay(50); // If GL_clear() is uncommented, uncomment as well
-	                  // to reduce flickering.
+	   // delay(50); // If FGA_clear() is uncommented, uncomment as well
+	   //            // to reduce flickering.
 	}
         wireframe = !wireframe;
 	fclose(F);
