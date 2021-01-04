@@ -97,13 +97,16 @@ static int clip_H(
  * \param[in,out] poly vertices of the polygon.
  * \return number of vertices in the result polygon.
  */
-static int clip(int nb_pts, int** poly) {
+int GL_clip(
+    int nb_pts, int** poly, 
+    int xmin, int ymin, int xmax, int ymax
+) {
     static int  buff1[20];    
     int  buff2[20];
-    nb_pts = clip_H(nb_pts, *poly, buff2, 1, 0, 0);
-    nb_pts = clip_H(nb_pts, buff2, buff1,-1, 0, 127);
-    nb_pts = clip_H(nb_pts, buff1, buff2, 0, 1, 0);
-    nb_pts = clip_H(nb_pts, buff2, buff1, 0,-1, 127);
+    nb_pts = clip_H(nb_pts, *poly, buff2, 1, 0, xmin);
+    nb_pts = clip_H(nb_pts, buff2, buff1,-1, 0, xmax);
+    nb_pts = clip_H(nb_pts, buff1, buff2, 0, 1, ymin);
+    nb_pts = clip_H(nb_pts, buff2, buff1, 0,-1, ymax);
     *poly = buff1;
     return nb_pts;
 }
@@ -144,7 +147,7 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
     }
     
     if((minx < 0) || (miny < 0) || (maxx > 127) || (maxy > 127)) {
-	nb_pts = clip(nb_pts, &points);
+	nb_pts = GL_clip(nb_pts, &points, 0, 0, 127, 127);
 	miny =  256;
 	maxy = -256;
 	for(int i1=0; i1<nb_pts; ++i1) {

@@ -126,12 +126,12 @@ module FGA(
 
    // control register - commands
 
-   localparam SET_MODE       = 7'd0; // TODO
-   localparam SET_PALETTE_R  = 7'd1; // TODO
-   localparam SET_PALETTE_G  = 7'd2; // TODO
-   localparam SET_PALETTE_B  = 7'd3; // TODO
-   localparam SET_WWINDOW_X  = 7'd4;
-   localparam SET_WWINDOW_Y  = 7'd5;
+   localparam SET_MODE       = 8'd0; // TODO
+   localparam SET_PALETTE_R  = 8'd1; // TODO
+   localparam SET_PALETTE_G  = 8'd2; // TODO
+   localparam SET_PALETTE_B  = 8'd3; // TODO
+   localparam SET_WWINDOW_X  = 8'd4;
+   localparam SET_WWINDOW_Y  = 8'd5;
 
    
    // Emulation of SSD1351 OLED display.
@@ -143,7 +143,7 @@ module FGA(
    // - write data: send 8 bits to IO_FGA_DAT hardware register
    //    MSB first, encoding follows SSD1351: RRRRR GGGGG 0 BBBBB
    
-   reg[9:0]  window_x1, window_x2, window_y1, window_y2, window_x, window_y;
+   reg[11:0] window_x1, window_x2, window_y1, window_y2, window_x, window_y;
    reg[16:0] window_row_start;
    reg[16:0] window_byte_address;   
 
@@ -151,6 +151,7 @@ module FGA(
    always @(posedge clk) begin
       if(io_wstrb) begin
 	 if(sel_cntl) begin
+	    /* verilator lint_off CASEINCOMPLETE */
 	    case(mem_wdata[7:0])
 	      SET_WWINDOW_X: begin // SET_WWINDOW_X command
 		 window_x1 <= mem_wdata[19:8];
@@ -163,10 +164,13 @@ module FGA(
 		 window_y2 <= mem_wdata[31:20];
 		 window_y  <= mem_wdata[19:8];
 		 mem_busy  <= 1'b1;
+		 /* verilator lint_off WIDTH */
 		 window_row_start    <= (mem_wdata[19:8] * 320 + window_x1) << 1;
 		 window_byte_address <= (mem_wdata[19:8] * 320 + window_x1) << 1;
+		 /* verilator lint_on WIDTH */		 
 	      end
 	    endcase
+	    /* verilator lint_on CASEINCOMPLETE */	    
 	 end else if(sel_dat) begin // one byte of data sent to IO_FGA_DAT
 	                            // increment pixel address.
 	    window_byte_address <= window_byte_address + 1;
@@ -197,7 +201,7 @@ module FGA(
 	    case(window_byte_address[1:0])
 	       // Note: bytes are swapped (following SSD1351 norm)
 	       2'b00: VRAM[window_byte_address[16:2]][15:8 ] <= mem_wdata[7:0];
-	       2'b01: VRAM[window_byte_address[16:2]][ 0:7 ] <= mem_wdata[7:0];
+	       2'b01: VRAM[window_byte_address[16:2]][ 7:0 ] <= mem_wdata[7:0];
 	       2'b10: VRAM[window_byte_address[16:2]][31:24] <= mem_wdata[7:0];
 	       2'b11: VRAM[window_byte_address[16:2]][23:16] <= mem_wdata[7:0];	   	   	   
 	    endcase

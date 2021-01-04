@@ -80,6 +80,12 @@ extern void GL_setpixel(int x, int y, uint16_t color);
 extern void GL_line(int x1, int y1, int x2, int y3, uint16_t color);
 extern void GL_fill_poly(int nb_pts, int* points, uint16_t color);
 
+extern void FGA_wait_vbl();
+extern void FGA_clear();
+extern void FGA_fill_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color);
+extern void FGA_fill_poly(int nb_pts, int* points, uint16_t color);
+
+
 #define GL_POLY_LINES 1
 #define GL_POLY_FILL  2
 extern int gl_polygon_mode;
@@ -155,9 +161,11 @@ extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
  */ 
 #define IO_GFX_DAT (IO_SSD1351_DAT | IO_FGA_DAT) 
 
-#define OLED_WRITE_DATA_UINT8_UINT8(HI,LO) IO_OUT(IO_GFX_DAT,(HI)); IO_OUT(IO_GFX_DAT,(LO)); 
+#define OLED_WRITE_DATA_UINT8_UINT8(HI,LO) IO_OUT(IO_GFX_DAT,(HI)); IO_OUT(IO_GFX_DAT,(LO));
 #define OLED_WRITE_DATA_UINT16(RGB)        OLED_WRITE_DATA_UINT8_UINT8(RGB>>8, RGB)
 #define OLED_WRITE_DATA_RGB(R,G,B)         OLED_WRITE_DATA_UINT16(GL_RGB(R,G,B))
+
+#define FGA_WRITE_DATA_UINT8_UINT8(HI,LO) IO_OUT(IO_FGA_DAT,(HI)); IO_OUT(IO_FGA_DAT,(LO));
 
 /* MAX7219 led matrix */
 extern void MAX7219_init();

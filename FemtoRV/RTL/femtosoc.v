@@ -470,6 +470,9 @@ always @(posedge clk) begin
 `ifdef NRV_IO_BUTTONS
 	    | buttons_rdata
 `endif
+`ifdef NRV_IO_FGA
+	    | FGA_rdata
+`endif
 	    ;
 end
 
