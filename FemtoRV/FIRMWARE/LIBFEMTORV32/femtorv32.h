@@ -147,7 +147,14 @@ extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
  *    Then send all the pixels using one of the three forms of OLED_WRITE_DATA
  */ 
 
+/*
+ * The magic of 1-hot encoding for memory-mapped hw registers: one can
+ * write in two register simultaneously by setting both bits in the address.
+ * Here we send the same graphic byte to the OLED display and FGA graphic board,
+ * so that graphic programs work on both.
+ */ 
 #define IO_GFX_DAT (IO_SSD1351_DAT | IO_FGA_DAT) 
+
 #define OLED_WRITE_DATA_UINT8_UINT8(HI,LO) IO_OUT(IO_GFX_DAT,(HI)); IO_OUT(IO_GFX_DAT,(LO)); 
 #define OLED_WRITE_DATA_UINT16(RGB)        OLED_WRITE_DATA_UINT8_UINT8(RGB>>8, RGB)
 #define OLED_WRITE_DATA_RGB(R,G,B)         OLED_WRITE_DATA_UINT16(GL_RGB(R,G,B))
