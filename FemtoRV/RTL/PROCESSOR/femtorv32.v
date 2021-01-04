@@ -374,27 +374,27 @@ module FemtoRV32 #(
 	// Does 1-cycle ALU ops, or handles jump/branch, or transitions to waitALU, load, store
 	//    If linear execution flow, update instr with lookahead and prepare next lookahead	
 	state[EXECUTE_bit]: begin
-	   nextInstr <= mem_rdata;  // Looked-ahead instr.
+	   nextInstr  <= mem_rdata;  // Looked-ahead instr.
 	   addressReg <= aluAplusB[ADDR_WIDTH-1:0]; // Needed for LOAD,STORE,jump,branch
-	   PC <= PCplus4;
+	   PC         <= PCplus4;
 	   
 	   (* parallel_case, full_case *)	   
 	   case (1'b1)
 	     error_latched: state <= ERROR;
 	     isLoad:        state <= LOAD;
-	     isStore:       begin
-		state <= STORE;
+	     isStore: begin
+		state    <= STORE;
 		wdataReg <= STORE_data_aligned_for_MEM;
 	     end
 	     needWaitALU:   state <= WAIT_ALU_OR_DATA;	     
 	     jump_or_take_branch: begin
-		PC <= aluAplusB[ADDR_WIDTH-1:0];
+		PC    <= aluAplusB[ADDR_WIDTH-1:0];
 		state <= FETCH_INSTR;
 	     end
 	     default: begin // Linear execution flow, use lookahead, prepare next lookahead
-		instr <= mem_rdata;    // Use looked-ahead instr.
-		addressReg <= PCplus8; // Look-ahead: PC+8 (PC not updated yet)
-		state <= FETCH_REGS;   // Cool, linear exec flow takes 2 CPIs !
+		instr      <= mem_rdata;  // Use looked-ahead instr.
+		addressReg <= PCplus8;    // Look-ahead: PC+8 (PC not updated yet)
+		state      <= FETCH_REGS; // Cool, linear exec flow takes 2 CPIs !
 	     end
 	   endcase
 	end 
@@ -422,7 +422,6 @@ module FemtoRV32 #(
 	   if(!mem_wbusy) 
 	     state <= FETCH_REGS;
 	end
-
 	
         // *********************************************************************
         // Used by LOAD and by multi-cycle ALU instr (shifts and RV32M ops), writeback from ALU or memory

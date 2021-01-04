@@ -182,7 +182,7 @@ int main() {
 	    // delay(50); // If GL_clear() is uncommented, uncomment as well
 	                  // to reduce flickering.
 	}
-	wireframe = !wireframe;
+        wireframe = !wireframe;
 	fclose(F);
     }
 }

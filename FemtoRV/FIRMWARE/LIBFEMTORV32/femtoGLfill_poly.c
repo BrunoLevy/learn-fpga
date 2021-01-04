@@ -168,7 +168,7 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	    GL_line(x1,y1,x2,y2,color);
 	    continue;
 	}
-	
+
 	char* x_buffer = ((clockwise > 0) ^ (y2 > y1)) ? x_left : x_right;
 	int dx = x2 - x1;
 	int sx = 1;
@@ -189,7 +189,9 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	}
 
 	if(y1 == y2) {
-	    continue;
+	   x_left[y1]  = MIN(x1,x2);
+	   x_right[y1] = MAX(x1,x2);
+	   continue;
 	}
 
 	ex = (dx << 1) - dy;

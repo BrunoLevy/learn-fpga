@@ -106,6 +106,14 @@ oled_write_window:
 	call oled2
 	li a0, 0x5c
 	call oled0
+
+# Set write window in FGA, for SSD1351 emulation.
+	mv a0,t0
+	mv a1,t2
+	mv a2,t1
+	mv a3,t3
+	call FGA_write_window
+	
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret

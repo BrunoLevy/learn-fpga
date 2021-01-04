@@ -65,50 +65,37 @@ TMDS_encoder encode_R(.clk(pixclk), .VD(red  ), .CD(2'b00)        , .VDE(DrawAre
 TMDS_encoder encode_G(.clk(pixclk), .VD(green), .CD(2'b00)        , .VDE(DrawArea), .TMDS(TMDS_green));
 TMDS_encoder encode_B(.clk(pixclk), .VD(blue ), .CD({vSync,hSync}), .VDE(DrawArea), .TMDS(TMDS_blue));
 
-/******** 250 MHz clock *******************************************************/
+/******** 125 MHz clock *******************************************************/
 // This one needs some FPGA-specific specialized blocks (a PLL).
-wire clk_TMDS; // The 250 MHz clock used by the serializers.
-HDMI_clock hdmi_clock(.clk(pixclk), .hdmi_clk(clk_TMDS));
+wire half_clk_TMDS;  // The 125 MHz clock used if using DDR mode.
+HDMI_clock hdmi_clock(.clk(pixclk), .half_hdmi_clk(half_clk_TMDS));
 
 /******** Shifter *************************************************************/
 // Serialize the three 10-bits TMDS red,green,blue signals.
+// Another version of the shifter, that shifts and sends two bits per clock,
+// using the ODDRX1F block of the ULX3S.
+   
+// Counter now counts modulo 5 instead of modulo 10
+reg [4:0] TMDS_mod5=1;
+wire TMDS_shift_load = TMDS_mod5[4];
+always @(posedge half_clk_TMDS) TMDS_mod5 <= {TMDS_mod5[3:0],TMDS_mod5[4]};
 
-// Modulo-10 counter (note: most code I found uses a counter reset to 0 when
-// it reaches 9. For a small modulo, I prefer to have a circular shift-buffer
-// with a single 1 that triggers the signal. I think it is  more elegant, and
-// more importantly, it works for a higher fmax (450 MHz here).
-reg [9:0] TMDS_mod10=1;
-wire TMDS_shift_load = TMDS_mod10[9];
-always @(posedge clk_TMDS) TMDS_mod10 <= {TMDS_mod10[8:0],TMDS_mod10[9]};
-
-// Every 10 clocks, we get a fresh R,G,B triplet from the TMDS encoders,
-// else we shift.
+// Shifter now shifts two bits at each clock
 reg [9:0] TMDS_shift_red=0, TMDS_shift_green=0, TMDS_shift_blue=0;
-always @(posedge clk_TMDS) begin
-   TMDS_shift_red   <= TMDS_shift_load ? TMDS_red   : TMDS_shift_red  [9:1];
-   TMDS_shift_green <= TMDS_shift_load ? TMDS_green : TMDS_shift_green[9:1];
-   TMDS_shift_blue  <= TMDS_shift_load ? TMDS_blue  : TMDS_shift_blue [9:1];	
+always @(posedge half_clk_TMDS) begin
+   TMDS_shift_red   <= TMDS_shift_load ? TMDS_red   : TMDS_shift_red  [9:2];
+   TMDS_shift_green <= TMDS_shift_load ? TMDS_green : TMDS_shift_green[9:2];
+   TMDS_shift_blue  <= TMDS_shift_load ? TMDS_blue  : TMDS_shift_blue [9:2];
 end
+   
+// DDR serializers: they send D0 at the rising edge and D1 at the falling edge.
+ODDRX1F ddr_red  (.D0(TMDS_shift_red[0]),   .D1(TMDS_shift_red[1]),   .Q(TMDS_rgb_p[2]), .SCLK(half_clk_TMDS), .RST(1'b0));
+ODDRX1F ddr_green(.D0(TMDS_shift_green[0]), .D1(TMDS_shift_green[1]), .Q(TMDS_rgb_p[1]), .SCLK(half_clk_TMDS), .RST(1'b0));
+ODDRX1F ddr_blue (.D0(TMDS_shift_blue[0]),  .D1(TMDS_shift_blue[1]),  .Q(TMDS_rgb_p[0]), .SCLK(half_clk_TMDS), .RST(1'b0));
+   
+// The pixel clock, still the same as before.
+assign TMDS_clock_p = pixclk;
 
-/******** Output to HDMI *****************************************************/
-
-// There are four differential pairs to generate (red,greeb,blue,clock).
-// Each differential pair has a positive part, and a negative part (just
-// negated bit). Here are the positive parts:
-assign TMDS_rgb_p[2] =  TMDS_shift_red[0];
-assign TMDS_rgb_p[1] =  TMDS_shift_green[0];
-assign TMDS_rgb_p[0] =  TMDS_shift_blue[0];
-assign TMDS_clock_p  =  pixclk;
-
-//   Note: what's below would not work, _p and _n sides
-// require exact synchronization that could not be
-// guaranteed if written like that. 
-//   In fact, the negative side is not wired in the HDMI_test
-// module. I'm generating it at the level of the
-// output pins using LVCMOS33D pin type in ulx3s.lpf
-assign TMDS_rgb_n[2] = !TMDS_shift_red[0];
-assign TMDS_rgb_n[1] = !TMDS_shift_green[0];
-assign TMDS_rgb_n[0] = !TMDS_shift_blue[0];
-assign TMDS_clock_n = !pixclk;
+// Note (again): gpdi_dn[3:0] is generated automatically by LVCMOS33D mode in ulx3s.lpf
 
 endmodule

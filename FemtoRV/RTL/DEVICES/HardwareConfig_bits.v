@@ -11,7 +11,7 @@ localparam IO_SPI_FLASH_bit         = 7;  // RW write: SPI address (24 bits) rea
 localparam IO_SDCARD_bit            = 8;  // RW write: bit 0: mosi  bit 1: clk   bit 2: csn read: miso
 localparam IO_BUTTONS_bit           = 9;  // R  buttons state
 localparam IO_FGA_CNTL_bit          = 10; // RW RESERVED
-localparam IO_FGA_CMD_bit           = 11; // W  RESERVED
+localparam IO_FGA_DAT_bit           = 11; // W  RESERVED
 
 // The three constant hardware config registers, using the three last bits of IO address space
 localparam IO_HW_CONFIG_RAM_bit     = 17;  // R  total quantity of RAM, in bytes

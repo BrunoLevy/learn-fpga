@@ -74,14 +74,46 @@ OK, so it is rather clear, to summarize we have:
     [here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S_hdmi/ulx3s.lpf).
     It does exactly what I need:
     generate the negative pins from the positive ones. When it is
-    active, negative pins should not be driven !
+    active, negative pins should not be driven ! 
+    
+_How I figured out for `LVCMOS33D` ?_ I was very lucky, I blindly
+copied `ulx3s.lpf` from Emard's repository [here](https://github.com/emard/ulx3s/blob/master/doc/constraints/ulx3s_v20.lpf)
+then tryed my naive design with inverters (that would not have worked anyway BTW),
+but I had an assertion failure in NEXPNR: `Assertion failure: pio == "PIOA"`. 
+Pasting the message in Google redirected me [here](https://github.com/YosysHQ/nextpnr/issues/544),
+that explains the story (drive only `gpdi_dp` and remove `gpdi_dn`,
+because `LVCMOS33D` implies a pseudo-differential driver that drives both
+sides of the pair.
   
-Note: for higher resolution, it is possible to use a specialized ECP5
-primitive (`ODDRX1F`) that can shift two bits per clock (then using a
+  
+_Coming next_: for higher resolution, it is possible to use a specialized ECP5
+primitive (`ODDRX1F`) that can shift and send two bits per clock (then using a
 125MHz clock instead of 250MHz), see Lawrie's code
 [here](https://github.com/lawrie/ulx3s_examples/blob/master/hdmi/fake_differential.v).
-For now I'm not doing that, because it seems that the simpler code
-suffices.
+Without it, I think that my design can work up to 800x600 (but this will require
+changing the frequencies, resolution etc...). For higher resolution,
+it will require changing the shifter part as follows, as well as
+changing the clocks and resolutions of course (not tested yet):
+```
+   // Counter now counts modulo 5 instead of modulo 10
+   reg [4:0] TMDS_mod5=1;
+   wire TMDS_shift_load = TMDS_mod5[4];
+   always @(posedge clk_TMDS) TMDS_mod5 <= {TMDS_mod5[3:0],TMDS_mod5[4]};
+   
+   // Shifter now shifts two bits at each clock
+   reg [9:0] TMDS_shift_red=0, TMDS_shift_green=0, TMDS_shift_blue=0;
+   always @(posedge clk_TMDS) begin
+      TMDS_shift_red   <= TMDS_shift_load ? TMDS_red   : TMDS_shift_red  [9:2];
+      TMDS_shift_green <= TMDS_shift_load ? TMDS_green : TMDS_shift_green[9:2];
+      TMDS_shift_blue  <= TMDS_shift_load ? TMDS_blue  : TMDS_shift_blue [9:2];
+   end
+   
+   // DDR serializers: they send D0 at the rising edge and D1 at the falling edge
+   ODDRX1F ddr_red  (.D0[TMDS_shift_red[0]),   .D1[TMDS_shift_red[1]),   .Q(TMDS_rgb_p[2]), .SCLK(), .RST(1'b0));
+   ODDRX1F ddr_green(.D0[TMDS_shift_green[0]), .D1[TMDS_shift_green[1]), .Q(TMDS_rgb_p[1]), .SCLK(), .RST(1'b0));
+   ODDRX1F ddr_blue (.D0[TMDS_shift_blue[0]),  .D1[TMDS_shift_blue[1]),  .Q(TMDS_rgb_p[0]), .SCLK(), .RST(1'b0));   
+
+```
 
 [Complete sources for ULX3S](https://github.com/BrunoLevy/learn-fpga/tree/master/Basic/ULX3S_hdmi)
 

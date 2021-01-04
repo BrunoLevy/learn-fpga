@@ -120,7 +120,8 @@ void GL_putchar_xy(int x, int y, char c);
 #define IO_SPI_FLASH         IO_BIT_TO_OFFSET(IO_SPI_FLASH_bit)
 #define IO_SDCARD            IO_BIT_TO_OFFSET(IO_SDCARD_bit)
 #define IO_BUTTONS           IO_BIT_TO_OFFSET(IO_BUTTONS_bit)
-#define IO_MAPPED_SPI_FLASH  IO_BIT_TO_OFFSET(IO_MAPPED_SPI_FLASH_bit)
+#define IO_FGA_CNTL          IO_BIT_TO_OFFSET(IO_FGA_CNTL_bit)
+#define IO_FGA_DAT           IO_BIT_TO_OFFSET(IO_FGA_DAT_bit)    
 #define IO_HW_CONFIG_RAM     IO_BIT_TO_OFFSET(IO_HW_CONFIG_RAM_bit)
 #define IO_HW_CONFIG_DEVICES IO_BIT_TO_OFFSET(IO_HW_CONFIG_DEVICES_bit)
 #define IO_HW_CONFIG_CPUINFO IO_BIT_TO_OFFSET(IO_HW_CONFIG_CPUINFO_bit)
@@ -141,11 +142,13 @@ extern void oled2(uint32_t cmd, uint32_t arg1, uint32_t arg2);
 extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
 
 /* 
- * low-level functions to send data to the OLED display
+ * low-level functions to send data to the OLED display and FGA
  *    First, call oled_write_window()
  *    Then send all the pixels using one of the three forms of OLED_WRITE_DATA
  */ 
-#define OLED_WRITE_DATA_UINT8_UINT8(HI,LO) IO_OUT(IO_SSD1351_DAT,(HI)); IO_OUT(IO_SSD1351_DAT,(LO))
+
+#define IO_GFX_DAT (IO_SSD1351_DAT | IO_FGA_DAT) 
+#define OLED_WRITE_DATA_UINT8_UINT8(HI,LO) IO_OUT(IO_GFX_DAT,(HI)); IO_OUT(IO_GFX_DAT,(LO)); 
 #define OLED_WRITE_DATA_UINT16(RGB)        OLED_WRITE_DATA_UINT8_UINT8(RGB>>8, RGB)
 #define OLED_WRITE_DATA_RGB(R,G,B)         OLED_WRITE_DATA_UINT16(GL_RGB(R,G,B))
 
@@ -168,6 +171,8 @@ extern void MAX7219(uint32_t address, uint32_t value);
 static inline FGA_setpixel(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
   ((uint16_t*)FGA_BASEMEM)[320*y+x] = GL_RGB(R,G,B);
 }
+
+void FGA_emul_write_data_uint8_uint8(uint8_t HI, uint8_t LO);
 
 /* Mapped SPI FLASH */
 #define SPI_FLASH_BASE ((void*)(1 << 23))

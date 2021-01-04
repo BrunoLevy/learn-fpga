@@ -135,6 +135,17 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - FGA, emulation du SSD1351
+	         a) j'ai oublié de conditionner à io_wstrb
+		 b) quand il y a plusieurs <= dans un bloc, j'ai
+                    tendance à oublier qu'ils ne sont pas séquentiels entre eux, et à faire
+		    par exemple:
+		        x1 <= mem_wdata;
+			x  <= x1;
+		    en voulant dire:
+		        x1 <= mem_wdata;
+			x  <= mem_wdata;
+  
              - Everything seemed to be broken after I generated all IO
                register IDs from VERILOG sources, in fact I was
                reading frequency and "cycles per loop" from

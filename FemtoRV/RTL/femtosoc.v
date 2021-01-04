@@ -241,6 +241,7 @@ module femtosoc(
    /* verilator lint_on WIDTH */
 
 `ifdef NRV_IO_FGA
+   wire [31:0] FGA_rdata;
    FGA graphic_adapter(
       .clk(clk),
       .sel(mem_address_is_vram),
@@ -248,7 +249,13 @@ module femtosoc(
       .mem_address(mem_address[16:0]),
       .mem_wdata(mem_wdata),
       .pixel_clk(pclk),
-      .gpdi_dp(gpdi_dp)		       
+      .gpdi_dp(gpdi_dp),
+
+      .io_rstrb(io_rstrb),		  
+      .io_wstrb(io_wstrb),			
+      .sel_cntl(io_word_address[IO_FGA_CNTL_bit]),
+      .sel_dat(io_word_address[IO_FGA_DAT_bit]),
+      .rdata(FGA_rdata)		       
    );
 `endif   
    

@@ -41,7 +41,7 @@ localparam NRV_DEVICES = 0
    | (1 << IO_BUTTONS_bit) 			 			 			 
 `endif 
 `ifdef NRV_IO_FGA
-   | (1 << IO_FGA_CNTL_bit) | (1 << IO_FGA_CMD_bit)
+   | (1 << IO_FGA_CNTL_bit) | (1 << IO_FGA_DAT_bit)
 `endif			 
 ;
 
