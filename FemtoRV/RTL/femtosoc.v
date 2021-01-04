@@ -116,7 +116,7 @@ module femtosoc(
     .pclk(pclk), 
     .clk(clk)
   );
-   
+
   // A little delay for sending the reset signal after startup.
   // Explanation here: (ice40 BRAM reads incorrect values during
   // first cycles).

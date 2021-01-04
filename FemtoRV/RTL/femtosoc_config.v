@@ -95,6 +95,15 @@
  `define ICE40
 `endif
 
+`ifdef ICE_SUGAR
+ `define ICE40
+`endif
+
+`ifdef ICE_SUGAR_NANO
+ `define ICE40
+ `define PASSTHROUGH_PLL
+`endif
+
 `ifdef FOMU
  `define ICE40
 `endif
