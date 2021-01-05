@@ -1,6 +1,4 @@
 // femtorv32, a minimalistic RISC-V RV32I core
-//    (minus SYSTEM and FENCE that are not implemented)
-//
 //       Bruno Levy, 2020-2021
 //
 // This file: FGA: Femto Graphics Adapter
@@ -13,7 +11,7 @@
 module FGA(
     input wire 	      clk,         // system clock
     input wire 	      sel,         // if zero, writes are ignored
-    input wire [3:0]  mem_wmask,   // mem write mask and strobe /write Legal values are 000,0001,0010,0100,1000,0011,1100,1111	   
+    input wire [3:0]  mem_wmask,   // mem write mask and strobe
     input wire [16:0] mem_address, // address in graphic memory (128K), word-aligned
     input wire [31:0] mem_wdata,   // data to be written
 
@@ -28,10 +26,13 @@ module FGA(
     output wire	[31:0] rdata       // data read from register
 );
 
-   wire [14:0] vram_word_address = mem_address[16:2];
-
    reg [31:0] VRAM[32767:0];
-
+   reg [23:0] PALETTE[255:0];
+   reg [1:0]  MODE;
+     // 00: 320x200x16bpp
+     // 01: 320x200x8bpp, paletted, two pages
+     // 10: 640x400x4bpp, paletted
+   reg [15:0] ORIGIN;
 
    /************************* HDMI signal generation ***************************/
    
@@ -48,7 +49,7 @@ module FGA(
    
    always @(posedge pixel_clk) begin
       DrawArea <= (X<640) && (Y<480);
-      X <= (X==799) ? 0 : X+1;
+      X        <= (X==799) ? 0 : X+1;
       if(X==799) Y <= (Y==524) ? 0 : Y+1;
       hSync <= (X>=656) && (X<752);
       vSync <= (Y>=490) && (Y<492);
@@ -132,7 +133,8 @@ module FGA(
    localparam SET_PALETTE_B  = 8'd3; // TODO
    localparam SET_WWINDOW_X  = 8'd4;
    localparam SET_WWINDOW_Y  = 8'd5;
-
+   localparam SET_ORIGIN     = 8'd6;
+   
    
    // Emulation of SSD1351 OLED display.
    // - write window command, two commands:
@@ -146,13 +148,27 @@ module FGA(
    reg[11:0] window_x1, window_x2, window_y1, window_y2, window_x, window_y;
    reg[15:0] window_row_start;
    reg[15:0] window_hword_address;   
-
    
    always @(posedge clk) begin
       if(io_wstrb) begin
 	 if(sel_cntl) begin
 	    /* verilator lint_off CASEINCOMPLETE */
 	    case(mem_wdata[7:0])
+	      SET_MODE: begin
+		 MODE <= mem_wdata[1:0];
+	      end
+	      SET_ORIGIN: begin
+		 ORIGIN <= mem_wdata[17:2]; // the two LSBs are ignored
+	      end
+	      SET_PALETTE_R: begin
+		 PALETTE[mem_wdata[15:8]][7:0]  <= mem_wdata[23:16];
+	      end
+	      SET_PALETTE_G: begin
+		 PALETTE[mem_wdata[15:8]][15:8]  <= mem_wdata[23:16];
+	      end
+	      SET_PALETTE_B: begin
+		 PALETTE[mem_wdata[15:8]][23:16] <= mem_wdata[23:16];
+	      end
 	      SET_WWINDOW_X: begin // SET_WWINDOW_X command
 		 window_x1 <= mem_wdata[19:8];
 		 window_x2 <= mem_wdata[31:20];
@@ -191,6 +207,7 @@ module FGA(
 
    
    // write VRAM (interface with processor)
+   wire [14:0] vram_word_address = mem_address[16:2];
    always @(posedge clk) begin
       if(io_wstrb) begin
          if(sel_dat && mem_busy) begin // one byte of data sent to IO_FGA_DAT

@@ -14,7 +14,7 @@
 
 /************************* Frequency ********************************************************************************/
 
-`define NRV_FREQ 90      // Frequency in MHz. Recomm: 50 MHz (FOMU: 16MHz) Overclocking: 80-100 MHz (HX1K, ECP5)
+`define NRV_FREQ 80      // Frequency in MHz. Recomm: 50 MHz (FOMU: 16MHz) Overclocking: 80-100 MHz (HX1K, ECP5)
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
