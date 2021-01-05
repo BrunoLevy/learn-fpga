@@ -24,7 +24,7 @@ clean:
 FIRMWARE/firmware.hex:
 	(cd FIRMWARE; ./make_firmware.sh EXAMPLES/hello.c)
 
-TERMS=/dev/ttyUSB0 /dev/ttyUSB1
+TERMS=/dev/ttyUSB0 /dev/ttyUSB1 
 
 terminal:
         # exit: <ctrl> ]     package : sudo apt-get install python3-serial

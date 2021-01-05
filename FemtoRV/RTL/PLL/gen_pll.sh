@@ -1,4 +1,6 @@
 #!/bin/sh
+# Automatically generates a PLL parameterized by output freq
+# (instead of cryptic parameters)
 
 if [ "$#" -ne 2 ]; then
   echo "Usage: $0 FPGA_KIND INPUTFREQ" >&2

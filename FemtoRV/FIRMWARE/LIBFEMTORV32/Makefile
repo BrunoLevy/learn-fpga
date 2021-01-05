@@ -16,6 +16,7 @@ OBJECTS=femtorv32.o max7219.o ssd1351.o uart.o \
 	 filesystem.o exec.o femto_elf.o \
 	 FGA_write_window.o FGA.o
 
+	
 all: libfemtorv32.a
 
 libfemtorv32.a: $(OBJECTS) $(FAT_IO_OBJS_WITH_DIR) 

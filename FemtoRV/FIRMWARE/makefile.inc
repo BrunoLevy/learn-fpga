@@ -1,36 +1,42 @@
 # Configuration file for femtoRV32 firmware compilation
+#
+# Note: this file is getting much more complicated than I wished,
+# but it makes life easier by automating different things.
 
-################################################################################
-# Directories, toolchain and target architecture
 
+#####################################################################
 # Base directory of the firmware
+
 FIRMWARE_DIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+
+#####################################################################
+#
 # Target architecture (extract it from verilog config using iverilog)
-GET_ARCH:
-	@(cd $(FIRMWARE_DIR)/../RTL; \
+# It is a bit convoluted, but it is good to have the firmware 
+# target automatically configured for the active verilog config.
+
+
+ARCH=$(shell cd $(FIRMWARE_DIR)/../RTL; \
 	  iverilog -DGET_COPT_ARCH get_config.v -o tmp.vvp; \
 	  vvp tmp.vvp; rm -f tmp.vvp)
 
-GET_ABI:
-	@(cd $(FIRMWARE_DIR)/../RTL; \
+ABI=$(shell cd $(FIRMWARE_DIR)/../RTL; \
 	  iverilog -DGET_COPT_ABI get_config.v -o tmp.vvp; \
 	  vvp tmp.vvp; rm -f tmp.vvp)
 
-GET_OPTIMIZE:
-	@(cd $(FIRMWARE_DIR)/../RTL; \
+OPTIMIZE=$(shell cd $(FIRMWARE_DIR)/../RTL; \
 	  iverilog -DGET_COPT_OPTIMIZE get_config.v -o tmp.vvp; \
 	  vvp tmp.vvp; rm -f tmp.vvp)
 
-GET_RAM_SIZE:
-	@(cd $(FIRMWARE_DIR)/../RTL; \
+RAM_SIZE=$(shell cd $(FIRMWARE_DIR)/../RTL; \
 	  iverilog -DGET_NRV_RAM get_config.v -o tmp.vvp; \
 	  vvp tmp.vvp; rm -f tmp.vvp)
 
-ARCH    =$(shell make GET_ARCH)
-ABI     =$(shell make GET_ABI)
-OPTIMIZE=$(shell make GET_OPTIMIZE)
-RAM_SIZE=$(shell make GET_RAM_SIZE)
+#ARCH    =$(shell make GET_ARCH)
+#ABI     =$(shell make GET_ABI)
+#OPTIMIZE=$(shell make GET_OPTIMIZE)
+#RAM_SIZE=$(shell make GET_RAM_SIZE)
 
 show_config:
 	@echo "ARCH=$(ARCH) ABI=$(ABI) OPTIMIZE=$(OPTIMIZE)"

@@ -47,7 +47,5 @@ module MAX7219(
 	 end
       end
    end
-
-
    
 endmodule
