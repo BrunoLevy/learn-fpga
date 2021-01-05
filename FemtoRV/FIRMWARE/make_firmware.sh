@@ -17,9 +17,9 @@ if [ -f  $SOURCE_DIR"/"$EXE_BASENAME".hex" ]; then
    cp $SOURCE_DIR"/"$EXE_BASENAME".hex" firmware.hex
    echo "source:" $1 > firmware.txt
    # Display message with ARCH,ABI,OPTIMIZE (useful to know at that point)
-   ARCH=`grep < makefile.inc '^ARCH='`
-   ABI=`grep < makefile.inc '^ABI='`
-   OPTIMIZE=`grep < makefile.inc '^OPTIMIZE='`
+   ARCH=`cd $SOURCE_DIR; make GET_ARCH`
+   ABI=`cd $SOURCE_DIR; make GET_ABI`
+   OPTIMIZE=`cd $SOURCE_DIR;make GET_OPTIMIZE`
    echo "Generated firmware.hex (arch=$ARCH, abi=$ABI, optimize=$OPTIMIZE)"
 else
    echo "Something went wrong, change VERBOSE in make_firmware.sh and retry"

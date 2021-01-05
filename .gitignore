@@ -20,3 +20,5 @@
 FemtoRV/FIRMWARE/firmware.txt
 FemtoRV/FIRMWARE/TOOLCHAIN/
 FemtoRV/FIRMWARE/TOOLS/firmware_words
+FemtoRV/RTL/RAM_size.v
+FemtoRV/RTL/CONFIGS/my_config.v

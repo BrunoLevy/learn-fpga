@@ -1,25 +1,38 @@
 # Configuration file for femtoRV32 firmware compilation
-# Specify directories, toolchain and target architecture
+
+################################################################################
+# Directories, toolchain and target architecture
 
 # Base directory of the firmware
 FIRMWARE_DIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+# Target architecture (extract from verilog config)
+GET_ARCH:
+	@(cd $(FIRMWARE_DIR)/../RTL; \
+	  iverilog -DGET_COPT_ARCH get_config.v -o tmp.vvp; \
+	  vvp tmp.vvp; rm -f tmp.vvp)
 
-# Configuration for larger boards (ULX3S, ECP5-EVN)
-ARCH=rv32im
-ABI=ilp32
-OPTIMIZE=-O3
+GET_ABI:
+	@(cd $(FIRMWARE_DIR)/../RTL; \
+	  iverilog -DGET_COPT_ABI get_config.v -o tmp.vvp; \
+	  vvp tmp.vvp; rm -f tmp.vvp)
 
-# More minimalistic configurations (ICEStick, ICE40)
-# note: ICE40up5K could support rv32im but this requires some work
-#  since yosys does not (yet) infer DSP blocks for ICE40).
-#ARCH=rv32i
-#ABI=ilp32
-#OPTIMIZE=-Os
-# Optimize for size, on the IceStick we only have 6K of RAM !
+GET_OPTIMIZE:
+	@(cd $(FIRMWARE_DIR)/../RTL; \
+	  iverilog -DGET_COPT_OPTIMIZE get_config.v -o tmp.vvp; \
+	  vvp tmp.vvp; rm -f tmp.vvp)
 
-# Normally you do not need to modify anything beyond this line.
-############################################################################################################
+GET_RAM_SIZE:
+	@(cd $(FIRMWARE_DIR)/../RTL; \
+	  iverilog -DGET_NRV_RAM get_config.v -o tmp.vvp; \
+	  vvp tmp.vvp; rm -f tmp.vvp)
+
+ARCH    =$(shell make GET_ARCH)
+ABI     =$(shell make GET_ABI)
+OPTIMIZE=$(shell make GET_OPTIMIZE)
+RAM_SIZE=$(shell make GET_RAM_SIZE)
+
+################################################################################
 
 # Website to get the RISCV toolchain
 TOOLCHAIN_WEB=https://static.dev.sifive.com/dev-tools
@@ -54,7 +67,7 @@ RVGCC_LIB= $(RVTOOLCHAIN_LIB_DIR)/libc.a $(RVTOOLCHAIN_LIB_DIR)/libm.a $(RVTOOLC
 # My utility that converts elf executables and hex files into a format understood by Verilog
 FIRMWARE_WORDS=$(FIRMWARE_DIR)/TOOLS/firmware_words
 
-############################################################################################################
+################################################################################
 
 RVINCS=-I$(FIRMWARE_DIR)/LIBFEMTORV32 -I$(FIRMWARE_DIR)/LIBFEMTOC
 RVCFLAGS=$(OPTIMIZE) $(RVINCS) -fno-pic -march=$(ARCH) -mabi=$(ABI) -fno-stack-protector -w -Wl,--no-relax
@@ -80,13 +93,10 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax
 # at address 0 (firmware for IceStick, or femtOS commander.c for ULX3S). The rules
 # to generate standard (.elf) or bare metal (.bm_elf) executables are in EXAMPLES/Makefile
 
-%.hex: %.bm_elf $(FIRMWARE_DIR)/TOOLS/firmware_words $(FIRMWARE_DIR)/../RTL/RAM_size.v
-	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/RAM_size.v -hex $@
+%.hex: %.bm_elf $(FIRMWARE_DIR)/TOOLS/firmware_words 
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram $(RAM_SIZE) -hex $@
 
-$(FIRMWARE_DIR)/../RTL/RAM_size.v:
-	(cd $(FIRMWARE_DIR)/..; make get_RAM_size)
-	
-##############################################################################################
+################################################################################
 .PHONY: root clean all get_riscv_toolchain
 
 root: all
@@ -98,7 +108,7 @@ clean:
 $(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS_SRC/firmware_words.cpp $(FIRMWARE_DIR)/LIBFEMTORV32/femto_elf.c
 	g++ -I$(FIRMWARE_DIR)/LIBFEMTORV32 -DSTANDALONE_FEMTOELF $^ -o $@
 
-##############################################################################################
+################################################################################
 #RISCV toolchain, get it from the web, automatically
 
 $(RVAS):
