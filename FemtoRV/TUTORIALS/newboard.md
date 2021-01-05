@@ -74,8 +74,6 @@ Note for ICE-40: you may need to edit the generated file, and replace
 `.PACKAGEPIN`. More explanations about that are given
 [here](https://github.com/mystorm-org/BlackIce-II/wiki/PLLs-Improved)
 
-
-
 Step 4: `RTL/femtosoc_config.v`
 -------------------------------
 

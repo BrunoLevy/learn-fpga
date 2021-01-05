@@ -35,10 +35,10 @@ endmodule
 `ifdef GET_COPT_OPTIMIZE
 module dummy();
 initial begin
- `ifdef ICE_STICK
-   $display("-Os");   
+ `ifdef NRV_RV32M
+   $display("-O3");   
  `else   
-   $display("-O3");
+   $display("-Os");
  `endif   
 end
 endmodule

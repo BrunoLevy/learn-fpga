@@ -6,7 +6,7 @@
 # Base directory of the firmware
 FIRMWARE_DIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-# Target architecture (extract from verilog config)
+# Target architecture (extract it from verilog config using iverilog)
 GET_ARCH:
 	@(cd $(FIRMWARE_DIR)/../RTL; \
 	  iverilog -DGET_COPT_ARCH get_config.v -o tmp.vvp; \
@@ -31,6 +31,9 @@ ARCH    =$(shell make GET_ARCH)
 ABI     =$(shell make GET_ABI)
 OPTIMIZE=$(shell make GET_OPTIMIZE)
 RAM_SIZE=$(shell make GET_RAM_SIZE)
+
+show_config:
+	@echo "ARCH=$(ARCH) ABI=$(ABI) OPTIMIZE=$(OPTIMIZE)"
 
 ################################################################################
 

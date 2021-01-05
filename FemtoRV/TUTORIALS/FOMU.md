@@ -5,13 +5,13 @@ _Note: the following instructions are for Linux (I'm using Ubuntu).
 Windows users can run the tutorial using WSL. It requires some
 adaptation, as explained [here](WSL.md)._
 
-Step 0: install FemtoRV
+Step 1: install FemtoRV
 =======================
 ```
 $ git clone https://github.com/BrunoLevy/learn-fpga.git
 ```
 
-Step 1: install FPGA development tools
+Step 2: install FPGA development tools
 ======================================
 
 You can find precompiled toolchains for FOMU
@@ -95,7 +95,7 @@ icarus/iverilog and verilator
 apt-get install iverilog verilator
 ```
 
-Step 2: Configure DFU and USB rules
+Step 3: Configure DFU and USB rules
 ===================================
 
 We need to let normal users program the IceStick through USB. This
@@ -126,7 +126,7 @@ Please report bugs to http://sourceforge.net/p/dfu-util/tickets/
 Found DFU: [1209:5bf0] ver=0101, devnum=20, cfg=1, intf=0, path="1-1", alt=0, name="Fomu PVT running DFU Bootloader v1.9.1", serial="UNKNOWN"
 ```
 
-Step 3: Test a simple FOMU design (optional)
+Step 4: Test a simple FOMU design (optional)
 ============================================
 
 ```
@@ -139,7 +139,7 @@ bitstream, then blinking in different colors. With the FOMU,
 you only have one LED to output something, but it is in
 *colors* !
 
-Step 4: Configure femtosoc and femtorv32
+Step 5: Configure femtosoc and femtorv32
 ========================================
 Time to edit `learn-fpga/FemtoRV/RTL/femtosoc_config.v`. This file lets you define what type
 of RISC-V processor you will create, and which device drivers in the
@@ -182,18 +182,9 @@ We configure `FemtoRV/RTL/femtosoc_config.v` as follows (we keep unused options 
 `define NRV_TWOSTAGE_SHIFTER 
 ```
 
-Step 5: Configure and compile firmware
-======================================
-Now, edit `FemtoRV/FIRMWARE/makefile.inc`. You have two things to do,
-first indicate where the firmware sources are installed in the `FIRMWARE_DIR`
-variable. Second, chose the architecture, ABI and optimization flags
-as follows:
-```
-ARCH=rv32i
-ABI=ilp32
-OPTIMIZE=-Os
-```
-Then, compile a RISC-V blinky as follows:
+Step 6: Compile firmware
+========================
+Compile a RISC-V blinky as follows:
 ```
 $ cd FIRMWARE
 $ ./make_firmware.sh ASM_EXAMPLES/blinker_loop.S

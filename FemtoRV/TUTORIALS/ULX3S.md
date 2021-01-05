@@ -19,13 +19,13 @@ exists some precompiled packages, I highly recommend to get fresh
 source versions from the repository, because the tools quickly 
 evolve.
 
-Step 0: install FemtoRV
+Step 1: install FemtoRV
 =======================
 ```
 $ git clone https://github.com/BrunoLevy/learn-fpga.git
 ```
 
-Step 1: install FPGA development tools
+Step 2: install FPGA development tools
 ======================================
 
 Yosys
@@ -107,7 +107,7 @@ icarus/iverilog and verilator
 apt-get install iverilog verilator
 ```
 
-Step 2: Configure USB rules
+Step 3: Configure USB rules
 ===========================
 We need to let normal users program the ULX3S through USB. This
 can be done by creating in `/etc/udev/rules.d` a file `80-fpga-ulx3s.rules`
@@ -121,7 +121,7 @@ ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", \
   GROUP="dialout", MODE="666"
 ```
 
-Step 3: Configure femtosoc and femtorv32
+Step 4: Configure femtosoc and femtorv32
 ========================================
 Time to edit `learn-fpga/FemtoRV/RTL/femtosoc_config.v`. This file lets you define what type
 of RISC-V processor you will create, and which device drivers in the
@@ -168,18 +168,6 @@ We configure `FemtoRV/RTL/femtosoc_config.v` as follows (we keep unused options 
  * but uses 60-100 LUTs) (inspired by PICORV32). 
  */ 
 `define NRV_TWOSTAGE_SHIFTER 
-```
-
-Step 4: Configure firmware
-==========================
-Now, edit `FemtoRV/FIRMWARE/makefile.inc`. You have two things to do,
-first indicate where the firmware sources are installed in the `FIRMWARE_DIR`
-variable. Second, chose the architecture, ABI and optimization flags
-as follows:
-```
-ARCH=rv32im
-ABI=ilp32
-OPTIMIZE=-O3
 ```
 
 Step 5: Examples

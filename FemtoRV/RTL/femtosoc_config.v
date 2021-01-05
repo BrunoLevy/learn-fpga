@@ -1,8 +1,8 @@
 // Configuration file for femtosoc/femtorv32
 
 // Uncomment one of the following lines OR fine-tune the options below.
-`include "CONFIGS/ulx3s_default.v"
-//`include "CONFIGS/icestick_default.v"
+//`include "CONFIGS/ulx3s_default.v"
+`include "CONFIGS/icestick_default.v"
 //`include "CONFIGS/my_config.v"
 
 `ifndef NRV_FEMTOSOC_CONFIGURED

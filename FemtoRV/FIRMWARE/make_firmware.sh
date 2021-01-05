@@ -1,5 +1,3 @@
-rm -f ../RTL/RAM_size.v
-
 echo "============> Compiling libs"
 (cd LIBFEMTORV32;  make clean all > /dev/null) # Compile hardware support lib
 (cd LIBFEMTOC;     make clean all > /dev/null) # Compile lib with printf() replacement function
@@ -16,15 +14,11 @@ rm -f firmware.hex firmware.txt
 if [ -f  $SOURCE_DIR"/"$EXE_BASENAME".hex" ]; then
    cp $SOURCE_DIR"/"$EXE_BASENAME".hex" firmware.hex
    echo "source:" $1 > firmware.txt
-   # Display message with ARCH,ABI,OPTIMIZE (useful to know at that point)
-   ARCH=`cd $SOURCE_DIR; make GET_ARCH`
-   ABI=`cd $SOURCE_DIR; make GET_ABI`
-   OPTIMIZE=`cd $SOURCE_DIR;make GET_OPTIMIZE`
-   echo "Generated firmware.hex (arch=$ARCH, abi=$ABI, optimize=$OPTIMIZE)"
+   echo "Generated firmware.hex"
+   (cd $SOURCE_DIR; make show_config)
 else
    echo "Something went wrong, change VERBOSE in make_firmware.sh and retry"
 fi
-
 
 ## Display assembly
 #$RVOBJCOPY -O binary BUILD/firmware.elf BUILD/firmware.bin

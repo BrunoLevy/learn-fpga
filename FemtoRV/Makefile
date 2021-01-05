@@ -24,12 +24,13 @@ clean:
 FIRMWARE/firmware.hex:
 	(cd FIRMWARE; ./make_firmware.sh EXAMPLES/hello.c)
 
+TERMS=/dev/ttyUSB0 /dev/ttyUSB1
 
 terminal:
         # exit: <ctrl> ]     package : sudo apt-get install python3-serial
-	miniterm --dtr=0 /dev/ttyUSB1 115200
-        # exit: <ctrl> a \   package : sudo apt-get install screen
-#	screen /dev/ttyUSB1 115200             
+	for i in $(TERMS); do miniterm --dtr=0 $$i 115200; done
+#       # exit: <ctrl> a \   package : sudo apt-get install screen
+#	for i in $(TERMS); do screen $$i 115200; done 
 
 testbench:
 	(cd RTL; iverilog -IPROCESSOR -IDEVICES femtosoc_bench.v \

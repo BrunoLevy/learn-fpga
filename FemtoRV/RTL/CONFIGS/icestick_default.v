@@ -20,7 +20,7 @@
 
 /************************* Processor configuration ******************************************************************/
 
-//`define NRV_MINIRV32 // Mini config, can execute code stored in SPI flash from 1Mb offset (mapped to address 0x800000)
+`define NRV_MINIRV32 // Mini config, can execute code stored in SPI flash from 1Mb offset (mapped to address 0x800000)
 
 `ifndef NRV_MINIRV32 // The options below are not supported by minifemtorv32
 //`define NRV_CSR         // Uncomment if using something below (counters,...)
