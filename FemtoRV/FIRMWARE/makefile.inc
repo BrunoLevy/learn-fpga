@@ -58,20 +58,24 @@ RVGPP=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-g++
 RVAR=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-ar
 RVRANLIB=$(RVTOOLCHAIN_BIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)-ranlib
 
-RV_BINARIES=$(RVAS) $(RVLD) $(RVOBJCOPY) $(RVOBJDUMP) $(RVGCC) $(RVAR) $(RVRANLIB)
+RV_BINARIES=$(RVAS) $(RVLD) $(RVOBJCOPY) $(RVOBJDUMP) $(RVGCC) \
+            $(RVAR) $(RVRANLIB)
 
 # Note: it is also possible to comment this line, and use replacement functions
 # for a small subset of libc, see comments in LIBFEMTOC/Makefile. 
-RVGCC_LIB= $(RVTOOLCHAIN_LIB_DIR)/libc.a $(RVTOOLCHAIN_LIB_DIR)/libm.a $(RVTOOLCHAIN_GCC_LIB_DIR)/libgcc.a
+RVGCC_LIB= $(RVTOOLCHAIN_LIB_DIR)/libc.a \
+           $(RVTOOLCHAIN_LIB_DIR)/libm.a \
+	   $(RVTOOLCHAIN_GCC_LIB_DIR)/libgcc.a
 
-# My utility that converts elf executables and hex files into a format understood by Verilog
+# My utility that converts elf executables into a format understood by Verilog
 FIRMWARE_WORDS=$(FIRMWARE_DIR)/TOOLS/firmware_words
 
 ################################################################################
 
 RVINCS=-I$(FIRMWARE_DIR)/LIBFEMTORV32 -I$(FIRMWARE_DIR)/LIBFEMTOC
-RVCFLAGS=$(OPTIMIZE) $(RVINCS) -fno-pic -march=$(ARCH) -mabi=$(ABI) -fno-stack-protector -w -Wl,--no-relax
-                                      # Note: --no-relax because I'm using gp for fast access to mapped IO.
+RVCFLAGS=$(OPTIMIZE) $(RVINCS) -fno-pic -march=$(ARCH) -mabi=$(ABI) \
+         -fno-stack-protector -w -Wl,--no-relax
+        # Note: --no-relax because I'm using gp for fast access to mapped IO.
 RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) $(RVINCS)
 RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax
 
@@ -87,11 +91,12 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax
 .S.o: $< $(RV_BINARIES)
 	$(RVAS) $(RVASFLAGS) $(RVUSERASFLAGS) $< -o $@ 
 
-#Rule to convert a .elf executable into a .hex file for verilog 'readmemh()' command,
-# using my 'firmware_words' utility to parse the .elf executable.
-# It is used for "bare metal" executables, compiled with linker script, starting
-# at address 0 (firmware for IceStick, or femtOS commander.c for ULX3S). The rules
-# to generate standard (.elf) or bare metal (.bm_elf) executables are in EXAMPLES/Makefile
+#Rule to convert a .elf executable into a .hex file for verilog 'readmemh()'
+# command, using my 'firmware_words' utility to parse the .elf executable.
+# It is used for "bare metal" executables, compiled with linker script,
+# starting at address 0 (firmware for IceStick, or femtOS commander.c for ULX3S)
+# The rules to generate standard (.elf) or bare metal (.bm_elf) executables
+# are in EXAMPLES/Makefile
 
 %.hex: %.bm_elf $(FIRMWARE_DIR)/TOOLS/firmware_words 
 	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram $(RAM_SIZE) -hex $@
@@ -104,8 +109,12 @@ root: all
 clean:
 	rm -f *.o *.elf *.hex *.rawhex *.exe *~ *.a *.bin *.bm_elf *.bm_rawhex
 
-#Generating the conversion utility for hex files	
-$(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS_SRC/firmware_words.cpp $(FIRMWARE_DIR)/LIBFEMTORV32/femto_elf.c
+#Generating the conversion utility for hex files
+
+FIRMWARE_WORDS_SRC= $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS_SRC/firmware_words.cpp\
+                    $(FIRMWARE_DIR)/LIBFEMTORV32/femto_elf.c
+		    
+$(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRWARE_WORDS_SRC)
 	g++ -I$(FIRMWARE_DIR)/LIBFEMTORV32 -DSTANDALONE_FEMTOELF $^ -o $@
 
 ################################################################################
@@ -134,7 +143,7 @@ $(RVRANLIB):
 
 get_riscv_toolchain:
 	mkdir -p $(FIRMWARE_DIR)/TOOLCHAIN
-	@echo "Downloading and installing RISC-V toolchain in $(FIRMWARE_DIR)/TOOLCHAIN"
+	@echo "Installing RISC-V toolchain in $(FIRMWARE_DIR)/TOOLCHAIN"
 	(cd $(FIRMWARE_DIR)/TOOLCHAIN; \
 	    wget $(TOOLCHAIN_WEB)/$(TOOLCHAIN_VER).tar.gz; \
 	    tar xfz $(TOOLCHAIN_VER).tar.gz)
