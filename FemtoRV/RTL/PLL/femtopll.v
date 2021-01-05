@@ -26,6 +26,8 @@ endmodule
   `include "pll_icestick.v"
  `elsif ICE_FEATHER
   `include "pll_icefeather.v"
+`elsif ICE_SUGAR
+ `include "pll_icesugar.v"
  `elsif ULX3S
   `include "pll_ulx3s.v"
  `elsif ECP5_EVN

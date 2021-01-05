@@ -2,7 +2,8 @@
 # Specify directories, toolchain and target architecture
 
 # Base directory of the firmware
-FIRMWARE_DIR=/home/blevy/Programming/learn-fpga/FemtoRV/FIRMWARE
+FIRMWARE_DIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
 
 # Configuration for larger boards (ULX3S, ECP5-EVN)
 #ARCH=rv32im
