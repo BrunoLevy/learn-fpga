@@ -32,19 +32,19 @@ unsigned char logo[16][16] = {
  * Convert an RGB color into 16 bit color,
  * as expected by the SSD1351 OLED display.
  */ 
-#define make_cmap_entry(R,G,B) \
-   { (unsigned char)((R & ~7) | (G >> 5)), \
-     (unsigned char)((B >> 3) | (G << 6))  }
+//#define make_cmap_entry(R,G,B) \
+//   { (unsigned char)((R & ~7) | (G >> 5)), \
+//   (unsigned char)((B >> 3) | (G << 6))  }
 
-unsigned char cmap[8][2] = {
-   make_cmap_entry(0x28,0x33,0x74),
-   make_cmap_entry(0x7B,0x80,0x9B),
-   make_cmap_entry(0xAA,0xAC,0xBC),
-   make_cmap_entry(0xF9,0xB1,0x15),
-   make_cmap_entry(0xF9,0xBE,0x65),
-   make_cmap_entry(0xF9,0xC7,0x82),
-   make_cmap_entry(0xFC,0xD8,0xB0),
-   make_cmap_entry(0xFA,0xFB,0xF8)
+uint16_t cmap[8] = {
+   GL_RGB(0x28,0x33,0x74),
+   GL_RGB(0x7B,0x80,0x9B),
+   GL_RGB(0xAA,0xAC,0xBC),
+   GL_RGB(0xF9,0xB1,0x15),
+   GL_RGB(0xF9,0xBE,0x65),
+   GL_RGB(0xF9,0xC7,0x82),
+   GL_RGB(0xFC,0xD8,0xB0),
+   GL_RGB(0xFA,0xFB,0xF8)
 };
 
 /*
@@ -79,7 +79,7 @@ void main() {
 	    int Y = Y0;
 	    for(int x=0; x<128; ++x) {
 	        unsigned char col = logo[(Y >> 18)&15][(X >> 18)&15];
-	        OLED_WRITE_DATA_UINT16((cmap[col][0] << 16)|(cmap[col][1]));
+	        OLED_WRITE_DATA_UINT16(cmap[col]);
 	        X += Ux;
 	        Y += Uy;
 	    }
