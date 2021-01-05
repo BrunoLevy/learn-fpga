@@ -82,6 +82,7 @@ extern void GL_fill_poly(int nb_pts, int* points, uint16_t color);
 
 extern void FGA_wait_vbl();
 extern void FGA_clear();
+extern void FGA_line(int x1, int y1, int x2, int y3, uint16_t color);
 extern void FGA_fill_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color);
 extern void FGA_fill_poly(int nb_pts, int* points, uint16_t color);
 
@@ -181,11 +182,14 @@ extern void MAX7219(uint32_t address, uint32_t value);
  */
 #define FGA_BASEMEM (void*)(1 << 21)
 
-static inline FGA_setpixel(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
-  ((uint16_t*)FGA_BASEMEM)[320*y+x] = GL_RGB(R,G,B);
+static inline FGA_setpixel(int x, int y, uint16_t color) {
+  ((uint16_t*)FGA_BASEMEM)[320*y+x] = color;
 }
 
-void FGA_emul_write_data_uint8_uint8(uint8_t HI, uint8_t LO);
+static inline FGA_setpixel_RGB(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
+  FGA_setpixel(x,y,GL_RGB(R,G,B));
+}
+
 
 /* Mapped SPI FLASH */
 #define SPI_FLASH_BASE ((void*)(1 << 23))

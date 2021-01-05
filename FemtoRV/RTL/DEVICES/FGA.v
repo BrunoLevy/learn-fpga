@@ -29,22 +29,23 @@ module FGA(
    reg [31:0] VRAM[32767:0];
    reg [23:0] PALETTE[255:0];
    reg [1:0]  MODE;
-     // 00: 320x200x16bpp
-     // 01: 320x200x8bpp, paletted, two pages
-     // 10: 640x400x4bpp, paletted
-   reg [15:0] ORIGIN;
+   reg [14:0] ORIGIN;
 
    /************************* HDMI signal generation ***************************/
+
+   localparam MODE_320x200x16bpp = 2'b00;
+   localparam MODE_320x200x8bpp  = 2'b01;
+   localparam MODE_640x400x4bpp  = 2'b10;
    
    // This part is just like a VGA generator.
-   reg [9:0] X, Y;   // current pixel coordinates
+   reg  [9:0] X, Y;   // current pixel coordinates
    reg hSync, vSync; // horizontal and vertical synchronization
    reg DrawArea;     // asserted if current pixel is in drawing area
    reg mem_busy;     // asserted if memory transfer is running.
    
    // read control register
    assign rdata = (io_rstrb && sel_cntl) ? 
-                  {vSync,hSync,DrawArea,mem_busy,4'b0,2'b0,X,2'b0,Y} : 
+                  {(Y >= 400),(X >= 640),DrawArea,mem_busy,4'b0,2'b0,X,2'b0,Y} : 
                   32'b0;
    
    always @(posedge pixel_clk) begin
@@ -55,39 +56,53 @@ module FGA(
       vSync <= (Y>=490) && (Y<492);
    end
 
-   // Fetch pixel data
-   reg [16:0] pix_address;
-   reg [16:0] row_start;
+   reg [14:0] pix_word_address;
+   reg [14:0] row_start_word_address;
    reg [15:0] pix_data;
-   always @(posedge pixel_clk) begin
-      if(X == 0) begin
-	 if(Y == 0) begin
-	    row_start   <= 0;
-	    pix_address <= 0;
-	 end else begin
-	    // Increment row address every 2 Y (2 because 320x200->640x400)
-	    if(Y[0]) begin
-	       row_start   <= row_start + 640;
-	       pix_address <= row_start + 640;
-	    end else begin
-	       pix_address <= row_start;	       
-	    end
-	 end
-      end 
-      // Increment pix_address every 4 X (2 because 320x200->640x400 and 2 because 16 bpp)
-      if(X[1:0] == 2'b11) pix_address <= pix_address + 4;
+   reg [7:0]  R,G,B;
 
-      // Draw 640x400 zone, and hide first pixel row (fetch delay)      
-      // Select word's 16msb or 16lsbs based on X[1] (again, every 4 X)
-      pix_data <=  (X == 0 || Y > 400) ? 0 : 
-		   X[1] ? VRAM[pix_address[16:2]][31:16] : VRAM[pix_address[16:2]][15:0];
+   always @(posedge pixel_clk) begin
+      case(MODE)
+	
+	MODE_320x200x16bpp: begin
+	   if(X == 0) begin
+	      if(Y == 0) begin
+		 row_start_word_address <= ORIGIN;
+		 pix_word_address       <= ORIGIN;
+	      end else begin
+		 // Increment row address every 2 Y (2 because 320x200->640x400)
+		 if(Y[0]) begin
+		    row_start_word_address <= row_start_word_address + 320*2/4;
+		    pix_word_address       <= row_start_word_address + 320*2/4;
+		 end else begin
+		    pix_word_address <= row_start_word_address;	       
+		 end
+	      end
+	   end 
+	   
+	   if(X[1:0] == 2'b11) pix_word_address <= pix_word_address + 1;
+	   
+	   // Select word's 16msb or 16lsbs based on X[1] (again, every 4 X)
+	   if(X[1]) begin 
+	      R <= {VRAM[pix_word_address][31:27],3'b000};
+	      G <= {VRAM[pix_word_address][26:21],2'b00 };
+	      B <= {VRAM[pix_word_address][20:16],3'b000};
+	   end else begin
+	      R <= {VRAM[pix_word_address][15:11],3'b000};
+	      G <= {VRAM[pix_word_address][10:5 ],2'b00 };
+	      B <= {VRAM[pix_word_address][ 4:0 ],3'b000};
+	   end
+	   
+	   // First pixel is boring, normally I should prefetch it...
+	   if(X == 0 || Y >= 400) begin R <= 0; G <= 0; B <= 0; end
+	end
+	MODE_320x200x8bpp: begin
+	end
+	MODE_640x400x4bpp: begin
+	end
+      endcase
    end
    
-   // Decode pixel data:  RRRRR GGGGG 0 BBBBB
-   wire [7:0] R = {pix_data[15:11],3'b000};
-   wire [7:0] G = {pix_data[10:5], 2'b00 };
-   wire [7:0] B = {pix_data[4:0],  3'b000};
-
    // RGB TMDS encoding
    // Generate 10-bits TMDS red,green,blue signals. Blue embeds HSync/VSync in its 
    // control part.
@@ -127,10 +142,10 @@ module FGA(
 
    // control register - commands
 
-   localparam SET_MODE       = 8'd0; // TODO
-   localparam SET_PALETTE_R  = 8'd1; // TODO
-   localparam SET_PALETTE_G  = 8'd2; // TODO
-   localparam SET_PALETTE_B  = 8'd3; // TODO
+   localparam SET_MODE       = 8'd0; 
+   localparam SET_PALETTE_R  = 8'd1; 
+   localparam SET_PALETTE_G  = 8'd2; 
+   localparam SET_PALETTE_B  = 8'd3; 
    localparam SET_WWINDOW_X  = 8'd4;
    localparam SET_WWINDOW_Y  = 8'd5;
    localparam SET_ORIGIN     = 8'd6;
@@ -154,28 +169,18 @@ module FGA(
 	 if(sel_cntl) begin
 	    /* verilator lint_off CASEINCOMPLETE */
 	    case(mem_wdata[7:0])
-	      SET_MODE: begin
-		 MODE <= mem_wdata[1:0];
-	      end
-	      SET_ORIGIN: begin
-		 ORIGIN <= mem_wdata[17:2]; // the two LSBs are ignored
-	      end
-	      SET_PALETTE_R: begin
-		 PALETTE[mem_wdata[15:8]][7:0]  <= mem_wdata[23:16];
-	      end
-	      SET_PALETTE_G: begin
-		 PALETTE[mem_wdata[15:8]][15:8]  <= mem_wdata[23:16];
-	      end
-	      SET_PALETTE_B: begin
-		 PALETTE[mem_wdata[15:8]][23:16] <= mem_wdata[23:16];
-	      end
-	      SET_WWINDOW_X: begin // SET_WWINDOW_X command
+	      SET_MODE:      MODE <= mem_wdata[1:0];
+	      SET_ORIGIN:    ORIGIN <= mem_wdata[16:2]; // the two LSBs are ignored
+	      SET_PALETTE_R: PALETTE[mem_wdata[15:8]][7:0]   <= mem_wdata[23:16];
+	      SET_PALETTE_G: PALETTE[mem_wdata[15:8]][15:8]  <= mem_wdata[23:16];
+	      SET_PALETTE_B: PALETTE[mem_wdata[15:8]][23:16] <= mem_wdata[23:16];
+	      SET_WWINDOW_X: begin 
 		 window_x1 <= mem_wdata[19:8];
 		 window_x2 <= mem_wdata[31:20];
 		 window_x  <= mem_wdata[19:8];
 		 mem_busy  <= 1'b1;
 	      end
-	      SET_WWINDOW_Y: begin // SET_WWINDOW_Y command
+	      SET_WWINDOW_Y: begin 
 		 window_y1 <= mem_wdata[19:8];
 		 window_y2 <= mem_wdata[31:20];
 		 window_y  <= mem_wdata[19:8];

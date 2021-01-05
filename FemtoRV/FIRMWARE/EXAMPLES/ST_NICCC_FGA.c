@@ -98,10 +98,10 @@ int read_frame() {
     FGA_wait_vbl();
    
     if(wireframe) {
-       // FGA_clear(); // TODO
+        FGA_clear(); 
     } else {
         if(frame_flags & CLEAR_BIT) {
-	   // FGA_clear(); // Too much flickering, commented-out for now
+	  // FGA_clear(); // Too much flickering, commented-out for now
 	}
     }
 
