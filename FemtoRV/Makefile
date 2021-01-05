@@ -3,6 +3,8 @@ VERILOGS=RTL/$(PROJECTNAME).v
 
 include BOARDS/icestick.mk
 include BOARDS/icefeather.mk
+include BOARDS/icesugar.mk
+include BOARDS/icesugar_nano.mk
 include BOARDS/fomu.mk
 include BOARDS/ulx3s.mk
 include BOARDS/ecp5_evn.mk
