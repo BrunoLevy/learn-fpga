@@ -82,6 +82,9 @@ GL_init:
 	OLED1 0xbe, 0x05             # Vcomh voltage
 	OLED0 0xa6                   # display on
 	OLED0 0xaf                   # display mode on
+# Set FGA mode 0, for SSD1351 emulation.	
+	li a0, 0
+	call FGA_setmode
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret

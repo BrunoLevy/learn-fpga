@@ -109,10 +109,10 @@ void FGA_line(int x1, int y1, int x2, int y2, uint16_t color) {
     if(dy > dx) {
 	int ex = (dx << 1) - dy;
 	for(int u=0; u<dy; u++) {
-	    FGA_setpixel(x,y,color);
+	    FGA_setpixel_8(x,y,color);
 	    y += sy;
 	    while(ex >= 0)  {
-		FGA_setpixel(x,y,color);		
+		FGA_setpixel_8(x,y,color);		
 		x += sx;
 		ex -= dy << 1;
 	    }
@@ -121,10 +121,10 @@ void FGA_line(int x1, int y1, int x2, int y2, uint16_t color) {
     } else {
 	int ey = (dy << 1) - dx;
 	for(int u=0; u<dx; u++) {
-	    FGA_setpixel(x,y,color);
+	    FGA_setpixel_8(x,y,color);
 	    x += sx;
 	    while(ey >= 0) {
-		FGA_setpixel(x,y,color);
+		FGA_setpixel_8(x,y,color);
 		y += sy;
 		ey -= dx << 1;
 	    }
@@ -136,8 +136,8 @@ void FGA_line(int x1, int y1, int x2, int y2, uint16_t color) {
 
 void FGA_fill_poly(int nb_pts, int* points, uint16_t color) {
 
-    uint16_t x_left[WIDTH];
-    uint16_t x_right[WIDTH];
+    uint16_t x_left[HEIGHT];
+    uint16_t x_right[HEIGHT];
 
     /* Determine clockwise, miny, maxy */
     int clockwise = 0;

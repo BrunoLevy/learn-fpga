@@ -177,10 +177,15 @@ extern void MAX7219(uint32_t address, uint32_t value);
 /* 
  * Femto Graphics Adapter 
  * 
+ * Mode 0:
  * Flat 320x200x16bpp buffer, write-only 
  * Color encoding same as SSD1351 (use GL_RGB() to encode colors)
  */
 #define FGA_BASEMEM (void*)(1 << 21)
+
+static inline FGA_setpixel_8(int x, int y, uint8_t color) {
+  ((uint8_t*)FGA_BASEMEM)[320*y+x] = color;
+}
 
 static inline FGA_setpixel(int x, int y, uint16_t color) {
   ((uint16_t*)FGA_BASEMEM)[320*y+x] = color;
@@ -190,6 +195,13 @@ static inline FGA_setpixel_RGB(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
   FGA_setpixel(x,y,GL_RGB(R,G,B));
 }
 
+void FGA_setmode(int mode);
+
+static inline FGA_setpalette(int index, uint8_t R, uint8_t G, uint8_t B) {
+   IO_OUT(IO_FGA_CNTL, 1 | (index << 8) | (R << 16));
+   IO_OUT(IO_FGA_CNTL, 2 | (index << 8) | (G << 16));
+   IO_OUT(IO_FGA_CNTL, 3 | (index << 8) | (B << 16));   
+}
 
 /* Mapped SPI FLASH */
 #define SPI_FLASH_BASE ((void*)(1 << 23))

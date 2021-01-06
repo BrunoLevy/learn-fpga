@@ -14,7 +14,7 @@ OBJECTS=femtorv32.o max7219.o ssd1351.o uart.o \
 	 wait_cycles.o microwait.o milliwait.o \
          spi_sd.o cycles.o \
 	 filesystem.o exec.o femto_elf.o \
-	 FGA_write_window.o FGA.o
+	 FGA_mode.o FGA.o
 
 	
 all: libfemtorv32.a

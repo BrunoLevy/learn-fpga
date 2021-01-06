@@ -91,6 +91,9 @@ int read_frame() {
 		// Re-encode them as FemtoGL color for the OLED display:
 		// RRRRR GGGGG 0 BBBBB
 		cmap[15-b] = (b3 << 2) | (g3 << 8) | (r3 << 13);
+	       
+	        // Send to femtoGL
+	        FGA_setpalette(15-b, r3 << 5, g3 << 5, b3 << 5); 
 	    }
 	}
     }
@@ -148,7 +151,8 @@ int read_frame() {
 		poly[2*i+1] = next_spi_byte();
 	    }
 	}
-        FGA_fill_poly(nvrtx,poly,cmap[poly_col]);
+//        FGA_fill_poly(nvrtx,poly,cmap[poly_col]);
+        FGA_fill_poly(nvrtx,poly,poly_col);
     }
     return 1; 
 }
@@ -169,6 +173,8 @@ int main() {
     }
     wireframe = 0;
 
+    FGA_setmode(2);
+   
     for(;;) {
         cur_spi = 0;
 	F = fopen("/scene1.dat","r");

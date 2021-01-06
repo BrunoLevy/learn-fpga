@@ -29,7 +29,7 @@ module FGA(
    reg [31:0] VRAM[32767:0];
    reg [23:0] PALETTE[255:0];
    reg [1:0]  MODE;
-   reg [14:0] ORIGIN;
+   reg [18:0] ORIGIN;
 
    /************************* HDMI signal generation ***************************/
 
@@ -47,7 +47,8 @@ module FGA(
    assign rdata = (io_rstrb && sel_cntl) ? 
                   {(Y >= 400),(X >= 640),DrawArea,mem_busy,4'b0,2'b0,X,2'b0,Y} : 
                   32'b0;
-   
+
+   // Stage 0: X,Y,vsync,hsync generation
    always @(posedge pixel_clk) begin
       DrawArea <= (X<640) && (Y<480);
       X        <= (X==799) ? 0 : X+1;
@@ -56,52 +57,116 @@ module FGA(
       vSync <= (Y>=490) && (Y<492);
    end
 
-   reg [14:0] pix_word_address;
-   reg [14:0] row_start_word_address;
-   reg [15:0] pix_data;
-   reg [7:0]  R,G,B;
-
+   // Stage 1: pixel address generation
+   reg [17:0] pix_address;
+   reg [17:0] row_start_pix_address;
    always @(posedge pixel_clk) begin
+      if(MODE == MODE_320x200x16bpp ||
+	 MODE == MODE_320x200x8bpp) begin
+	 if(X == 0) begin
+	    if(Y == 0) begin
+	       if(MODE == MODE_320x200x16bpp) begin
+		  row_start_pix_address <= ORIGIN[18:1]; // 16bpp, addr2pixaddr: /2
+		  pix_address           <= ORIGIN[18:1];
+	       end else begin
+		  row_start_pix_address <= ORIGIN[17:0]; // 8bpp
+		  pix_address           <= ORIGIN[17:0];
+	       end
+	    end else begin
+	       // Increment row address every 2 Y (2 because 320x200->640x400)
+	       if(Y[0]) begin
+		  row_start_pix_address <= row_start_pix_address + 320;
+		  pix_address           <= row_start_pix_address + 320;
+	       end else begin
+		  pix_address <= row_start_pix_address;	       
+	       end
+	    end
+	 end 
+	 if(X[0]) pix_address <= pix_address + 1;
+      end else begin // MODE_640x400x4bpp
+	 if(X == 0) begin
+	    if(Y == 0) begin
+	       row_start_pix_address <= {ORIGIN[16:0],1'b0}; // 4bpp, addr2pixaddr: *2
+	       pix_address           <= {ORIGIN[16:0],1'b0};
+	    end else begin
+	       row_start_pix_address <= row_start_pix_address + 640;
+	       pix_address           <= row_start_pix_address + 640;
+	    end
+	 end else begin
+	    pix_address <= pix_address + 1;
+	 end
+      end
+   end 
+
+   // Stage 2: pixel data fetch
+   reg [14:0] word_address;
+   always @(*) begin
+      (* parallel_case, full_case *)
       case(MODE)
-	
-	MODE_320x200x16bpp: begin
-	   if(X == 0) begin
-	      if(Y == 0) begin
-		 row_start_word_address <= ORIGIN;
-		 pix_word_address       <= ORIGIN;
-	      end else begin
-		 // Increment row address every 2 Y (2 because 320x200->640x400)
-		 if(Y[0]) begin
-		    row_start_word_address <= row_start_word_address + 320*2/4;
-		    pix_word_address       <= row_start_word_address + 320*2/4;
-		 end else begin
-		    pix_word_address <= row_start_word_address;	       
-		 end
-	      end
-	   end 
-	   
-	   if(X[1:0] == 2'b11) pix_word_address <= pix_word_address + 1;
-	   
-	   // Select word's 16msb or 16lsbs based on X[1] (again, every 4 X)
-	   if(X[1]) begin 
-	      R <= {VRAM[pix_word_address][31:27],3'b000};
-	      G <= {VRAM[pix_word_address][26:21],2'b00 };
-	      B <= {VRAM[pix_word_address][20:16],3'b000};
-	   end else begin
-	      R <= {VRAM[pix_word_address][15:11],3'b000};
-	      G <= {VRAM[pix_word_address][10:5 ],2'b00 };
-	      B <= {VRAM[pix_word_address][ 4:0 ],3'b000};
-	   end
-	   
-	   // First pixel is boring, normally I should prefetch it...
-	   if(X == 0 || Y >= 400) begin R <= 0; G <= 0; B <= 0; end
-	end
-	MODE_320x200x8bpp: begin
-	end
-	MODE_640x400x4bpp: begin
-	end
+	MODE_320x200x16bpp: word_address = pix_address[15:1];
+	MODE_320x200x8bpp:  word_address = pix_address[16:2];
+	MODE_640x400x4bpp:  word_address = pix_address[17:3];
+	2'b11:              word_address = 0;
       endcase
    end
+   reg [17:0] pix_address_2;
+   reg [31:0] pix_word_data_2;
+   always @(posedge pixel_clk) begin
+      pix_address_2 <= pix_address;
+      pix_word_data_2 <= VRAM[word_address];
+   end
+
+   // Stage 3: colormap lookup
+   reg [7:0] pix_color_index_3;
+   always @(*) begin
+      (* parallel_case, full_case *)
+      case(MODE)
+	MODE_320x200x16bpp: begin
+	   pix_color_index_3 = 8'd0;
+	end
+	MODE_320x200x8bpp:  begin
+	   case(pix_address_2[1:0])
+	     2'b00: pix_color_index_3 = pix_word_data_2[ 7:0 ];
+	     2'b01: pix_color_index_3 = pix_word_data_2[15:8 ];
+	     2'b10: pix_color_index_3 = pix_word_data_2[23:16];
+	     2'b11: pix_color_index_3 = pix_word_data_2[31:24];
+	   endcase
+	end
+	MODE_640x400x4bpp:  begin
+	   case(pix_address_2[2:0])
+	     3'b000: pix_color_index_3 = {4'b0000, pix_word_data_2[ 3:0 ]};
+	     3'b001: pix_color_index_3 = {4'b0000, pix_word_data_2[ 7:4 ]};
+	     3'b010: pix_color_index_3 = {4'b0000, pix_word_data_2[11:8 ]};
+	     3'b011: pix_color_index_3 = {4'b0000, pix_word_data_2[15:12]};
+	     3'b100: pix_color_index_3 = {4'b0000, pix_word_data_2[19:16]};
+	     3'b101: pix_color_index_3 = {4'b0000, pix_word_data_2[23:20]};
+	     3'b110: pix_color_index_3 = {4'b0000, pix_word_data_2[27:24]};
+	     3'b111: pix_color_index_3 = {4'b0000, pix_word_data_2[31:28]};
+	   endcase
+	end // case: MODE_640x400x4bpp
+	2'b11: pix_color_index_3 = 8'd0;
+      endcase
+   end
+   
+   reg [7:0]  R,G,B;
+   always @(posedge pixel_clk) begin
+      if(MODE == MODE_320x200x16bpp) begin
+	   if(pix_address_2[0]) begin 
+	      R <= {pix_word_data_2[31:27],3'b000};
+	      G <= {pix_word_data_2[26:21],2'b00 };
+	      B <= {pix_word_data_2[20:16],3'b000};
+	   end else begin
+	      R <= {pix_word_data_2[15:11],3'b000};
+	      G <= {pix_word_data_2[10:5 ],2'b00 };
+	      B <= {pix_word_data_2[ 4:0 ],3'b000};
+	   end
+      end else begin
+	 {R,G,B} <= PALETTE[pix_color_index_3];
+      end
+      // First pixel is boring, normally I should prefetch it...
+      if(X == 0 || X == 1 || Y >= 400) begin R <= 0; G <= 0; B <= 0; end
+   end
+
    
    // RGB TMDS encoding
    // Generate 10-bits TMDS red,green,blue signals. Blue embeds HSync/VSync in its 
@@ -161,19 +226,21 @@ module FGA(
    //    MSB first, encoding follows SSD1351: RRRRR GGGGG 0 BBBBB
    
    reg[11:0] window_x1, window_x2, window_y1, window_y2, window_x, window_y;
-   reg[15:0] window_row_start;
-   reg[15:0] window_hword_address;   
+   reg[17:0] window_row_start;
+   reg[17:0] window_pixel_address;   
+
+   wire [17:0] WIDTH = (MODE == MODE_640x400x4bpp) ? 640 : 320;
    
    always @(posedge clk) begin
       if(io_wstrb) begin
 	 if(sel_cntl) begin
 	    /* verilator lint_off CASEINCOMPLETE */
 	    case(mem_wdata[7:0])
-	      SET_MODE:      MODE <= mem_wdata[1:0];
-	      SET_ORIGIN:    ORIGIN <= mem_wdata[16:2]; // the two LSBs are ignored
-	      SET_PALETTE_R: PALETTE[mem_wdata[15:8]][7:0]   <= mem_wdata[23:16];
+	      SET_MODE:      MODE   <= mem_wdata[9:8];
+	      SET_ORIGIN:    ORIGIN <= mem_wdata[18:0]; 
+	      SET_PALETTE_B: PALETTE[mem_wdata[15:8]][7:0]   <= mem_wdata[23:16];
 	      SET_PALETTE_G: PALETTE[mem_wdata[15:8]][15:8]  <= mem_wdata[23:16];
-	      SET_PALETTE_B: PALETTE[mem_wdata[15:8]][23:16] <= mem_wdata[23:16];
+	      SET_PALETTE_R: PALETTE[mem_wdata[15:8]][23:16] <= mem_wdata[23:16];
 	      SET_WWINDOW_X: begin 
 		 window_x1 <= mem_wdata[19:8];
 		 window_x2 <= mem_wdata[31:20];
@@ -186,15 +253,15 @@ module FGA(
 		 window_y  <= mem_wdata[19:8];
 		 mem_busy  <= 1'b1;
 		 /* verilator lint_off WIDTH */
-		 window_row_start     <= mem_wdata[19:8] * 320 + window_x1;
-		 window_hword_address <= mem_wdata[19:8] * 320 + window_x1;
+		 window_row_start     <= mem_wdata[19:8] * WIDTH + window_x1;
+		 window_pixel_address <= mem_wdata[19:8] * WIDTH + window_x1;
 		 /* verilator lint_on WIDTH */		 
 	      end
 	    endcase
 	    /* verilator lint_on CASEINCOMPLETE */	    
 	 end else if(sel_dat) begin // one byte of data sent to IO_FGA_DAT
 	                            // increment pixel address.
-	    window_hword_address <= window_hword_address + 1;
+	    window_pixel_address <= window_pixel_address + 1;
 	    window_x             <= window_x + 1;	    
 	    if(window_x == window_x2) begin
 	       if(window_y == window_y2) begin
@@ -202,8 +269,8 @@ module FGA(
 	       end else begin
 	          window_y <= window_y+1;
 		  window_x <= window_x1;
-		  window_hword_address <= window_row_start + 320;
-		  window_row_start     <= window_row_start + 320;
+		  window_pixel_address <= window_row_start + WIDTH;
+		  window_row_start     <= window_row_start + WIDTH;
 	       end
 	    end 
          end // if (sel_dat)
@@ -217,10 +284,34 @@ module FGA(
       if(io_wstrb) begin
          if(sel_dat && mem_busy) begin // one byte of data sent to IO_FGA_DAT
 	                               // write data to VRAM.
-	    case(window_hword_address[0])
-	       1'b0: VRAM[window_hword_address[15:1]][15:0 ] <= mem_wdata[15:0];
-	       1'b1: VRAM[window_hword_address[15:1]][31:16] <= mem_wdata[15:0];
-	    endcase
+	    case(MODE)
+	      MODE_320x200x16bpp: begin
+	       case(window_pixel_address[0])
+	          1'b0: VRAM[window_pixel_address[15:1]][15:0 ] <= mem_wdata[15:0];
+	          1'b1: VRAM[window_pixel_address[15:1]][31:16] <= mem_wdata[15:0];
+	       endcase
+	      end
+	      MODE_320x200x8bpp: begin
+	       case(window_pixel_address[1:0])
+                  2'b00: VRAM[window_pixel_address[16:2]][ 7:0 ] <= mem_wdata[7:0];
+                  2'b01: VRAM[window_pixel_address[16:2]][15:8 ] <= mem_wdata[7:0];
+                  2'b10: VRAM[window_pixel_address[16:2]][23:16] <= mem_wdata[7:0];
+                  2'b11: VRAM[window_pixel_address[16:2]][31:24] <= mem_wdata[7:0];		  
+	       endcase
+	      end
+	      MODE_640x400x4bpp: begin
+		 case(window_pixel_address[2:0])
+                   3'b000: VRAM[window_pixel_address[17:3]][ 3:0 ] <= mem_wdata[3:0];
+                   3'b001: VRAM[window_pixel_address[17:3]][ 7:4 ] <= mem_wdata[3:0];
+                   3'b010: VRAM[window_pixel_address[17:3]][11:8 ] <= mem_wdata[3:0];
+                   3'b011: VRAM[window_pixel_address[17:3]][15:12] <= mem_wdata[3:0];
+                   3'b100: VRAM[window_pixel_address[17:3]][19:16] <= mem_wdata[3:0];
+                   3'b101: VRAM[window_pixel_address[17:3]][23:20] <= mem_wdata[3:0];
+                   3'b110: VRAM[window_pixel_address[17:3]][27:24] <= mem_wdata[3:0];
+                   3'b111: VRAM[window_pixel_address[17:3]][31:28] <= mem_wdata[3:0];		   		   
+		 endcase
+	      end
+	    endcase 
 	 end
       end else if(sel && !mem_busy) begin
 	 if(mem_wmask[0]) VRAM[vram_word_address][ 7:0 ] <= mem_wdata[ 7:0 ];
