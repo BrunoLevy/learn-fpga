@@ -143,7 +143,7 @@ module FGA(
 	     3'b110: pix_color_index_3 = {4'b0000, pix_word_data_2[27:24]};
 	     3'b111: pix_color_index_3 = {4'b0000, pix_word_data_2[31:28]};
 	   endcase
-	end // case: MODE_640x400x4bpp
+	end 
 	2'b11: pix_color_index_3 = 8'd0;
       endcase
    end
