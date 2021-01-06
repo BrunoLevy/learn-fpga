@@ -220,12 +220,14 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
 	 uint16_t R = (uint16_t)(255.0f * max(0.f, min(1.f, C.x))); 
 	 uint16_t G = (uint16_t)(255.0f * max(0.f, min(1.f, C.y))); 
 	 uint16_t B = (uint16_t)(255.0f * max(0.f, min(1.f, C.z)));
-	 FGA_setpixel(i,j,R,G,B);
+	 FGA_setpixel_RGB(i,j,R,G,B);
       }
    }
 }
 
 int main() {
+    FGA_setmode(0);
+   
     Material      ivory = make_Material(1.0, make_vec4(0.6,  0.3, 0.1, 0.0), make_vec3(0.4, 0.4, 0.3),   50.);
     Material      glass = make_Material(1.5, make_vec4(0.0,  0.5, 0.1, 0.8), make_vec3(0.6, 0.7, 0.8),  125.);
     Material red_rubber = make_Material(1.0, make_vec4(0.9,  0.1, 0.0, 0.0), make_vec3(0.3, 0.1, 0.1),   10.);

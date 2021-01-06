@@ -1,6 +1,7 @@
 #include <femtorv32.h>
 
 int main() {
+  FGA_setmode(0);
   int frame=0;
   uint16_t* graph_mem = (uint16_t *)(1 << 21);
   

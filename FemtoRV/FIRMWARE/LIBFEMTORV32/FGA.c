@@ -41,6 +41,11 @@ void FGA_wait_vbl() {
 
 #define code(x,y) ((x) < XMIN) | (((x) > XMAX)<<1) | (((y) < YMIN)<<2) | (((y) > YMAX)<<3) 
 
+static inline void FGA_setpixel_fast(int x, int y, uint16_t color) {
+    oled_write_window(x,y,x,y);
+    IO_OUT(IO_FGA_DAT,color);
+}
+
 void FGA_line(int x1, int y1, int x2, int y2, uint16_t color) {
     /* Cohen-Sutherland line clipping. */
     int code1 = code(x1,y1);
@@ -109,10 +114,10 @@ void FGA_line(int x1, int y1, int x2, int y2, uint16_t color) {
     if(dy > dx) {
 	int ex = (dx << 1) - dy;
 	for(int u=0; u<dy; u++) {
-	    FGA_setpixel_8(x,y,color);
+	    FGA_setpixel_fast(x,y,color);
 	    y += sy;
 	    while(ex >= 0)  {
-		FGA_setpixel_8(x,y,color);		
+		FGA_setpixel_fast(x,y,color);		
 		x += sx;
 		ex -= dy << 1;
 	    }
@@ -121,10 +126,10 @@ void FGA_line(int x1, int y1, int x2, int y2, uint16_t color) {
     } else {
 	int ey = (dy << 1) - dx;
 	for(int u=0; u<dx; u++) {
-	    FGA_setpixel_8(x,y,color);
+	    FGA_setpixel_fast(x,y,color);
 	    x += sx;
 	    while(ey >= 0) {
-		FGA_setpixel_8(x,y,color);
+		FGA_setpixel_fast(x,y,color);
 		y += sy;
 		ey -= dx << 1;
 	    }

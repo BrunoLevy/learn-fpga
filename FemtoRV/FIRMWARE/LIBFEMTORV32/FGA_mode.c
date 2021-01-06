@@ -9,6 +9,7 @@
 
 void FGA_setmode(int mode) {
    IO_OUT(IO_FGA_CNTL, 0 | (mode << 8));
+   memset(FGA_BASEMEM,0,128000);
 }
 
 void FGA_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2) {
