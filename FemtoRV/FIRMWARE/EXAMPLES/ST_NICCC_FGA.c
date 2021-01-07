@@ -16,22 +16,22 @@
 #include <femtorv32.h>
 
 FILE* F = 0;
-int cur_spi = 0;
+int cur_byte_address = 0;
 
-uint8_t next_spi_byte() {
+uint8_t next_byte() {
     uint8_t result;
     fread(&result, 1, 1, F);
-    ++cur_spi;
+    ++cur_byte_address;
     return result;
 }
 
-uint16_t next_spi_word() {
+uint16_t next_word() {
    /* In the ST-NICCC file,  
     * words are stored in big endian format.
     * (see DATA/scene_description.txt).
     */
-   uint16_t hi = (uint16_t)next_spi_byte();    
-   uint16_t lo = (uint16_t)next_spi_byte();
+   uint16_t hi = (uint16_t)next_byte();    
+   uint16_t lo = (uint16_t)next_byte();
    return (hi << 8) | lo;
 }
 
@@ -44,8 +44,8 @@ uint16_t cmap[16];
 /*
  * Current frame's vertices coordinates (if frame is indexed).
  */
-uint8_t  X[255];
-uint8_t  Y[255];
+uint16_t  X[255];
+uint16_t  Y[255];
 
 /*
  * Current polygon vertices, as expected
@@ -74,14 +74,14 @@ int wireframe = 0;
  * program.
  */
 int read_frame() {
-    uint8_t frame_flags = next_spi_byte();
+    uint8_t frame_flags = next_byte();
 
     // Update palette data.
     if(frame_flags & PALETTE_BIT) {
-	uint16_t colors = next_spi_word();
+	uint16_t colors = next_word();
 	for(int b=15; b>=0; --b) {
 	    if(colors & (1 << b)) {
-		int rgb = next_spi_word();
+		int rgb = next_word();
 	       
 		// Get the three 3-bits per component R,G,B
 	        int b3 = (rgb & 0x007);
@@ -110,16 +110,16 @@ int read_frame() {
 
     // Update vertices
     if(frame_flags & INDEXED_BIT) {
-	uint8_t nb_vertices = next_spi_byte();
+	uint8_t nb_vertices = next_byte();
 	for(int v=0; v<nb_vertices; ++v) {
-	    X[v] = next_spi_byte();
-	    Y[v] = next_spi_byte();
+	  X[v] = ((uint8_t)next_byte()) << 1;
+	  Y[v] = ((uint8_t)next_byte()) << 1;
 	}
     }
 
     // Draw frame's polygons
     for(;;) {
-	uint8_t poly_desc = next_spi_byte();
+	uint8_t poly_desc = next_byte();
 
 	// Special polygon codes (end of frame,
 	// seek next block, end of stream)
@@ -130,8 +130,8 @@ int read_frame() {
 	if(poly_desc == 0xfe) {
 	   // Go to next 64kb block
 	   // (TODO: with fseek !)
-	   while(cur_spi & 65535) {
-	      next_spi_byte();
+	   while(cur_byte_address & 65535) {
+	      next_byte();
 	   }
 	   return 1; 
 	}
@@ -143,15 +143,15 @@ int read_frame() {
 	uint8_t poly_col = poly_desc >> 4;
 	for(int i=0; i<nvrtx; ++i) {
 	    if(frame_flags & INDEXED_BIT) {
-		uint8_t index = next_spi_byte();
+		uint8_t index = next_byte();
 		poly[2*i]   = X[index];
 		poly[2*i+1] = Y[index];
 	    } else {
-		poly[2*i]   = next_spi_byte();
-		poly[2*i+1] = next_spi_byte();
+	      poly[2*i]   = ((uint8_t)next_byte()) << 1;
+	      poly[2*i+1] = ((uint8_t)next_byte()) << 1;
 	    }
 	}
-//        FGA_fill_poly(nvrtx,poly,cmap[poly_col]);
+//      FGA_fill_poly(nvrtx,poly,cmap[poly_col]);
         FGA_fill_poly(nvrtx,poly,poly_col);
     }
     return 1; 
@@ -176,7 +176,7 @@ int main() {
     FGA_setmode(2);
    
     for(;;) {
-        cur_spi = 0;
+        cur_byte_address = 0;
 	F = fopen("/scene1.dat","r");
 	if(!F) {
 	    printf("Could not open scene1.dat\n");

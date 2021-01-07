@@ -2,6 +2,7 @@
 #define H__FEMTORV32__H
 
 #include "HardwareConfig_bits.h"
+#include "FGA.h"
 
 typedef unsigned char          uint8_t;
 typedef unsigned short         uint16_t;
@@ -79,6 +80,10 @@ extern void GL_fill_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uin
 extern void GL_setpixel(int x, int y, uint16_t color);
 extern void GL_line(int x1, int y1, int x2, int y3, uint16_t color);
 extern void GL_fill_poly(int nb_pts, int* points, uint16_t color);
+
+extern int      FGA_mode;
+extern uint16_t FGA_width;
+extern uint16_t FGA_height;
 
 extern void FGA_wait_vbl();
 extern void FGA_clear();

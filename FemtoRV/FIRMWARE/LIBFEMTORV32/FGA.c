@@ -6,8 +6,9 @@ extern int GL_clip(
 );
 
 #define BIG 16384;
-#define WIDTH  320
-#define HEIGHT 200
+
+#define WIDTH  FGA_width
+#define HEIGHT FGA_height
 
 void FGA_fill_rect(
     uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color
@@ -35,12 +36,15 @@ void FGA_wait_vbl() {
 #define TOP    8
 
 #define XMIN 0
-#define XMAX 319
+#define XMAX (WIDTH-1)
 #define YMIN 0
-#define YMAX 199
+#define YMAX (HEIGHT-1)
 
 #define code(x,y) ((x) < XMIN) | (((x) > XMAX)<<1) | (((y) < YMIN)<<2) | (((y) > YMAX)<<3) 
 
+// Not super fast, could write to mem directly instead (but then we
+// do not benefit from mode-independent abstraction and need to do
+// that on our own).
 static inline void FGA_setpixel_fast(int x, int y, uint16_t color) {
     oled_write_window(x,y,x,y);
     IO_OUT(IO_FGA_DAT,color);
@@ -137,7 +141,6 @@ void FGA_line(int x1, int y1, int x2, int y2, uint16_t color) {
 	}
     }
 }
-
 
 void FGA_fill_poly(int nb_pts, int* points, uint16_t color) {
 
