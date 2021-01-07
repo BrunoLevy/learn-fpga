@@ -59,8 +59,13 @@ void FGA_wait_vbl() {
 // do not benefit from mode-independent abstraction and need to do
 // that on our own).
 static inline void FGA_setpixel_fast(int x, int y, uint16_t color) {
-    oled_write_window(x,y,x,y);
-    IO_OUT(IO_FGA_DAT,color);
+   IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_X | x << 8 | x << 20);
+   IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_Y | y << 8 | y << 20);  
+   IO_OUT(IO_FGA_DAT,color);
+}
+
+void FGA_setpixel(int x, int y, uint16_t color) {
+   FGA_setpixel_fast(x,y,color);
 }
 
 void FGA_line(int x1, int y1, int x2, int y2, uint16_t color) {

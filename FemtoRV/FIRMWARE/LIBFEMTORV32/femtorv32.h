@@ -22,8 +22,9 @@ extern int  getchar();
 extern int  putchar(int c);
 extern int  puts(const char* s);
 
-extern uint64_t cycles();      /* gets the number of cycles since last reset (needs NRV_COUNTERS_64) */
-extern void wait_cycles(int cycles); /* waits for a number of cycles. */
+extern uint64_t cycles();            /* gets the number of cycles since last reset       (needs NRV_COUNTERS_64) */
+extern uint64_t milliseconds();      /* gets the number of milliseconds since last reset (needs NRV_COUNTERS_64) */
+extern void wait_cycles(int cycles); /* waits for a number of cycles.       */
 extern void milliwait(int ms);       /* waits for a number of milliseconds. */
 extern void microwait(int ns);       /* waits for a number of microseconds. */
 #define delay(ms) milliwait(ms)
@@ -188,14 +189,6 @@ extern void MAX7219(uint32_t address, uint32_t value);
  */
 #define FGA_BASEMEM (void*)(1 << 21)
 
-static inline FGA_setpixel_8(int x, int y, uint8_t color) {
-  ((uint8_t*)FGA_BASEMEM)[320*y+x] = color;
-}
-
-static inline FGA_setpixel(int x, int y, uint16_t color) {
-  ((uint16_t*)FGA_BASEMEM)[320*y+x] = color;
-}
-
 static inline FGA_setpixel_RGB(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
   FGA_setpixel(x,y,GL_RGB(R,G,B));
 }
@@ -207,6 +200,9 @@ static inline FGA_setpalette(int index, uint8_t R, uint8_t G, uint8_t B) {
    IO_OUT(IO_FGA_CNTL, 2 | (index << 8) | (G << 16));
    IO_OUT(IO_FGA_CNTL, 3 | (index << 8) | (B << 16));   
 }
+
+/* Simple "GUI" functions */
+int GUI_prompt(char* title, char** options);
 
 /* Mapped SPI FLASH */
 #define SPI_FLASH_BASE ((void*)(1 << 23))

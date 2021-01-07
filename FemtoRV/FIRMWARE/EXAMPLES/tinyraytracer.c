@@ -1,14 +1,11 @@
 /* A port of Dmitry Sokolov's tiny raytracer to C and to FemtoRV32 */
-/* Needs the small OLED display (SSD1351)                          */
+/* Displays on the small OLED display and/or HDMI                  */
 
 #include <math.h>
 #include <fenv.h>
 #include <femtorv32.h>
 
 /*******************************************************************/
-
-int __errno;  /* My quick-and-dirty compile script pulls libm and softp,
-	       * but still has an undefined __errno error.         */
 
 typedef int BOOL;
 
@@ -207,23 +204,88 @@ vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* light
   return result;
 }
 
+uint8_t dither[4][4] = {
+  { 0, 8, 2,10},
+  {12, 4,14, 6},
+  { 3,11, 1, 9},
+  {15, 7,13, 5}
+};
+
+int gfx_mode;
+int gfx_width;
+int gfx_height;
+
+void gfx_init() {
+   static char* modes[] = {
+      "OLED 128x128 16bpp",
+      "FGA  320x200 16bpp",
+      "FGA  320x200  gray",
+      "FGA  640x400  gray",
+      NULL
+   };
+   gfx_mode = GUI_prompt("Raytracer GFX MODE", modes) - 1;
+   
+   if(gfx_mode == FGA_MODE_320x200x8bpp ) {
+      for(int i=0; i<256; ++i) {
+	 FGA_setpalette(i,i,i,i);
+      }
+   } else if(gfx_mode == FGA_MODE_640x400x4bpp) {
+      for(int i=0; i<16; ++i) {
+	 FGA_setpalette(i,i<<4,i<<4,i<<4);
+      }
+   }
+   
+   if(gfx_mode == -1) {
+      gfx_width   = 128;
+      gfx_height = 128;
+      GL_tty_init();
+   } else {
+      FGA_setmode(gfx_mode);
+      gfx_width  = FGA_width;
+      gfx_height = FGA_height;
+   }
+}
+
+void set_pixel(int x, int y, float r, float g, float b) {
+   r = max(0.0f, min(1.0f, r));
+   g = max(0.0f, min(1.0f, g));
+   b = max(0.0f, min(1.0f, b));
+   switch(gfx_mode) {
+   case -1: {
+     uint8_t R = (uint8_t)(255.0f * r);
+     uint8_t G = (uint8_t)(255.0f * g);
+     uint8_t B = (uint8_t)(255.0f * b);
+     GL_setpixel(x,y,GL_RGB(R,G,B));
+   } break;
+   case FGA_MODE_320x200x16bpp: {
+     uint8_t R = (uint8_t)(255.0f * r);
+     uint8_t G = (uint8_t)(255.0f * g);
+     uint8_t B = (uint8_t)(255.0f * b);
+     FGA_setpixel(x,y,GL_RGB(R,G,B));     
+   } break;
+   case FGA_MODE_320x200x8bpp: {
+     float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+     FGA_setpixel(x,y,(uint16_t)(gray*255.0f));
+   } break;
+   case FGA_MODE_640x400x4bpp: {
+     float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+     uint16_t GRAY = (uint16_t)(gray*255.0f);
+     uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
+     FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15));
+   } break;
+   }
+}
+
 void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
    const float fov  = M_PI/3.;
-   const int width  = 128;
-   const int height = 128;
-   GL_init();
-   GL_clear();
-   oled_write_window(0,0,127,127);
-   for (int j = 0; j<height; j++) { // actual rendering loop
-      for (int i = 0; i<width; i++) {
-	 float dir_x =  (i + 0.5) -  width/2.;
-	 float dir_y = -(j + 0.5) + height/2.;    // this flips the image at the same time
-	 float dir_z = -height/(2.*tan(fov/2.));
+   gfx_init();
+   for (int j = 0; j<gfx_height; j++) { // actual rendering loop
+      for (int i = 0; i<gfx_width; i++) {
+	 float dir_x =  (i + 0.5) -  gfx_width/2.;
+	 float dir_y = -(j + 0.5) + gfx_height/2.;    // this flips the image at the same time
+	 float dir_z = -gfx_height/(2.*tan(fov/2.));
 	 vec3 C = cast_ray(make_vec3(0,0,0), vec3_normalize(make_vec3(dir_x, dir_y, dir_z)), spheres, nb_spheres, lights, nb_lights, 0);
-	 uint16_t R = (uint16_t)(255.0f * max(0.f, min(1.f, C.x))); 
-	 uint16_t G = (uint16_t)(255.0f * max(0.f, min(1.f, C.y))); 
-	 uint16_t B = (uint16_t)(255.0f * max(0.f, min(1.f, C.z))); 
-	 OLED_WRITE_DATA_RGB(R,G,B);
+	 set_pixel(i,j,C.x,C.y,C.z);
       }
    }
 }

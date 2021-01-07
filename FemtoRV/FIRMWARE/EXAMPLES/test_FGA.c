@@ -1,12 +1,10 @@
 #include <femtorv32.h>
 
 int main() {
-  FGA_setmode(0);
   int frame=0;
-  uint16_t* graph_mem = (uint16_t *)(1 << 21);
-  
+  FGA_setmode(FGA_MODE_320x200x16bpp); 
   for(;;) { 
-    uint16_t* graph_ptr = graph_mem;
+    uint16_t* graph_ptr = (uint16_t*)FGA_BASEMEM;
     for(int y=0; y<200; ++y) {
       for(int x=0; x<320; ++x) {
 	uint32_t R = (x+frame) & 63;

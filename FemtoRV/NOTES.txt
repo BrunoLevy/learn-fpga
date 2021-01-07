@@ -135,6 +135,15 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - test_FGA.c: uint16_t* graph_mem = (uint16_t)FGA_BASEMEM;
+	                                              ^___ Manquait une étoile ici !!!
+                et cet andouille de compilo C me disait rien ! Perdu 1h avec ça,
+		je croyais qu'écriture processeur->VRAM ne marchait plus !
+             - FGA, accelerated horizontal lines
+	         - J'avais oublié d'appeler wait_GPU() (donc ça ne marchait pas au delà d'une certaine longueur)
+		 - Il y a parfois dans ST_NICCC des polygones en
+                   "papillon", avec xleft à droite de xright donc la boucle 'hardware' s'arretait a
+                   la ligne suivante !
              - FGA, emulation du SSD1351
 	         a) j'ai oublié de conditionner à io_wstrb
 		 b) quand il y a plusieurs <= dans un bloc, j'ai

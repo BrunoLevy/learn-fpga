@@ -5,6 +5,7 @@
  * 
  * femtosoc options (femtosoc.v):
  *   OLED display (NRV_IO_SSD1351)
+ *   FGA          (NRV_IO_FGA)
  *   SDCard       (NRV_IO_SPI_SDCARD)
  * 
  * The polygon stream is a 640K file (DATA/scene1.dat),
@@ -16,23 +17,50 @@
 #include <femtorv32.h>
 
 FILE* F = 0;
-int cur_spi = 0;
+int cur_byte_address = 0;
 
-uint8_t next_spi_byte() {
+uint8_t next_byte() {
     uint8_t result;
     fread(&result, 1, 1, F);
-    ++cur_spi;
+    ++cur_byte_address;
     return result;
 }
 
-uint16_t next_spi_word() {
+uint16_t next_word() {
    /* In the ST-NICCC file,  
     * words are stored in big endian format.
     * (see DATA/scene_description.txt).
     */
-   uint16_t hi = (uint16_t)next_spi_byte();    
-   uint16_t lo = (uint16_t)next_spi_byte();
+   uint16_t hi = (uint16_t)next_byte();    
+   uint16_t lo = (uint16_t)next_byte();
    return (hi << 8) | lo;
+}
+
+
+/*
+ * The graphic mode:
+ * One of
+ *   OLED_MODE_128x128x16bpp
+ *   FGA_MODE_320x200x16bpp  
+ *   FGA_MODE_320x200x8bpp   
+ *   FGA_MODE_640x400x4bpp   
+ */
+#define OLED_MODE_128x128x16bpp -1
+int gfx_mode; 
+int gfx_colormapped; // 1 if colormapped, 0 if RGB16
+
+static inline gfx_clear() {
+   if(gfx_mode == OLED_MODE_128x128x16bpp) {
+      GL_clear();
+   } else {
+      FGA_clear();
+   }
+}
+
+static inline gfx_wait_vbl() {
+   if(gfx_mode != OLED_MODE_128x128x16bpp) {
+      FGA_wait_vbl();
+   }
 }
 
 /* 
@@ -42,11 +70,10 @@ uint16_t next_spi_word() {
 uint16_t cmap[16];
 
 /*
- * Current frame's vertices coordinates (if frame is indexed),
- *  mapped to OLED display dimensions (divide by 2 from file).
+ * Current frame's vertices coordinates (if frame is indexed).
  */
-uint8_t  X[255];
-uint8_t  Y[255];
+uint16_t  X[255];
+uint16_t  Y[255];
 
 /*
  * Current polygon vertices, as expected
@@ -75,14 +102,14 @@ int wireframe = 0;
  * program.
  */
 int read_frame() {
-    uint8_t frame_flags = next_spi_byte();
+    uint8_t frame_flags = next_byte();
 
     // Update palette data.
     if(frame_flags & PALETTE_BIT) {
-	uint16_t colors = next_spi_word();
+	uint16_t colors = next_word();
 	for(int b=15; b>=0; --b) {
 	    if(colors & (1 << b)) {
-		int rgb = next_spi_word();
+		int rgb = next_word();
 	       
 		// Get the three 3-bits per component R,G,B
 	        int b3 = (rgb & 0x007);
@@ -92,31 +119,41 @@ int read_frame() {
 		// Re-encode them as FemtoGL color for the OLED display:
 		// RRRRR GGGGG 0 BBBBB
 		cmap[15-b] = (b3 << 2) | (g3 << 8) | (r3 << 13);
+	       
+	        // Send to femtoGL
+	        FGA_setpalette(15-b, r3 << 5, g3 << 5, b3 << 5); 
 	    }
 	}
     }
 
+    gfx_wait_vbl();
     if(wireframe) {
-	GL_clear();
+       gfx_clear();
     } else {
-	if(frame_flags & CLEAR_BIT) {
-	    // GL_clear(); // Commented out, too much flickering,
-	                   // cannot VSynch on the OLED display.
+        if(frame_flags & CLEAR_BIT) {
+	   // gfx_clear(); // Too much flickering, commented-out for now
 	}
     }
-
+   
     // Update vertices
     if(frame_flags & INDEXED_BIT) {
-	uint8_t nb_vertices = next_spi_byte();
+	uint8_t nb_vertices = next_byte();
 	for(int v=0; v<nb_vertices; ++v) {
-	    X[v] = (next_spi_byte() >> 1);
-	    Y[v] = (next_spi_byte() >> 1) + 14;
+	   X[v] = next_byte();
+	   Y[v] = next_byte();
+	   if(gfx_mode == FGA_MODE_640x400x4bpp) {
+	      X[v] = X[v] << 1;
+	      Y[v] = Y[v] << 1;
+	   } else if(gfx_mode == OLED_MODE_128x128x16bpp) {
+	      X[v] = X[v] >> 1;
+	      Y[v] = Y[v] >> 1;
+	   }
 	}
     }
 
     // Draw frame's polygons
     for(;;) {
-	uint8_t poly_desc = next_spi_byte();
+	uint8_t poly_desc = next_byte();
 
 	// Special polygon codes (end of frame,
 	// seek next block, end of stream)
@@ -127,8 +164,8 @@ int read_frame() {
 	if(poly_desc == 0xfe) {
 	   // Go to next 64kb block
 	   // (TODO: with fseek !)
-	   while(cur_spi & 65535) {
-	      next_spi_byte();
+	   while(cur_byte_address & 65535) {
+	      next_byte();
 	   }
 	   return 1; 
 	}
@@ -140,47 +177,66 @@ int read_frame() {
 	uint8_t poly_col = poly_desc >> 4;
 	for(int i=0; i<nvrtx; ++i) {
 	    if(frame_flags & INDEXED_BIT) {
-		uint8_t index = next_spi_byte();
+		uint8_t index = next_byte();
 		poly[2*i]   = X[index];
 		poly[2*i+1] = Y[index];
 	    } else {
-		poly[2*i]   = (next_spi_byte() >> 1);
-		poly[2*i+1] = (next_spi_byte() >> 1) + 14;		
+	       poly[2*i]   = next_byte();
+	       poly[2*i+1] = next_byte();
+	       if(gfx_mode == FGA_MODE_640x400x4bpp) {
+		  poly[2*i]   = poly[2*i]   << 1;
+		  poly[2*i+1] = poly[2*i+1] << 1;
+	       } else if(gfx_mode == OLED_MODE_128x128x16bpp) {
+		  poly[2*i]   = poly[2*i]   >> 1;
+		  poly[2*i+1] = poly[2*i+1] >> 1;
+	       }
 	    }
 	}
-	GL_fill_poly(nvrtx,poly,cmap[poly_col]);
+        if(gfx_mode == OLED_MODE_128x128x16bpp) {
+	   GL_fill_poly(nvrtx,poly,cmap[poly_col]);
+	} else {
+	   FGA_fill_poly(nvrtx,poly,gfx_colormapped ? poly_col : cmap[poly_col]);
+	}
     }
     return 1; 
 }
 
+char* modes[] = {
+   "OLED 128x128 16bpp",
+   "FGA  320x200 16bpp",
+   "FGA  320x200  8bpp",
+   "FGA  640x400  4bpp",
+   NULL
+};
 
 int main() {
-    GL_tty_init();
-    GL_clear();
-    printf("ST-NICCC demo\n");
-    if(sd_init()) {
-        printf("Could not initialize SDCard\n");
-	return -1;
+    gfx_mode = GUI_prompt("ST-NICCC  GFX MODE", modes) - 1;
+    gfx_colormapped = (gfx_mode == FGA_MODE_320x200x8bpp ||
+                       gfx_mode == FGA_MODE_640x400x4bpp  );
+   
+    if(filesystem_init()) {
+       return -1;
     }
-    fl_init();
-    if(fl_attach_media((fn_diskio_read)sd_readsector, (fn_diskio_write)sd_writesector) != FAT_INIT_OK) {
-        printf("ERROR: Failed to init file system\n");
-	return -1;
-    }
-    GL_clear();
+   
     wireframe = 0;
-
+    if(gfx_mode != -1) {
+       FGA_setmode(gfx_mode);
+    } else {
+       GL_tty_init();
+    }
+   
     for(;;) {
-        cur_spi = 0;
+        cur_byte_address = 0;
 	F = fopen("/scene1.dat","r");
 	if(!F) {
 	    printf("Could not open scene1.dat\n");
 	    return -1;
 	}
+        gfx_clear();
 	GL_polygon_mode(wireframe ? GL_POLY_LINES: GL_POLY_FILL);	
 	while(read_frame()) {
-	    // delay(50); // If GL_clear() is uncommented, uncomment as well
-	                  // to reduce flickering.
+	   // delay(50); // If gfx_clear() is uncommented, uncomment as well
+	   //            // to reduce flickering.
 	}
         wireframe = !wireframe;
 	fclose(F);

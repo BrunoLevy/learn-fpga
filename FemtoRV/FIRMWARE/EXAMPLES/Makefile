@@ -7,7 +7,7 @@ mandelbrot_float_OLED.elf mandelbrot_OLED.elf riscv_logo_OLED.elf\
 sieve.elf spirograph_OLED.elf ST_NICCC.elf ST_NICCC_spi_flash.elf\
 sysconfig.elf test_buttons.elf test_font_OLED.elf test_OLED.elf\
 test_spi_flash.elf test_spi_sdcard.elf tinyraytracer.elf tty_OLED.elf\
-test_FGA.elf tinyrt_FGA.elf ST_NICCC_FGA.elf
+test_FGA.elf 
 
 all:
 	@echo "Please specify target (progname.elf or progname.bin) or 'everything'"

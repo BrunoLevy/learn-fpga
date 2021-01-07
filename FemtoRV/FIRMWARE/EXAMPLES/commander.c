@@ -59,24 +59,6 @@ void call_exec() {
     }
 }
 
-int button() {
-    int result = -1;
-    static uint32_t btn_state = 0;
-    uint32_t new_state = IO_IN(IO_BUTTONS);
-    if(new_state != btn_state) {
-	for(int i=0; i<6; ++i) {
-	    if(((btn_state & (1 << i)) != (new_state & (1 << i)))) {
-		if(new_state & (1 << i)) {
-		    result = i;
-		    break;
-		}
-	    }
-	}
-	btn_state = new_state;
-    }
-    return result;
-}
-
 int main() {
     GL_tty_init();
     if(filesystem_init() != 0) {
@@ -89,7 +71,7 @@ int main() {
     }
     refresh();
     for(;;) {
-	int btn = button();
+	int btn = GUI_button();
 	switch(btn) {
 	    case 2: sel--; break;
 	    case 3: sel++; break;
