@@ -101,7 +101,7 @@ int read_frame() {
     FGA_wait_vbl();
    
     if(wireframe) {
-        FGA_clear(); 
+       FGA_clear(); 
     } else {
         if(frame_flags & CLEAR_BIT) {
 	  // FGA_clear(); // Too much flickering, commented-out for now

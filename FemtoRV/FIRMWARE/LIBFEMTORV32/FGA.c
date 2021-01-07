@@ -10,15 +10,26 @@ extern int GL_clip(
 #define WIDTH  FGA_width
 #define HEIGHT FGA_height
 
+static inline void FGA_fill_rect_fast(
+  uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color
+) {
+   if(x2 < x1) {
+      return;
+   }
+   IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_X | (x1 << 8) | (x2 << 20));
+   IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_Y | (y1 << 8) | (y2 << 20));
+   IO_OUT(IO_FGA_CNTL, FGA_FILLRECT | (color << 8));
+}
+
+static inline FGA_wait_GPU() {
+   while(IO_IN(IO_FGA_CNTL) & FGA_BUSY_bit);
+}
+
 void FGA_fill_rect(
     uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color
 ) {
-    oled_write_window(x1,y1,x2,y2);
-    for(int y=y1; y<=y2; ++y) {
-	for(int x=x1; x<=x2; ++x) {
-	   IO_OUT(IO_FGA_DAT, color);	   
-	}
-    }
+   FGA_fill_rect_fast(x1, y1, x2, y2, color);
+   FGA_wait_GPU();
 }
 
 void FGA_clear() {
@@ -26,8 +37,10 @@ void FGA_clear() {
 }
 
 void FGA_wait_vbl() {
-   while(!(IO_IN(IO_FGA_CNTL) & (1 << 31)));
+   while(!(IO_IN(IO_FGA_CNTL) & FGA_VBL_bit));
 }
+
+
 
 #define INSIDE 0
 #define LEFT   1
@@ -248,10 +261,16 @@ void FGA_fill_poly(int nb_pts, int* points, uint16_t color) {
     for(int y = miny; y <= maxy; ++y) {
 	int x1 = x_left[y];
 	int x2 = x_right[y];
+       
+        FGA_wait_GPU();       
+        FGA_fill_rect_fast(x1,y,x2,y, color);
+       /*
 	FGA_write_window(x1,y,x2,y);
         for(int x=x1; x<=x2; ++x) {
 	   IO_OUT(IO_FGA_DAT, color);
 	}
+	*/ 
     }
+    FGA_wait_GPU();
 }
 

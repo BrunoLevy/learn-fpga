@@ -214,7 +214,7 @@ module FGA(
    localparam SET_WWINDOW_X  = 8'd4;
    localparam SET_WWINDOW_Y  = 8'd5;
    localparam SET_ORIGIN     = 8'd6;
-   
+   localparam FILLRECT       = 8'd7;
    
    // Emulation of SSD1351 OLED display.
    // - write window command, two commands:
@@ -226,93 +226,104 @@ module FGA(
    //    MSB first, encoding follows SSD1351: RRRRR GGGGG 0 BBBBB
    
    reg[11:0] window_x1, window_x2, window_y1, window_y2, window_x, window_y;
-   reg[17:0] window_row_start;
-   reg[17:0] window_pixel_address;   
+   reg [17:0] window_row_start;
+   reg [17:0] window_pixel_address;
+   reg [15:0] fill_color;
+   reg        fill_rect;
 
    wire [17:0] WIDTH = (MODE == MODE_640x400x4bpp) ? 640 : 320;
    
    always @(posedge clk) begin
-      if(io_wstrb) begin
-	 if(sel_cntl) begin
-	    /* verilator lint_off CASEINCOMPLETE */
-	    case(mem_wdata[7:0])
-	      SET_MODE:      MODE   <= mem_wdata[9:8];
-	      SET_ORIGIN:    ORIGIN <= mem_wdata[18:0]; 
-	      SET_PALETTE_B: PALETTE[mem_wdata[15:8]][7:0]   <= mem_wdata[23:16];
-	      SET_PALETTE_G: PALETTE[mem_wdata[15:8]][15:8]  <= mem_wdata[23:16];
-	      SET_PALETTE_R: PALETTE[mem_wdata[15:8]][23:16] <= mem_wdata[23:16];
-	      SET_WWINDOW_X: begin 
-		 window_x1 <= mem_wdata[19:8];
-		 window_x2 <= mem_wdata[31:20];
-		 window_x  <= mem_wdata[19:8];
-		 mem_busy  <= 1'b1;
-	      end
-	      SET_WWINDOW_Y: begin 
-		 window_y1 <= mem_wdata[19:8];
-		 window_y2 <= mem_wdata[31:20];
-		 window_y  <= mem_wdata[19:8];
-		 mem_busy  <= 1'b1;
-		 /* verilator lint_off WIDTH */
-		 window_row_start     <= mem_wdata[19:8] * WIDTH + window_x1;
-		 window_pixel_address <= mem_wdata[19:8] * WIDTH + window_x1;
-		 /* verilator lint_on WIDTH */		 
-	      end
-	    endcase
-	    /* verilator lint_on CASEINCOMPLETE */	    
-	 end else if(sel_dat) begin // one byte of data sent to IO_FGA_DAT
-	                            // increment pixel address.
-	    window_pixel_address <= window_pixel_address + 1;
-	    window_x             <= window_x + 1;	    
-	    if(window_x == window_x2) begin
-	       if(window_y == window_y2) begin
-		  mem_busy <= 1'b0;
-	       end else begin
-	          window_y <= window_y+1;
-		  window_x <= window_x1;
-		  window_pixel_address <= window_row_start + WIDTH;
-		  window_row_start     <= window_row_start + WIDTH;
-	       end
-	    end 
-         end // if (sel_dat)
-      end // if (wstrb)
-   end // always @ (posedge clk)
+      if(mem_busy && ((io_wstrb && sel_dat) || fill_rect)) begin
+	 window_pixel_address <= window_pixel_address + 1;
+	 window_x             <= window_x + 1;	    
+	 if(window_x == window_x2) begin
+	    if(window_y == window_y2) begin
+	       mem_busy  <= 1'b0;
+	       fill_rect <= 1'b0;
+	    end else begin
+	       window_y <= window_y+1;
+	       window_x <= window_x1;
+	       window_pixel_address <= window_row_start + WIDTH;
+	       window_row_start     <= window_row_start + WIDTH;
+	    end
+	 end 
+      end
+      
+      if(io_wstrb && sel_cntl) begin
+	 /* verilator lint_off CASEINCOMPLETE */
+	 case(mem_wdata[7:0])
+	   SET_MODE:      begin
+	       MODE      <= mem_wdata[9:8];
+	       fill_rect <= 1'b0;
+	       mem_busy  <= 1'b0;
+	   end
+	   SET_ORIGIN:    ORIGIN <= mem_wdata[18:0]; 
+	   SET_PALETTE_B: PALETTE[mem_wdata[15:8]][7:0]   <= mem_wdata[23:16];
+	   SET_PALETTE_G: PALETTE[mem_wdata[15:8]][15:8]  <= mem_wdata[23:16];
+	   SET_PALETTE_R: PALETTE[mem_wdata[15:8]][23:16] <= mem_wdata[23:16];
+	   SET_WWINDOW_X: begin 
+	      window_x1 <= mem_wdata[19:8];
+	      window_x2 <= mem_wdata[31:20];
+	      window_x  <= mem_wdata[19:8];
+	      mem_busy  <= 1'b1;
+	   end
+	   SET_WWINDOW_Y: begin 
+	      window_y1 <= mem_wdata[19:8];
+	      window_y2 <= mem_wdata[31:20];
+	      window_y  <= mem_wdata[19:8];
+	      mem_busy  <= 1'b1;
+	      /* verilator lint_off WIDTH */
+	      window_row_start     <= mem_wdata[19:8] * WIDTH + window_x1;
+	      window_pixel_address <= mem_wdata[19:8] * WIDTH + window_x1;
+	      /* verilator lint_on WIDTH */		 
+	   end
+	   FILLRECT: begin
+	      fill_rect  <= 1'b1;
+	      fill_color <= mem_wdata[23:8];
+	   end
+	 endcase
+	 /* verilator lint_on CASEINCOMPLETE */	    
+      end 
+   end 
 
    
    // write VRAM (interface with processor)
    wire [14:0] vram_word_address = mem_address[16:2];
+   wire [15:0] pixel_color = fill_rect ? fill_color : mem_wdata[15:0];
+   
    always @(posedge clk) begin
-      if(io_wstrb) begin
-         if(sel_dat && mem_busy) begin // one byte of data sent to IO_FGA_DAT
-	                               // write data to VRAM.
-	    case(MODE)
-	      MODE_320x200x16bpp: begin
-	       case(window_pixel_address[0])
-	          1'b0: VRAM[window_pixel_address[15:1]][15:0 ] <= mem_wdata[15:0];
-	          1'b1: VRAM[window_pixel_address[15:1]][31:16] <= mem_wdata[15:0];
-	       endcase
-	      end
-	      MODE_320x200x8bpp: begin
-	       case(window_pixel_address[1:0])
-                  2'b00: VRAM[window_pixel_address[16:2]][ 7:0 ] <= mem_wdata[7:0];
-                  2'b01: VRAM[window_pixel_address[16:2]][15:8 ] <= mem_wdata[7:0];
-                  2'b10: VRAM[window_pixel_address[16:2]][23:16] <= mem_wdata[7:0];
-                  2'b11: VRAM[window_pixel_address[16:2]][31:24] <= mem_wdata[7:0];		  
-	       endcase
-	      end
-	      MODE_640x400x4bpp: begin
-		 case(window_pixel_address[2:0])
-                   3'b000: VRAM[window_pixel_address[17:3]][ 3:0 ] <= mem_wdata[3:0];
-                   3'b001: VRAM[window_pixel_address[17:3]][ 7:4 ] <= mem_wdata[3:0];
-                   3'b010: VRAM[window_pixel_address[17:3]][11:8 ] <= mem_wdata[3:0];
-                   3'b011: VRAM[window_pixel_address[17:3]][15:12] <= mem_wdata[3:0];
-                   3'b100: VRAM[window_pixel_address[17:3]][19:16] <= mem_wdata[3:0];
-                   3'b101: VRAM[window_pixel_address[17:3]][23:20] <= mem_wdata[3:0];
-                   3'b110: VRAM[window_pixel_address[17:3]][27:24] <= mem_wdata[3:0];
-                   3'b111: VRAM[window_pixel_address[17:3]][31:28] <= mem_wdata[3:0];		   		   
-		 endcase
-	      end
-	    endcase 
-	 end
+      if(fill_rect || (io_wstrb && sel_dat && mem_busy)) begin
+	 /* verilator lint_off CASEINCOMPLETE */	 
+	 case(MODE)
+	   MODE_320x200x16bpp: begin
+	      case(window_pixel_address[0])
+	        1'b0: VRAM[window_pixel_address[15:1]][15:0 ] <= pixel_color;
+	        1'b1: VRAM[window_pixel_address[15:1]][31:16] <= pixel_color;
+	      endcase
+	   end
+	   MODE_320x200x8bpp: begin
+	      case(window_pixel_address[1:0])
+                2'b00: VRAM[window_pixel_address[16:2]][ 7:0 ] <= pixel_color[7:0];
+                2'b01: VRAM[window_pixel_address[16:2]][15:8 ] <= pixel_color[7:0];
+                2'b10: VRAM[window_pixel_address[16:2]][23:16] <= pixel_color[7:0];
+                2'b11: VRAM[window_pixel_address[16:2]][31:24] <= pixel_color[7:0];		  
+	      endcase
+	   end
+	   MODE_640x400x4bpp: begin
+	      case(window_pixel_address[2:0])
+                3'b000: VRAM[window_pixel_address[17:3]][ 3:0 ] <= pixel_color[3:0];
+                3'b001: VRAM[window_pixel_address[17:3]][ 7:4 ] <= pixel_color[3:0];
+                3'b010: VRAM[window_pixel_address[17:3]][11:8 ] <= pixel_color[3:0];
+                3'b011: VRAM[window_pixel_address[17:3]][15:12] <= pixel_color[3:0];
+                3'b100: VRAM[window_pixel_address[17:3]][19:16] <= pixel_color[3:0];
+                3'b101: VRAM[window_pixel_address[17:3]][23:20] <= pixel_color[3:0];
+                3'b110: VRAM[window_pixel_address[17:3]][27:24] <= pixel_color[3:0];
+                3'b111: VRAM[window_pixel_address[17:3]][31:28] <= pixel_color[3:0];		   		   
+	      endcase
+	   end 
+	 endcase // case (MODE)
+	 /* verilator lint_on CASEINCOMPLETE */	 	 
       end else if(sel && !mem_busy) begin
 	 if(mem_wmask[0]) VRAM[vram_word_address][ 7:0 ] <= mem_wdata[ 7:0 ];
 	 if(mem_wmask[1]) VRAM[vram_word_address][15:8 ] <= mem_wdata[15:8 ];
