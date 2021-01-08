@@ -1,10 +1,14 @@
 #include <femtorv32.h>
 
+//#define FONT_8x16 // VGA font (WIP)
 //#define FONT_8x8 // CGA font
 #define FONT_5x6 // pico8 font by zep
 //#define FONT_3x5 // pico8 default font (still some pbs with scrolling)
 
-#if   defined(FONT_8x8)
+#if   defined(FONT_8x16)
+#define FONT_WIDTH  8
+#define FONT_HEIGHT 16
+#elif defined(FONT_8x8)
 #define FONT_WIDTH  8
 #define FONT_HEIGHT 8
 #elif defined(FONT_5x6)
@@ -91,7 +95,16 @@ int GL_putchar(int c) {
 }
 
 void GL_putchar_xy(int X, int Y, char c) {
-#if defined(FONT_8x8)   
+#if defined(FONT_8x16)   
+   oled_write_window(X,Y,X+7,Y+15);   
+   uint8_t* car_ptr = font_8x16 + (int)c * 16;
+   for(int row=0; row<16; ++row) {
+      for(int col=0; col<8; ++col) {
+	 uint32_t BW = (car_ptr[col] & (1 << row)) ? 255 : 0;
+	 OLED_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);
+      }
+   }
+#elif defined(FONT_8x8)
    oled_write_window(X,Y,X+7,Y+7);   
    uint8_t* car_ptr = font_8x8 + (int)c * 8;
    for(int row=0; row<8; ++row) {

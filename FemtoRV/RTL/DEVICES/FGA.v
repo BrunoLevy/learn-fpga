@@ -44,7 +44,7 @@ module FGA(
    localparam MODE_640x400x4bpp  = 2'b10;
    
    // This part is just like a VGA generator.
-   reg  [9:0] X, Y;   // current pixel coordinates
+   reg  [9:0] X, Y;  // current pixel coordinates
    reg hSync, vSync; // horizontal and vertical synchronization
    reg DrawArea;     // asserted if current pixel is in drawing area
    reg mem_busy;     // asserted if memory transfer is running.
@@ -231,7 +231,7 @@ module FGA(
    // - write data: send 8 bits to IO_FGA_DAT hardware register
    //    MSB first, encoding follows SSD1351: RRRRR GGGGG 0 BBBBB
    
-   reg[11:0] window_x1, window_x2, window_y1, window_y2, window_x, window_y;
+   reg [11:0] window_x1, window_x2, window_y1, window_y2, window_x, window_y;
    reg [17:0] window_row_start;
    reg [17:0] window_pixel_address;
    reg [15:0] fill_color;
