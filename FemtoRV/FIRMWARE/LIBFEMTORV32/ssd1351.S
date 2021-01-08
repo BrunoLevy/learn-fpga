@@ -82,9 +82,14 @@ GL_init:
 	OLED1 0xbe, 0x05             # Vcomh voltage
 	OLED0 0xa6                   # display on
 	OLED0 0xaf                   # display mode on
-# Set FGA mode 0, for SSD1351 emulation.	
+# Set FGA mode 0, for SSD1351 emulation.
+# (in conditional compile to avoid pulling too 
+#  much code when we use small devices such as
+#  the iceStick)
+.ifdef FGA
 	li a0, 0
 	call FGA_setmode
+.endif	
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
@@ -111,12 +116,16 @@ oled_write_window:
 	call oled0
 
 # Set write window in FGA, for SSD1351 emulation.
+# (in conditional compile to avoid pulling too 
+#  much code when we use small devices such as
+#  the iceStick)
+.ifdef FGA
 	mv a0,t0
 	mv a1,t2
 	mv a2,t1
 	mv a3,t3
 	call FGA_write_window
-	
+.endif	
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret

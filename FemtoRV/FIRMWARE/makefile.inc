@@ -9,13 +9,11 @@
 
 FIRMWARE_DIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-
 #####################################################################
 #
 # Target architecture (extract it from verilog config using iverilog)
 # It is a bit convoluted, but it is good to have the firmware 
 # target automatically configured for the active verilog config.
-
 
 ARCH=$(shell cd $(FIRMWARE_DIR)/../RTL; \
 	  iverilog -DGET_COPT_ARCH get_config.v -o tmp.vvp; \
@@ -33,10 +31,11 @@ RAM_SIZE=$(shell cd $(FIRMWARE_DIR)/../RTL; \
 	  iverilog -DGET_NRV_RAM get_config.v -o tmp.vvp; \
 	  vvp tmp.vvp; rm -f tmp.vvp)
 
-#ARCH    =$(shell make GET_ARCH)
-#ABI     =$(shell make GET_ABI)
-#OPTIMIZE=$(shell make GET_OPTIMIZE)
-#RAM_SIZE=$(shell make GET_RAM_SIZE)
+DEVICES=$(shell cd $(FIRMWARE_DIR)/../RTL; \
+	  iverilog -DGET_DEVICES get_config.v -o tmp.vvp; \
+	  vvp tmp.vvp; rm -f tmp.vvp)
+
+DEVICES_ASM=$(subst -D,-defsym ,$(DEVICES))
 
 show_config:
 	@echo "ARCH=$(ARCH) ABI=$(ABI) OPTIMIZE=$(OPTIMIZE)"
@@ -82,10 +81,10 @@ FIRMWARE_WORDS=$(FIRMWARE_DIR)/TOOLS/firmware_words
 ################################################################################
 
 RVINCS=-I$(FIRMWARE_DIR)/LIBFEMTORV32 -I$(FIRMWARE_DIR)/LIBFEMTOC
-RVCFLAGS=$(OPTIMIZE) $(RVINCS) -fno-pic -march=$(ARCH) -mabi=$(ABI) \
+RVCFLAGS=$(OPTIMIZE) $(RVINCS) $(DEVICES) -fno-pic -march=$(ARCH) -mabi=$(ABI) \
          -fno-stack-protector -w -Wl,--no-relax
         # Note: --no-relax because I'm using gp for fast access to mapped IO.
-RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) $(RVINCS)
+RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) $(DEVICES_ASM) $(RVINCS)
 RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax
 
 #Rule to compile C++ objects

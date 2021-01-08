@@ -3,7 +3,13 @@
 //
 // This file: FGA: Femto Graphics Adapter
 //   Note: VRAM is write-only ! (the read port is used by HDMI)
-//   Mode 1: 320x200x16bpp. 
+//   3 modes: 320x200 truecolor   16bpp
+//            320x200 colormapped  8bpp
+//            640x400 colormapped  4bpp
+//   Hardware emulation of SSD1351 "window write" command in the
+//    three modes for OLED-HDMI mirroring
+//   Hardware-accelerated 'fillrect' command: fills one pixel per
+//    clock (7 times faster than software).
 
 `include "HDMI_clock.v"
 `include "TMDS_encoder.v"
@@ -322,7 +328,7 @@ module FGA(
                 3'b111: VRAM[window_pixel_address[17:3]][31:28] <= pixel_color[3:0];		   		   
 	      endcase
 	   end 
-	 endcase // case (MODE)
+	 endcase 
 	 /* verilator lint_on CASEINCOMPLETE */	 	 
       end else if(sel && !mem_busy) begin
 	 if(mem_wmask[0]) VRAM[vram_word_address][ 7:0 ] <= mem_wdata[ 7:0 ];

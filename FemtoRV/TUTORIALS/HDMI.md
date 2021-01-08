@@ -4,7 +4,9 @@ HDMI
 ![](Images/HDMI.jpg)
 
 _TL;DR_ self-contained easy example for the ULX3S is 
-[here](https://github.com/BrunoLevy/learn-fpga/tree/master/Basic/ULX3S_hdmi)
+[here](https://github.com/BrunoLevy/learn-fpga/tree/master/Basic/ULX3S_hdmi).
+The graphic board for FemtoRV32 is 
+[here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/RTL/DEVICES/FGA.v).
 
 Let us try to add a framebuffer device that sends a portion of the RAM
 to the HDMI. I know nothing about HDMI, it is very difficult to find a
@@ -86,7 +88,7 @@ because `LVCMOS33D` implies a pseudo-differential driver that drives both
 sides of the pair.
   
   
-_Coming next_: for higher resolution, it is possible to use a specialized ECP5
+For higher resolution, it is possible to use a specialized ECP5
 primitive (`ODDRX1F`) that can shift and send two bits per clock (then using a
 125MHz clock instead of 250MHz), see Lawrie's code
 [here](https://github.com/lawrie/ulx3s_examples/blob/master/hdmi/fake_differential.v).
@@ -115,8 +117,8 @@ changing the clocks and resolutions of course (not tested yet):
 
 ```
 
-[Complete sources for ULX3S](https://github.com/BrunoLevy/learn-fpga/tree/master/Basic/ULX3S_hdmi)
-
+- [Complete sources for ULX3S](https://github.com/BrunoLevy/learn-fpga/tree/master/Basic/ULX3S_hdmi)
+- [Version with DDR](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S_hdmi/HDMI_test_DDR.v)
 
 References
 ----------
