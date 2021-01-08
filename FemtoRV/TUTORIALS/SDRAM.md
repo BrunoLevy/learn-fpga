@@ -19,7 +19,7 @@ refreshes)
 
 Pins
 ----
-- clk      : 166MHz clock
+- clk      : 143MHz clock (7TCN series)
 - cke      : clock enable (wire to 1)
 - csn      : chip select (high: everything inhibited)
 - wen      : write enable (read/write bit)             \
@@ -64,10 +64,12 @@ First project - Goal
 A graphic board with a 640x480 RGB framebuffer
 Writer: a simple animated pattern (or FemtoRV32)
 Questions:
-   - Q1: How to initialize MODE register properly ?
-   - Q2: What are the different modes ?
+   - Q1: How to initialize MODE register properly ? P. 14 of datasheet (to be understood)
+   - Q2: What are the different modes ? -> see below.
    - Q3: How to synchronize data read and video signal generation ?
-   - Q4: Which one is the 'special' address line that selects burst mode ?
+   - Q4: Which one is the 'special' address line that selects burst mode ? -> A10
+   - Q5: Relation between CAS and freq ? P 15. of datasheet + table P 21. (to be understood)
+   - Q6: What is auto-refresh, self-refresh ?
 
 Read chip datasheet
 -------------------
@@ -85,17 +87,25 @@ Read chip datasheet
 - Mode register set: op code = A[..:..]
 - Page 7: list of commands (19 commands !)
 
+Mode Register Bitmap:
 
-
+BA1 BA0 A12 A11 A10 A9  A8    A7   A6   A5  A4   A3   A2  A1 A0
+ X   0   X   X   X  WBL Test mode  CAS latency   BT   Burst len  
+                      
+WBL (Write Burst Len): 0: Burst 1: single bit
+Test Mode: 0 0 (else configs for vendor only)
+CAS latency: 010 (2 clocks) or 011 (3 clocks)
+BT (Burst Type): 0: sequential 1: interleave
+Burst len: 000:1 001:2 010:4 011:8 111:full page (sequential)
 
 
 
 References
 ----------
-[FPGA4fun](https://www.fpga4fun.com/SDRAM.html)
-[Lawrie](https://github.com/lawrie/ulx3s_68k/blob/master/src/sdram.v)
-[stffrdhrn](https://github.com/stffrdhrn/sdram-controller)
-[Hackaday](https://hackaday.com/2013/10/11/sdram-controller-for-low-end-fpgas/)
-[Wikipedia](https://en.wikipedia.org/wiki/Synchronous_dynamic_random-access_memory)
-[Hackster](https://www.hackster.io/salvador-canas/a-practical-introduction-to-sdr-sdram-memories-using-an-fpga-8f5949)
-[Chip datasheet](https://www.alliancememory.com/wp-content/uploads/pdf/dram/512M%20SDRAM_%20B%20die_AS4C32M16SB-7TCN-7TIN-6TIN_Rev%201.0%20June%202016.pdf)
+- [FPGA4fun](https://www.fpga4fun.com/SDRAM.html)
+- [Lawrie](https://github.com/lawrie/ulx3s_68k/blob/master/src/sdram.v)
+- [stffrdhrn](https://github.com/stffrdhrn/sdram-controller)
+- [Hackaday](https://hackaday.com/2013/10/11/sdram-controller-for-low-end-fpgas/)
+- [Wikipedia](https://en.wikipedia.org/wiki/Synchronous_dynamic_random-access_memory)
+- [Hackster](https://www.hackster.io/salvador-canas/a-practical-introduction-to-sdr-sdram-memories-using-an-fpga-8f5949)
+- [Chip datasheet](https://www.alliancememory.com/wp-content/uploads/pdf/dram/512M%20SDRAM_%20B%20die_AS4C32M16SB-7TCN-7TIN-6TIN_Rev%201.0%20June%202016.pdf)
