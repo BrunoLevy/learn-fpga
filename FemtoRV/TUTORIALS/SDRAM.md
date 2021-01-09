@@ -23,7 +23,7 @@ Misc notes
 refreshes)
 - DDR RAMS
 - ULX3S data sheet: 32MB SDRAM, 166MHz, 16-bit [Micron MT48LC32M16](https://www.digchip.com/datasheets/parts/datasheet/297/MT48LC32M16.php)
-- But on my own ULX3S: ALLIANCE AS4C32M16SB-7TCN
+- But on my own ULX3S: [ALLIANCE AS4C32M16SB-7TCN](https://www.alliancememory.com/wp-content/uploads/pdf/dram/512M%20SDRAM_%20B%20die_AS4C32M16SB-7TCN-7TIN-6TIN_Rev%201.0%20June%202016.pdf)
 - ... and there are other variants (see comments in sylefeb's Silice memory controller)
 
 Pins
@@ -147,5 +147,5 @@ References
 - [Hackaday](https://hackaday.com/2013/10/11/sdram-controller-for-low-end-fpgas/)
 - [Wikipedia](https://en.wikipedia.org/wiki/Synchronous_dynamic_random-access_memory)
 - [Hackster](https://www.hackster.io/salvador-canas/a-practical-introduction-to-sdr-sdram-memories-using-an-fpga-8f5949)
-- [Chip datasheet](https://www.alliancememory.com/wp-content/uploads/pdf/dram/512M%20SDRAM_%20B%20die_AS4C32M16SB-7TCN-7TIN-6TIN_Rev%201.0%20June%202016.pdf)
+- [Chip datasheet (ALLIANCE AS4C32M16SB-7TCN)](https://www.alliancememory.com/wp-content/uploads/pdf/dram/512M%20SDRAM_%20B%20die_AS4C32M16SB-7TCN-7TIN-6TIN_Rev%201.0%20June%202016.pdf)
 - [Silice](https://github.com/sylefeb/Silice/blob/master/projects/common/sdram_controller_autoprecharge_r16_w16.ice)
