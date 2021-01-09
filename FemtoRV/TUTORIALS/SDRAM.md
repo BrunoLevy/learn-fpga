@@ -78,8 +78,8 @@ Questions
    - Q7: At that freq, we probably need specialized FPGA blocs for latched IO pins.
    - Q8: How to implement init. sequence ? Wired ? Micro-programmed in BRAM ? CPU-controlled ?
 
-Read chip datasheet
--------------------
+Read chip datasheet (on my board: ALLIANCE AS4C32M16SB-7TCN)
+------------------------------------------------------------
 - Fast clock rate: 166/143 MHz
 - 512 Mbits (64 MBytes): 8M words x 16 bits x 4 banks
 - Modes
@@ -96,27 +96,31 @@ Read chip datasheet
 
 Mode Register Bitmap:
 
-BA1 BA0 A12 A11 A10 A9  A8    A7   A6   A5  A4   A3   A2  A1 A0
- X   0   X   X   X  WBL Test mode  CAS latency   BT   Burst len  
-                      
-WBL (Write Burst Len): 0: Burst 1: single bit
-Test Mode: 0 0 (else configs for vendor only)
-CAS latency: 010 (2 clocks) or 011 (3 clocks)
-BT (Burst Type): 0: sequential 1: interleave
-Burst len: 000:1 001:2 010:4 011:8 111:full page (sequential)
+|BA1|BA0|A12|A11|A10|A09|A08|A07|A06|A05|A04|A03|A02|A01|A00|  
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| X | 0 | X | X | X |WBL|Tst|Tst|CAS|CAS|CAS|BT |Bst|Bst|Bst|
+
+| Field name          | Field description                                  |
+|---------------------|----------------------------------------------------|
+|WBL (Write Burst Len)| 0: Burst 1: single bit                             |
+|Test Mode            | 0 0 (else configs for vendor only)                 |
+|CAS latency          | 010 (2 clocks) or 011 (3 clocks)                   |
+|BT (Burst Type)      | 0: sequential 1: interleave                        |
+|Burst len            | 000:1 001:2 010:4 011:8 111:full page (sequential) |
 
 Answers to questions
 --------------------
 
-*Q1,Q2: MODE register and its initialization ?*
+*Q1,Q2,Q8: MODE register and initialization sequence ?*
 
-BA1 BA0 A12 A11 A10  A9 A8 A7 A6 A5 A4 A3 A2 A1 A0  
- X   0   X   X   X   0  0  0  0  1  0  0  0  0  0
+|BA1|BA0|A12|A11|A10|A09|A08|A07|A06|A05|A04|A03|A02|A01|A00|  
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| X | 0 | X | X | X | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
  
 - WBL: *0: Burst* 1: single bit _I do not know what this means_
 - CAS latency: *010: 2 clocks* _required by FPGA4Fun design_
 - BT: *0: sequential* 1: interleave _I do not know wht this means_
-- Burst len: *000: 1* _Let's keep the default for now_
+- Burst len: *000: 1* _Let's keep the default for now, we'll see then, maybe 2 for 32 bits_
 
 Initialization sequence (datasheet page 14)
 
@@ -129,8 +133,9 @@ Initialization sequence (datasheet page 14)
 - first command can be sent
 
 Note: Initialization sequence described [here](https://www.hackster.io/salvador-canas/a-practical-introduction-to-sdr-sdram-memories-using-an-fpga-8f5949)
-is more complicated, maybe I missed something. Taking a look at initialization sequence in Silice, someting complicated is required.
-Need to read more code, let us take a look at Lawrie's and stffrdhrn's.
+is more complicated, maybe I missed something. Taking a look at initialization sequence in Silice, Lawrie's and stffrdhrn's controllers, it seems
+that the initialization sequence above can do the job (but I'm unsure it will work with all SDRAM chips). I think I'll use a simple cycles counter that
+runs during the initialization sequence (and that inhibited by the global signal reset so that the chip as sufficient time at power up).
 
 
 
