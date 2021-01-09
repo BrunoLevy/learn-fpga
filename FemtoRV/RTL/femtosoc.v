@@ -306,9 +306,12 @@ module femtosoc(
 
 /*********************** Hardware configuration ************/
 /*
- * Two memory-mapped constant registers that make it easy for
+ * Three memory-mapped constant registers that make it easy for
  * client code to query installed RAM and configured devices
  * (this one does not use any pin, of course).
+ * Uses some LUTs, a bit stupid, but more comfortable, so that
+ * I do not need to change the software on the SDCard each time 
+ * I test a different hardware configuration.
  */
 `ifdef NRV_IO_HARDWARE_CONFIG   
 wire [31:0] hwconfig_rdata;
@@ -416,6 +419,7 @@ HardwareConfig hwconfig(
  * and an input register directly wired to MISO. The software driver
  * implements the SPI protocol by bit-banging (see FIRMWARE/LIBFEMTORV32/spi_sd.c).
  * One day I'll replace it with a hardware driver... if I have time !
+ * ... a generic SPI driver would be good to have also.
  */
 `ifdef NRV_IO_SDCARD
    wire [31:0] sdcard_rdata;
