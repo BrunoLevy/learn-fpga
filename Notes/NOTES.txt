@@ -21,3 +21,7 @@ https://github.com/ultraembedded/core_dvi_framebuffer
 https://github.com/XarkLabs/Xosera (text mode VGA, HDMI ... through PMOD)
 
 
+SSD1331 (smaller version of SSD1351):
+   https://www.crystalfontz.com/controllers/SolomonSystech/SSD1331/
+   Resolution: 96x64
+   

@@ -7,9 +7,9 @@
 #define TOP    8
 
 #define XMIN 0
-#define XMAX 127
+#define XMAX (OLED_WIDTH-1)
 #define YMIN 0
-#define YMAX 127
+#define YMAX (OLED_HEIGHT-1)
 
 #define code(x,y) ((x) < XMIN) | (((x) > XMAX)<<1) | (((y) < YMIN)<<2) | (((y) > YMAX)<<3) 
 

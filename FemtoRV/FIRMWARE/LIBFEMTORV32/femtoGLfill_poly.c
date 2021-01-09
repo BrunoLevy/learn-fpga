@@ -146,8 +146,8 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	return;
     }
     
-    if((minx < 0) || (miny < 0) || (maxx > 127) || (maxy > 127)) {
-	nb_pts = GL_clip(nb_pts, &points, 0, 0, 127, 127);
+    if((minx < 0) || (miny < 0) || (maxx >= OLED_WIDTH) || (maxy >= OLED_HEIGHT)) {
+	nb_pts = GL_clip(nb_pts, &points, 0, 0, OLED_WIDTH-1, OLED_HEIGHT-1);
 	miny =  256;
 	maxy = -256;
 	for(int i1=0; i1<nb_pts; ++i1) {

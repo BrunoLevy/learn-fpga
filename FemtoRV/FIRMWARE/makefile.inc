@@ -38,7 +38,7 @@ DEVICES=$(shell cd $(FIRMWARE_DIR)/../RTL; \
 DEVICES_ASM=$(subst -D,-defsym ,$(DEVICES))
 
 show_config:
-	@echo "ARCH=$(ARCH) ABI=$(ABI) OPTIMIZE=$(OPTIMIZE)"
+	@echo "ARCH=$(ARCH) ABI=$(ABI) OPTIMIZE=$(OPTIMIZE) DEVICES=$(DEVICES)"
 
 ################################################################################
 

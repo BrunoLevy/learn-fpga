@@ -39,7 +39,9 @@
 .type	GL_init, @function
 GL_init:
 	add sp,sp,-4
-        sw ra, 0(sp)	
+        sw ra, 0(sp)
+
+.ifdef SSD1351	
 	# Initialization sequence / RESET
 	li a0,5
 	sw a0,IO_LEDS(gp)
@@ -58,8 +60,6 @@ GL_init:
         li a0,0                      # normal operation
 	sw a0,4(gp)
 	# Initialization sequence / configuration
-	# Note: takes a lot of space, could be stored in an array of bytes
-	# if ROM space gets crowded
 	OLED1 0xfd, 0x12             # unlock driver
 	OLED1 0xfd, 0xb1             # unlock commands
 	OLED0 0xae                   # display off
@@ -82,6 +82,32 @@ GL_init:
 	OLED1 0xbe, 0x05             # Vcomh voltage
 	OLED0 0xa6                   # display on
 	OLED0 0xaf                   # display mode on
+.endif
+
+.ifdef SSD1331
+	OLED0 0xae       # display off
+	OLED1 0x81, 0x91 # contrast A
+	OLED1 0x82, 0x50 # contrast B
+	OLED1 0x83, 0x7d # contrast C
+	OLED1 0x87, 0x06 # master current control
+	OLED1 0x8a, 0x64 # prechargeA
+	OLED1 0x8b, 0x78 # prechargeB
+	OLED1 0x8c, 0x64 # prechargeC
+	OLED1 0xa0, 0x60 # RGB mode and remap
+	OLED1 0xa1, 0x00 # startline
+	OLED1 0xa2, 0x00 # display offset
+	OLED0 0xa4       # normal display	
+	OLED1 0xa8, 0x3f # set multiplex
+	OLED1 0xad, 0x8e # set master
+	OLED1 0xb0, 0x00 # powersave mode 
+        OLED1 0xb1, 0x31 # phase period adjustment
+	OLED1 0xb3, 0xf0 # clock div
+	OLED1 0xbb, 0x3a # prechargelevel
+	OLED1 0xbe, 0x3e # vcomh
+	OLED0 0x2e       # disable scrolling
+	OLED0 0xaf       # display on
+.endif
+	
 # Set FGA mode 0, for SSD1351 emulation.
 # (in conditional compile to avoid pulling too 
 #  much code when we use small devices such as
@@ -112,9 +138,10 @@ oled_write_window:
 	mv a1, t2
 	mv a2, t3
 	call oled2
+.ifdef SSD1351	
 	li a0, 0x5c
 	call oled0
-
+.endif	
 # Set write window in FGA, for SSD1351 emulation.
 # (in conditional compile to avoid pulling too 
 #  much code when we use small devices such as
@@ -140,6 +167,10 @@ oled0:	add sp,sp,-4
 	add sp,sp,4
 	ret
 
+#################### Commands for SSD1351 #########################
+	
+.ifdef SSD1351	
+
 # Oled display command, 1 argument, command in a0, arg in a1	
 .global	oled1
 .type	oled1, @function
@@ -150,7 +181,7 @@ oled1:	add sp,sp,-4
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
-
+	
 # Oled display command, 2 arguments, command in a0, args in a1,a2
 .global	oled2
 .type	oled2, @function
@@ -175,4 +206,48 @@ oled3:	add sp,sp,-4
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
+.endif
 
+#################### Commands for SSD1331 #########################
+
+.ifdef SSD1331
+
+# Note: unlike SSD1351, command args are sent to CMD, not DAT !
+	
+# Oled display command, 1 argument, command in a0, arg in a1	
+.global	oled1
+.type	oled1, @function
+oled1:	add sp,sp,-4
+        sw ra, 0(sp)
+	sw a0, IO_SSD1351_CMD(gp)
+	sw a1, IO_SSD1351_CMD(gp) 
+	lw ra, 0(sp)
+	add sp,sp,4
+	ret
+
+# Oled display command, 2 arguments, command in a0, args in a1,a2
+.global	oled2
+.type	oled2, @function
+oled2:	add sp,sp,-4
+        sw ra, 0(sp)
+	sw a0, IO_SSD1351_CMD(gp)
+	sw a1, IO_SSD1351_CMD(gp)
+	sw a2, IO_SSD1351_CMD(gp)
+	lw ra, 0(sp)	
+        add sp,sp,4
+	ret
+
+# Oled display command, 3 arguments, command in a0, args in a1,a2,a3
+.global	oled3
+.type	oled3, @function
+oled3:	add sp,sp,-4
+        sw ra, 0(sp)
+	sw a0, IO_SSD1351_CMD(gp)
+	sw a1, IO_SSD1351_CMD(gp)
+	sw a2, IO_SSD1351_CMD(gp)
+	sw a3, IO_SSD1351_CMD(gp)
+	lw ra, 0(sp)
+	add sp,sp,4
+	ret
+.endif
+	

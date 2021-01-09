@@ -135,6 +135,13 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - un bug terrible ! mon petit programme pour ecran
+               SSD1331 marchait, et ensuite plus après évolution RTL et C
+	       -> j'ai cherché le bug dans le C, ça venait du RTL:
+	          apres avoir ajouté une config NRV_IO_SSD1351_SSD1331, il
+		  restait un `ifdef NRV_IO_SSD1351 à la fin de femtosoc.v,
+		  pour le signal d'attente !!
+		  
              - test_FGA.c: uint16_t* graph_mem = (uint16_t)FGA_BASEMEM;
 	                                              ^___ Manquait une étoile ici !!!
                 et cet andouille de compilo C me disait rien ! Perdu 1h avec ça,

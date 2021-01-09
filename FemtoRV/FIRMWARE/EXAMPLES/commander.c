@@ -13,15 +13,19 @@ int is_executable(const char* filename) {
       (l >= 4 && !strcmp(filename + l - 4, ".elf")) ;
 }
 
-void refresh() {
+/* returns the number of files*/
+int refresh() {
+    int nb=0;
     GL_tty_goto_xy(0,0);
     GL_clear();
     FL_DIR dirstat;
     int cur = 0;
+    int result = 0;
     if (fl_opendir(cwd, &dirstat)) {
         struct fs_dir_ent dirent;
         while (fl_readdir(&dirstat, &dirent) == 0) {
             if (dirent.is_dir || is_executable(dirent.filename)) {
+	        ++nb;
 		if(cur == sel) {
 		    GL_set_fg(0,0,0);
 		    GL_set_bg(255,255,255);
@@ -36,6 +40,7 @@ void refresh() {
         }
         fl_closedir(&dirstat);
     }
+    return nb;
 }
 
 void call_exec() {
@@ -60,6 +65,7 @@ void call_exec() {
 }
 
 int main() {
+    int nb = 0;
     GL_tty_init();
     if(filesystem_init() != 0) {
        return -1;
@@ -69,7 +75,7 @@ int main() {
     for(int i=1; i<255; ++i) {
        FGA_setpalette(i, 255, 255, 255);
     }
-    refresh();
+    nb = refresh();
     for(;;) {
 	int btn = GUI_button();
 	switch(btn) {
@@ -77,8 +83,14 @@ int main() {
 	    case 3: sel++; break;
 	    case 5: call_exec(); break;
 	}
+        if(sel < 0) {
+	   sel = 0;    
+	}
+        if(sel >= nb) { 
+	   sel = nb-1; 
+	}
 	if(btn != 0 && btn != -1) {
-	    refresh();
+	    nb = refresh();
 	}
     }
 }

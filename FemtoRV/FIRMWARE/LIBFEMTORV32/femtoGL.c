@@ -24,7 +24,7 @@ void GL_fill_rect(
 }
 
 void GL_clear() {
-    GL_fill_rect(0,0,127,127,GL_bg);
+    GL_fill_rect(0,0,OLED_WIDTH-1,OLED_HEIGHT-1,GL_bg);
 }
 
 		

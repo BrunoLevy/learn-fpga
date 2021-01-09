@@ -202,15 +202,19 @@ int read_frame() {
 }
 
 char* modes[] = {
-   "OLED 128x128 16bpp",
-   "FGA  320x200 16bpp",
-   "FGA  320x200  8bpp",
-   "FGA  640x400  4bpp",
+#ifdef SSD1351   
+   "OLED 128x128 16",
+#else
+   "OLED 96x64   16",   
+#endif   
+   "FGA  320x200 16",
+   "FGA  320x200  8",
+   "FGA  640x400  4",
    NULL
 };
 
 int main() {
-    gfx_mode = GUI_prompt("ST-NICCC  GFX MODE", modes) - 1;
+    gfx_mode = GUI_prompt("GFX MODE", modes) - 1;
     gfx_colormapped = (gfx_mode == FGA_MODE_320x200x8bpp ||
                        gfx_mode == FGA_MODE_640x400x4bpp  );
    

@@ -55,9 +55,19 @@ endmodule
 `ifdef GET_DEVICES
 module dummy();
 initial begin
+
 `ifdef NRV_IO_FGA
    $display("-DFGA=1");   
 `endif   
+
+`ifdef NRV_IO_SSD1351
+   $display("-DSSD1351=1");   
+`endif   
+
+`ifdef NRV_IO_SSD1331
+   $display("-DSSD1331=1");   
+`endif   
+
 end
 endmodule
 `endif

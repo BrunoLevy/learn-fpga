@@ -1,12 +1,21 @@
 // femtorv32, a minimalistic RISC-V RV32I core
 //       Bruno Levy, 2020-2021
 //
-// This file: driver for SSD1351 OLED display
+// This file: driver for SSD1351 and SSD1331 OLED display
 // Reference: https://www.crystalfontz.com/controllers/SolomonSystech/SSD1351/
+
 //
 // TODO: we could use wmask to write directly 16 bits or 32 bits of data
 //       (we could even have a 'fast clear' option that writes a number
 //        of zeroes).
+
+`ifdef NRV_IO_SSD1331
+`define NRV_IO_SSD1351_1331
+`endif
+
+`ifdef NRV_IO_SSD1351
+`define NRV_IO_SSD1351_1331
+`endif
 
 module SSD1351(
     input wire 	      clk,       // system clock

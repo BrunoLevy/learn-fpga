@@ -46,17 +46,17 @@ void GL_tty_goto_xy(int X, int Y) {
  contents anywhere !    
  */
 void GL_tty_scroll() {
-    if(cursor_Y + FONT_HEIGHT > 128) {
+    if(cursor_Y + FONT_HEIGHT > OLED_WIDTH) {
        scrolling = 1;
        cursor_Y = 0;
     }
     if(!scrolling) {
 	return;
     }
-    GL_fill_rect(0,cursor_Y,127,cursor_Y+FONT_HEIGHT-1, GL_bg);
+    GL_fill_rect(0,cursor_Y,OLED_WIDTH-1,cursor_Y+FONT_HEIGHT-1, GL_bg);
     oled1(0xA1, display_start_line + FONT_HEIGHT);
     display_start_line += FONT_HEIGHT;
-    if(display_start_line > 127) {
+    if(display_start_line > OLED_HEIGHT) {
        display_start_line = 0;
     }
 }

@@ -217,13 +217,17 @@ int gfx_height;
 
 void gfx_init() {
    static char* modes[] = {
-      "OLED 128x128 16bpp",
-      "FGA  320x200 16bpp",
-      "FGA  320x200  gray",
-      "FGA  640x400  gray",
+#ifdef SSD1351      
+      "OLED 128x128 16",
+#else
+      "OLED 96x64   16",      
+#endif      
+      "FGA  320x200 16",
+      "FGA  320x200  g",
+      "FGA  640x400  g",
       NULL
    };
-   gfx_mode = GUI_prompt("Raytracer GFX MODE", modes) - 1;
+   gfx_mode = GUI_prompt("GFX MODE", modes) - 1;
    
    if(gfx_mode == FGA_MODE_320x200x8bpp ) {
       for(int i=0; i<256; ++i) {
@@ -236,8 +240,8 @@ void gfx_init() {
    }
    
    if(gfx_mode == -1) {
-      gfx_width   = 128;
-      gfx_height = 128;
+      gfx_width  = OLED_WIDTH;
+      gfx_height = OLED_HEIGHT;
       GL_tty_init();
    } else {
       FGA_setmode(gfx_mode);

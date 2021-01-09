@@ -21,7 +21,7 @@
 
 `include "DEVICES/HardwareConfig.v" // Constant registers to query hardware config.
 `include "DEVICES/uart.v"           // The UART (serial port over USB)
-`include "DEVICES/SSD1351.v"        // The OLED display
+`include "DEVICES/SSD1351_1331.v"   // The OLED display
 `include "DEVICES/SPIFlash.v"       // Read data from the serial flash chip
 `include "DEVICES/MappedSPIFlash.v" // Idem, but mapped in memory
 `include "DEVICES/MAX7219.v"        // 8x8 led matrix driven by a MAX7219 chip
@@ -40,7 +40,7 @@ module femtosoc(
    output D1,D2,D3,D4,D5,
  `endif
 `endif	      
-`ifdef NRV_IO_SSD1351	      
+`ifdef NRV_IO_SSD1351_1331	      
    output oled_DIN, oled_CLK, oled_CS, oled_DC, oled_RST,
 `endif
 `ifdef NRV_IO_UART	      
@@ -338,8 +338,8 @@ HardwareConfig hwconfig(
    );
 `endif
 
-/********************** SSD1351 oled display ************************/   
-`ifdef NRV_IO_SSD1351
+/********************** SSD1351/SSD1331 oled display ******/
+`ifdef NRV_IO_SSD1351_1331
    wire SSD1351_wbusy;
    SSD1351 oled_display(
       .clk(clk),
@@ -487,7 +487,7 @@ end
    assign io_rbusy = 0 ; 
 
    assign io_wbusy = 0
-`ifdef NRV_IO_SSD1351
+`ifdef NRV_IO_SSD1351_1331
 	| SSD1351_wbusy
 `endif
 `ifdef NRV_IO_MAX7219

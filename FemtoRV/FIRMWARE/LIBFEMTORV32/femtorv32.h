@@ -68,6 +68,14 @@ extern uint16_t* font_3x5;    /*  2 bytes per char. 3 columns of 5 bits.        
 
 /* FemtoGL library */
 
+#ifdef SSD1331
+#define OLED_WIDTH  96
+#define OLED_HEIGHT 64
+#else
+#define OLED_WIDTH  128
+#define OLED_HEIGHT 128
+#endif
+
 /* Converts three R,G,B components (between 0 and 255) into a 16 bits color value for the OLED screen or FGA. */
 #define GL_RGB(R,G,B) ((((((R) & 0xF8) << 5) | ((G) & 0xF8)) << 3) | ((B) >> 3))
 
@@ -170,7 +178,7 @@ extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
  */ 
 
 #define IO_GFX_DAT (IO_SSD1351_DAT16 | IO_FGA_DAT) 
-#define OLED_WRITE_DATA_UINT16(RGB) IO_OUT(IO_GFX_DAT,(RGB)) 
+#define OLED_WRITE_DATA_UINT16(RGB) IO_OUT(IO_GFX_DAT,(RGB))
 #define OLED_WRITE_DATA_RGB(R,G,B)  OLED_WRITE_DATA_UINT16(GL_RGB(R,G,B))
 
 /* MAX7219 led matrix */

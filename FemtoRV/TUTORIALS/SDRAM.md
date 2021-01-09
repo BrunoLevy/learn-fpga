@@ -23,8 +23,8 @@ Misc notes
 refreshes)
 - DDR RAMS
 - ULX3S data sheet: 32MB SDRAM, 166MHz, 16-bit [Micron MT48LC32M16](https://www.digchip.com/datasheets/parts/datasheet/297/MT48LC32M16.php)
-- But on my own ULX3S: [ALLIANCE AS4C32M16SB-7TCN](https://www.alliancememory.com/wp-content/uploads/pdf/dram/512M%20SDRAM_%20B%20die_AS4C32M16SB-7TCN-7TIN-6TIN_Rev%201.0%20June%202016.pdf)
-- ... and there are other variants (see comments in sylefeb's Silice memory controller)
+   - But on my own ULX3S: [ALLIANCE AS4C32M16SB-7TCN](https://www.alliancememory.com/wp-content/uploads/pdf/dram/512M%20SDRAM_%20B%20die_AS4C32M16SB-7TCN-7TIN-6TIN_Rev%201.0%20June%202016.pdf)
+   - ... and there are other variants (see comments in sylefeb's Silice memory controller)
 
 Pins
 ----
@@ -63,20 +63,20 @@ State machine
 There are 'small caps' in the FPGA4fun design, read comments carefully:
  - Need to initialize CAS (Column Address Strobe) latency=2 and any valid burt mode
  - Read agent is active enough to refresh the RAM
-If these conditions are not met, we may need also:
- - a timer and 'refresh state' if reader is not active enough
- - additional 'nop' states after opening and closing a row if CAS is more than 2
+   If these conditions are not met, we may need also:
+    - a timer and 'refresh state' if reader is not active enough
+    - additional 'nop' states after opening and closing a row if CAS is more than 2
 
 Questions
 ---------
-   - Q1: How to initialize MODE register properly ? P. 14 of datasheet _TODO_
+   - Q1: How to initialize MODE register properly ?_[OK, P. 14 of datasheet]_
    - Q2: What are the different modes ? _[OK]_
    - Q3: How to synchronize data read and video signal generation ?
    - Q4: Which one is the 'special' address line that selects burst mode ? _[OK: A10]_
    - Q5: Relation between CAS and freq ? P 15. of datasheet + table P 21. (to be understood)
    - Q6: What is auto-refresh, self-refresh ?
    - Q7: At that freq, we probably need specialized FPGA blocs for latched IO pins.
-   - Q8: How to implement init. sequence ? Wired ? Micro-programmed in BRAM ? CPU-controlled ?
+   - Q8: How to implement init. sequence ? Wired ? Micro-programmed in BRAM ? CPU-controlled ? _[OK: small counter]_
 
 Read chip datasheet (on my board: ALLIANCE AS4C32M16SB-7TCN)
 ------------------------------------------------------------
@@ -137,6 +137,7 @@ is more complicated, maybe I missed something. Taking a look at initialization s
 that the initialization sequence above can do the job (but I'm unsure it will work with all SDRAM chips). I think I'll use a simple cycles counter that
 runs during the initialization sequence (and that inhibited by the global signal reset so that the chip as sufficient time at power up).
 
+*Q3: synchronize data read and video signal generation ?*
 
 
 References
