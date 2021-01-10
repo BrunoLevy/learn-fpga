@@ -8,6 +8,8 @@ synthesize a RISC-V core, compile and install programs and run them
 on a IceStick. This lets you experience FPGA design and RISC-V using 
 one of the cheapest FPGA devices (around $40).
 
+Install open-source FPGA development toolchain
+==============================================
 Before starting, you will need to install the open-source FPGA
 development toolchain (Yosys, NextPNR etc...), instructions to
 do so are given [here](toolchain.md).

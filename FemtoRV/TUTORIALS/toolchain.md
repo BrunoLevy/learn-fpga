@@ -222,4 +222,6 @@ git clone https://github.com/emard/ulx3s-bin
 sudo cp ulx3s-bin/usb-jtag/linux-amd64/ujprog /usr/local/bin
 ```
 
-* All set ! * _Pfiuuu, a long journey, time to have fun now_
+All set !!!
+===========
+_Pfiuuu, a long journey, time to have fun now_

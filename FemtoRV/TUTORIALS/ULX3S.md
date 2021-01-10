@@ -7,122 +7,14 @@ This tutorial will show you how to install FPGA development tools,
 synthesize a RISC-V core, compile and install programs and run them
 on a ULX3S.
 
-_Note: the following instructions are for Linux (I'm using Ubuntu).
-Windows users can run the tutorial using WSL. It requires some
-adaptation, as explained [here](WSL.md)._
+Install open-source FPGA development toolchain
+==============================================
+Before starting, you will need to install the open-source FPGA
+development toolchain (Yosys, NextPNR etc...), instructions to
+do so are given [here](toolchain.md).
 
-Before starting, you will need to install the OpenSource FPGA
-development tools, Yosys (Verilog synthesis), Trellis (tools for
-Lattice ECP5 FPGA), NextPNR (Place and Route), ujprog (tool to send the
-bitstream to the ULX3S). Although there 
-exists some precompiled packages, I highly recommend to get fresh
-source versions from the repository, because the tools quickly 
-evolve.
-
-Step 1: install FemtoRV
-=======================
-```
-$ git clone https://github.com/BrunoLevy/learn-fpga.git
-```
-
-Step 2: install FPGA development tools
-======================================
-
-Yosys
------
-
-Follow setup instructions from [yosys website](https://github.com/YosysHQ/yosys)
-
-*TL;DR*
-
-Install prerequisites:
-```
-$ sudo apt-get install build-essential clang bison flex \
-  libreadline-dev gawk tcl-dev libffi-dev git \
-  graphviz xdot pkg-config python3 libboost-system-dev \
-  libboost-python-dev libboost-filesystem-dev zlib1g-dev
-```
-Get the sources:
-```
-$ git clone https://github.com/YosysHQ/yosys.git
-```
-Compile and install it:
-```
-$ cd yosys
-$ make
-$ sudo make install
-```
-
-Project Trellis
----------------
-
-Follow setup instructions from [project trellis website](https://github.com/YosysHQ/prjtrellis)
-
-*TL;DR*
-
-Get the sources:
-```
-$ git clone --recursive https://github.com/YosysHQ/prjtrellis
-```
-
-Compile and install it:
-```
-$ cd libtrellis
-$ cmake -DCMAKE_INSTALL_PREFIX=/usr/local .
-$ make
-$ sudo make install
-```
-
-NextPNR
--------
-
-Follow setup instructions from [nextpnr website](https://github.com/YosysHQ/nextpnr)
-
-*TL;DR*
-
-
-Get the sources:
-```
-$ git clone https://github.com/YosysHQ/nextpnr.git
-```
-Compile and install it:
-```
-$ cd nextpnr
-$ cmake -DARCH=ecp5 -DTRELLIS_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_PREFIX=/usr/local .
-$ make -j 4
-$ sudo make install
-```
-
-ujprog
-------
-
-```
-git clone https://github.com/emard/ulx3s-bin
-sudo cp ulx3s-bin/usb-jtag/linux-amd64/ujprog /usr/local/bin
-```
-
-icarus/iverilog and verilator
------------------------------
-```
-apt-get install iverilog verilator
-```
-
-Step 3: Configure USB rules
-===========================
-We need to let normal users program the ULX3S through USB. This
-can be done by creating in `/etc/udev/rules.d` a file `80-fpga-ulx3s.rules`
-with the following content:
-```
-# this is for usb-serial tty device
-SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", \
-  MODE="664", GROUP="dialout"
-# this is for ujprog libusb access
-ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", \
-  GROUP="dialout", MODE="666"
-```
-
-Step 4: Configure femtosoc and femtorv32
-========================================
+Configure femtosoc and femtorv32
+================================
 Time to edit `learn-fpga/FemtoRV/RTL/femtosoc_config.v`. This file lets you define what type
 of RISC-V processor you will create, and which device drivers in the
 associated system-on-chip. For now we activate the LEDs (for visual
@@ -170,8 +62,8 @@ We configure `FemtoRV/RTL/femtosoc_config.v` as follows (we keep unused options 
 `define NRV_TWOSTAGE_SHIFTER 
 ```
 
-Step 5: Examples
-================
+Examples
+========
 You can now compile the firmware, synthesize the design and send it to
 the device. Plug the device in a USB port, then:
 ```
