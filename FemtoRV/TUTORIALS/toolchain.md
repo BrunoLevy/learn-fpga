@@ -61,7 +61,7 @@ Compile and install it:
 $ cd yosys
 $ make
 $ sudo make install
-
+```
 icarus/iverilog and verilator
 -----------------------------
 We will need also analysis and simulation tools. `icarus/iverilog` can do additional checks at
