@@ -157,15 +157,16 @@ polygon fill (it is 7 times faster than a software loop).
 
 OLED screen
 -----------
+It is not mandatory, but it is cool to add a small OLED display. You
+got two options, SSD1331 (top image row below) or SSD1351 (bottom image row),
+both are supported by the hardware/firmware (activate `NRV_IO_SSD1351`
+or `NRV_IO_SSD1331` in'RTL/CONFIGS/ulx3s_config.v'). 
+
 ![](Images/SSD1331_on_ULX3S.jpg)
 _SSD1331 OLED display, mechanically fits well on the ULX3S_
 ![](Images/SSD1351_on_ULX3S.jpg)
--SSD1351 OLED display, connected to the ULX3S with wires_
+_SSD1351 OLED display (larger screen), connected to the ULX3S with wires_
 
-It is not mandatory, but it is cool to add a small OLED display. You
-got two options, SSD1331 (top image row) or SSD1351 (bottom image row),
-both are supported by the hardware/firmware (activate `NRV_IO_SSD1351`
-or `NRV_IO_SSD1331` in'RTL/CONFIGS/ulx3s_config.v'). 
 
 Which one should I use ? Here is a side-by-side comparizon to help you:
 
