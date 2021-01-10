@@ -52,7 +52,7 @@ int main() {
    for(;;) { 
        GL_tty_init();
        mandel();
-       printf("Mandelbrot Demo.     \n");
+       printf("Mandelbrot Demo.\n");
        delay(1000);       
        GL_tty_goto_xy(0,127);
        printf("\n");

@@ -51,9 +51,9 @@ int main() {
    for(;;) { 
        GL_tty_init();
        mandel();
-       printf("Mandelbrot Demo.     \n");
+       printf("Mandelbrot Demo.\n");
        delay(1000);       
-       GL_tty_goto_xy(0,127);
+       GL_tty_goto_xy(0,OLED_HEIGHT-1);
        printf("\n");
        printf("FemtoRV32 %d MHz\n", FEMTORV32_FREQ);   
        printf("FemtOS 1.0\n");

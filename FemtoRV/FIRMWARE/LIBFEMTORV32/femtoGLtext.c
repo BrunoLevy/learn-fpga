@@ -63,7 +63,7 @@ void GL_tty_scroll() {
 }
 
 int GL_putchar(int c) {
-   
+
    if(last_char_was_CR) {
       GL_tty_scroll();
       last_char_was_CR = 0;
@@ -92,13 +92,13 @@ int GL_putchar(int c) {
         last_char_was_CR = 1;
 	cursor_X = 0;
         cursor_Y += FONT_HEIGHT;
-//	GL_tty_scroll();
 	return c;
     }
+   
     GL_putchar_xy(cursor_X, cursor_Y, (char)c); 
     cursor_X += FONT_WIDTH;
     if(cursor_X + FONT_WIDTH >= OLED_WIDTH) {
-	GL_putchar('\n');
+       GL_putchar('\n');
     }
     return c;
 }
