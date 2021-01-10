@@ -343,20 +343,16 @@ configuration in which there is sufficient room to store additional
 data). It is used by the IceStick version. It works also on the ULX3S
 (see instructions in the source)._
 
-HDMI, FGA (Femto Graphics Adapter)
-==================================
-
-To enable HDMI display, edit `RTL/femtosoc_config.v` and uncomment the
-line with `NRV_FGA` (femto graphics adapter), keep the OLED display
-active (commander still needs it for now, I will make it display on
-the HDMI later). Then synthethize and flash the ULX3S.
+More about HDMI and FGA (Femto Graphics Adapter)
+================================================
 
 There are several programs that you can use, in `FIRMWARE/EXAMPLES`:
 
 | Program                                      | Description                                                                      |
 |----------------------------------------------|----------------------------------------------------------------------------------|
 | `EXAMPLES/test_FGA.c`                        | Displays an animated colored pattern.                                            |
-| `EXAMPLES/tinyrt_FGA.c`                      | A port from [TinyRaytracer](https://github.com/ssloy/tinyraytracer).             |
+| `EXAMPLES/tinyraytracer.c`                   | A port from [TinyRaytracer](https://github.com/ssloy/tinyraytracer).             |
+| `EXAMPLES/ST_NICCC.c`                        | A port of the ST_NICCC demo                                                      |
 
 Compile them by `cd FIRMWARE/EXAMPLES` then `make xxx.elf` where `xxx` is the name of the program. Copy the generated `.elf` executable to
 the SDCard. Plug the HDMI monitor to the ULX3S. Select the program using the up and down buttons, run it with the right button. The button
