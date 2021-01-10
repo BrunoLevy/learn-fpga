@@ -8,113 +8,13 @@ synthesize a RISC-V core, compile and install programs and run them
 on a IceStick. This lets you experience FPGA design and RISC-V using 
 one of the cheapest FPGA devices (around $40).
 
-_Note: the following instructions are for Linux (I'm using Ubuntu).
-Windows users can run the tutorial using WSL. It requires some
-adaptation, as explained [here](WSL.md)._
-
-Before starting, you will need to install the OpenSource FPGA
-development tools, Yosys (Verilog synthesis), IceStorm (tools for
-Lattice Ice40 FPGA), NextPNR (Place and Route). Although there 
-exists some precompiled packages, I highly recommend to get fresh
-source versions from the repository, because the tools quickly 
-evolve.
-
-Step 1: install FemtoRV
-=======================
-```
-$ git clone https://github.com/BrunoLevy/learn-fpga.git
-```
-
-Step 2: install FPGA development tools
-======================================
-
-Yosys
------
-
-Follow setup instructions from [yosys website](https://github.com/YosysHQ/yosys)
-
-*TL;DR*
-
-Install prerequisites:
-```
-$ sudo apt-get install build-essential clang bison flex \
-  libreadline-dev gawk tcl-dev libffi-dev git \
-  graphviz xdot pkg-config python3 libboost-system-dev \
-  libboost-python-dev libboost-filesystem-dev zlib1g-dev
-```
-Get the sources:
-```
-$ git clone https://github.com/YosysHQ/yosys.git
-```
-Compile and install it:
-```
-$ cd yosys
-$ make
-$ sudo make install
-```
-
-IceStorm
---------
-
-Follow setup instructions from [icestorm website](https://github.com/YosysHQ/icestorm)
-
-*TL;DR*
-
-Install prerequisites:
-```
-$ sudo apt-get install build-essential clang bison flex libreadline-dev \
-  gawk tcl-dev libffi-dev git mercurial graphviz   \
-  xdot pkg-config python python3 libftdi-dev \
-  qt5-default python3-dev libboost-all-dev cmake libeigen3-dev
-```
-Get the sources:
-```
-$ git clone https://github.com/YosysHQ/icestorm.git
-```
-Compile and install it:
-```
-$ cd icestorm
-$ make -j 4
-$ sudo make install
-```
-
-NextPNR
--------
-
-Follow setup instructions from [nextpnr website](https://github.com/YosysHQ/nextpnr)
-
-*TL;DR*
+Before starting, you will need to install the open-source FPGA
+development toolchain (Yosys, NextPNR etc...), instructions to
+do so are given [here](toolchain.md).
 
 
-Get the sources:
-```
-$ git clone https://github.com/YosysHQ/nextpnr.git
-```
-Compile and install it:
-```
-$ cd nextpnr
-$ cmake -DARCH=ice40 -DCMAKE_INSTALL_PREFIX=/usr/local .
-$ make -j 4
-$ sudo make install
-```
-
-icarus/iverilog and verilator
------------------------------
-```
-apt-get install iverilog verilator
-```
-
-Step 3: Configure USB rules
-===========================
-We need to let normal users program the IceStick through USB. This
-can be done by creating in `/etc/udev/rules.d` a file `53-lattive-ftdi.rules` 
-with the following content:
-```
-ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0660", GROUP="plugdev", TAG+="uaccess"
-```
-
-Step 4: Configure femtosoc and femtorv32
-========================================
+Configure femtosoc and femtorv32
+================================
 Time to edit `learn-fpga/FemtoRV/RTL/femtosoc_config.v`. This file lets you define what type
 of RISC-V processor you will create, and which device drivers in the
 associated system-on-chip. For now we activate the LEDs (for visual
@@ -160,8 +60,8 @@ We configure `FemtoRV/RTL/femtosoc_config.v` as follows (we keep unused options 
 `define NRV_TWOSTAGE_SHIFTER 
 ```
 
-Step 5: Examples
-================
+Examples
+========
 You can now compile the firmware, synthesize the design and send it to
 the device. Plug the device in a USB port, then:
 ```

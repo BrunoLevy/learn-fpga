@@ -29,8 +29,12 @@ int refresh() {
 		if(cur == sel) {
 		    GL_set_fg(0,0,0);
 		    GL_set_bg(255,255,255);
-		} 
-		printf("%s\n",dirent.filename);
+		}
+	        char current[PATH_LEN];
+	        int l = strlen(dirent.filename);
+	        strncpy(current, dirent.filename,l-4);
+	        current[l-4] = '\0';
+		printf("%s\n",current);
 		if(cur == sel) {
 		    GL_set_bg(0,0,0);
 		    GL_set_fg(255,255,255);

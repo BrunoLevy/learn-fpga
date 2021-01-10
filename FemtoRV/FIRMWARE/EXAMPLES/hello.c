@@ -13,12 +13,14 @@ int main() {
     * using the small OLED display.
     */
    femtosoc_tty_init();
+   
    for(;;) {
      printf("Hello world !!\n Let me introduce myself, I am FemtoRV32, one of the smallest RISC-V cores\n");
      delay(1000);
      printf("I am running at %d MHz\n", FEMTORV32_FREQ);
      delay(1000);
    }
+
    return 0;
 }
 

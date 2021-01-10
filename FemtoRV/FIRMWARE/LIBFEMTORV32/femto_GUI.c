@@ -41,7 +41,12 @@ int GUI_button() {
 
 int GUI_prompt(char* title, char** options) {
    GL_tty_init();
-   FGA_setmode(2);
+   // Set hires mode so that it does not look
+   // too bad on HDMI.
+   FGA_setmode(FGA_MODE_640x400x4bpp);
+   // Make color 0 black and all other colors 
+   // white so that mirror OLED->HDMI will work
+   // for menus.
    FGA_setpalette(0, 0, 0, 0);
    for(int i=1; i<255; ++i) {
       FGA_setpalette(i, 255, 255, 255);

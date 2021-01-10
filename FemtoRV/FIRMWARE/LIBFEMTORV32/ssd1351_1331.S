@@ -2,6 +2,31 @@
 
 ###############################################################################
 # NanoRv OLED display support
+# Supports two types of OLED displays: SSD1351(96x64) and SSD1331(128x128)
+# They use the same hardware/RTL (a SPI interface)
+#
+# Besides size and resolution, there are subtle differences between them:
+#  - initialization sequence is simpler for the SSD1331
+#  - some commands are different / take different arguments
+#  - SSD1351 sends commands as commands, and command arguments as data, whereas
+#    SSD1331 sends commands AND arguments as commands !
+#  - there is no "write data" command on the SSD1331, everything sent
+#    to the data register is data.
+#
+#  Side-by-side comparizon
+#
+#         SSD1351:                           SSD1331:
+# -----------------------------------------------------------------
+#   +A large tiny screen !       |  -A bit too tiny
+#   -Needs wires on the ULX3S    |  +Fits well on a ULX3S
+#   -Cannot flip/rotate          |  +Flexible configuration
+#   -Nearly no accel. primitives |  +HW accel fillrect,scroll,copy
+# ------------------------------------------------------------------
+#  +For both: luminous and crisp rendering, much better than LCD !
+#  +For both: last but not least, supported by FemtoRV32/FemtoSOC !!
+#
+# My recommendation: for ULX3S:SSD1331  for others:SSD1351
+#  
 ###############################################################################
 
 # Macros to send commands to the OLED driver (wrappers around OLEDx functions)
@@ -32,7 +57,7 @@
 	call oled3
 .endm
 
-################################################################################
+#################################################################################
 	
 # initialize oled display
 .global	GL_init
@@ -120,6 +145,8 @@ GL_init:
 	add sp,sp,4
 	ret
 
+##############################################################
+
 # Oled window a0=x1 a1=y1 a2=x1 a3=y2
 .global	oled_write_window
 .type	oled_write_window, @function
@@ -156,6 +183,8 @@ oled_write_window:
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
+	
+###################################################################
 	
 # Oled display command, 0 argument, command in a0
 .global	oled0
