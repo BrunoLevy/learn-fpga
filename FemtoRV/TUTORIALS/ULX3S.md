@@ -158,7 +158,9 @@ polygon fill (it is 7 times faster than a software loop).
 OLED screen
 -----------
 ![](Images/SSD1331_on_ULX3S.jpg)
+_SSD1331 OLED display, mechanically fits well on the ULX3S_
 ![](Images/SSD1351_on_ULX3S.jpg)
+-SSD1351 OLED display, connected to the ULX3S with wires_
 
 It is not mandatory, but it is cool to add a small OLED display. You
 got two options, SSD1331 (top image row) or SSD1351 (bottom image row),
@@ -168,12 +170,11 @@ or `NRV_IO_SSD1331` in'RTL/CONFIGS/ulx3s_config.v').
 Which one should I use ? Here is a side-by-side comparizon to help you:
 
  |        SSD1351                |            SSD1331             |
- -----------------------------------------------------------------|
+ |-------------------------------|--------------------------------|
  |  +A large tiny screen !       |  -A bit too tiny               |
  |  -Needs wires on the ULX3S    |  +Fits well on a ULX3S         |
  |  -Cannot flip/rotate          |  +Flexible configuration       |
  |  -Nearly no accel. primitives |  +HW accel fillrect,scroll,copy|
- ------------------------------------------------------------------
  
 - For both: luminous and crisp rendering, much better than LCD !
 - For both: last but not least, supported by FemtoRV32/FemtoSOC !!
