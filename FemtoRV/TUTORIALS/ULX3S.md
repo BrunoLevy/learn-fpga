@@ -306,16 +306,14 @@ $ make sieve.elf mandelbrot_OLED.elf
 ```
 (it works for all programs in `EXAMPLES`, but not in `ASM_EXAMPLES` yet).
 
-Copy `sieve.elf` and `mandelbrot_OLED.elf` to a
+Copy `test_OLED.elf` and `mandelbrot_OLED.elf` to a
 FAT-formatted SDCard. Unplug the ULX3S from the USB, 
 insert the SDCard into it and replug it into the USB. The up and
 down buttons let you select the program, and the right button starts it.
 The F2 button (near the SDCard) resets the machine (and restarts `commander`).
 
 To compile all the examples, `make everything` in the `EXAMPLES`
-directory. Note: do not copy too many programs on an SDCard,
-`commander` display will not work if directory does not fit on
-a single screen (to be fixed).
+directory. 
 
 File access on the SDCard
 =========================

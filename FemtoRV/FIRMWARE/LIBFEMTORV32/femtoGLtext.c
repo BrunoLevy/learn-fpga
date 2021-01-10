@@ -32,9 +32,7 @@ void GL_tty_init() {
     cursor_Y = 0;
     scrolling = 0;
     display_start_line = 0;
-//#ifdef SSD1351 // TODO: SSD1331 mode
     oled1(0xA1, 0); /* reset display start line. */
-//#endif   
 }
 
 void GL_tty_goto_xy(int X, int Y) {
@@ -48,7 +46,6 @@ void GL_tty_goto_xy(int X, int Y) {
  contents anywhere !    
  */
 void GL_tty_scroll() {
-//#ifdef SSD1351 // TODO: SSD1331
     if(cursor_Y + FONT_HEIGHT > OLED_HEIGHT) {
        scrolling = 1;
        cursor_Y = 0;
@@ -62,7 +59,6 @@ void GL_tty_scroll() {
     if(display_start_line > OLED_HEIGHT) {
        display_start_line = 0;
     }
-//#endif   
 }
 
 int GL_putchar(int c) {
