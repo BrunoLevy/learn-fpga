@@ -5,8 +5,8 @@
 #include "imgui_emul.h"
 #include <stdlib.h>
 
-#define W 128
-#define H 128
+#define W OLED_WIDTH
+#define H OLED_HEIGHT
 
 // Convert a 24 bit ImGui color into a 16 bit color for the OLED display
 #define C16(RGB) GL_RGB(RGB & 255,(RGB >> 8) & 255,(RGB >> 16) & 255)
@@ -31,9 +31,9 @@ void FX(ImVec2 a, ImVec2 b, ImVec2 s,float t) {
    } else {
       t = 0;
    }
-   oled_write_window(0,0,127,127);
-   for(unsigned int x=0;x<W;x++)
-     for(unsigned int y=0;y<H;y++) {
+   oled_write_window(0,0,W-1,H-1);
+   for(unsigned int x=0;x<H;x++)
+     for(unsigned int y=0;y<W;y++) {
 	unsigned int RGB = C[T[y+1][x]];
 	OLED_WRITE_DATA_UINT16(RGB);
 	unsigned int r=3&rand();

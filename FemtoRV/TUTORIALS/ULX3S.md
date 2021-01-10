@@ -377,5 +377,4 @@ Epilogue
 ========
 
 MORE TO COME / TO BE CONTINUED (with a cleaner FemtOS, priviledged instructions, system calls,
-floating-point instructions, VGA output, PS/2 mouse and keyboard,
-ImGui port...)
+floating-point instructions, PS/2 mouse and keyboard, ImGui port...)

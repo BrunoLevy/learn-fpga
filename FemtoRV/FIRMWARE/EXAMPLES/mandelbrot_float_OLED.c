@@ -10,19 +10,22 @@
 // To make it even slower !!
 // #define float double
 
+#define W OLED_WIDTH
+#define H OLED_HEIGHT
+
 #define xmin -2.0
 #define ymax  2.0
 #define ymin -2.0
 #define xmax  2.0
-#define dx (xmax-xmin)/128.0
-#define dy (ymax-ymin)/128.0
+#define dx (xmax-xmin)/(float)H
+#define dy (ymax-ymin)/(float)H
 
 void mandel() {
-   oled_write_window(0,0,127,127);
+   oled_write_window(0,0,W-1,H-1);
    float Ci = ymin;
-   for(int Y=0; Y<128; ++Y) {
+   for(int Y=0; Y<H; ++Y) {
       float Cr = xmin;
-      for(int X=0; X<128; ++X) {
+      for(int X=0; X<W; ++X) {
 	 float Zr = Cr;
 	 float Zi = Ci;
 	 int iter = 15;

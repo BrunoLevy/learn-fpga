@@ -63,7 +63,7 @@ void main() {
     GL_init();
     int frame = 0;
     for(;;) {
-	oled_write_window(0,0,127,127);
+	oled_write_window(0,0,OLED_WIDTH-1,OLED_HEIGHT-1);
        
         int scaling = sintab[frame&63]+400;
         int Ux = scaling*sintab[frame & 63];         // The C compiler generates a call
@@ -73,11 +73,11 @@ void main() {
 
         int X0 = -64*(Ux+Vx); 
         int Y0 = -64*(Uy+Vy); 
-			      
-	for(int y=0; y<128; ++y) {
+
+	for(int y=0; y<OLED_HEIGHT; ++y) {
 	    int X = X0;
 	    int Y = Y0;
-	    for(int x=0; x<128; ++x) {
+	    for(int x=0; x<OLED_WIDTH; ++x) {
 	        unsigned char col = logo[(Y >> 18)&15][(X >> 18)&15];
 	        OLED_WRITE_DATA_UINT16(cmap[col]);
 	        X += Ux;

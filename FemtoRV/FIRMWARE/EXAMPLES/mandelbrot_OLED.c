@@ -8,22 +8,25 @@
 
 #include <femtorv32.h>
 
+#define W OLED_WIDTH
+#define H OLED_HEIGHT
+
 #define mandel_shift 10
 #define mandel_mul (1 << mandel_shift)
 #define xmin -2*mandel_mul
 #define ymax  2*mandel_mul
 #define ymin -2*mandel_mul
 #define xmax  2*mandel_mul
-#define dx (xmax-xmin)/128
-#define dy (ymax-ymin)/128
+#define dx (xmax-xmin)/H
+#define dy (ymax-ymin)/H
 #define norm_max (4 << mandel_shift)
 
 void mandel() {
-   oled_write_window(0,0,127,127);
+   oled_write_window(0,0,W-1,H-1);
    int Ci = ymin;
-   for(int Y=0; Y<128; ++Y) {
+   for(int Y=0; Y<H; ++Y) {
       int Cr = xmin;
-      for(int X=0; X<128; ++X) {
+      for(int X=0; X<W; ++X) {
 	 int Zr = Cr;
 	 int Zi = Ci;
 	 int iter = 15;
