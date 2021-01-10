@@ -135,6 +135,20 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - scrolling dans tty: il reste tjrs une ligne vide à la
+               fin, à cause du retour chariot de la dernière ligne !
+	       En fait, il ne faudrait pas scroller au retour chariot, mais
+	       scroller au premier caractère de la ligne suivante !!
+	     - le menu est bouzillé !!  
+	       
+             - un bug à la gomme du même genre: printf() ne printait rien du tout
+	       sur SSD1331: c'est encore à cause de NRV_IO_SSD1351_SSD1331: dans
+	       HardwareConfig, je ne pensais pas à positionner le bit à 1 dans
+	       le registre device (qui était positionné par NRV_IO_SSD1351 au lieu
+	       de NRV_IO_SSD1351_1331) ... mais en fait ça marche tjrs pas !
+	       ... parceque HardwareConfig.v était inclus *avant* SSD1351_1331.v,
+	       donc il ne voyait pas encore NRV_IO_SSD1351_1331 défini par celui-ci !
+ 
              - un bug terrible ! mon petit programme pour ecran
                SSD1331 marchait, et ensuite plus après évolution RTL et C
 	       -> j'ai cherché le bug dans le C, ça venait du RTL:

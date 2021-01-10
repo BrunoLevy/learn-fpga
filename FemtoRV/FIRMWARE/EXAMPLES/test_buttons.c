@@ -2,6 +2,7 @@
 
 int main()  {
    femtosoc_tty_init();
+   printf("Btn test\n");
    uint32_t btn_state = IO_IN(IO_BUTTONS);
    for(;;) {
        uint32_t new_state = IO_IN(IO_BUTTONS);

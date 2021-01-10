@@ -63,6 +63,22 @@ static inline gfx_wait_vbl() {
    }
 }
 
+
+static inline void map_vertex(int16_t* X, int16_t* Y) {
+   if(gfx_mode == FGA_MODE_640x400x4bpp) {
+      *X = *X << 1;
+      *Y = *Y << 1;
+   } else if(gfx_mode == OLED_MODE_128x128x16bpp) {
+      *X = *X >> 1;
+      *Y = *Y >> 1;
+#ifdef SSD1331
+      *X -= (128 - OLED_WIDTH)/2;
+      *Y -= (128 - OLED_HEIGHT)/2;      
+#endif
+   }
+}
+
+
 /* 
  * The colormap, encoded in such a way that it
  * can be directly sent to the OLED display.
@@ -72,8 +88,8 @@ uint16_t cmap[16];
 /*
  * Current frame's vertices coordinates (if frame is indexed).
  */
-uint16_t  X[255];
-uint16_t  Y[255];
+int16_t  X[255];
+int16_t  Y[255];
 
 /*
  * Current polygon vertices, as expected
@@ -141,13 +157,7 @@ int read_frame() {
 	for(int v=0; v<nb_vertices; ++v) {
 	   X[v] = next_byte();
 	   Y[v] = next_byte();
-	   if(gfx_mode == FGA_MODE_640x400x4bpp) {
-	      X[v] = X[v] << 1;
-	      Y[v] = Y[v] << 1;
-	   } else if(gfx_mode == OLED_MODE_128x128x16bpp) {
-	      X[v] = X[v] >> 1;
-	      Y[v] = Y[v] >> 1;
-	   }
+	   map_vertex(&X[v],&Y[v]);
 	}
     }
 
@@ -181,15 +191,12 @@ int read_frame() {
 		poly[2*i]   = X[index];
 		poly[2*i+1] = Y[index];
 	    } else {
-	       poly[2*i]   = next_byte();
-	       poly[2*i+1] = next_byte();
-	       if(gfx_mode == FGA_MODE_640x400x4bpp) {
-		  poly[2*i]   = poly[2*i]   << 1;
-		  poly[2*i+1] = poly[2*i+1] << 1;
-	       } else if(gfx_mode == OLED_MODE_128x128x16bpp) {
-		  poly[2*i]   = poly[2*i]   >> 1;
-		  poly[2*i+1] = poly[2*i+1] >> 1;
-	       }
+	       int16_t x,y;
+	       x = next_byte();
+	       y = next_byte();
+	       map_vertex(&x,&y);
+	       poly[2*i]   = x;
+	       poly[2*i+1] = y;
 	    }
 	}
         if(gfx_mode == OLED_MODE_128x128x16bpp) {
@@ -203,13 +210,13 @@ int read_frame() {
 
 char* modes[] = {
 #ifdef SSD1351   
-   "OLED 128x128 16",
+   "OLED 128x128 T",
 #else
-   "OLED 96x64   16",   
+   "OLED 96x64   T",   
 #endif   
-   "FGA  320x200 16",
-   "FGA  320x200  8",
-   "FGA  640x400  4",
+   "FGA  320x200 T",
+   "FGA  320x200 8",
+   "FGA  640x400 4",
    NULL
 };
 

@@ -19,7 +19,6 @@
 
 `include "PLL/femtopll.v"           // The PLL (generates clock at NRV_FREQ)
 
-`include "DEVICES/HardwareConfig.v" // Constant registers to query hardware config.
 `include "DEVICES/uart.v"           // The UART (serial port over USB)
 `include "DEVICES/SSD1351_1331.v"   // The OLED display
 `include "DEVICES/SPIFlash.v"       // Read data from the serial flash chip
@@ -29,6 +28,7 @@
 `include "DEVICES/SDCard.v"         // Driver for SDCard (just for bitbanging for now)
 `include "DEVICES/Buttons.v"        // Driver for the buttons
 `include "DEVICES/FGA.v"            // Femto Graphic Adapter
+`include "DEVICES/HardwareConfig.v" // Constant registers to query hardware config.
 
 /*************************************************************************************/
 

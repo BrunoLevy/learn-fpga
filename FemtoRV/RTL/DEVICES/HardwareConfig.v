@@ -22,8 +22,8 @@ localparam NRV_DEVICES = 0
 `ifdef NRV_IO_UART
    | (1 << IO_UART_DAT_bit) | (1 << IO_UART_CNTL_bit)
 `endif			    
-`ifdef NRV_IO_SSD1351
-   | (1 << IO_SSD1351_CNTL_bit) | (1 << IO_SSD1351_CMD_bit) | (1 << IO_SSD1351_DAT_bit)
+`ifdef NRV_IO_SSD1351_1331
+   | (1 << IO_SSD1351_CNTL_bit) | (1 << IO_SSD1351_CMD_bit) | (1 << IO_SSD1351_DAT_bit)  
 `endif			    
 `ifdef NRV_IO_MAX7219     
    | (1 << IO_MAX7219_DAT_bit) 

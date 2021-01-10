@@ -13,7 +13,7 @@
 #define FONT_HEIGHT 8
 #elif defined(FONT_5x6)
 #define FONT_WIDTH  6
-#define FONT_HEIGHT 8
+#define FONT_HEIGHT 8 /* Yes, 8 and not 6, because some cars have legs ! */
 #elif defined(FONT_3x5)
 #define FONT_WIDTH  4
 #define FONT_HEIGHT 6
@@ -23,6 +23,7 @@ static int scrolling = 0;
 static int cursor_X = 0;
 static int cursor_Y = 0;
 static int display_start_line = 0;
+static int last_char_was_CR = 0;
 
 void GL_tty_init() {
     GL_init();
@@ -46,7 +47,7 @@ void GL_tty_goto_xy(int X, int Y) {
  contents anywhere !    
  */
 void GL_tty_scroll() {
-    if(cursor_Y + FONT_HEIGHT > OLED_HEIGHT) {
+    if(cursor_Y >= OLED_HEIGHT) {
        scrolling = 1;
        cursor_Y = 0;
     }
@@ -54,14 +55,21 @@ void GL_tty_scroll() {
 	return;
     }
     GL_fill_rect(0,cursor_Y,OLED_WIDTH-1,cursor_Y+FONT_HEIGHT-1, GL_bg);
-    oled1(0xA1, display_start_line + FONT_HEIGHT);
     display_start_line += FONT_HEIGHT;
-    if(display_start_line > OLED_HEIGHT) {
+    if(display_start_line >= OLED_HEIGHT) {
        display_start_line = 0;
     }
+    oled1(0xA1, display_start_line);
 }
 
 int GL_putchar(int c) {
+   
+   if(last_char_was_CR) {
+      GL_tty_scroll();
+      last_char_was_CR = 0;
+   }
+   
+   
 #ifdef FONT_3x5
     // In the pico8 font, small caps and big caps
     // are swapped (I don't know why). TODO: fix
@@ -81,14 +89,15 @@ int GL_putchar(int c) {
     }
     
     if(c == '\n') {
+        last_char_was_CR = 1;
 	cursor_X = 0;
         cursor_Y += FONT_HEIGHT;
-	GL_tty_scroll();
+//	GL_tty_scroll();
 	return c;
     }
     GL_putchar_xy(cursor_X, cursor_Y, (char)c); 
     cursor_X += FONT_WIDTH;
-    if(cursor_X + FONT_WIDTH > 127) {
+    if(cursor_X + FONT_WIDTH >= OLED_WIDTH) {
 	GL_putchar('\n');
     }
     return c;
