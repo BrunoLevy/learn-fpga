@@ -128,6 +128,7 @@ assembly (`ASM_EXAMPLES/mandelbrot_terminal.S`)
 
 Examples with the OLED screen
 =============================
+![](Images/SSD1331_on_ULX3S.jpg)
 ![](Images/SSD1351_on_ULX3S.jpg)
 
 Let us generate fancy graphics. For this, you will need a
