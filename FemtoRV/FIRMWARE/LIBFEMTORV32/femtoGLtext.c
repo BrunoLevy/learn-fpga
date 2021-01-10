@@ -97,7 +97,7 @@ int GL_putchar(int c) {
    
     GL_putchar_xy(cursor_X, cursor_Y, (char)c); 
     cursor_X += FONT_WIDTH;
-    if(cursor_X + FONT_WIDTH >= OLED_WIDTH) {
+    if(cursor_X >= OLED_WIDTH) {
        GL_putchar('\n');
     }
     return c;

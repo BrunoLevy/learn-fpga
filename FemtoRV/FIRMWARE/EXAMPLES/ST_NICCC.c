@@ -210,11 +210,11 @@ int read_frame() {
 
 char* modes[] = {
 #ifdef SSD1351   
-   "OLED 128x128 T",
+   "OLED 128x128 16",
 #else
-   "OLED 96x64   T",   
+   "OLED 96x64   16",   
 #endif   
-   "FGA  320x200 T",
+   "FGA  320x200 16",
    "FGA  320x200 8",
    "FGA  640x400 4",
    NULL

@@ -218,13 +218,13 @@ int gfx_height;
 void gfx_init() {
    static char* modes[] = {
 #ifdef SSD1351      
-      "OLED 128x128 T",
+      "OLED 128x128 16",
 #else
-      "OLED 96x64   T",      
+      "OLED 96x64   16",      
 #endif      
-      "FGA  320x200 T",
-      "FGA  320x200 8",
-      "FGA  640x400 4",
+      "FGA  320x200 16",
+      "FGA  320x200 G8",
+      "FGA  640x400 G4",
       NULL
    };
    gfx_mode = GUI_prompt("GFX MODE", modes) - 1;

@@ -12,9 +12,9 @@ int main() {
     int frame=0;
    
     for(;;) {
-        oled_write_window(0,0,127,127);
-	for(uint32_t y=0; y<128; ++y) {
-	    for(uint32_t x=0; x<128; ++x) {
+        oled_write_window(0,0,OLED_WIDTH-1,OLED_HEIGHT-1);
+	for(uint32_t y=0; y<OLED_HEIGHT; ++y) {
+	    for(uint32_t x=0; x<OLED_WIDTH; ++x) {
 	        uint32_t car_x = (x + frame)/8;
 	        uint32_t car_y = (y + frame)/8;
 	        uint32_t car = (car_y * (128/8) + car_x) & 127;
