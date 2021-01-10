@@ -11,7 +11,7 @@
 
 /************************* Frequency ********************************************************************************/
 
-`define NRV_FREQ 50      // Frequency in MHz. Recomm: 50 MHz (FOMU: 16MHz) Overclocking: 80-100 MHz (HX1K, ECP5)
+`define NRV_FREQ 50      // Frequency in MHz. Recomm: 50 MHz  Overclocking: 80-100 MHz (HX1K, ECP5)
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
@@ -40,4 +40,4 @@
                                // (only if you use your own firmware, libfemtorv32 depends on it)
 
 /******************************************************************************************************************/
-`define NRV_FEMTOSOC_CONFIGURED
+

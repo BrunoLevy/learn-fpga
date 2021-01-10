@@ -126,23 +126,65 @@ assembly (`ASM_EXAMPLES/mandelbrot_terminal.S`)
 | `EXAMPLES/hello.c`                     | displays a welcome message                                     |
 | `EXAMPLES/sieve.c`                     | computes prime numbers                                         |
 
-Examples with the OLED screen
-=============================
+
+Graphics
+========
+
+Let us do some graphics. For this, you have two options:
+- the FGA (Femto Graphic Adapter) is a graphic board, that outputs
+  video to the HDMI connector of the ULX3S,
+- connect a small OLED display to the `OLED1` connector of the ULX3S.
+
+These options can be selected in `RTL/CONFIGS/ulx3s_config.v`. You can
+activate both if you want. If both are activated, the firmware mirrors 
+what's displayed on the OLED display and sends it through HDMI. 
+
+FGA (Femto Graphic Adapter)
+---------------------------
+
+The Femto Graphic Adapter supports the following mode:
+
+| Mode          | Description                        |
+|---------------|------------------------------------|
+| 320x200x16bpp | 65536 colors, RGB                  |
+| 320x200x8bpp  | 256 colors, colormapped, two pages |
+| 640x400x4bpp  | 16 colors, colormapped             |
+
+
+It supports hardware-accelerated `FILLRECT` operation, 
+also used to clear the screen, and to draw scanlines in
+polygon fill (it is 7 times faster than a software loop).
+
+OLED screen
+-----------
 ![](Images/SSD1331_on_ULX3S.jpg)
 ![](Images/SSD1351_on_ULX3S.jpg)
 
-Let us generate fancy graphics. For this, you will need a
-_SSD1351 128x128 oled display_. It costs around $15 (there exists
-cheaper screens, such as 240x240 IPS screens driven by the ST7789, but
-they really do not look as good, and they are not compatible, believe me
-the SSD1351 is worth the price). Make sure you get one of good quality 
-(if it costs less than $5 then I'd be suspicious, some users reported 
-failures with such low-cost versions). Got mine from Waveshare. Those
-from Adafruit were reported to work as well.
+It is not mandatory, but it is cool to add a small OLED display. You
+got two options, SSD1331 (top image row) or SSD1351 (bottom image row),
+both are supported by the hardware/firmware (activate `NRV_IO_SSD1351`
+or `NRV_IO_SSD1331` in'RTL/CONFIGS/ulx3s_config.v'). 
 
-These little screens need 7 wires. You will need to solder a 7 pins
-header on the ULX3S (or ask a skilled friend, which is what I did,
-thank you @ssloy !!!). Then, connect the wires according to the names
+Which one should I use ? Here is a side-by-side comparizon to help you:
+
+ |        SSD1351                |            SSD1331             |
+ -----------------------------------------------------------------|
+ |  +A large tiny screen !       |  -A bit too tiny               |
+ |  -Needs wires on the ULX3S    |  +Fits well on a ULX3S         |
+ |  -Cannot flip/rotate          |  +Flexible configuration       |
+ |  -Nearly no accel. primitives |  +HW accel fillrect,scroll,copy|
+ ------------------------------------------------------------------
+ 
+- For both: luminous and crisp rendering, much better than LCD !
+- For both: last but not least, supported by FemtoRV32/FemtoSOC !!
+
+Then my recommendation is SSD1331 for ULX3S (and SSD1351 for other
+boards). The main reason is that mechanically, SSD1331 fits very
+well with the ULX3S. You will need to solder header pins to the ULX3S
+(or ask a skilled friend, which is what I did, thank you @ssloy !!!).
+On the SSD1331, you can solder a female header, as shown on the
+top row images (my 14 years old son Nathan did the soldering, 
+he is good !). For the SSD1351, connect the wires according to the names
 on the ULX3S and the names on the display. Note that the pin names may
 vary a bit, refer to this table:
 
@@ -164,7 +206,8 @@ Now configure `FemtoRV/RTL/femtosoc_config.v` as follows:
  */
 `define NRV_IO_LEDS         // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 //`define NRV_IO_UART         // Mapped IO, virtual UART (USB)
-`define NRV_IO_SSD1351      // Mapped IO, 128x128x64K OLed screen
+`define NRV_IO_SSD1331      // Mapped IO, 96x64x64K OLed screen
+//`define NRV_IO_SSD1351      // Mapped IO, 128x128x64K OLed screen (or this one)
 //`define NRV_IO_MAX2719      // Mapped IO, 8x8 led matrix
 //`define NRV_IO_SPI_FLASH    // Mapped IO, SPI flash  
 //`define NRV_IO_SPI_SDCARD   // Mapped IO, SPI SDCARD
