@@ -1,18 +1,6 @@
-// Started from: https://www.fpga4fun.com/HDMI.html (c) fpga4fun.com & KNJN LLC 2013
-//   Added comments, adapted to ECP5 / ULX3S, made small changes here and there
-//
-// - Introduced some ideas from Lawrie's code here: https://github.com/lawrie/ulx3s_examples/blob/master/hdmi/
-//   See also https://github.com/sylefeb/Silice/tree/master/projects/hdmi_test (also based on Lawrie's code).
-// - I'm not using Lawrie's "fake differential" but instead I'm using LVCMOS33D mode for the HDMI pins in ulx3S.lpf,
-//  that automatically generates the negative signal from the positive one.
-//   See: https://www.gitmemory.com/issue/YosysHQ/nextpnr/544/751511265
-//   See also LATTICE ECP5 and ECP5-5G sysI/O Usage Guide / Technical note
-// - In Lawrie's "fake differential", there is the ODRX1F trick that makes it possible to operate at half the
-//   frequency for the bit clock, may be interesting/necessary to use for res higher than 640x480.
-// - I've seen also some ECP5 primitives: OLVDS (A->Z,ZN) and OBCO (I->OT,OC) 
-//   that I tried to use with the standard LVCMOS33 mode, without success.
+// WIP: framebuffer in SDRAM with HDMI output.
 
-module HDMI_test_DDR(
+module SDRAM_HDMI_test(
    input pclk,
    output [3:0] gpdi_dp
    // Note: gpdi_dn[3:0] is generated automatically by LVCMOS33D mode in ulx3s.lpf
@@ -34,7 +22,6 @@ module HDMI_gen(
 );
 
 /******** Video generation *******************************************************/
-// This part is just like a VGA generator
 reg [9:0] CounterX, CounterY;
 reg hSync, vSync, DrawArea;
 always @(posedge pixclk) DrawArea <= (CounterX<640) && (CounterY<480);
@@ -46,15 +33,18 @@ always @(posedge pixclk) hSync <= (CounterX>=656) && (CounterX<752);
 always @(posedge pixclk) vSync <= (CounterY>=490) && (CounterY<492);
 
 /******** Draw something *********************************************************/
-// Generate 8-bits red,green,blue signals from X and Y coordinates (the "shader")
-wire [7:0] W = {8{CounterX[7:0]==CounterY[7:0]}};
-wire [7:0] A = {8{CounterX[7:5]==3'h2 && CounterY[7:5]==3'h2}};
+
 reg [7:0] red, green, blue;
 
+reg [31:0] counter;
 always @(posedge pixclk) begin
-   red   <= ({CounterX[5:0] & {6{CounterY[4:3]==~CounterX[4:3]}}, 2'b00} | W) & ~A;
-   green <= (CounterX[7:0] & {8{CounterY[6]}} | W) & ~A;
-   blue  <= CounterY[7:0] | W | A;
+   counter <= counter + 1;
+end
+
+always @(posedge pixclk) begin
+     red   <= CounterX[7:0] + counter[25:18];
+     green <= CounterX[9:2];
+     blue  <= CounterY[7:0] + counter[25:18];;
 end
 
 /******** RGB TMDS encoding ***************************************************/

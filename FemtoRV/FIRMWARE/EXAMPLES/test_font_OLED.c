@@ -27,9 +27,8 @@ int main() {
 		uint32_t R = (y+frame)  & 63;
 		uint32_t G = (y >> 3)   & 63;
 		uint32_t B = (-y+frame) & 63;
-	       
-		// pixel color: RRRRR GGGGG 0 BBBBB
-//TODO		OLED_WRITE_DATA_UINT8_UINT8(BW & ((G>>2)|(R<<3)), BW & (B|(G << 6)));
+
+	        OLED_WRITE_DATA_UINT16(B | (G << 6) | (R << 11));
 	    }
 	}
 	++frame;

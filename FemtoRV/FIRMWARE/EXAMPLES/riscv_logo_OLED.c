@@ -29,13 +29,8 @@ unsigned char logo[16][16] = {
 };
 
 /* 
- * Convert an RGB color into 16 bit color,
- * as expected by the SSD1351 OLED display.
+ * The colormap.
  */ 
-//#define make_cmap_entry(R,G,B) \
-//   { (unsigned char)((R & ~7) | (G >> 5)), \
-//   (unsigned char)((B >> 3) | (G << 6))  }
-
 uint16_t cmap[8] = {
    GL_RGB(0x28,0x33,0x74),
    GL_RGB(0x7B,0x80,0x9B),
@@ -66,13 +61,13 @@ void main() {
 	oled_write_window(0,0,OLED_WIDTH-1,OLED_HEIGHT-1);
        
         int scaling = sintab[frame&63]+400;
-        int Ux = scaling*sintab[frame & 63];         // The C compiler generates a call
-        int Uy = scaling*sintab[(frame + 16) & 63];  // to __mulsi3 in LIB/femtorv32.s
-        int Vx = -Uy;                                // for these two multiplications (and
-        int Vy =  Ux;                                // yes, it works !!)
+        int Ux = scaling*sintab[frame & 63];         
+        int Uy = scaling*sintab[(frame + 16) & 63];  
+        int Vx = -Uy;                                
+        int Vy =  Ux;                                
 
         int X0 = -64*(Ux+Vx); 
-        int Y0 = -64*(Uy+Vy); 
+        int Y0 = -64*(Uy+Vy);
 
 	for(int y=0; y<OLED_HEIGHT; ++y) {
 	    int X = X0;

@@ -89,7 +89,7 @@ int GL_putchar(int c) {
     }
     
     if(c == '\n') {
-        last_char_was_CR = 1;
+        last_char_was_CR = 1; 
 	cursor_X = 0;
         cursor_Y += FONT_HEIGHT;
 	return c;

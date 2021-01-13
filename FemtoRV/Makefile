@@ -9,7 +9,7 @@ include BOARDS/fomu.mk
 include BOARDS/ulx3s.mk
 include BOARDS/ecp5_evn.mk
 
-.PHONY: all clean testbench 
+.PHONY: all clean terminal testbench 
 
 ################################################################################
 

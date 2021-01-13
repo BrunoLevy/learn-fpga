@@ -1,7 +1,7 @@
 include ../makefile.inc 
 
 ALL_PROGRAMS=\
-commander.elf cube_OLED.elf demo_OLED.elf hello.elf imgui_cup.elf\
+cube_OLED.elf demo_OLED.elf hello.elf imgui_cup.elf\
 imgui_doom.elf imgui_road.elf imgui_tunnel.elf life_led_matrix.elf\
 mandelbrot_float_OLED.elf mandelbrot_OLED.elf riscv_logo_OLED.elf\
 sieve.elf spirograph_OLED.elf ST_NICCC.elf ST_NICCC_spi_flash.elf\
