@@ -127,4 +127,4 @@ References
 - [UltraEmbedded's core dvi FB](https://github.com/ultraembedded/core_dvi_framebuffer/blob/master/src_v/dvi.v)
 - [Silice HDMI walkthrough](https://github.com/sylefeb/Silice/tree/master/projects/hdmi_test)
 - [HDMI with audio](https://github.com/hdl-util/hdmi/)
-- [HDMI tutorial](https://purisa.me/blog/hdmi-on-fpga/)
+- [HDMI tutorial (solder own socket)](https://purisa.me/blog/hdmi-on-fpga/)
