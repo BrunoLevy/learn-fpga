@@ -3,6 +3,8 @@
 // Uncomment one of the following lines
 //`include "CONFIGS/ulx3s_config.v"
 `include "CONFIGS/icestick_config.v"
+
+// You can also comment the lines above and use this one / modify this one instead:
 //`include "CONFIGS/generic_config.v"
 
 /******************************************************************************/
