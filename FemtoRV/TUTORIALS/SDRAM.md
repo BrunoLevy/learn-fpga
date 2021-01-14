@@ -150,7 +150,7 @@ The MICRON tech sheet is easier to read. Let us see what it says:
 *Q9: what is the _largest common subset_ for all the SDRAM chips used on the ULX3S ?*
 
 | Brand   | Reference   | Capacity | Width   | Banks | Rows | Columns | 
-|-----------------------|----------|---------|-------|------|----------
+|---------|-------------|----------|---------|-------|------|----------
 |Micron   | MT48LC32M16 |  64 MB   | 16 bits |  4    | 8192 | 1024    |                    
 |ALLIANCE | AS4C32M16SB |  64 MB   | 16 bits |  4    | 8192 | 1024    | 
 |ALLIANCE | IS42S16160G |  32 MB   | 16 bits |  4    | 8192 | 512     |                 
@@ -237,8 +237,6 @@ There are also interesting ideas
 information on how the Northbridge works. Seems that certain chips can
 open several rows simultaneously (but probably not the chip we have
 here).
-
-
 
 References
 ----------
