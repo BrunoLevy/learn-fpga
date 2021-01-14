@@ -123,7 +123,7 @@ FIRMWARE_WORDS_SRC= $(FIRMWARE_DIR)/TOOLS/FIRMWARE_WORDS_SRC/firmware_words.cpp\
                     $(FIRMWARE_DIR)/LIBFEMTORV32/femto_elf.c
 		    
 $(FIRMWARE_DIR)/TOOLS/firmware_words: $(FIRWARE_WORDS_SRC)
-	g++ -I$(FIRMWARE_DIR)/LIBFEMTORV32 -DSTANDALONE_FEMTOELF $(FIRWARE_WORDS_SRC) -o $@
+	g++ -I$(FIRMWARE_DIR)/LIBFEMTORV32 -DSTANDALONE_FEMTOELF $(FIRMWARE_WORDS_SRC) -o $@
 
 ################################################################################
 #RISCV toolchain, get it from the web, automatically

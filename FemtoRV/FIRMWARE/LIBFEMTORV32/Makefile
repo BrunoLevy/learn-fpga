@@ -17,7 +17,7 @@ OBJECTS=femtorv32.o max7219.o ssd1351_1331.o uart.o \
 	 FGA_mode.o FGA.o \
 	 femto_GUI.o
 	
-all: libfemtorv32.a $(RVGCC)
+all: $(RVGCC) libfemtorv32.a 
 
 libfemtorv32.a: $(OBJECTS) $(FAT_IO_OBJS_WITH_DIR) 
 	$(RVAR) cq libfemtorv32.a $(OBJECTS) $(FAT_IO_OBJS)
