@@ -127,7 +127,7 @@ module femtosoc(
 `else   
   reg [15:0] reset_cnt = 0;
 `endif   
-  wire       reset = |reset_cnt;
+  wire       reset = &reset_cnt;
 
 /* verilator lint_off WIDTH */   
 `ifdef NRV_NEGATIVE_RESET

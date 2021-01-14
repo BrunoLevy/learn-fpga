@@ -1,8 +1,8 @@
 // Configuration file for femtosoc/femtorv32
 
 // Uncomment one of the following lines
-`include "CONFIGS/ulx3s_config.v"
-//`include "CONFIGS/icestick_config.v"
+//`include "CONFIGS/ulx3s_config.v"
+`include "CONFIGS/icestick_config.v"
 //`include "CONFIGS/generic_config.v"
 
 /******************************************************************************/

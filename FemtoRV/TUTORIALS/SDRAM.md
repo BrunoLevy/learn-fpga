@@ -199,8 +199,47 @@ SDRAM brands:
 Refresh: 8192 AUTO REFRESH cycles in a burst (spaced by tRC) every
 64ms (tREF) or 1 AUTO REFRESH cycle every 7.81 us.
 
-HDMI 640x480 timings
-====================
+*Q7: At that freq, we will probably need specialized IO blocks, which ones ?*
+
+Very well explained in this example for [Alchetry](https://alchitry.com/blogs/tutorials/sdram-verilog). There are three things:
+ - SDRAM clock needs to be inverted
+ - SDRAM clock needs to be delayed
+ - Input-Output registers need to be embedded in the IO buffers to ensure that all signals are received / send at the same time, for:
+    - cle (clock enable)
+    - dqm (2-bits data mask)
+    - cmd (3-bits command)
+    - ba  (2-bits bank address)
+    - a   (address)
+    - q   (data out)
+    - qi  (data in)
+
+It needs to be adapted:
+ - we have 16 bits SDRAM (instead of 8 bits in the example), plus all the timings are probably different
+ - ECP5 specialized primitives, refer to
+   [All Lattice blocks](http://www.latticesemi.com/-/media/LatticeSemi/Documents/UserManuals/EI2/FPGA_Libraries_Reference_Guide_310.ashx?document_id=52213)
+ - [Yosys ECP5](https://github.com/YosysHQ/nextpnr/blob/master/ecp5/docs/primitives.md) 
+ - [TRELLIS_IO](https://github.com/YosysHQ/yosys/blob/master/techlibs/ecp5/cells_sim.v#L261)
+
+We will need:
+  - latches (in) and flip-flops (out) attached to the IO-pins (how to do that with ECP5, `BB`,`IB`,`OB` ?).
+     How can we have a latch there ? On Ice-40 it is `SB_GB_IO`. On ECP5, seems to be `IFS1P3BX`,`OFS1P3BX` that
+     are packed into the IO by nextpnr, see discussion [here](https://github.com/YosysHQ/nextpnr/issues/399).
+  - send clock to SDRAM at each falling edge instead of rising edge (using `ODDRX1F` (probably) with constant bits 0 and 1)
+  - clock delay (how to do that with ECP5, `DELAYF`,`DELAYG` ?)
+  - `IFS1P3BX`,`OFS1P3BX` _(what's that ? I need to RTFM...)_ They are PICs (Programmable IO Cells).
+    Some information [here](file:///tmp/mozilla_blevy0/FPGA-DS-02012-2-1-ECP5-ECP5G-Family-Data-Sheet.pdf)
+    and [here](file:///tmp/mozilla_blevy0/FPGALibrariesReferenceGuide35.pdf)
+  - `BB` used [here](https://github.com/sylefeb/Silice/blob/master/projects/common/inout16_ff_ulx3s.v)
+
+OK, the way to do it is a `IFS1P3BX` combined with a `BB` in a single PIC (programmable IO Cell). Normally
+nextpnr-ecp5 supports that (according to latest posts [here](https://github.com/YosysHQ/nextpnr/issues/399)).
+
+
+A framebuffer in SDRAM ? HDMI 640x480 timings
+=============================================
+
+_Less sure that it is the way to go to test the design, seems to be easier to do a general controller with valid/busy/ready protocol
+ and map it in the address space of FemtoRV32, will see..._
 
 Refresh
 -------
@@ -238,8 +277,17 @@ information on how the Northbridge works. Seems that certain chips can
 open several rows simultaneously (but probably not the chip we have
 here).
 
+Could we have framebuffer and general RAM in the same SDRAM chip ?
+-------------------------------------------------------------------
+  Probably yes, but this means:
+  
+ - managing refresh cycles on our own. FrameBuffer is refreshed by continuous reading, and the rest by refresh cycles schedules with
+   other I/O operations.
+ - I/O operations occur during HBlank/VBlank. 
+
+
 References
-----------
+==========
 - [FPGA4fun](https://www.fpga4fun.com/SDRAM.html)
 - [Lawrie](https://github.com/lawrie/ulx3s_68k/blob/master/src/sdram.v)
 - [stffrdhrn](https://github.com/stffrdhrn/sdram-controller)

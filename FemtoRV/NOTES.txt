@@ -4,7 +4,6 @@ Precompiled FPGA tools:
 
 
 TODO:  
-      * ULX3S DVI display
       * ULX3S SDRAM
       * ULX3S USB keyboard (or tiny I2C keyboard before then)
       * pipeline !
@@ -135,6 +134,11 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - Un bug qui m'a fait croire que mon IceStick était toasté:
+	       Dans femtosoc.v, pour tester le negatice reset / bouton ON de l'ULX3S,
+	       j'avais remplacé reset = &reset_cnt par reset = |reset_cnt, et ça
+	       invalide du coup totalement mon mécanisme de délai/reset.
+
              - scrolling dans tty: il reste tjrs une ligne vide à la
                fin, à cause du retour chariot de la dernière ligne !
 	       En fait, il ne faudrait pas scroller au retour chariot, mais

@@ -266,15 +266,13 @@ void FGA_fill_poly(int nb_pts, int* points, uint16_t color) {
     for(int y = miny; y <= maxy; ++y) {
 	int x1 = x_left[y];
 	int x2 = x_right[y];
-       
+	/* 
+	 * By waiting *before* instead of *after*, we can overlap
+	 * fetchting next x1,x2 and drawing the line (negligible in
+	 * fact, but better than nothing.
+	 */
         FGA_wait_GPU();       
         FGA_fill_rect_fast(x1,y,x2,y, color);
-       /*
-	FGA_write_window(x1,y,x2,y);
-        for(int x=x1; x<=x2; ++x) {
-	   IO_OUT(IO_FGA_DAT, color);
-	}
-	*/ 
     }
     FGA_wait_GPU();
 }

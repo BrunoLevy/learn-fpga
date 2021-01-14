@@ -12,7 +12,7 @@
 
 OBJECTS=print.o printf.o 
 
-all: libfemtoc.a
+all: libfemtoc.a $(RVGCC)
 
 libfemtoc.a: $(OBJECTS) $(MISSING_OBJECTS_WITH_DIR) 
 	$(RVAR) cq libfemtoc.a $(OBJECTS) $(MISSING_OBJECTS)

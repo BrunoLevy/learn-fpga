@@ -198,7 +198,7 @@ oled0:	add sp,sp,-4
 
 #################### Commands for SSD1351 #########################
 	
-.ifdef SSD1351	
+.ifndef SSD1331
 
 # Oled display command, 1 argument, command in a0, arg in a1	
 .global	oled1
