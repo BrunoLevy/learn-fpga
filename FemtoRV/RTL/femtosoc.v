@@ -154,8 +154,9 @@ module femtosoc(
  * Memory and memory interface
  * memory map:
  *   address[21:2] RAM word address (4 Mb max).
- *   address[22]   IO page  (1-hot)
- *   address[23]   SPI page (1-hot)
+ *   address[23:22]   00: RAM
+ *                    01: IO page (1-hot)  (starts at 0x400000)
+ *                    10: SPI Flash page   (starts at 0x800000)
  */ 
 
    // The memory bus.
@@ -244,7 +245,7 @@ module femtosoc(
    wire [31:0] FGA_rdata;
    FGA graphic_adapter(
       .clk(clk),
-      .sel(mem_address_is_vram),
+      .sel(mem_address_is_ram && mem_address_is_vram), // HERE
       .mem_wmask(mem_wmask),
       .mem_address(mem_address[16:0]),
       .mem_wdata(mem_wdata),

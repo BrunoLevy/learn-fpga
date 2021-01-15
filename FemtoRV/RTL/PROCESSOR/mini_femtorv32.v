@@ -361,7 +361,7 @@ module FemtoRV32 #(
 	// wait-state for IO store 
 	state[WAIT_IO_STORE_bit]: begin
 	   `verbose($display("        mem_wbusy:%b",mem_wbusy));
-	   addressReg <= PC;	   
+	   // addressReg <= PC; HERE removed (set in previous state)
 	   if(!mem_wbusy) 
 	     state <= FETCH_INSTR;
 	end
@@ -373,7 +373,7 @@ module FemtoRV32 #(
 	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[WAIT_ALU_OR_DATA_bit]: begin
 	   `verbose($display("        mem_rbusy:%b alu_busy:%b",mem_rbusy,aluBusy));
-	   if((!isALU || !aluBusy) && !mem_rbusy) begin
+	   if(!aluBusy && !mem_rbusy) begin // HERE removed test isAlu
 	      addressReg <= PC;	      
 	      state <= FETCH_INSTR;
 	   end

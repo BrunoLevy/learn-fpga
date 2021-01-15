@@ -30,8 +30,8 @@ module MappedSPIFlash(
    wire       sending   = (snd_bitcount != 0);
    wire       receiving = (rcv_bitcount != 0);
    wire       busy = sending | receiving;
-   assign     rbusy = busy; // send address and read data done on wstrb
-   reg 	      slow_clk;     // =clk/2 (TODO check if/when we need to divide more)
+   assign     rbusy = !CS_N; // HERE = busy; // send address and read data done on wstrb
+   reg 	      slow_clk;      // =clk/2 (TODO check if/when we need to divide more)
    
    assign  MOSI = sending && cmd_addr[31];
    initial CS_N = 1'b1;
