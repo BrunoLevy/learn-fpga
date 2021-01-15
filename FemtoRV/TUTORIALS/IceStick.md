@@ -303,10 +303,16 @@ $ make ICESTICK
 
 ![](Images/ST_NICCC_on_IceStick.gif)
 
-Now if you want to go further, there may be ways of mapping the SPI
+Now if you want to go further, there is a way of mapping the SPI
 flash in the memory space of the processor and directly running code 
-from there, this would considerably enhance the possibilities. This
-requires more work on the memory controller in femtosoc and femtorv.
+from there, this considerably enhances the possibilities, and makes
+it possible to execute large programs on the IceStick (at the expense
+of speed, it is super-sloooowww). More information
+[here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/FIRMWARE/SPI_FLASH/README.md).
+It is probably possible to make it a bit faster by using more advanced
+modes of the SPI Flash. It is also probably possible to add a little
+instruction cache, that would make it considerably faster...
+
 An easier way to go further is to get an ULX3S. It costs a bit more
 ($130) but it is worth the price (the on-board ECP5 FPGA is HUGE as
 compared to the one of the IceStick). Now time to read the
