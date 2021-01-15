@@ -60,12 +60,13 @@ If you have the SSD1351 small OLED screen, you can compile
 `mandelbrot.c` (still using `make mandelbrot.flash`). You will see
 how slow it is as compared to the version that runs from the BRAM !
 
+There is also `mandelbrot_float.c` that uses software floating point
+routines, and `tinyraytracer.c`. They are really super slow, but it
+is interesting to see that large programs can run on the IceStick
+directly from the SPI flash. 
+
 Remaining issues
 ----------------
-I was interested to see if software floating point libs could be used
-on the SPI Flash (because they do not fit on BRAM). However, `mandel_float.c` 
-does not work: it loops forever in the display initialization sequence
-(I do not know why, still investigating...)
 
 The segments of initialized read-write data cannot be properly mapped
 to memory: intialization data should be put in ROM (SPI flash), and
