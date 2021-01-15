@@ -5,7 +5,8 @@ FemtoRV32 Tutorials
 - [ULX3S tutorial](ULX3S.md)
 - [ECP5 evaluation board tutorial](ECP5_EVN.md) _(WIP)_
 - [FOMU tutorial](FOMU.md) _(WIP)_
-- [Adding a new board](newboard.md) 
+- [Adding a new board](newboard.md)
+- [Run from SPI flash](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/FIRMWARE/SPI_FLASH/README.md) _(WIP)_
 
 FemtoRV32 Notes
 ===============
