@@ -1,4 +1,5 @@
-	
+
+.section .rodata
 .globl font_8x16
 
 font_8x16:

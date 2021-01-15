@@ -2,7 +2,7 @@
 
 static uint8_t buff[16] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
+}; 
 
 void MAX7219_shift() {
    for(int i=0; i<15; ++i) {

@@ -248,9 +248,7 @@ module FemtoRV32 #(
    assign writeBack = (state[EXECUTE_bit] && writeBackEn) || 
                        state[WAIT_ALU_OR_DATA_bit];
 
-   // The memory-read signal. It is only needed for IO, hence it is only enabled
-   // right before the LOAD state. To allow execution from IO-mapped devices, it
-   // is necessary to also enable it before instruction fetch.
+   // The memory-read signal. 
    assign mem_rstrb = state[LOAD_bit] | state[FETCH_INSTR_bit];
 
    // See also how load_from_mem and store_to_mem are wired.

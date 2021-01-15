@@ -50,13 +50,18 @@ localparam NRV_DEVICES = 0
 // iteration of:
 // wait: sub a0, a0, a1
 //       bgt a0, zero, wait
-`ifdef NRV_MINIRV32
+
+`ifdef NRV_RUN_FROM_SPI_FLASH
+   localparam NRV_CPL = 127; // To be measured exactly
+`else   
+ `ifdef NRV_MINIRV32
    localparam NRV_CPL = 9;
-`else
- `ifdef NRV_LATCH_ALU
-   localparam NRV_CPL = 7;
  `else
+  `ifdef NRV_LATCH_ALU
+   localparam NRV_CPL = 7;
+  `else
    localparam NRV_CPL = 6;
+  `endif
  `endif
 `endif
 	

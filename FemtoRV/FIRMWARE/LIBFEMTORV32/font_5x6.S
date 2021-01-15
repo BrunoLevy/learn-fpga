@@ -2,6 +2,7 @@
 # font by zep,
 # https://www.lexaloffle.com/bbs/?tid=32877
 
+.section .rodata
 .globl font_5x6
 .LC0:
 .word 0x00000000

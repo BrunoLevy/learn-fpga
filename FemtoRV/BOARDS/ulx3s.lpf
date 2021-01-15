@@ -11,7 +11,7 @@ FREQUENCY PORT "pclk" 25 MHZ;
 LOCATE COMP "RESET" SITE "T1"; # fire 2 
 IOBUF PORT "RESET" IO_TYPE=LVCMOS33;
 
-## SSD1351 OLED display ##########################
+## SSD1351/1331 OLED display #####################
 
 LOCATE COMP "oled_DIN" SITE "P3";
 LOCATE COMP "oled_CLK" SITE "P4";

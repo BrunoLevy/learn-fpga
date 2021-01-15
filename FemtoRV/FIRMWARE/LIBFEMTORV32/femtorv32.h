@@ -139,7 +139,7 @@ void GL_putchar_xy(int x, int y, char c);
 #define IO_SSD1351_DAT16     IO_BIT_TO_OFFSET(IO_SSD1351_DAT16_bit)
 #define IO_UART_CNTL         IO_BIT_TO_OFFSET(IO_UART_CNTL_bit)
 #define IO_UART_DAT          IO_BIT_TO_OFFSET(IO_UART_DAT_bit)
-#define IO_MAX2719           IO_BIT_TO_OFFSET(IO_MAX2719_bit)
+#define IO_MAX7219           IO_BIT_TO_OFFSET(IO_MAX7219_DAT_bit)
 #define IO_SPI_FLASH         IO_BIT_TO_OFFSET(IO_SPI_FLASH_bit)
 #define IO_SDCARD            IO_BIT_TO_OFFSET(IO_SDCARD_bit)
 #define IO_BUTTONS           IO_BIT_TO_OFFSET(IO_BUTTONS_bit)

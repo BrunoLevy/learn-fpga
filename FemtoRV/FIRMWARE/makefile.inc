@@ -115,7 +115,7 @@ RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax
 root: all
 
 clean:
-	rm -f *.o *.elf *.hex *.rawhex *.exe *~ *.a *.bin *.bm_elf *.bm_rawhex
+	rm -f *.o *.elf *.hex *.rawhex *.exe *~ *.a *.bin *.bm_elf *.bm_rawhex *.spi_elf
 
 #Generating the conversion utility for hex files
 
