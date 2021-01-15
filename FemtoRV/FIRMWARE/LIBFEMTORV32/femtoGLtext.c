@@ -19,7 +19,7 @@
 #define FONT_HEIGHT 6
 #endif
 
-static int scrolling = 0;
+static int scrolling = 0; 
 static int cursor_X = 0;
 static int cursor_Y = 0;
 static int display_start_line = 0;

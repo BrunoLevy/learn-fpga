@@ -1,6 +1,6 @@
 #include <femtorv32.h>
 
-uint16_t GL_fg = 0xffff;
+uint16_t GL_fg = 0xffff; 
 uint16_t GL_bg = 0x0000;
 
 void GL_set_fg(uint8_t r, uint8_t g, uint8_t b) {

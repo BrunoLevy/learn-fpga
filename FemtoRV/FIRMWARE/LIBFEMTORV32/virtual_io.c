@@ -3,7 +3,7 @@
 extern int UART_putchar(int);
 extern int UART_getchar();
 
-static putcharfunc_t putcharfunc = UART_putchar;
+static putcharfunc_t putcharfunc = UART_putchar; 
 static getcharfunc_t getcharfunc = UART_getchar;
 
 void set_putcharfunc(putcharfunc_t f) {

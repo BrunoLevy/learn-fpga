@@ -1,14 +1,19 @@
 
 #include <femtorv32.h>
 
+
+
+
 int main() {
-   
+
+   GL_set_bg(0,0,0);
+   GL_set_fg(255,255,255);
    femtosoc_tty_init();
    GL_putchar('H');
    GL_putchar('e');
    GL_putchar('l');
    GL_putchar('l');
-// GL_putchar('o');   
+//   GL_putchar('o');   
    
 //  printf("Hello, world!!\n");
 

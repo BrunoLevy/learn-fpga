@@ -38,12 +38,12 @@ void printb(int x) {
 int main() {
   
   // Test whether mapped memory space is activated
-  int mapped = FEMTOSOC_HAS_DEVICE(IO_SPI_FLASH_bit);
-  
+  int mapped = FEMTOSOC_HAS_DEVICE(IO_MAPPED_SPI_FLASH_bit);
+
   int addr = 1024*1024;
   int data;
   GL_tty_init(); // uncomment if using OLED display instead of tty output.
-  printf("Testing SPI flash\n");
+  printf("SPI flash [mapped:%c]\n",mapped?'Y':'N');
   for(int i=0; i<14; ++i) {
     data = mapped ? get_spi_byte_mapped(addr) : get_spi_byte_io(addr) ;
     printf("%x:",data);

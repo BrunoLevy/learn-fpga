@@ -134,8 +134,12 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - Mapped SPI flash n'etait plus visible dans le registre
+               des devices, parceque bug nommage de macros 
+	       (NRV_MAPPED_SPI_FLASH versus avant NRV_IO_MAPPED_SPI_FLASH)
+  
              - Un bug qui m'a fait croire que mon IceStick était toasté:
-	       Dans femtosoc.v, pour tester le negatice reset / bouton ON de l'ULX3S,
+	       Dans femtosoc.v, pour tester le negative reset / bouton ON de l'ULX3S,
 	       j'avais remplacé reset = &reset_cnt par reset = |reset_cnt, et ça
 	       invalide du coup totalement mon mécanisme de délai/reset.
 
@@ -158,7 +162,7 @@ RISC-V notes:
 	       -> j'ai cherché le bug dans le C, ça venait du RTL:
 	          apres avoir ajouté une config NRV_IO_SSD1351_SSD1331, il
 		  restait un `ifdef NRV_IO_SSD1351 à la fin de femtosoc.v,
-		  pour le signal d'attente !!
+		  pour le signal d'attente !! (à la place de NRV_IO_SSD1351_1331)
 		  
              - test_FGA.c: uint16_t* graph_mem = (uint16_t)FGA_BASEMEM;
 	                                              ^___ Manquait une étoile ici !!!

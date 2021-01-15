@@ -26,15 +26,15 @@
 //`define NRV_CSR         // Uncomment if using something below (counters,...)
 //`define NRV_COUNTERS    // Uncomment for instr and cycle counters (won't fit on the ICEStick)
 //`define NRV_COUNTERS_64 // ... and uncomment this one as well if you want 64-bit counters
-//`define NRV_TWOSTAGE_SHIFTER // if not RV32M, comment-out if running out of LUTs (at the expense of slower shifts)
+`define NRV_TWOSTAGE_SHIFTER // if not RV32M, comment-out if running out of LUTs (at the expense of slower shifts)
 `define NRV_LATCH_ALU // Uncomment to latch all ALU ops (reduces critical path)
 `endif
 
 /************************* Advanced processor configuration *********************************************************/
 
-`define NRV_RESET_ADDR 0                // The address the processor jumps to on reset 
-//`define NRV_RESET_ADDR 32'h00800000  // If using NRV_MINIRV32 and mapped SPI Flash, you may want to jump to
-                                        // a bootloader or firmware stored there.
+`define NRV_RESET_ADDR 0         // The address the processor jumps to on reset 
+//`define NRV_RESET_ADDR 24'h800000  // If using NRV_MINIRV32 and mapped SPI Flash, you may want to jump to
+                                   // a bootloader or firmware stored there.
 
 `define NRV_IO_HARDWARE_CONFIG // Comment-out to disable hardware config registers mapped in IO-Space
                                // (only if you use your own firmware, libfemtorv32 depends on it)
