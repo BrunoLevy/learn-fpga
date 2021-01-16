@@ -5,7 +5,8 @@ This directory contains programs to be run from the SPI Flash of the
 IceStick. It makes it possible to run programs that are much larger
 (1MB) than what fits in the 6kB of BRAM available on the tiny Ice40hx1K (it has 8kB
 but 2kB are used by FemtoRV32). This comes at the expense of a
-sloooowwwww execution time.
+sloooowwwww execution time (but it is probably possible to make it 10x faster using
+a more advanced SPI controller).
 
 Instructions
 ============
@@ -77,3 +78,7 @@ the entire address space) and can no longer be stored on the SPI flash.
 It would be possible to have a conversion program, that reads the elf
 executable, puts initialization data at the right locations in ROM,
 and generates a code that copies them to the segments in RAM.
+
+It is probably possible to make it 10x faster, by using a faster clock for
+the SPI, by using DDR blocks to generate the SPI clock, by using faster SPI
+protocols (dual IO)...

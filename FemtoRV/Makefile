@@ -26,11 +26,25 @@ FIRMWARE/firmware.hex:
 
 TERMS=/dev/ttyUSB0 /dev/ttyUSB1 
 
-terminal:
-        # exit: <ctrl> ]     package : sudo apt-get install python3-serial
+# Uncomment one of the following lines (pick your favorite term emulator)
+terminal: terminal_miniterm
+#terminal: terminal_screen
+#terminal: terminal_picocom
+
+# make terminal, rule for miniterm
+# exit: <ctrl> ]     package: sudo apt-get install python3-serial
+terminal_miniterm:
 	for i in $(TERMS); do miniterm --dtr=0 $$i 115200; done
-#       # exit: <ctrl> a \   package : sudo apt-get install screen
-#	for i in $(TERMS); do screen $$i 115200; done 
+
+# make terminal, rule for screen
+# exit: <ctrl> a \   package: sudo apt-get install screen
+terminal_screen:
+	for i in $(TERMS); do screen $$i 115200; done
+
+# make terminal, rule for picocom
+# exit: <ctrl> a \   package: sudo apt-get install picocom
+terminal_picocom:
+	for i in $(TERMS); do picocom -b 115200 $$i --imap lfcrlf,crcrlf --omap delbs,crlf --send-cmd "ascii-xfr -s -l 30 -n"; done
 
 testbench:
 	(cd RTL; iverilog -IPROCESSOR -IDEVICES femtosoc_bench.v \

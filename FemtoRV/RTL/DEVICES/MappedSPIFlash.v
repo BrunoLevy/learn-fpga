@@ -31,20 +31,15 @@ module MappedSPIFlash(
    wire       receiving = (rcv_bitcount != 0);
    wire       busy = sending | receiving;
    assign     rbusy = !CS_N; // HERE = busy; // send address and read data done on wstrb
-   reg 	      slow_clk;      // =clk/2 (TODO check if/when we need to divide more)
    
    assign  MOSI = sending && cmd_addr[31];
-   initial CS_N = 1'b1;
-   assign  CLK  = busy && slow_clk;
-   
-   always @(posedge clk) begin
-      slow_clk <= ~slow_clk;
-   end
+   initial CS_N  = 1'b1;
+   assign  CLK  = busy && clk; // slow_clk; 
 
    // since least significant bytes are read first, we need to swizzle...
    assign rdata = {rcv_data[7:0],rcv_data[15:8],rcv_data[23:16],rcv_data[31:24]};
    
-   always @(posedge clk) begin
+   always @(negedge clk) begin
       if(rstrb) begin
 	 CS_N <= 1'b0;
 	 //            ------------SPI Flash command: read bytes
@@ -53,18 +48,18 @@ module MappedSPIFlash(
 	 cmd_addr <= {8'h03, 4'b0001,word_address[17:0], 2'b00};
 	 snd_bitcount <= 6'd32;
       end else begin
-	 if(sending && slow_clk) begin
+	 if(sending) begin
 	    if(snd_bitcount == 1) begin
 	       rcv_bitcount <= 6'd32;
 	    end
 	    snd_bitcount <= snd_bitcount - 6'd1;
 	    cmd_addr <= {cmd_addr[30:0],1'b0};
 	 end
-	 if(receiving && slow_clk) begin
+	 if(receiving) begin
 	    rcv_bitcount <= rcv_bitcount - 6'd1;
 	    rcv_data <= {rcv_data[30:0],MISO};
 	 end
-	 if(!busy && slow_clk) begin
+	 if(!busy) begin
 	    CS_N <= 1'b1;
 	 end
       end

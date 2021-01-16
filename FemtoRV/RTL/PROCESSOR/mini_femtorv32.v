@@ -249,7 +249,7 @@ module FemtoRV32 #(
                        state[WAIT_ALU_OR_DATA_bit];
 
    // The memory-read signal. 
-   assign mem_rstrb = state[LOAD_bit] | state[FETCH_INSTR_bit];
+   assign mem_rstrb = state[LOAD_bit] || state[FETCH_INSTR_bit];
 
    // See also how load_from_mem and store_to_mem are wired.
    assign mem_wenable = state[STORE_bit];

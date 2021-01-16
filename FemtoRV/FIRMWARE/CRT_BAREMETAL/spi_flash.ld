@@ -11,12 +11,12 @@ SECTIONS
       crt0.o (.text) 
       *(.text*)    
    } > rom
+  .rodata  : { *(.rodata*)   } > rom   
   .srodata : { *(.srodata*)  } > rom  
-  .rodata  : { *(.rodata*)   } > rom
-  .srodata : { *(.srodata*)  } > rom  
+  .data    : { *(.data*)     } > rom  
   .sdata   : { *(.sdata*)    } > rom
+  .sbss    : { *(.sbss*)     } > ram    
   .bss     : { *(.bss*)      } > ram  
-  .sbss    : { *(.sbss*)     } > ram  
 }
 
 /*
