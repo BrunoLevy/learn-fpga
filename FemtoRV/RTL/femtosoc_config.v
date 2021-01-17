@@ -2,8 +2,8 @@
 
 // Uncomment one of the following lines
 //`include "CONFIGS/ulx3s_config.v"
-//`include "CONFIGS/icestick_config.v"
-`include "CONFIGS/icestick_spi_flash_config.v" // This one to run from spi-flash 
+`include "CONFIGS/icestick_config.v"
+//`include "CONFIGS/icestick_spi_flash_config.v" // This one to run from spi-flash 
 // You can also comment the lines above and use this one / modify this one instead:
 //`include "CONFIGS/generic_config.v"
 

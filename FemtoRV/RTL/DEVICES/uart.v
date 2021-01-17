@@ -33,7 +33,7 @@ wire serial_valid;
 
 buart #(
   .FREQ_MHZ(`NRV_FREQ),
-  .BAUDS(115200)		  
+  .BAUDS(115200)
 ) the_buart (
    .clk(clk),
    .resetq(1'b1),

@@ -134,6 +134,8 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - Mapped SPI flash, fast read mode: j'avais oublié MOSI: cmd_addr[31] -> cmd_addr[39]
+
              - Mapped SPI flash n'etait plus visible dans le registre
                des devices, parceque bug nommage de macros 
 	       (NRV_MAPPED_SPI_FLASH versus avant NRV_IO_MAPPED_SPI_FLASH)
