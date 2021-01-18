@@ -36,7 +36,7 @@ TODO: changes in the state machine.
 TODO: restore the designs, assembly programs, test bench.
 
 Now we are 6 instructions away from a complete RV32I processor (minus
-`FENCE` and `SYSTEM`, but we can leave without them). We need to
+`FENCE` and `SYSTEM`, but we can live without them). We need to
 implement the four weird instructions (as I like to call them). They
 are not that weird, and easy to implement. Then we will need to
 implement the different variants of `load` and `store` (more
