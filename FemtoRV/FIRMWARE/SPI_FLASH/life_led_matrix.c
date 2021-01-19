@@ -67,6 +67,7 @@ void show() {
 }
 
 int main() {
+   MAX7219_init();
    for(int j=0; j<8; ++j) {
       for(int i=0; i<8; ++i) {	 
 	 buff1[i][j] = buff_init[i][j];
