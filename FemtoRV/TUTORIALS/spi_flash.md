@@ -16,6 +16,8 @@ slower than the RAM.
 Step 1: using READ command (`h03`)
 ==================================
 
+Let us first see the interface of our SPI flash module:
+
 ```
 module MappedSPIFlash(
     input wire 	       clk,          // system clock
@@ -31,7 +33,37 @@ module MappedSPIFlash(
     output wire        MOSI, // master out slave in (data to be sent to flash)
     input wire 	       MISO  // master in slave out (data received from flash)
 );
+```
 
+It will be mapped in the address space of the FemtoRV32, so we need to have
+an interface that fits well with femtosoc memory interface. It will
+have a clock `clk`, a read strobe `rstrb` that goes high each time
+we want to read data, and a `word_address` that contains the address
+of the 32 bits words we want to read. It will appear on `rdata` as soon
+as `rbusy` goes low. Then we got the pins of the SPI Flash memory. It 
+has a clock `CLK`, a chip select `CS_N` (active low), a pin for
+data going from the processor to the SPI Flash called `MOSI` (for
+Master Out Slave In), and a pin for data going from the SPI Flash
+to the processor, called `MISO` (for Master In Slave Out).
+
+Now the SPI protocol is very simple. To read data, one needs to lower
+`CS_N`, then send one bit at a time through `MOSI` the read command
+`h03`, then the 24-bits address. Then data will appear on `MISO`. Data
+are sent and received with the most significant bit first. The raising
+edge of `CLK` should be right in the middle of the bits. It is a bit
+annoying, normally one would need to shift `CLK` by half a clock. It
+is possible to do so using the `DDR` specialized blocks, but then the
+design is non-portable (it is different for Ice40 and ECP5 for
+instance). However there is a simple solution: we can shift the bits
+at the falling edge of `clk` ! Then the design is very simple, there
+will be a shifter for the command and address, and another shifter for
+the received data. There could be a state machine, but it is not
+necessary: if the number of bits to send is non-zero, we are in the
+'sending' state. If the number of bits to receive is non-zero, we are
+in the 'receiving' state. And we go from the 'sending' to the
+'receiving' state right after sending the last bit !
+
+```
    reg [5:0]  snd_bitcount;
    reg [31:0] cmd_addr;
    reg [5:0]  rcv_bitcount;
@@ -41,7 +73,7 @@ module MappedSPIFlash(
    wire       busy = sending | receiving;
    assign     rbusy = !CS_N; 
    
-   assign  MOSI  = sending && cmd_addr[31];
+   assign  MOSI  = cmd_addr[31];
    initial CS_N  = 1'b1;
    assign  CLK   = !CS_N && clk; 
 
@@ -73,8 +105,17 @@ module MappedSPIFlash(
 endmodule
 ```
 
+But there is a strong limitation: using the READ command, speed is
+limited to 50MHz. To go faster, we need to use the FASTREAD command.
+
 Step 2: using FASTREAD command (`h0b`)
 ======================================
+
+For using the FASTREAD command, we need to send 8 "dummy bits" right
+after the command and address. These dummy bits are necessary for the
+SPI flash to have sufficient time to read the address and prepare the
+data. It can be done by adding 8 bits to the send shifter, as follows:
+
 ```
    reg [39:0] cmd_addr;
 ```
@@ -89,6 +130,14 @@ Step 2: using FASTREAD command (`h0b`)
 
 Step 3: using DUAL INPUT FASTREAD command (`h3b`)
 =================================================
+
+Now we can go significantly faster, by reading two bits at a time
+instead of one. It can be done by inverting MOSI once the command, 
+address and dummy bits are sent. Note that MOSI is now a bidirectional
+pin (`inout`). It switches from output to input by writing `Z` to it.
+Then the receive shifter shifts two bits at a time, one read from `MISO`
+as before, and the other one from `MOSI`:
+
 ```
 module MappedSPIFlash(
     input wire 	       clk,          // system clock
@@ -101,8 +150,8 @@ module MappedSPIFlash(
 		             // SPI flash pins
     output wire        CLK,  // clock
     output reg 	       CS_N, // chip select negated (active low)		
-    output wire        MOSI, // master out slave in (data to be sent to flash)
-    inout  wire        MISO  // master in slave out (data received from flash)
+    inout  wire        MOSI, // master out slave in (data to be sent to flash)
+    input  wire        MISO  // master in slave out (data received from flash)
 );
 
    wire MOSI_out;
@@ -156,8 +205,24 @@ module MappedSPIFlash(
 endmodule
 ```
 
-Step 4: using DUAL IO FASTREAD command (`h3b`)
+Step 4: using DUAL IO FASTREAD command (`hbb`)
 ==============================================
+
+We can go even faster: since we got two pins, why not using both of them
+to send the address ? (then we invert them and use both of them to read
+the data as before). Well, the names MOSI and MISO can be misleading, so
+now we use instead the two-bits bidirectional signal IO. There is a
+gotcha: the command is sent only through MOSI, as before (this is
+because the chip cannot guess we'll be using both wires *before*
+having received the command !). To do that, I am using a single
+shifter (I do not want to have a shifter for the command and a shifter
+for the address), but I'm duplicating the bits of the command (using 
+the bbyyttee function). To make things even simpler and save some
+LUTs, I have noticed that the dummy bits can be treated when receiving
+(instead of when sending), so I do not need to represent dummy bits
+explicitly in the shifter. 
+
+
 ```
 module MappedSPIFlash(
     input wire 	       clk, // system clock
@@ -234,6 +299,18 @@ module MappedSPIFlash(
    end
 endmodule
 ```
+
+Step 5: going even faster
+=========================
+There are three things we can do to go even faster:
+- use 4 pins: the chip has a quad IO mode, using 4 bidirectional pins.
+  Unfortunately, *these pins are not wired to FPGA pins* on the ICEStick.
+  One (skipped person) could solder them...
+- use a smaller number of dummy bits: normally they can be configured
+  (I tried with no success for now)
+- use the XIP mode: the XIP mode does not require to send any command.
+  You send the address and get the data directly ! (I tried with no
+  success for now)
 
 References
 =========
