@@ -89,7 +89,7 @@ Step 2: using FASTREAD command (`h0b`)
 
 Step 3: using DUAL INPUT FASTREAD command (`h3b`)
 =================================================
-``
+```
 module MappedSPIFlash(
     input wire 	       clk,          // system clock
     input wire 	       rstrb,        // read strobe		
