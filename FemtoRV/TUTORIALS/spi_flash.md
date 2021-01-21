@@ -298,7 +298,7 @@ Step 5: going even faster
 There are three things we can do to go even faster:
 - use 4 pins: the chip has a quad IO mode, using 4 bidirectional pins.
   Unfortunately, *these pins are not wired to FPGA pins* on the ICEStick.
-  One (skipped person) could solder them...
+  One (skilled person) could solder them...
 - use a smaller number of dummy bits: normally they can be configured
   (I tried with no success for now)
 - use the XIP mode: the XIP mode does not require to send any command.
