@@ -14,5 +14,6 @@ FemtoRV32 Notes
 - [Notes on FemtoRV32 design](DESIGN/FemtoRV32.md)
 - [Notes on RISC-V software compilation and runtime](software.md)
 - [Notes on HDMI](HDMI.md) 
+- [Notes on SPI Flash](spi_flash.md)
 - [Notes on priviledged instruction set](priviledged.md) _(WIP)_
 - [Notes on SDRAM](SDRAM.md) _(WIP)_

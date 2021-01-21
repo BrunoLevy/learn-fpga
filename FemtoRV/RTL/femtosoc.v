@@ -186,8 +186,6 @@ module femtosoc(
       .CLK(spi_clk),
       .CS_N(spi_cs_n),
       .IO({spi_miso,spi_mosi})				   
-//    .MOSI(spi_mosi),
-//    .MISO(spi_miso)		      
    );
 `else   
    wire mem_address_is_io  =  mem_address[22];

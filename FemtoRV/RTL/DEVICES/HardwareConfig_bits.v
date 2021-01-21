@@ -1,18 +1,18 @@
 // We got a total of 20 bits for 1-hot addressing of IO registers.
 
-localparam IO_LEDS_bit              = 0;  // RW four leds
-localparam IO_UART_DAT_bit          = 1;  // RW write: data to send (8 bits) read: received data (8 bits)
-localparam IO_UART_CNTL_bit         = 2;  // R  status. bit 8: valid read data. bit 9: busy sending
-localparam IO_SSD1351_CNTL_bit      = 3;  // W  Oled display control
-localparam IO_SSD1351_CMD_bit       = 4;  // W  Oled display commands (8 bits)
-localparam IO_SSD1351_DAT_bit       = 5;  // W  Oled display data (8 bits)
-localparam IO_SSD1351_DAT16_bit     = 6;  // W  Oled display data (16 bits)
-localparam IO_MAX7219_DAT_bit       = 7;  // W  led matrix data (16 bits)
-localparam IO_SPI_FLASH_bit         = 8;  // RW write: SPI address (24 bits) read: data (1 byte) 
-localparam IO_SDCARD_bit            = 9;  // RW write: bit 0: mosi  bit 1: clk   bit 2: csn read: miso
-localparam IO_BUTTONS_bit           = 10; // R  buttons state
-localparam IO_FGA_CNTL_bit          = 11; // RW write: send command  read: get VSync/HSync/MemBusy/X/Y state
-localparam IO_FGA_DAT_bit           = 12; // W  write: write pixel data
+localparam IO_LEDS_bit                  = 0;  // RW four leds
+localparam IO_UART_DAT_bit              = 1;  // RW write: data to send (8 bits) read: received data (8 bits)
+localparam IO_UART_CNTL_bit             = 2;  // R  status. bit 8: valid read data. bit 9: busy sending
+localparam IO_SSD1351_CNTL_bit          = 3;  // W  Oled display control
+localparam IO_SSD1351_CMD_bit           = 4;  // W  Oled display commands (8 bits)
+localparam IO_SSD1351_DAT_bit           = 5;  // W  Oled display data (8 bits)
+localparam IO_SSD1351_DAT16_bit         = 6;  // W  Oled display data (16 bits)
+localparam IO_MAX7219_DAT_bit           = 7;  // W  led matrix data (16 bits)
+localparam IO_SPI_FLASH_bit             = 8;  // RW write: SPI address (24 bits) read: data (1 byte) 
+localparam IO_SDCARD_bit                = 9;  // RW write: bit 0: mosi  bit 1: clk   bit 2: csn read: miso
+localparam IO_BUTTONS_bit               = 10; // R  buttons state
+localparam IO_FGA_CNTL_bit              = 11; // RW write: send command  read: get VSync/HSync/MemBusy/X/Y state
+localparam IO_FGA_DAT_bit               = 12; // W  write: write pixel data
 
 // The three constant hardware config registers, using the three last bits of IO address space
 localparam IO_HW_CONFIG_RAM_bit     = 17;  // R  total quantity of RAM, in bytes

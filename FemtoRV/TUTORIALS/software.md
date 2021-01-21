@@ -422,9 +422,8 @@ The executable are produced by:
 $ cd FIRMWARE/EXAMPLES
 $ make xxx.elf
 ```
-(you can also `make everything`, but do not install all of them on the
-SDCard, because the interface of FemtOS is very crappy, it does not work
-if the list does not fit on the screen, to be fixed). Now if you look at
+(you can also `make everything` and copy all the executables to the SDCard). 
+Now if you look at
 the rule in `FIRMWARE/EXAMPLES/Makefile`, it is very simple:
 ```
 %.elf: %.o $(RV_BINARIES)
@@ -452,9 +451,43 @@ For the first option, I will need to learn much more about the ELF
 format. For the second option, I will need to implement priviledged
 instructions and exceptions. This is probably what I'll do next.
 
+Running programs from the SPI Flash
+-----------------------------------
+
+The IceStick does not have much BRAM (8K in total, 6K available), so
+complex programs cannot fit, and the limit is quickly reached. However,
+it is possible to run code directly from the SPI Flash. In
+`RTL/femtosoc_config.v`, select `RTL/CONFIGS/icestick_spi_flash_config.v`,
+then edit it to select the devices that are installed. It uses the 
+"mini-femtorv32" processor, that has a smaller LUT footprint, and that
+can run code directly from the SPI Flash. Then some examples are
+available in `FIRMWARE/SPI_FLASH`. To compile and install one of the
+programs, e.g. `mandelbrot.c`:
+```
+$ make mandelbrot.prog
+```
+
+Note that it is much sloooowwwwer than running code from BRAM directly,
+this is because the SPI Flash is accessed through a serial protocol,
+that needs 52 cycles for reading a 32-bits word. 
+
+It works as follows: the SPI Flash is mapped at address 0x800000.
+FemtoRV32 is configured to jump directly to this address. Then there
+is a linker script `FIRMWARE/CRT_BAREMETAL/spi_flash.ld` that sends
+the different segments of the code either to the SPI flash or to the
+BRAM. Read-only data (`.rodata`) and small read-only data (`.srodata`)
+segments are sent to the SPI flash, and 
+uninitialized data (`.bss` and `.sbss`) segments are sent to the BRAM.
+We got a problem with initialized data (`.data`, `.sdata`), for now
+they are sent to the SPI flash (but writing to them is simply ignored). 
+To properly handle that, we should have initialization data in the
+SPI flash, copied to BRAM on program startup. It is possible to write
+a simple utility that converts the elf into a binary with initialization
+data at the right place and a startup function that will copy it to 
+BRAM for the `.data` and `.sdata` segments. Maybe I'll do that in the
+future, would be interesting to be able to execute C++ on the IceStick !
+
 _TO BE CONTINUED_
-
-
 
 References and links
 --------------------
