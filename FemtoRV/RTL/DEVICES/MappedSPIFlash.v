@@ -73,15 +73,15 @@ module MappedSPIFlash(
 	 CS_N  <= 1'b0;
 	 IO_oe <= 1'b1;            	 
 	 cmd_addr <= {bbyyttee(8'hbb), 4'b0001, word_address[17:0], 2'b00};
-	 snd_clock_cnt <= 5'd20;
+	 snd_clock_cnt <= 5'd28; // cmd: 8 clocks  address: 12 clocks  dummy: 8 clocks
       end else begin
 	 if(sending) begin
 	    if(snd_clock_cnt == 1) begin
-	       rcv_clock_cnt <= 5'd24; // 32 bits (= 16 clocks) + 8 dummy clocks
+	       rcv_clock_cnt <= 5'd16; // 32 bits, 2 bits per clock
 	       IO_oe <= 1'b0;            
 	    end
 	    snd_clock_cnt <= snd_clock_cnt - 5'd1;
-	    cmd_addr <= {cmd_addr[37:0],2'b00};
+	    cmd_addr <= {cmd_addr[37:0],2'b11};
 	 end
 	 if(receiving) begin
 	    rcv_clock_cnt <= rcv_clock_cnt - 5'd1;

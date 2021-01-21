@@ -49,7 +49,7 @@ to the processor, called `MISO` (for Master In Slave Out).
 Now the SPI protocol is very simple. To read data, one needs to lower
 `CS_N`, then send one bit at a time through `MOSI` the read command
 `h03`, then the 24-bits address. Then data will appear on `MISO`. Data
-are sent and received with the most significant bit first. The raising
+is sent and received with the most significant bit first. The raising
 edge of `CLK` should be right in the middle of the bits. It is a bit
 annoying, normally one would need to shift `CLK` by half a clock. It
 is possible to do so using the `DDR` specialized blocks, but then the
@@ -114,17 +114,13 @@ Step 2: using FASTREAD command (`h0b`)
 For using the FASTREAD command, we need to send 8 "dummy bits" right
 after the command and address. These dummy bits are necessary for the
 SPI flash to have sufficient time to read the address and prepare the
-data. It can be done by adding 8 bits to the send shifter, as follows:
-
-```
-   reg [39:0] cmd_addr;
-```
+data. It can be done simply as follows:
 
 ```
       if(rstrb) begin
 	 CS_N <= 1'b0;
-	 cmd_addr <= {8'h0b, 4'b0001,word_address[17:0], 2'b00, 8'b00000000};
-	 snd_bitcount <= 6'd40;
+	 cmd_addr <= {8'h0b, 4'b0001,word_address[17:0], 2'b00};
+	 snd_bitcount <= 6'd40; // instead of 32 before
 	 ...
 ```
 
@@ -162,7 +158,7 @@ module MappedSPIFlash(
    assign MOSI_in = MOSI;                   
    
    reg [5:0]  snd_bitcount;
-   reg [39:0] cmd_addr;
+   reg [31:0] cmd_addr;
    reg [5:0]  rcv_bitcount;
    reg [31:0] rcv_data;
    wire       sending   = (snd_bitcount != 0);
@@ -182,7 +178,7 @@ module MappedSPIFlash(
    always @(negedge clk) begin
       if(rstrb) begin
 	 CS_N <= 1'b0;
-	 cmd_addr <= {8'h3b, 4'b0001,word_address[17:0], 2'b00, 8'b00000000};
+	 cmd_addr <= {8'h3b, 4'b0001,word_address[17:0], 2'b00};
 	 snd_bitcount <= 6'd40;
       end else begin
 	 if(sending) begin
@@ -190,7 +186,7 @@ module MappedSPIFlash(
 	       rcv_bitcount <= 6'd32;
 	    end
 	    snd_bitcount <= snd_bitcount - 6'd1;
-	    cmd_addr <= {cmd_addr[38:0],1'b0};
+	    cmd_addr <= {cmd_addr[30:0],1'b0};
 	 end
 	 if(receiving) begin
 	    rcv_bitcount <= rcv_bitcount - 6'd2;
@@ -217,10 +213,7 @@ because the chip cannot guess we'll be using both wires *before*
 having received the command !). To do that, I am using a single
 shifter (I do not want to have a shifter for the command and a shifter
 for the address), but I'm duplicating the bits of the command (using 
-the bbyyttee function). To make things even simpler and save some
-LUTs, I have noticed that the dummy bits can be treated when receiving
-(instead of when sending), so I do not need to represent dummy bits
-explicitly in the shifter. 
+the bbyyttee function).  
 
 
 ```
@@ -278,11 +271,11 @@ module MappedSPIFlash(
 	 CS_N  <= 1'b0;
 	 IO_oe <= 1'b1;            	 
 	 cmd_addr <= {bbyyttee(8'hbb), 4'b0001, word_address[17:0], 2'b00};
-	 snd_clock_cnt <= 5'd20;
+	 snd_clock_cnt <= 5'd28; // cmd: 8 clocks  address: 12 clocks  dummy: 8 clocks
       end else begin
 	 if(sending) begin
 	    if(snd_clock_cnt == 1) begin
-	       rcv_clock_cnt <= 5'd24; // 32 bits (= 16 clocks) + 8 dummy clocks
+	       rcv_clock_cnt <= 5'd16; // 32 bits (= 16 clocks) 
 	       IO_oe <= 1'b0;            
 	    end
 	    snd_clock_cnt <= snd_clock_cnt - 5'd1;
