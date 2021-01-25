@@ -185,7 +185,12 @@ module femtosoc(
       .rbusy(mapped_spi_flash_rbusy),
       .CLK(spi_clk),
       .CS_N(spi_cs_n),
-      .IO({spi_miso,spi_mosi})				   
+`ifdef SPI_FLASH_FAST_READ_DUAL_IO				   
+      .IO({spi_miso,spi_mosi})
+`else				   
+      .MISO(spi_miso),
+      .MOSI(spi_mosi)
+`endif				   
    );
 `else   
    wire mem_address_is_io  =  mem_address[22];

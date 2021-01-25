@@ -4,10 +4,6 @@
 //       Bruno Levy, 2020-2021
 //
 // This file: driver for SPI Flash, projected in memory space (readonly)
-//    DUAL IO mode (reads 32 bits in 44 cycles)
-//    Note: unfortunately, QUAD IO is not possible because the IO2 and IO3 pins
-//    are not wire on the IceStick (one may solder a tiny wire and plug it 
-//    to a GPIO pin but I haven't soldering skills for things of that size !!)
 //
 // TODO: go faster with XIP mode and dummy cycles customization
 // - send write enable command                   (06h)
@@ -19,7 +15,227 @@
 // https://media-www.micron.com/-/media/client/global/documents/products/data-sheet/nor-flash/serial-nor/n25q/n25q_32mb_3v_65nm.pdf?rev=27fc6016fc5249adb4bb8f221e72b395
 // https://www.winbond.com/resource-files/w25q128jv%20spi%20revc%2011162016.pdf (not the same chip, mostly compatible, datasheet is easier to read)
 
-module MappedSPIFlash(
+
+// There are four versions (from slowest to fastest)
+//
+// Version (used command)          | cycles per 32-bits read | Specificity           |
+// ----------------------------------------------------------|-----------------------|
+// SPI_FLASH_READ                  | 64 slow (50 MHz)        | Standard              |
+// SPI_FLASH_FAST_READ             | 72 fast (100 MHz)       | Uses dummy cycles     |
+// SPI_FLASH_FAST_READ_DUAL_OUTPUT | 56 fast                 | Reverts MOSI          |
+// SPI_FLASH_FAST_READ_DUAL_IO     | 44 fast                 | Reverts MISO and MOSI |
+
+// One can go even faster by configuring number of dummy cycles (can save up to 4 cycles per read) 
+// and/or using XIP mode (that just requires the address to be send, saves 16 cycles per 32-bits read)
+// (I tried both without success).
+//
+// Most chips support a QUAD IO mode, using four bidirectional pins,
+// however, is not possible because the IO2 and IO3 pins
+// are not wired on the IceStick (one may solder a tiny wire and plug it 
+// to a GPIO pin but I haven't soldering skills for things of that size !!)
+// It is a pity, because one could go really fast with these pins !
+
+// Select version based on the board.
+// The last two versions don't seem to be supported by the chip on the ULX3S
+`ifdef ICE_STICK
+`define SPI_FLASH_FAST_READ_DUAL_IO
+`else
+`define SPI_FLASH_FAST_READ
+`endif
+
+
+
+/********************************************************************************************************************************/
+
+`ifdef SPI_FLASH_READ
+module MappedSPIFlash( 
+    input wire 	       clk,          // system clock
+    input wire 	       rstrb,        // read strobe		
+    input wire [17:0]  word_address, // address of the word to be read, offset from 1Mb
+
+    output wire [31:0] rdata,        // data read
+    output wire        rbusy,        // asserted if busy receiving data			    
+
+		             // SPI flash pins
+    output wire        CLK,  // clock
+    output reg         CS_N, // chip select negated (active low)		
+    output wire        MOSI, // master out slave in (data to be sent to flash)
+    input  wire        MISO  // master in slave out (data received from flash)
+);
+
+   reg [5:0]  snd_bitcount;
+   reg [31:0] cmd_addr;
+   reg [5:0]  rcv_bitcount;
+   reg [31:0] rcv_data;
+   wire       sending   = (snd_bitcount != 0);
+   wire       receiving = (rcv_bitcount != 0);
+   wire       busy = sending | receiving;
+   assign     rbusy = !CS_N; 
+   
+   assign  MOSI  = cmd_addr[31];
+   initial CS_N  = 1'b1;
+   assign  CLK   = !CS_N && clk; 
+
+   // since least significant bytes are read first, we need to swizzle...
+   assign rdata = {rcv_data[7:0],rcv_data[15:8],rcv_data[23:16],rcv_data[31:24]};
+   
+   always @(negedge clk) begin
+      if(rstrb) begin
+	 CS_N <= 1'b0;
+	 cmd_addr <= {8'h03, 4'b0001,word_address[17:0], 2'b00};
+	 snd_bitcount <= 6'd32;
+      end else begin
+	 if(sending) begin
+	    if(snd_bitcount == 1) begin
+	       rcv_bitcount <= 6'd32;
+	    end
+	    snd_bitcount <= snd_bitcount - 6'd1;
+	    cmd_addr <= {cmd_addr[30:0],1'b1};
+	 end
+	 if(receiving) begin
+	    rcv_bitcount <= rcv_bitcount - 6'd1;
+	    rcv_data <= {rcv_data[30:0],MISO};
+	 end
+	 if(!busy) begin
+	    CS_N <= 1'b1;
+	 end
+      end
+   end
+endmodule
+`endif
+
+/********************************************************************************************************************************/
+
+`ifdef SPI_FLASH_FAST_READ
+module MappedSPIFlash( 
+    input wire 	       clk,          // system clock
+    input wire 	       rstrb,        // read strobe		
+    input wire [17:0]  word_address, // address of the word to be read, offset from 1Mb
+
+    output wire [31:0] rdata,        // data read
+    output wire        rbusy,        // asserted if busy receiving data			    
+
+		             // SPI flash pins
+    output wire        CLK,  // clock
+    output reg         CS_N, // chip select negated (active low)		
+    output wire        MOSI, // master out slave in (data to be sent to flash)
+    input  wire        MISO  // master in slave out (data received from flash)
+);
+
+   reg [5:0]  snd_bitcount;
+   reg [31:0] cmd_addr;
+   reg [5:0]  rcv_bitcount;
+   reg [31:0] rcv_data;
+   wire       sending   = (snd_bitcount != 0);
+   wire       receiving = (rcv_bitcount != 0);
+   wire       busy = sending | receiving;
+   assign     rbusy = !CS_N; 
+   
+   assign  MOSI  = cmd_addr[31];
+   initial CS_N  = 1'b1;
+   assign  CLK   = !CS_N && clk; 
+
+   // since least significant bytes are read first, we need to swizzle...
+   assign rdata = {rcv_data[7:0],rcv_data[15:8],rcv_data[23:16],rcv_data[31:24]};
+   
+   always @(negedge clk) begin
+      if(rstrb) begin
+	 CS_N <= 1'b0;
+	 cmd_addr <= {8'h0b, 4'b0001,word_address[17:0], 2'b00};
+	 snd_bitcount <= 6'd40;
+      end else begin
+	 if(sending) begin
+	    if(snd_bitcount == 1) begin
+	       rcv_bitcount <= 6'd32;
+	    end
+	    snd_bitcount <= snd_bitcount - 6'd1;
+	    cmd_addr <= {cmd_addr[30:0],1'b1};
+	 end
+	 if(receiving) begin
+	    rcv_bitcount <= rcv_bitcount - 6'd1;
+	    rcv_data <= {rcv_data[30:0],MISO};
+	 end
+	 if(!busy) begin
+	    CS_N <= 1'b1;
+	 end
+      end
+   end
+endmodule
+`endif
+
+/********************************************************************************************************************************/
+
+`ifdef SPI_FLASH_FAST_READ_DUAL_OUTPUT
+module MappedSPIFlash( 
+    input wire 	       clk,          // system clock
+    input wire 	       rstrb,        // read strobe		
+    input wire [17:0]  word_address, // address of the word to be read, offset from 1Mb
+
+    output wire [31:0] rdata,        // data read
+    output wire        rbusy,        // asserted if busy receiving data			    
+
+		             // SPI flash pins
+    output wire        CLK,  // clock
+    output reg 	       CS_N, // chip select negated (active low)		
+    inout  wire        MOSI, // master out slave in (data to be sent to flash)
+    input  wire        MISO  // master in slave out (data received from flash)
+);
+
+   wire MOSI_out;
+   wire MOSI_in;
+   wire MOSI_oe;
+
+   assign MOSI = MOSI_oe ? MOSI_out : 1'bZ; 
+   assign MOSI_in = MOSI;                   
+   
+   reg [5:0]  snd_bitcount;
+   reg [31:0] cmd_addr;
+   reg [5:0]  rcv_bitcount;
+   reg [31:0] rcv_data;
+   wire       sending   = (snd_bitcount != 0);
+   wire       receiving = (rcv_bitcount != 0);
+   wire       busy = sending | receiving;
+   assign     rbusy = !CS_N; 
+
+   assign  MOSI_oe = !receiving;   
+   assign  MOSI_out = sending && cmd_addr[39];
+
+   initial CS_N = 1'b1;
+   assign  CLK  = !CS_N && clk; 
+
+   // since least significant bytes are read first, we need to swizzle...
+   assign rdata = {rcv_data[7:0],rcv_data[15:8],rcv_data[23:16],rcv_data[31:24]};
+
+   always @(negedge clk) begin
+      if(rstrb) begin
+	 CS_N <= 1'b0;
+	 cmd_addr <= {8'h3b, 4'b0001,word_address[17:0], 2'b00};
+	 snd_bitcount <= 6'd40;
+      end else begin
+	 if(sending) begin
+	    if(snd_bitcount == 1) begin
+	       rcv_bitcount <= 6'd32;
+	    end
+	    snd_bitcount <= snd_bitcount - 6'd1;
+	    cmd_addr <= {cmd_addr[30:0],1'b1};
+	 end
+	 if(receiving) begin
+	    rcv_bitcount <= rcv_bitcount - 6'd2;
+	    rcv_data <= {rcv_data[29:0],MISO,MOSI_in};
+	 end
+	 if(!busy) begin
+	    CS_N <= 1'b1;
+	 end
+      end
+   end
+
+endmodule
+`endif
+
+/********************************************************************************************************************************/
+
+`ifdef SPI_FLASH_FAST_READ_DUAL_IO
+module MappedSPIFlash( 
     input wire 	       clk,          // system clock
     input wire 	       rstrb,        // read strobe		
     input wire [17:0]  word_address, // offset from 1Mb
@@ -94,3 +310,6 @@ module MappedSPIFlash(
    end
 
 endmodule
+`endif
+
+/********************************************************************************************************************************/
