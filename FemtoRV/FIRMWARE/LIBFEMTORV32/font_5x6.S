@@ -2,8 +2,11 @@
 # font by zep,
 # https://www.lexaloffle.com/bbs/?tid=32877
 
-.section .rodata
+.text
 .globl font_5x6
+
+.section .rodata
+.align 4
 .LC0:
 .word 0x00000000
 .word 0x00befbc0
@@ -101,5 +104,6 @@
 .word 0x08fa2000
 .word 0x00084084
 .word 0x0470e704
+
 font_5x6:
     .word .LC0

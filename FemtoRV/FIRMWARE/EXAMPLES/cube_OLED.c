@@ -111,7 +111,12 @@ int main() {
 	}
 	++frame;
         int scaling = (sintab[frame&63]>>8)+400;
-	int filled = (frame & (1 << 6));
+	
+	// Too big to fit in 6k, wireframe mode
+	// causes stack crash... (worked before,
+	// but I did put additional stuff in
+	// libfemtorv32, this is why...)
+	int filled = 1; // (frame & (1 << 6)); 
 	rot_x(1, vertices, vertices);
 	rot_y(1, vertices, vertices);
 	

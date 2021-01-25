@@ -134,6 +134,10 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - A un moment, printf() affichait du garbage. Ca venait
+               des fontes que j'avais mises dans le segment rodata,
+               mais pas bien, à revoir...
+  
              - Mapped SPI flash, fast read mode: j'avais oublié MOSI: cmd_addr[31] -> cmd_addr[39]
 
              - Mapped SPI flash n'etait plus visible dans le registre

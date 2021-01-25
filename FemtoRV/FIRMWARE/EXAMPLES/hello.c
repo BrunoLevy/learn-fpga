@@ -15,14 +15,12 @@ int main() {
    femtosoc_tty_init();
    
    for(;;) {
-      printf("RISC-V FemtoRV32>>> Bonne annee 2021 !\n");
+//    printf("RISC-V FemtoRV32>>> Bonne annee 2021 !\n");
       delay(500);
-      /*
      printf("Hello world !!\n Let me introduce myself, I am FemtoRV32, one of the smallest RISC-V cores\n");
      delay(1000);
      printf("Running now at %d MHz\n", FEMTORV32_FREQ);
      delay(1000);
-       */ 
    }
 
    return 0;
