@@ -487,10 +487,31 @@ data at the right place and a startup function that will copy it to
 BRAM for the `.data` and `.sdata` segments. Maybe I'll do that in the
 future, would be interesting to be able to execute C++ on the IceStick !
 
+C++ --- It is also possible to compile C++ programs for FemtoRV. It
+works on the ULX3S. It can also probably work from SPI Flash with a
+different linker script, but then we will need the adapter
+program/runtime that properly handles `.data` and `.sdata` segments
+(see above).  We will also need an implementation of `sbrk()`. There
+is an example in Claire Wolf's `picorv32`,
+[here](https://github.com/cliffordwolf/picorv32/blob/master/scripts/cxxdemo/syscalls.c).
+It is quite simple, the only tricky thing is how to initialize the brk
+at the end of the code segment, but there is an `_end` symbol defined
+by the linker, somewhere in the linker script, that does the job.  Now
+the C++ standard libraries are huge (more than 1 megabyte), and we
+only got (for now) 256 kBytes. But if we do not use iostreams, then we
+can link with `libsupc++` instead, it has the bare minimum to be able
+to run C++ programs.  You will need also to pass the `-nostdlib` flag
+when linking.  Some examples and the `Makefile` are
+[here](https://github.com/BrunoLevy/learn-fpga/tree/master/FemtoRV/FIRMWARE/CPP_EXAMPLES).
+Note that the 256 kBytes limit is quickly reached. We will need a SDRAM
+controller to have more space !
+
 _TO BE CONTINUED_
 
 References and links
 --------------------
 - In @ultraembedded's [exactstep](https://github.com/ultraembedded/exactstep)
   simulator, there is a libelf-based [elf_load.cpp](https://github.com/ultraembedded/exactstep/blob/master/core/elf_load.cpp)
+- [picorv32 C++ example](https://github.com/cliffordwolf/picorv32/tree/master/scripts/cxxdemo)
+- [Reducing the footprint of C++ programs](http://www.pixelbeat.org/programming/gcc/supc++/)
 
