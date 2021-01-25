@@ -233,7 +233,6 @@ int main(int argc, char** argv) {
   std::string in_filename;
   std::string in_verilog_filename;
   std::string out_hex_filename;
-  std::string out_occ_filename;
   std::string out_bin_filename;
   int bin_start_addr = 0;
   int RAM_SIZE = 0;
@@ -253,8 +252,6 @@ int main(int argc, char** argv) {
       in_verilog_filename = argv[i+1]; 
     } else if(!strcmp(argv[i],"-hex")) {
       out_hex_filename = argv[i+1];       
-    } else if(!strcmp(argv[i],"-occ")) {
-      out_occ_filename = argv[i+1];             
     } else if(!strcmp(argv[i],"-bin")) {
       out_bin_filename = argv[i+1];
     } else if(!strcmp(argv[i],"-bin_start_addr")) {
@@ -269,7 +266,7 @@ int main(int argc, char** argv) {
 
   if(cmdline_error) {
     std::cerr << "usage: " << argv[0]
-	      << " input.rawhex <-verilog femtosoc.v> <-hex out.hex> <-occ out.occ> <-exe out.exe>"
+	      << " input.rawhex|input.elf <-verilog femtosoc.v> <-hex out.hex> <-bin out.bin> <-bin_start_addr addr> <-ram ram_amount>"
 	      << std::endl;
     return 1;
   }

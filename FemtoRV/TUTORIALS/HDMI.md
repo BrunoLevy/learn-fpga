@@ -128,3 +128,4 @@ References
 - [Silice HDMI walkthrough](https://github.com/sylefeb/Silice/tree/master/projects/hdmi_test)
 - [HDMI with audio](https://github.com/hdl-util/hdmi/)
 - [HDMI tutorial (solder own socket)](https://purisa.me/blog/hdmi-on-fpga/)
+- [HDMI software bigbanging beamracer](https://github.com/Wren6991/picodvi)

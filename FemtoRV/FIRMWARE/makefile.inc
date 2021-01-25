@@ -86,10 +86,11 @@ RVCFLAGS=$(OPTIMIZE) $(RVINCS) $(DEVICES) -fno-pic -march=$(ARCH) -mabi=$(ABI) \
         # Note: --no-relax because I'm using gp for fast access to mapped IO.
 RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) $(DEVICES_ASM) $(RVINCS)
 RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax
+RVCPPFLAGS=-fno-exceptions -fno-enforce-eh-specs
 
 #Rule to compile C++ objects
 .cpp.o: $< $(RV_BINARIES)
-	$(RVGPP) $(RVCFLAGS) $(RVUSERCFLAGS) -c $<
+	$(RVGPP) $(RVCFLAGS) $(RVCPPFLAGS) $(RVUSERCFLAGS) -c $<
 
 #Rule to compile C objects
 .c.o: $< $(RV_BINARIES)

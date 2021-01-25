@@ -4,6 +4,7 @@
 #include "HardwareConfig_bits.h"
 #include "FGA.h"
 
+#ifndef RV32_NO_INT_TYPES
 typedef unsigned char          uint8_t;
 typedef unsigned short         uint16_t;
 typedef unsigned int           uint32_t;
@@ -13,6 +14,7 @@ typedef short                  int16_t;
 typedef int                    int32_t;
 typedef long long int          int64_t;
 typedef unsigned int           size_t;
+#endif
 
 /* Standard library */
 extern int  printf(const char *fmt,...); /* supports %s, %d, %x */
@@ -198,13 +200,13 @@ extern void MAX7219(uint32_t address, uint32_t value);
  */
 #define FGA_BASEMEM (void*)(1 << 21)
 
-static inline FGA_setpixel_RGB(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
-  FGA_setpixel(x,y,GL_RGB(R,G,B));
-}
+//static inline void FGA_setpixel_RGB(int x, int y, uint8_t R, uint8_t G, uint8_t B) {
+//  FGA_setpixel(x,y,GL_RGB(R,G,B));
+//}
 
 void FGA_setmode(int mode);
 
-static inline FGA_setpalette(int index, uint8_t R, uint8_t G, uint8_t B) {
+static inline void FGA_setpalette(int index, uint8_t R, uint8_t G, uint8_t B) {
    IO_OUT(IO_FGA_CNTL, 1 | (index << 8) | (R << 16));
    IO_OUT(IO_FGA_CNTL, 2 | (index << 8) | (G << 16));
    IO_OUT(IO_FGA_CNTL, 3 | (index << 8) | (B << 16));   
