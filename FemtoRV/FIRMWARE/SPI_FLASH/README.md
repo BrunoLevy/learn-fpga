@@ -68,7 +68,6 @@ directly from the SPI flash.
 
 Remaining issues
 ----------------
-
 The segments of initialized read-write data cannot be properly mapped
 to memory: intialization data should be put in ROM (SPI flash), and
 the segment should be put in RAM (BRAM), and initialization data copied

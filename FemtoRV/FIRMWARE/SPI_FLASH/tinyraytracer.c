@@ -251,6 +251,7 @@ int main() {
     lights[2] = make_Light(make_vec3( 30, 20,  30), 1.7);
 
     GL_init();
+    GL_clear();
     render(spheres, nb_spheres, lights, nb_lights);
     
     return 0;

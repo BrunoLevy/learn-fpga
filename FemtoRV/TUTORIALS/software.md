@@ -473,32 +473,18 @@ that needs 52 cycles for reading a 32-bits word.
 
 It works as follows: the SPI Flash is mapped at address 0x800000.
 FemtoRV32 is configured to jump directly to this address. Then there
-is a linker script `FIRMWARE/CRT_BAREMETAL/spi_flash.ld` that sends
-the different segments of the code either to the SPI flash or to the
+is a linker script `FIRMWARE/CRT_BAREMETAL/spi_flash.ld`,
+taken from [picorv32](https://github.com/cliffordwolf/picorv32/blob/master/picosoc/sections.lds)
+that sends the different segments of the code either to the SPI flash or to the
 BRAM. Read-only data (`.rodata`) and small read-only data (`.srodata`)
 segments are sent to the SPI flash, and 
-uninitialized data (`.bss` and `.sbss`) segments are sent to the BRAM.
-We got a problem with initialized data (`.data`, `.sdata`), for now
-they are sent to the SPI flash (but writing to them is simply ignored). 
-To properly handle that, we should have initialization data in the
-SPI flash, copied to BRAM on program startup. It is possible to write
-a simple utility that converts the elf into a binary with initialization
-data at the right place and a startup function that will copy it to 
-BRAM for the `.data` and `.sdata` segments. Maybe I'll do that in the
-future, would be interesting to be able to execute C++ on the IceStick !
-
-Plan to handle initialized data segments (`.data`) properly
------------------------------------------------------------
-The way to do it: in Claire Wolf's picorv32, there is a linker script
-that does the job [here](https://github.com/cliffordwolf/picorv32/blob/master/picosoc/sections.lds).
-I still need to understand how it works for *both* putting the initialization data in flash memory
-*and* mapping symbol addresses to RAM. Maybe `AT(_sidata)` means that ? It seems to be the case
-[StackOverflow answer](https://stackoverflow.com/questions/28809372/what-does-region1-at-region2-mean-in-an-ld-linker-script),
-wonderful ! See also [here](https://sourceware.org/binutils/docs/ld/Output-Section-Attributes.html#Output-Section-Attributes).
-We just need a special `crt0.S` that copies the initialization values to the `.data` segment. It needs to know the load address
-of the initialization values, the size, and address in RAM. They can be transmitted to `crt0.S` by defining some symbols in the
-linker script. _WIP_
-
+uninitialized data segments (`.bss` and `.sbss`) are sent to the BRAM.
+Initialized data segments (`.data`, `.sdata`) are sent to the BRAM, and
+have initialization data stored in the SPI flash. Then the 
+[C runtime startup](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/FIRMWARE/CRT_BAREMETAL/crt0_spiflash.S),
+also inspired from [picorv32](https://github.com/cliffordwolf/picorv32/blob/master/picosoc/start.s),
+copies the initialization data from the SPI flash to the BRAM. The start and end address of the memory zone to be copied 
+are exported by the linker script.
 
 C++
 ---

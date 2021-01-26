@@ -305,6 +305,5 @@ module MappedSPIFlash(
 	 end
       end
    end
-
 endmodule
 `endif
