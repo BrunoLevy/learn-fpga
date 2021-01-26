@@ -294,17 +294,12 @@ module MappedSPIFlash(
       end else begin
 	 if(busy) begin
 	    shifter <= {shifter[37:0], (receiving ? IO_in : 2'b11)};
-	    if(dir) begin
-	       if(clock_cnt == 1) begin
-		  clock_cnt <= 5'd16; // 32 bits, 2 bits per clock
-		  IO_oe <= 1'b0;
-		  dir   <= 1'b0;
-	       end else begin
-		  clock_cnt <= clock_cnt - 5'd1;
-	       end
-	    end else begin
-	       clock_cnt <= clock_cnt - 5'd1;
-	    end
+	    clock_cnt <= clock_cnt - 5'd1;	    
+	    if(dir && clock_cnt == 1) begin
+ 	       clock_cnt <= 5'd16; // 32 bits, 2 bits per clock
+	       IO_oe <= 1'b0;
+	       dir   <= 1'b0;
+	    end 
 	 end else begin
 	    CS_N <= 1'b1;
 	 end

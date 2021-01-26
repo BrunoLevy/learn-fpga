@@ -11,6 +11,15 @@ that has only 6Kb of RAM available, it is excellent news, because
 it makes it possible to run much larger programs, and all the RAM is
 available for our data. However there is a price to pay: it is much
 slower than the RAM.
+There are four versions (from slowest to fastest). They are implemented in
+[this file](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/RTL/DEVICES/MappedSPIFlash.v).
+
+| Version (used command)          | cycles per 32-bits read | Specificity           |
+|---------------------------------|-------------------------|-----------------------|
+| SPI_FLASH_READ                  | 64 slow (50 MHz)        | Standard              |
+| SPI_FLASH_FAST_READ             | 72 fast (100 MHz)       | Uses dummy cycles     |
+| SPI_FLASH_FAST_READ_DUAL_OUTPUT | 56 fast                 | Reverts MOSI          |
+| SPI_FLASH_FAST_READ_DUAL_IO     | 44 fast                 | Reverts MISO and MOSI |
 
 
 Step 1: using READ command (`h03`)
@@ -293,7 +302,96 @@ module MappedSPIFlash(
 endmodule
 ```
 
-Step 5: going even faster
+Step 5: LUT golfing
+===================
+This design is quite heavy in terms of LUT usage. It has:
+- a 40-bits shifter for sending the command and address
+- a 32-bits shifter for receiving the data
+- two 5-bits counters for counting the clocks when sending and receiving
+We can save many LUTs (50 to 70) by using a single shifter for sending
+and receiving, and by using a single counter, with an additional `dir` flip-flop
+to keep track of whether we are sending or receiving.
+
+The code in the end is
+slightly less legible, but it is really worth it on the IceStick where
+every LUT counts.
+
+```
+module MappedSPIFlash( 
+    input wire 	       clk,          // system clock
+    input wire 	       rstrb,        // read strobe		
+    input wire [17:0]  word_address, // offset from 1Mb
+
+		      
+    output wire [31:0] rdata, // data read
+    output wire        rbusy, // asserted if busy receiving data 
+
+    output wire        CLK,  // clock
+    output reg 	       CS_N, // chip select negated (active low)		
+    inout wire [1:0]   IO    // two bidirectional IO pins
+);
+
+   reg [4:0]  clock_cnt; // send/receive clock, 2 bits per clock (dual IO)
+   reg [39:0] shifter;   // used for sending and receiving
+
+   reg 	      dir; // 1 if sending, 0 otherwise
+
+   wire       busy      = (clock_cnt != 0);
+   wire       sending   = (dir  && busy);
+   wire       receiving = (!dir && busy);
+   assign     rbusy     = !CS_N; 
+
+   // The two data pins IO0 (=MOSI) and IO1 (=MISO) used in bidirectional mode.
+   reg IO_oe = 1'b1;
+   wire [1:0] IO_out = shifter[39:38];
+   wire [1:0] IO_in  = IO;
+   assign IO = IO_oe ? IO_out : 2'bZZ;
+   
+   initial CS_N = 1'b1;
+   assign  CLK  = !CS_N && clk; // CLK needs to be disabled when not active.
+
+   // since least significant bytes are read first, we need to swizzle...
+   assign rdata={shifter[7:0],shifter[15:8],shifter[23:16],shifter[31:24]};
+
+   // Duplicates the bits (used because when sending command, dual IO is
+   // not active yet, and I do not want to have a separate shifter for
+   // the command and for the args...).
+   function [15:0] bbyyttee;
+      input [7:0] x;
+      begin
+	 bbyyttee = {
+	     x[7],x[7],x[6],x[6],x[5],x[5],x[4],x[4],
+	     x[3],x[3],x[2],x[2],x[1],x[1],x[0],x[0]
+	 }; 	 
+      end
+   endfunction;  
+
+   always @(negedge clk) begin
+      if(rstrb) begin
+	 CS_N  <= 1'b0;
+	 IO_oe <= 1'b1;
+	 dir   <= 1'b1;
+	 shifter <= {bbyyttee(8'hbb), 4'b0001, word_address[17:0], 2'b00};
+	 clock_cnt <= 5'd28; // cmd: 8 clocks  address: 12 clocks  dummy: 8 clocks
+      end else begin
+	 if(busy) begin
+	    shifter <= {shifter[37:0], (receiving ? IO_in : 2'b11)};
+	    clock_cnt <= clock_cnt - 5'd1;	    
+	    if(dir && clock_cnt == 1) begin
+ 	       clock_cnt <= 5'd16; // 32 bits, 2 bits per clock
+	       IO_oe <= 1'b0;
+	       dir   <= 1'b0;
+	    end 
+	 end else begin
+	    CS_N <= 1'b1;
+	 end
+      end
+   end
+endmodule
+```
+
+
+Step 6: going even faster
 =========================
 There are three things we can do to go even faster:
 - use 4 pins: the chip has a quad IO mode, using 4 bidirectional pins.
