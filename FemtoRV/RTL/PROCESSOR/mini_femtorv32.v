@@ -11,7 +11,7 @@
 `include "register_file.v"         // The 31 general-purpose registers
 `include "small_alu.v"             // Used on IceStick, RV32I   
 `include "branch_predicates.v"     // Tests for branch instructions
-`include "mini_decoder.v"          // The instruction decoder
+`include "decoder.v"               // The instruction decoder
 `include "aligned_memory_access.v" // R/W bytes, hwords and words from memory
 
 /********************* Nrv processor *******************************/
@@ -32,8 +32,6 @@ module FemtoRV32 #(
    input wire 	      reset, // set to 0 to reset the processor
    output wire 	      error  // 1 if current instruction could not be decoded
 );
-   assign error = 1'b0; // mini-femtorv32 Does not check for errors.
-
 
    // The internal register that stores the current address,
    // directly wired to the address bus.
@@ -83,6 +81,12 @@ module FemtoRV32 #(
    // The instruction decoder, that reads the current instruction 
    // and generates all the signals from it. It is in fact just a
    // big combinatorial function.
+   
+   /* verilator lint_off PINMISSING */   
+   // unused pins:
+   //  writeBackCSR (no CSR), 
+   //  funcM        (no RV32M), 
+   //  needWaitALU  (this version always latches ALU result)
    NrvDecoder decoder(
      .instr(instr),		     
      .writeBackRegId(writeBackRegId),
@@ -101,9 +105,11 @@ module FemtoRV32 #(
      .isStore(isStore),
      .isJump(isJump),
      .isBranch(isBranch),
-     .imm(imm) 
+     .imm(imm),
+     .error(error) // Just wired to a LED, for signaling (but no logic in FSM to save LUTs)
    );
-
+   /* verilator lint_on PINMISSING */
+   
    /***************************************************************************/
    // The register file. At each cycle, it can read two
    // registers (available at next cycle) and write one.
