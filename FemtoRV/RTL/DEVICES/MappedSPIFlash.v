@@ -329,13 +329,15 @@ module MappedSPIFlash(
     inout wire [1:0]   IO    // two bidirectional IO pins
 );
 
-   reg [4:0]  snd_clock_cnt; // send clock, 2 bits per clock (dual IO)
-   reg [39:0] shifter;       // used for sending and receiving
-   reg [4:0]  rcv_clock_cnt; // receive clock, 2 bits per clock (dual IO)
-   wire       sending   = (snd_clock_cnt != 0);
-   wire       receiving = (rcv_clock_cnt != 0);
-   wire       busy = sending | receiving;
-   assign     rbusy = !CS_N; 
+   reg [4:0]  clock_cnt; // send/receive clock, 2 bits per clock (dual IO)
+   reg [39:0] shifter;   // used for sending and receiving
+
+   reg 	      dir; // 1 if sending, 0 otherwise
+
+   wire       busy      = (clock_cnt != 0);
+   wire       sending   = (dir  && busy);
+   wire       receiving = (!dir && busy);
+   assign     rbusy     = !CS_N; 
 
    // The two data pins IO0 (=MOSI) and IO1 (=MISO) used in bidirectional mode.
    reg IO_oe = 1'b1;
@@ -365,24 +367,25 @@ module MappedSPIFlash(
    always @(negedge clk) begin
       if(rstrb) begin
 	 CS_N  <= 1'b0;
-	 IO_oe <= 1'b1;            	 
+	 IO_oe <= 1'b1;
+	 dir   <= 1'b1;
 	 shifter <= {bbyyttee(8'hbb), 4'b0001, word_address[17:0], 2'b00};
-	 snd_clock_cnt <= 5'd28; // cmd: 8 clocks  address: 12 clocks  dummy: 8 clocks
+	 clock_cnt <= 5'd28; // cmd: 8 clocks  address: 12 clocks  dummy: 8 clocks
       end else begin
 	 if(busy) begin
 	    shifter <= {shifter[37:0], (receiving ? IO_in : 2'b11)};
-	 end
-	 if(sending) begin
-	    if(snd_clock_cnt == 1) begin
-	       rcv_clock_cnt <= 5'd16; // 32 bits, 2 bits per clock
-	       IO_oe <= 1'b0;            
+	    if(dir) begin
+	       if(clock_cnt == 1) begin
+		  clock_cnt <= 5'd16; // 32 bits, 2 bits per clock
+		  IO_oe <= 1'b0;
+		  dir   <= 1'b0;
+	       end else begin
+		  clock_cnt <= clock_cnt - 5'd1;
+	       end
+	    end else begin
+	       clock_cnt <= clock_cnt - 5'd1;
 	    end
-	    snd_clock_cnt <= snd_clock_cnt - 5'd1;
-	 end
-	 if(receiving) begin
-	    rcv_clock_cnt <= rcv_clock_cnt - 5'd1;
-	 end
-	 if(!busy) begin
+	 end else begin
 	    CS_N <= 1'b1;
 	 end
       end
