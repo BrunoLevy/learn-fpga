@@ -487,7 +487,22 @@ data at the right place and a startup function that will copy it to
 BRAM for the `.data` and `.sdata` segments. Maybe I'll do that in the
 future, would be interesting to be able to execute C++ on the IceStick !
 
-C++ --- It is also possible to compile C++ programs for FemtoRV. It
+Plan to handle initialized data segments (`.data`) properly
+-----------------------------------------------------------
+The way to do it: in Claire Wolf's picorv32, there is a linker script
+that does the job [here](https://github.com/cliffordwolf/picorv32/blob/master/picosoc/sections.lds).
+I still need to understand how it works for *both* putting the initialization data in flash memory
+*and* mapping symbol addresses to RAM. Maybe `AT(_sidata)` means that ? It seems to be the case
+[StackOverflow answer](https://stackoverflow.com/questions/28809372/what-does-region1-at-region2-mean-in-an-ld-linker-script),
+wonderful ! See also [here](https://sourceware.org/binutils/docs/ld/Output-Section-Attributes.html#Output-Section-Attributes).
+We just need a special `crt0.S` that copies the initialization values to the `.data` segment. It needs to know the load address
+of the initialization values, the size, and address in RAM. They can be transmitted to `crt0.S` by defining some symbols in the
+linker script. _WIP_
+
+
+C++
+---
+It is also possible to compile C++ programs for FemtoRV. It
 works on the ULX3S. It can also probably work from SPI Flash with a
 different linker script, but then we will need the adapter
 program/runtime that properly handles `.data` and `.sdata` segments
@@ -514,4 +529,5 @@ References and links
   simulator, there is a libelf-based [elf_load.cpp](https://github.com/ultraembedded/exactstep/blob/master/core/elf_load.cpp)
 - [picorv32 C++ example](https://github.com/cliffordwolf/picorv32/tree/master/scripts/cxxdemo)
 - [Reducing the footprint of C++ programs](http://www.pixelbeat.org/programming/gcc/supc++/)
-
+- [Linker script / section attributes](https://sourceware.org/binutils/docs/ld/Output-Section-Attributes.html#Output-Section-Attributes)
+- [picorv32 linker script](https://github.com/cliffordwolf/picorv32/blob/master/picosoc/sections.lds)

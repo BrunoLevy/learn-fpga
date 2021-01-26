@@ -308,6 +308,7 @@ This design is quite heavy in terms of LUT usage. It has:
 - a 40-bits shifter for sending the command and address
 - a 32-bits shifter for receiving the data
 - two 5-bits counters for counting the clocks when sending and receiving
+
 We can save many LUTs (50 to 70) by using a single shifter for sending
 and receiving, and by using a single counter, with an additional `dir` flip-flop
 to keep track of whether we are sending or receiving.
