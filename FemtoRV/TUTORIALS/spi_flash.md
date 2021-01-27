@@ -407,5 +407,6 @@ There are three things we can do to go even faster:
 References
 =========
 
-- [IceStick SPI Flash DataSheet](https://media-www.micron.com/-/media/client/global/documents/products/data-sheet/nor-flash/serial-nor/n25q/n25q_32mb_3v_65nm.pdf?rev=27fc6016fc5249adb4bb8f221e72b395)
+- [IceStick SPI Flash DataSheet (1)](https://media-www.micron.com/-/media/client/global/documents/products/data-sheet/nor-flash/serial-nor/n25q/n25q_32mb_3v_65nm.pdf?rev=27fc6016fc5249adb4bb8f221e72b395)
+- [IceStick SPI Flash DataSheet (2)](http://www.bdtic.com/DataSheet/Micron/N25Q32_18volt.pdf)
 - [Another DataSheet (easier to read)](https://www.winbond.com/resource-files/w25q128jv%20spi%20revc%2011162016.pdf)

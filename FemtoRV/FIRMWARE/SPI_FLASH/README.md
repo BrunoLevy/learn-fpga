@@ -11,36 +11,29 @@ a more advanced SPI controller).
 Instructions
 ============
 
-*Step 1* Configure in `RTL/CONFIGS/icestick_config.v` 
+*Step 1* Configure femtosoc (`RTL/femtosoc_config.v`)
 -----------------------------------------------------
 
 ```
-`define NRV_IO_LEDS
-   ... \\ activate the devices that you need
-`define NRV_MAPPED_SPI_FLASH \\ you will need this one
-`define NRV_RAM 6144
-`define NRV_MINIRV32
-`define NRV_IO_HARDWARE_CONFIG
-`define NRV_RUN_FROM_SPI_FLASH
+//`include "CONFIGS/icestick_config.v"
+`include "CONFIGS/icestick_spi_flash_config.v" // This one to run from spi-flash 
 ```
 
-*Step 2* Replace the firmware with one that jumps to the SPI flash
-------------------------------------------------------------------
-(normally there will be a `NRV_RESET_ADDR` to do that, but it does
-not seem to work for no)
-```
-$ cd FIRMWARE
-$ ./make_firmware.sh ASM_EXAMPLES/jump_to_spi_flash.S
-$ cd ..
-```
+This does three things:
+- include a `MappedSPIFlash` peripheral, mapped in the address space of FemtoRV32
+- select the version of FemtoRV32 that waits for the flash memory when fetching instructions
+- configure the reset address (where the processor jumps on reset) to the flash memory
 
-*Step 3* Synthethize and flash
+
+You may also want to configure the peripherals you plan to use in `CONFIGS/icestick_spi_flash_config.v`.
+
+*Step 2* Synthethize and flash
 ------------------------------
 ```
 $ make ICESTICK
 ```
 
-*Step 4* Generate a blinker that runs from SPI flash
+*Step 3* Generate a blinker that runs from SPI flash
 ----------------------------------------------------
 ```
 $ cd FIRMWARE/SPI_FLASH
@@ -66,18 +59,11 @@ routines, and `tinyraytracer.c`. They are really super slow, but it
 is interesting to see that large programs can run on the IceStick
 directly from the SPI flash. 
 
-Remaining issues
-----------------
-The segments of initialized read-write data cannot be properly mapped
-to memory: intialization data should be put in ROM (SPI flash), and
-the segment should be put in RAM (BRAM), and initialization data copied
-there at program startup. For now, these segments are mapped to ROM,
-because if mapped to RAM, the execution image becomes too large (spans
-the entire address space) and can no longer be stored on the SPI flash. 
-It would be possible to have a conversion program, that reads the elf
-executable, puts initialization data at the right locations in ROM,
-and generates a code that copies them to the segments in RAM.
+WIP
+---
+Make it faster, using the XIP protocol, and configure number of dummy
+cycles (tried without success).
 
-It is probably possible to make it 10x faster, by using a faster clock for
-the SPI, by using DDR blocks to generate the SPI clock, by using faster SPI
-protocols (dual IO)...
+Links
+-----
+- [Compiling software for the FemtoRV32](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/TUTORIALS/software.md)

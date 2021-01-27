@@ -3,11 +3,7 @@
 // Game of life, displayed on the 8x8 led matrix
 // (naive implementation)
 
-// We cannot declare and initialize variables at the 
-// same time, so here we declare the const array, that
-// will be stored in the SPI flash.
-const char buff_init[8][8] = 
-{
+char buff1[8][8] = {
    {0,0,0,0,0,0,0,0},
    {0,0,0,0,0,0,0,0},
    {0,0,0,0,0,1,0,0},
@@ -18,9 +14,6 @@ const char buff_init[8][8] =
    {1,1,1,0,0,0,0,0}
 };
 
-// And here the two arrays, that will be stored in BRAM.
-// At initialization, we copy buff_init into buff1.
-char buff1[8][8];
 char buff2[8][8];
 
 void next() {
@@ -67,15 +60,12 @@ void show() {
 }
 
 int main() {
-   MAX7219_init();
-   for(int j=0; j<8; ++j) {
-      for(int i=0; i<8; ++i) {	 
-	 buff1[i][j] = buff_init[i][j];
-      }
-   }
+   MAX7219_tty_init();
+   printf("Game of Life ");
+   delay(1000);
    for(;;) {
       show();
-      delay(50);
+      delay(150);
       next();
    }
 }
