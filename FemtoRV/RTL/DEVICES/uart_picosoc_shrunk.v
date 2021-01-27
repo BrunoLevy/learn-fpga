@@ -117,7 +117,7 @@ module buart #(
 
    /************* Transmitter ******************************/
    
-    reg [9:0] send_pattern;
+    reg [9:0] send_pattern = 1;
     reg [3:0] send_bitcnt;
     assign busy = |send_bitcnt;
     assign tx = send_pattern[0];

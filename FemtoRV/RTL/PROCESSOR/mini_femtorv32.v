@@ -11,13 +11,15 @@
 `include "register_file.v"         // The 31 general-purpose registers
 `include "small_alu.v"             // Used on IceStick, RV32I   
 `include "branch_predicates.v"     // Tests for branch instructions
+`include "mini_decoder.v"          // The instruction decoder
 `include "decoder.v"               // The instruction decoder
 `include "aligned_memory_access.v" // R/W bytes, hwords and words from memory
 
 /********************* Nrv processor *******************************/
 
 module FemtoRV32 #(
-  parameter       ADDR_WIDTH         = 24 // width of the address bus
+  parameter       ADDR_WIDTH         = 24,   // width of the address bus
+  parameter       USE_MINI_DECODER   = 1'b0  // supposed to reduce LUT cnt (but not)
 ) (
    input 	      clk,
 
@@ -82,33 +84,55 @@ module FemtoRV32 #(
    // and generates all the signals from it. It is in fact just a
    // big combinatorial function.
    
-   /* verilator lint_off PINMISSING */   
-   // unused pins:
-   //  writeBackCSR (no CSR), 
-   //  funcM        (no RV32M), 
-   //  needWaitALU  (this version always latches ALU result)
-   NrvDecoder decoder(
-     .instr(instr),		     
-     .writeBackRegId(writeBackRegId),
-     .writeBackEn(writeBackEn),
-     .writeBackALU(writeBackALU),
-     .writeBackAplusB(writeBackAplusB),		      
-     .writeBackPCplus4(writeBackPCplus4),
-     .inRegId1(regId1),
-     .inRegId2(regId2),
-     .aluInSel1(aluInSel1), 
-     .aluInSel2(aluInSel2),
-     .func(func),
-     .funcQual(funcQual),
-     .isALU(isALU),		      
-     .isLoad(isLoad),
-     .isStore(isStore),
-     .isJump(isJump),
-     .isBranch(isBranch),
-     .imm(imm),
-     .error(error) // Just wired to a LED, for signaling (but no logic in FSM to save LUTs)
-   );
-   /* verilator lint_on PINMISSING */
+   generate
+   if(USE_MINI_DECODER) begin
+     assign error = 1'b0; // MiniRV32 does not check for errors.
+     NrvMiniDecoder decoder(
+       .instr(instr),		     
+       .writeBackRegId(writeBackRegId),
+       .writeBackEn(writeBackEn),
+       .writeBackALU(writeBackALU),
+       .writeBackAplusB(writeBackAplusB),		      
+       .writeBackPCplus4(writeBackPCplus4),
+       .inRegId1(regId1),
+       .inRegId2(regId2),
+       .aluInSel1(aluInSel1), 
+       .aluInSel2(aluInSel2),
+       .func(func),
+       .funcQual(funcQual),
+       .isALU(isALU),		      
+       .isLoad(isLoad),
+       .isStore(isStore),
+       .isJump(isJump),
+       .isBranch(isBranch),
+       .imm(imm)
+     );
+   end else begin 
+     /* verilator lint_off PINMISSING */      
+     NrvDecoder decoder(
+       .instr(instr),		     
+       .writeBackRegId(writeBackRegId),
+       .writeBackEn(writeBackEn),
+       .writeBackALU(writeBackALU),
+       .writeBackAplusB(writeBackAplusB),		      
+       .writeBackPCplus4(writeBackPCplus4),
+       .inRegId1(regId1),
+       .inRegId2(regId2),
+       .aluInSel1(aluInSel1), 
+       .aluInSel2(aluInSel2),
+       .func(func),
+       .funcQual(funcQual),
+       .isALU(isALU),		      
+       .isLoad(isLoad),
+       .isStore(isStore),
+       .isJump(isJump),
+       .isBranch(isBranch),
+       .imm(imm),
+       .error(error)
+     );
+     /* verilator lint_on PINMISSING */            
+   end
+   endgenerate
    
    /***************************************************************************/
    // The register file. At each cycle, it can read two

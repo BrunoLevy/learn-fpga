@@ -166,7 +166,7 @@ FPGAs:
 
 Ice40 FPGAs (iceprog)
 ---------------------
-Create in `/etc/udev/rules.d` a file `53-lattive-ftdi.rules` 
+Create in `/etc/udev/rules.d` a file `53-lattice-ftdi.rules` 
 with the following content:
 ```
 ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0660", GROUP="plugdev", TAG+="uaccess"

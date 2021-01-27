@@ -2,6 +2,7 @@ PROJECTNAME=femtosoc
 VERILOGS=RTL/$(PROJECTNAME).v
 
 include BOARDS/icestick.mk
+include BOARDS/icestick_mecrisp_quintus.mk
 include BOARDS/icefeather.mk
 include BOARDS/icesugar.mk
 include BOARDS/icesugar_nano.mk
@@ -18,7 +19,7 @@ all:
 
 clean:
 	rm -f *.timings *.asc *.bin *.bit *config *.json *.svf \
-              *~ *.vvp *.dfu *.rpt
+              *~ *.vvp *.dfu *.rpt *.blif femtosoc.txt
 
 
 FIRMWARE/firmware.hex:

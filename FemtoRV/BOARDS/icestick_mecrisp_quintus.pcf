@@ -1,0 +1,51 @@
+set_io D1 99
+set_io D2 98
+set_io D3 97
+set_io D4 96
+set_io D5 95
+
+set_io CTS 4
+set_io RTS 7
+
+set_io TXD 8
+set_io RXD 9
+
+set_io oscillator 21
+set_io reset_button 3
+
+set_io spi_cs_n 71
+set_io spi_miso 68
+set_io spi_mosi 67
+set_io spi_clk  70
+
+set_io IR_TXD 105
+set_io IR_RXD 106
+set_io IR_SD  107
+
+set_io PIO1_02 78
+set_io PIO1_03 79
+set_io PIO1_04 80
+set_io PIO1_05 81
+set_io PIO1_06 87
+set_io PIO1_07 88
+set_io PIO1_08 90
+set_io PIO1_09 91
+
+set_io PIO0_02 112
+set_io PIO0_03 113
+set_io PIO0_04 114
+set_io PIO0_05 115
+set_io PIO0_06 116
+set_io PIO0_07 117
+set_io PIO0_08 118
+set_io PIO0_09 119
+
+set_io PIO2_10 44
+set_io PIO2_11 45
+set_io PIO2_12 47
+set_io PIO2_13 48
+set_io PIO2_14 56
+set_io PIO2_15 60
+set_io PIO2_16 61
+set_io PIO2_17 62
+

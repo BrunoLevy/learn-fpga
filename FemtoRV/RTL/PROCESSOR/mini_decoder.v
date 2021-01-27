@@ -7,7 +7,7 @@
 // are always ones). Tried on 5 bits -> more LUTs. Tried also
 // with casez -> more LUTs. 
 
-module NrvDecoder(
+module NrvMiniDecoder(
     input wire [31:0] instr,          // The instruction to be decoded
     output wire [4:0] writeBackRegId, // The register to be written back
     output reg 	      writeBackEn,    // Asserted when writing to a reg.
@@ -50,7 +50,7 @@ module NrvDecoder(
    assign writeBackRegId = instr[11:7];
    assign inRegId1       = instr[19:15] & {5{inRegId1Sel}}; // Internal sig InRegId1Sel used to force zero in reg1
    assign inRegId2       = instr[24:20];             // (because I'm making maximum reuse of the adder of the ALU)
-   assign func          = instr[14:12];  
+   assign func           = instr[14:12];  
 
    // The five immediate formats, see the RiscV reference, Fig. 2.4 p. 12
    // Note: they all do sign expansion (sign bit is instr[31]), except the U format

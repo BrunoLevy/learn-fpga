@@ -517,3 +517,4 @@ References and links
 - [Reducing the footprint of C++ programs](http://www.pixelbeat.org/programming/gcc/supc++/)
 - [Linker script / section attributes](https://sourceware.org/binutils/docs/ld/Output-Section-Attributes.html#Output-Section-Attributes)
 - [picorv32 linker script](https://github.com/cliffordwolf/picorv32/blob/master/picosoc/sections.lds)
+- [Well written tutorial on linker scripts](https://interrupt.memfault.com/blog/how-to-write-linker-scripts-for-firmware)
