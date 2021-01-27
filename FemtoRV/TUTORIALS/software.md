@@ -486,6 +486,33 @@ also inspired from [picorv32](https://github.com/cliffordwolf/picorv32/blob/mast
 copies the initialization data from the SPI flash to the BRAM. The start and end address of the memory zone to be copied 
 are exported by the linker script.
 
+SPI Flash and Function attributes
+---------------------------------
+
+The SPI Flash is much slower than the BRAM. It takes 44 cycles to
+fetch an instruction from it ! (to be compared with 1 cycle for BRAM).
+Some functions are used often, and it may be useful to install them
+in fast memory instead of SPI Flash. The linker script `spi_flash.ld`
+in `CRT_BAREMETAL` installs one copy of the `__mulsi3`,`__divsi3` and
+`__udivsi3` functions, used to multiply and divide integer numbers 
+on `RV32I` processors, and it is worth it (they are very short, so 
+they do not eat up too much BRAM). Now you may want to install some 
+of your own functions in BRAM. Here is an example about how to do it,
+in `FIRMWARE/SPI_FLASH/riscv_logo_OLED.v`:
+```
+void draw_frame(int frame) __attribute((section(".fastcode"))); 
+
+void draw_frame(int frame) {
+....
+}
+```
+The first line declares a GCC attribute indicating in which section
+the function should reside. Then the linker script
+`FIRMWARE/CRT_BAREMETAL/spi_flash.ld` will know that this function
+should be put in the `.data_and_fastcode` segment that resides in
+BRAM and that is copied there at program startup by the C runtime
+`FIRMWARE/CRT_BAREMETAL/crt0_spiflash.S`.
+
 C++
 ---
 It is also possible to compile C++ programs for FemtoRV. It
