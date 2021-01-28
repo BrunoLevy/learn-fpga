@@ -24,19 +24,34 @@ SECTIONS {
         . = ALIGN(4);
         _sdata = .;        /* create a global symbol at data start; used by startup code in order to initialise the .data section in RAM */
         _ram_start = .;    /* create a global symbol at ram start (e.g., for garbage collector) */
-        . = ALIGN(4);	
-        *(.data)           
+        . = ALIGN(4);
+	
+	/* Initialized data */
+        *(.data)                     
         *(.data*)          
         *(.sdata)          
-        *(.sdata*)         
-	*(.fastcode*)      /* functions with attribute((section(".fastcode"))) will be copied to RAM */
-	div.o(.text)       /* div and mul are copied to RAM */
-	mul.o(.text)       
+        *(.sdata*)
+	
+	/* functions with attribute((section(".fastcode"))) */	
+	*(.fastcode*)      
+	
+	/* integer mul and div */
+	*/libgcc.a:muldi3.o(.text)
+	*/libgcc.a:div.o(.text)	
+
+        /* floating point add,mul,div                   */
+	/* (commented-out because it takes more space ! */
+/*
+	*/libgcc.a:adddsf3.o(.text)
+	*/libgcc.a:mulsf3.o(.text)
+	*/libgcc.a:divsf3.o(.text)
+*/
+
         . = ALIGN(4);
         _edata = .;        /* define a global symbol at data end; used by startup code in order to initialise the .data section in RAM */
     } > RAM
 
-    /* The program code and other data goes into FLASH */
+    /* The (non fastcode) program code and other data goes into FLASH */
     .text : {
         . = ALIGN(4);
         crt0_spiflash.o(.text)  /* c runtime initialization (code) */
