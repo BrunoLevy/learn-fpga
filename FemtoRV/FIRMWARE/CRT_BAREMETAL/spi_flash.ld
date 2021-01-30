@@ -47,6 +47,10 @@ SECTIONS {
 	*/libgcc.a:divsf3.o(.text)
  */
 
+        /* graphics */
+	*/libfemtorv32.a:femtoGLfill_poly.o(.text) */
+
+
         . = ALIGN(4);
         _edata = .;        /* define a global symbol at data end; used by startup code in order to initialise the .data section in RAM */
     } > RAM
