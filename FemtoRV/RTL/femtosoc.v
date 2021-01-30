@@ -180,7 +180,7 @@ module femtosoc(
    MappedSPIFlash mapped_spi_flash(
       .clk(clk),
       .rstrb(mem_rstrb && mem_address_is_spi_flash),
-      .word_address(mem_address[19:2]),
+      .word_address(mem_address[21:2]),
       .rdata(mapped_spi_flash_rdata),
       .rbusy(mapped_spi_flash_rbusy),
       .CLK(spi_clk),

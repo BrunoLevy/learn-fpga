@@ -484,7 +484,8 @@ have initialization data stored in the SPI flash. Then the
 [C runtime startup](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/FIRMWARE/CRT_BAREMETAL/crt0_spiflash.S),
 also inspired from [picorv32](https://github.com/cliffordwolf/picorv32/blob/master/picosoc/start.s),
 copies the initialization data from the SPI flash to the BRAM. The start and end address of the memory zone to be copied 
-are exported by the linker script.
+are exported by the linker script. If you want to learn more about
+linker scripts, see the links at the end of this page. 
 
 SPI Flash and Function attributes
 ---------------------------------
@@ -545,3 +546,4 @@ References and links
 - [Linker script / section attributes](https://sourceware.org/binutils/docs/ld/Output-Section-Attributes.html#Output-Section-Attributes)
 - [picorv32 linker script](https://github.com/cliffordwolf/picorv32/blob/master/picosoc/sections.lds)
 - [Well written tutorial on linker scripts](https://interrupt.memfault.com/blog/how-to-write-linker-scripts-for-firmware)
+- [Another Well written tutorial on linker scripts](https://blog.thea.codes/the-most-thoroughly-commented-linker-script/)

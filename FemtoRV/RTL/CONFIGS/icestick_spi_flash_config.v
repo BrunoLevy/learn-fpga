@@ -22,7 +22,7 @@
 
 /************************* Advanced processor configuration *********************************************************/
 
-`define NRV_RESET_ADDR 24'h800000  // Start at beginning of mapped SPI flash
+`define NRV_RESET_ADDR 24'h810000  // Jump execution to SPI Flash (Mapped at 800000h, + leave 64k (10000h) for FPGA bitstream)
 
 `define NRV_IO_HARDWARE_CONFIG // Comment-out to disable hardware config registers mapped in IO-Space
                                // (only if you use your own firmware, libfemtorv32 depends on it)

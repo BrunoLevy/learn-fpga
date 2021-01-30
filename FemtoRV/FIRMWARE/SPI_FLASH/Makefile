@@ -17,5 +17,5 @@ everything: $(ALL_PROGRAMS)
 	$(RVOBJCOPY) $< $@ -O binary
 
 %.prog: %.bin
-	iceprog -o 1M $<
+	iceprog -o 64k $<
 
