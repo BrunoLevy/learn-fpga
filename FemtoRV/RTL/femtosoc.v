@@ -21,7 +21,6 @@
 
 `include "DEVICES/uart.v"           // The UART (serial port over USB)
 `include "DEVICES/SSD1351_1331.v"   // The OLED display
-`include "DEVICES/SPIFlash.v"       // Read data from the serial flash chip
 `include "DEVICES/MappedSPIFlash.v" // Idem, but mapped in memory
 `include "DEVICES/MAX7219.v"        // 8x8 led matrix driven by a MAX7219 chip
 `include "DEVICES/LEDs.v"           // Driver for 4 leds
@@ -394,30 +393,6 @@ HardwareConfig hwconfig(
    );
 `endif   
    
-/********************* SPI flash reader *****************************/
-/* 
- * This one only has a .wbusy signal, going high while address is sent
- * and while data is read, then data is latched, and we do not need
- * a .rbusy signal.
- */
-`ifdef NRV_IO_SPI_FLASH
-   wire spi_flash_wbusy;
-   wire [31:0] spi_flash_rdata;
-   SPIFlash spi_flash(
-      .clk(clk),
-      .rstrb(io_rstrb),
-      .wstrb(io_wstrb),
-      .sel(io_word_address[IO_SPI_FLASH_bit]),
-      .wdata(io_wdata),
-      .wbusy(spi_flash_wbusy),		      
-      .rdata(spi_flash_rdata),
-      .CLK(spi_clk),
-      .CS_N(spi_cs_n),
-      .MOSI(spi_mosi),
-      .MISO(spi_miso)		      
-   );
-`endif
-
 /********************* SPI SDCard  *********************************/
 /*
  * This one has an output register directly wired to the CLK,MOSI,CS_N
@@ -471,9 +446,6 @@ always @(posedge clk) begin
 `ifdef NRV_IO_UART
 	    | uart_rdata
 `endif	    
-`ifdef NRV_IO_SPI_FLASH
-	    | spi_flash_rdata
-`endif
 `ifdef NRV_IO_SDCARD
 	    | sdcard_rdata
 `endif

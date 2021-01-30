@@ -39,11 +39,6 @@
 uint32_t spi_addr = 0;
 
 /*
- * Tests whether IO mode or mapped memory mode is active
- */
-int spi_mapped_mode = 0;
-
-/*
  * Word address and cached word used in mapped mode
  */
 uint32_t spi_word_addr = 0;
@@ -56,8 +51,7 @@ union {
  * Restarts reading from the beginning of the stream.
  */
 void spi_reset() {
-  spi_mapped_mode = FEMTOSOC_HAS_DEVICE(IO_MAPPED_SPI_FLASH_bit);
-  spi_addr = spi_mapped_mode ? 0 : 1024*1024;
+  spi_addr = 1024*1024;
   spi_word_addr = (uint32_t)(-1);
 }
 
@@ -67,19 +61,14 @@ void spi_reset() {
  */
 #define SPI_FLASH_BASE ((uint32_t*)(1 << 23))
 uint8_t next_spi_byte() {
-  uint8_t result;
-  if(spi_mapped_mode) {
-    if(spi_word_addr != spi_addr >> 2) {
+   uint8_t result;
+   if(spi_word_addr != spi_addr >> 2) {
       spi_word_addr = spi_addr >> 2;
       spi_u.spi_word = SPI_FLASH_BASE[spi_word_addr];
-    }
-    result = spi_u.spi_bytes[spi_addr&3];
-  } else {
-    IO_OUT(IO_SPI_FLASH, spi_addr);  
-    result = (uint8_t)(IO_IN(IO_SPI_FLASH));
-  }
-  ++spi_addr;
-  return (uint8_t)(result);
+   }
+   result = spi_u.spi_bytes[spi_addr&3];
+   ++spi_addr;
+   return (uint8_t)(result);
 }
 
 uint16_t next_spi_word() {

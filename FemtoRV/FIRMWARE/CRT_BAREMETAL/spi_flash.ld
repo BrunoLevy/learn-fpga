@@ -24,7 +24,6 @@ SECTIONS {
         . = ALIGN(4);
         _sdata = .;        /* create a global symbol at data start; used by startup code in order to initialise the .data section in RAM */
         _ram_start = .;    /* create a global symbol at ram start (e.g., for garbage collector) */
-        . = ALIGN(4);
 	
 	/* Initialized data */
         *(.data)                     
@@ -48,8 +47,9 @@ SECTIONS {
  */
 
         /* graphics */
-	*/libfemtorv32.a:femtoGLfill_poly.o(.text) */
-
+	*/libfemtorv32.a:femtoGL.o(.text)
+	*/libfemtorv32.a:femtoGLline.o(.text) 
+	*/libfemtorv32.a:femtoGLfill_poly.o(.text)
 
         . = ALIGN(4);
         _edata = .;        /* define a global symbol at data end; used by startup code in order to initialise the .data section in RAM */

@@ -14,12 +14,12 @@ void show_config() {
     printf("  %d bytes\n", IO_IN(IO_HW_CONFIG_RAM));
   } else {
     printf("[Devices]\n");
-    printf("  LEDs     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_LEDS_bit       ) ? '*' : ' ');
-    printf("  UART     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_UART_DAT_bit   ) ? '*' : ' ');
-    printf("  OLED     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_SSD1351_DAT_bit) ? '*' : ' ');
-    printf("  LedMtx   [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_MAX7219_DAT_bit) ? '*' : ' ');
-    printf("  SPIFlash [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_SPI_FLASH_bit  ) ? '*' : ' ');
-    printf("  FGA      [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_FGA_CNTL_bit   ) ? '*' : ' ');
+    printf("  LEDs     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_LEDS_bit            ) ? '*' : ' ');
+    printf("  UART     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_UART_DAT_bit        ) ? '*' : ' ');
+    printf("  OLED     [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_SSD1351_DAT_bit     ) ? '*' : ' ');
+    printf("  LedMtx   [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_MAX7219_DAT_bit     ) ? '*' : ' ');
+    printf("  SPIFlash [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_MAPPED_SPI_FLASH_bit) ? '*' : ' ');
+    printf("  FGA      [%c]\n",  FEMTOSOC_HAS_DEVICE(IO_FGA_CNTL_bit        ) ? '*' : ' ');
     printf("\n");
   }
   mode = !mode;

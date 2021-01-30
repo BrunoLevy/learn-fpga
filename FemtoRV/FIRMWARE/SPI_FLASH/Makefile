@@ -6,7 +6,7 @@ all:
 everything: $(ALL_PROGRAMS)
 
 
-# Generate a "spi elf", to be loaded from address 0x800000 
+# Generate a "spi elf", to be loaded from address 0x810000 
 %.spi_elf: %.o $(RV_BINARIES) 
 	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT_BAREMETAL/spi_flash.ld $< -o $@ \
 	-L$(FIRMWARE_DIR)/CRT_BAREMETAL \

@@ -12,12 +12,6 @@
 // Two different modes for accessing the SPI flash, depends
 // on what's configured in RTL/femtosoc_config.v
 
-// Access through mapped IO register: read bytes one by one
-int get_spi_byte_io(int addr) {
-   IO_OUT(IO_SPI_FLASH, addr);
-   return IO_IN(IO_SPI_FLASH);
-}
-
 // Access through mapped address space
 int get_spi_byte_mapped(int addr) {
   addr -= (1024*1024);
@@ -38,14 +32,14 @@ void printb(int x) {
 int main() {
   
   // Test whether mapped memory space is activated
-  int mapped = FEMTOSOC_HAS_DEVICE(IO_MAPPED_SPI_FLASH_bit);
+  int has_SPI = FEMTOSOC_HAS_DEVICE(IO_MAPPED_SPI_FLASH_bit);
 
   int addr = 1024*1024;
   int data;
   GL_tty_init(); // uncomment if using OLED display instead of tty output.
-  printf("SPI flash [mapped:%c]\n",mapped?'Y':'N');
+  printf("SPI flash [has_it:%c]\n",has_SPI?'Y':'N');
   for(int i=0; i<14; ++i) {
-    data = mapped ? get_spi_byte_mapped(addr) : get_spi_byte_io(addr) ;
+    data = get_spi_byte_mapped(addr);
     printf("%x:",data);
     printb(data);
     putchar(':');
