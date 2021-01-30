@@ -13,9 +13,21 @@
  );
    generate
      case(freq)
+     16: begin
+      parameter DIVR = 4'b0000;
+      parameter DIVF = 7'b1010100;
+      parameter DIVQ = 3'b110;
+      parameter FILTER_RANGE = 3'b001;
+     end
      20: begin
       parameter DIVR = 4'b0000;
       parameter DIVF = 7'b0110100;
+      parameter DIVQ = 3'b101;
+      parameter FILTER_RANGE = 3'b001;
+     end
+     24: begin
+      parameter DIVR = 4'b0000;
+      parameter DIVF = 7'b0111111;
       parameter DIVQ = 3'b101;
       parameter FILTER_RANGE = 3'b001;
      end
@@ -46,6 +58,12 @@
      45: begin
       parameter DIVR = 4'b0000;
       parameter DIVF = 7'b0111011;
+      parameter DIVQ = 3'b100;
+      parameter FILTER_RANGE = 3'b001;
+     end
+     48: begin
+      parameter DIVR = 4'b0000;
+      parameter DIVF = 7'b0111111;
       parameter DIVQ = 3'b100;
       parameter FILTER_RANGE = 3'b001;
      end

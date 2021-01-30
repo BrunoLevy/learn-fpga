@@ -161,9 +161,9 @@ module FemtoRV32 #(
    wire [31:0] aluAplusB;   
    wire        aluBusy;
    wire        alu_wenable;
-   wire [31:0] aluIn1 = aluInSel1 ? {ADDR_PAD,PC} : regOut1;
-   wire [31:0] aluIn2 = aluInSel2 ? imm           : regOut2;
-
+   reg [31:0]  aluIn1; // ALU input 1
+   reg [31:0]  aluIn2; // ALU input 2
+   
    NrvSmallALU #(
       .TWOSTAGE_SHIFTER(0), // Makes shifts faster but uses too many LUTs
       .LATCH_ALU(1)	    // Always latch ALU ops, makes FSM simpler	 
@@ -205,7 +205,7 @@ module FemtoRV32 #(
    // of the address.
    // When a STORE instruction is executed, the data to be stored to
    // mem is available from the second register (regOut2) and the
-   // address where to store it is the output of the ALU (aluOut).
+   // address where to store it is the output of the ALU adder (aluAplusB).
    wire        mem_wenable;
    wire [31:0] STORE_data_aligned_for_MEM;
    NrvStoreToMemory store_to_mem(
@@ -233,7 +233,8 @@ module FemtoRV32 #(
 
    /*************************************************************************/
    // The predicate for conditional branches.
-   
+
+   reg  predOut_latched;
    wire predOut;
    NrvPredicate pred(
     .in1(regOut1),
@@ -249,27 +250,29 @@ module FemtoRV32 #(
    // The states, using 1-hot encoding (reduces
    // both LUT count and critical path).
    
-   localparam INITIAL              = 8'b00000000;
-   localparam FETCH_INSTR          = 8'b00000001;
-   localparam WAIT_INSTR           = 8'b00000010;
-   localparam FETCH_REGS           = 8'b00000100;
-   localparam EXECUTE              = 8'b00001000;
-   localparam LOAD                 = 8'b00010000;
-   localparam WAIT_ALU_OR_DATA     = 8'b00100000;
-   localparam STORE                = 8'b01000000;
-   localparam WAIT_IO_STORE        = 8'b10000000;   
+   localparam INITIAL              = 9'b000000000;
+   localparam FETCH_INSTR          = 9'b000000001;
+   localparam WAIT_INSTR           = 9'b000000010;
+   localparam FETCH_REGS           = 9'b000000100;
+   localparam FETCH_ALU_OPERANDS   = 9'b000001000;   
+   localparam EXECUTE              = 9'b000010000;
+   localparam LOAD                 = 9'b000100000;
+   localparam WAIT_ALU_OR_DATA     = 9'b001000000;
+   localparam STORE                = 9'b010000000;
+   localparam WAIT_IO_STORE        = 9'b100000000;   
 
 
    localparam FETCH_INSTR_bit          = 0;   
    localparam WAIT_INSTR_bit           = 1;
    localparam FETCH_REGS_bit           = 2;
-   localparam EXECUTE_bit              = 3;
-   localparam LOAD_bit                 = 4;   
-   localparam WAIT_ALU_OR_DATA_bit     = 5;
-   localparam STORE_bit                = 6;
-   localparam WAIT_IO_STORE_bit        = 7;   
+   localparam FETCH_ALU_OPERANDS_bit   = 3;
+   localparam EXECUTE_bit              = 4;
+   localparam LOAD_bit                 = 5;   
+   localparam WAIT_ALU_OR_DATA_bit     = 6;
+   localparam STORE_bit                = 7;
+   localparam WAIT_IO_STORE_bit        = 8;   
    
-   reg [7:0] state = INITIAL;
+   reg [8:0] state = INITIAL;
    
    // the internal signals that are determined combinatorially from
    // state and other signals.
@@ -288,7 +291,7 @@ module FemtoRV32 #(
    assign alu_wenable = state[EXECUTE_bit] && isALU;
 
    // when asserted, next PC is updated from ALU (instead of PC+4).
-   wire jump_or_take_branch = isJump || (isBranch && predOut);
+   wire jump_or_take_branch = isJump || (isBranch && predOut_latched);
 
    // And now the state machine
 
@@ -345,7 +348,14 @@ module FemtoRV32 #(
 
         // *********************************************************************
         // Fetch registers (instr is ready, as well as register ids)
-	state[FETCH_REGS_bit]: state <= EXECUTE;
+	state[FETCH_REGS_bit]: state <= FETCH_ALU_OPERANDS;
+
+	state[FETCH_ALU_OPERANDS_bit]: begin
+	   predOut_latched <= predOut;
+	   aluIn1 <= aluInSel1 ? {ADDR_PAD,PC} : regOut1;
+	   aluIn2 <= aluInSel2 ? imm           : regOut2;
+	   state <= EXECUTE;
+	end
 	
         // *********************************************************************	
 	// Handles jump/branch, or transitions to waitALU, load, store
@@ -391,7 +401,6 @@ module FemtoRV32 #(
 	// wait-state for IO store 
 	state[WAIT_IO_STORE_bit]: begin
 	   `verbose($display("        mem_wbusy:%b",mem_wbusy));
-	   // addressReg <= PC; HERE removed (set in previous state)
 	   if(!mem_wbusy) 
 	     state <= FETCH_INSTR;
 	end
@@ -403,7 +412,7 @@ module FemtoRV32 #(
 	//    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 	state[WAIT_ALU_OR_DATA_bit]: begin
 	   `verbose($display("        mem_rbusy:%b alu_busy:%b",mem_rbusy,aluBusy));
-	   if(!aluBusy && !mem_rbusy) begin // HERE removed test isAlu
+	   if(!aluBusy && !mem_rbusy) begin 
 	      addressReg <= PC;	      
 	      state <= FETCH_INSTR;
 	   end

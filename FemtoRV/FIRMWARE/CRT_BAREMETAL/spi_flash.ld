@@ -34,18 +34,18 @@ SECTIONS {
 	
 	/* functions with attribute((section(".fastcode"))) */	
 	*(.fastcode*)      
-	
+
 	/* integer mul and div */
 	*/libgcc.a:muldi3.o(.text)
 	*/libgcc.a:div.o(.text)	
 
         /* floating point add,mul,div                   */
 	/* (commented-out because it takes more space ! */
-/*
+ /*
 	*/libgcc.a:adddsf3.o(.text)
 	*/libgcc.a:mulsf3.o(.text)
 	*/libgcc.a:divsf3.o(.text)
-*/
+ */
 
         . = ALIGN(4);
         _edata = .;        /* define a global symbol at data end; used by startup code in order to initialise the .data section in RAM */

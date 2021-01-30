@@ -115,7 +115,6 @@ module femtosoc(
 
   wire random = ~buffers_out[1];
 
-
   // ######   GPIO   ##########################################
 
   wire [24:0] port_in;
