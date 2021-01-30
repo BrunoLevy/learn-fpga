@@ -7,7 +7,6 @@
 `define NRV_IO_SSD1331     // Mapped IO, 96x64x64K OLed screen
 //`define NRV_IO_SSD1351     // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX7219   // Mapped IO, 8x8 led matrix
-//`define NRV_IO_SPI_FLASH // Mapped IO, SPI flash  
 `define NRV_IO_SDCARD      // Mapped IO, SPI SDCARD
 `define NRV_IO_BUTTONS     // Mapped IO, buttons
 `define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. Use with MINIRV32 to run code from SPI flash.
