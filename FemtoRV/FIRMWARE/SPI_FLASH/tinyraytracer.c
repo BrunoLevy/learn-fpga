@@ -7,9 +7,9 @@
 
 /*******************************************************************/
 
-int __errno; /* With my linker script, __errno is missing, 
-	      * probably I'm doing something wrong...
-	      */ 
+int __errno = 0; /* With my linker script, __errno is missing, 
+	          * probably I'm doing something wrong...
+	          */ 
 
 typedef int BOOL;
 
@@ -195,6 +195,7 @@ vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* light
     ) continue ;
     
     diffuse_light_intensity  += lights[i].intensity * max(0.f, vec3_dot(light_dir,N));
+     
     float abc = max(0.f, vec3_dot(vec3_neg(reflect(vec3_neg(light_dir), N)),dir));
     float def = material.specular_exponent;
     if(abc > 0.0f && def > 0.0f) {

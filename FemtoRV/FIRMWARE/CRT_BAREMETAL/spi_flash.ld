@@ -36,15 +36,13 @@ SECTIONS {
 
 	/* integer mul and div */
 	*/libgcc.a:muldi3.o(.text)
-	*/libgcc.a:div.o(.text)	
+	*/libgcc.a:div.o(.text)    
 
         /* floating point add,mul,div                   */
 	/* (commented-out because it takes more space ! */
- /*
-	*/libgcc.a:adddsf3.o(.text)
-	*/libgcc.a:mulsf3.o(.text)
-	*/libgcc.a:divsf3.o(.text)
- */
+	/* */libgcc.a:adddsf3.o(.text) */
+	/* */libgcc.a:mulsf3.o(.text)  */ 
+	/* */libgcc.a:divsf3.o(.text)  */
 
         /* graphics */
 	*/libfemtorv32.a:femtoGL.o(.text)
