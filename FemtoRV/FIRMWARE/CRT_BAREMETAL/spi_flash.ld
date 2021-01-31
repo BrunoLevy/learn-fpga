@@ -49,7 +49,9 @@ SECTIONS {
         /* graphics */
 	*/libfemtorv32.a:femtoGL.o(.text)
 	*/libfemtorv32.a:femtoGLline.o(.text) 
-	*/libfemtorv32.a:femtoGLfill_poly.o(.text)
+	*/libfemtorv32.a:femtoGLfill_poly.o(.text) 
+	*/libfemtorv32.a:femtoGLsetpixel.o(.text)
+	*/libfemtorv32.a:ssd1351_1331.o(.text)
 
         . = ALIGN(4);
         _edata = .;        /* define a global symbol at data end; used by startup code in order to initialise the .data section in RAM */

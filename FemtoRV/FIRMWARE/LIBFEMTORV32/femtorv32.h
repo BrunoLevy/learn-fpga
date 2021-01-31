@@ -176,7 +176,7 @@ extern void oled3(uint32_t cmd, uint32_t arg1, uint32_t arg2, uint32_t arg3);
  * The magic of 1-hot encoding for memory-mapped hw registers: one can
  * write in two register simultaneously by setting both bits in the address.
  * Here we send the same graphic byte to the OLED display and FGA graphic board,
- * so that graphic programs work on both.
+ * so that graphic programs work on both, with mirrored display.
  */ 
 
 #define IO_GFX_DAT (IO_SSD1351_DAT16 | IO_FGA_DAT) 
