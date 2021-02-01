@@ -99,7 +99,6 @@ module femtosoc(
 
   // ######   RING OSCILLATOR   ###############################
 
-/*
   wire [1:0] buffers_in, buffers_out;
   assign buffers_in = {buffers_out[0:0], ~buffers_out[1]};
   SB_LUT4 #(
@@ -113,8 +112,6 @@ module femtosoc(
   );
 
   wire random = ~buffers_out[1];
-*/
-  wire random = 1'b0;
 
   // ######   GPIO   ##########################################
 
@@ -291,7 +288,7 @@ module femtosoc(
 /* And last but not least, the processor                        */
 
   FemtoRV32 #(
-     .ADDR_WIDTH(32) 
+     .ADDR_WIDTH(24) 
   ) processor(
     .clk(clk),
     .mem_addr(mem_address),

@@ -5,7 +5,7 @@
 YOSYS_ICESTICK_MECRISP_QUINTUS_OPT=-DICE_STICK -q \
                  -p "synth_ice40 -top $(PROJECTNAME) -json $(PROJECTNAME).json -blif $(PROJECTNAME).blif -abc2 -relut"
 
-NEXTPNR_ICESTICK_MECRISP_QUINTUS_OPT=--freq 48 --hx1k --package tq144 \
+NEXTPNR_ICESTICK_MECRISP_QUINTUS_OPT=--freq 50 --hx1k --package tq144 \
                                      --asc $(PROJECTNAME).asc --pcf BOARDS/icestick_mecrisp_quintus.pcf \
                                      --json $(PROJECTNAME).json --ignore-loops --pcf-allow-unconstrained --seed 42
 
