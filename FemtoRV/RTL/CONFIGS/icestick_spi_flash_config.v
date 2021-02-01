@@ -10,7 +10,7 @@
 
 /************************* Frequency ********************************************************************************/
 
-`define NRV_FREQ 70      // Frequency in MHz. Validated at 63 MHz. Overclocked a bit. Note: LUT count may overflow.
+`define NRV_FREQ 66      // Frequency in MHz. Validated at 63 MHz. Overclocked a bit. Note: LUT count may overflow.
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 

@@ -91,6 +91,12 @@
       parameter DIVQ = 3'b100;
       parameter FILTER_RANGE = 3'b001;
      end
+     66: begin
+      parameter DIVR = 4'b0000;
+      parameter DIVF = 7'b1010111;
+      parameter DIVQ = 3'b100;
+      parameter FILTER_RANGE = 3'b001;
+     end
      70: begin
       parameter DIVR = 4'b0000;
       parameter DIVF = 7'b0101110;
