@@ -134,6 +134,13 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - A un moment, tinyraytracer plantait systematiquement au
+               moment d'afficher la premiere sphere. Ca venait de mon
+               linker script, qui importait trop de choses en BRAM, en particulier
+               les fonctions +,-,*,/ en virgule flottante, parceque
+               les commentaires du linker script ne se comportent pas comme on s'y
+               attend !
+  
              - A un moment, printf() affichait du garbage. Ca venait
                des fontes que j'avais mises dans le segment rodata,
                mais pas bien, à revoir...
