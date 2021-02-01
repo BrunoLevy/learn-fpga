@@ -79,7 +79,7 @@ module femtosoc(
 
   // ######   Reset logic   ###################################
 
-  reg [3:0] reset_cnt = 0;
+  reg [7:0] reset_cnt = 0;
   wire resetq = &reset_cnt;
 
   always @(posedge clk, negedge reset_button) begin
@@ -101,6 +101,7 @@ module femtosoc(
 
   // ######   RING OSCILLATOR   ###############################
 
+/*
   wire [1:0] buffers_in, buffers_out;
   assign buffers_in = {buffers_out[0:0], ~buffers_out[1]};
   SB_LUT4 #(
@@ -114,6 +115,8 @@ module femtosoc(
   );
 
   wire random = ~buffers_out[1];
+*/
+  wire random = 1'b0;
 
   // ######   GPIO   ##########################################
 
@@ -249,7 +252,7 @@ module femtosoc(
    MappedSPIFlash mapped_spi_flash(
       .clk(clk),
       .rstrb(mem_rstrb && mem_address_is_spi_flash),
-      .word_address(mem_address[19:2]),
+      .word_address(mem_address[21:2]),
       .rdata(mapped_spi_flash_rdata),
       .rbusy(mapped_spi_flash_rbusy),
       .CLK(spi_clk),
