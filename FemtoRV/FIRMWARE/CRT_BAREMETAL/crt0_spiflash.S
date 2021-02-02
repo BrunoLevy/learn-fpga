@@ -40,7 +40,6 @@ loop_init_data:
      blt a1, a2, loop_init_data
 end_init_data:
 
-	
      call main
      tail exit
 
