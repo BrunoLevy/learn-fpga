@@ -1,7 +1,7 @@
 Mecrisp-quintus forth environment for IceStick
 ==============================================
 
-This directory contains the bitstream for the mecrisp-quintus] forth
+This directory contains the bitstream for the mecrisp-quintus forth
 environment, ported to FemtoRV32 by Matthias Koch, the author of
 mecrisp.
 
@@ -21,7 +21,7 @@ $ make ICESTICK_MECRISP_QUINTUS
 
 Step 2: Program
 ---------------
-Send mecriso-quintus to the SPI flash of the IceStick
+Send mecrisp-quintus to the SPI flash of the IceStick
 ```
 $ cd FIRMWARE/MECRISP_QUINTUS/
 $ iceprog -o 64k mecrisp-quintus-hx1k-with-disassembler.bin
@@ -39,10 +39,10 @@ functionalities).
 
 Picocom hotkeys
 
-| Key                | Function        |
-|--------------------|-----------------|
-|<ctrl><a> <ctrl><t> | reset femtorv32 |
-|<ctrl><a> <ctrl><x> | exit picocom    |
+| Key                  | Function        |
+|----------------------|-----------------|
+|`<ctrl><a> <ctrl><t>` | reset femtorv32 |
+|`<ctrl><a> <ctrl><x>` | exit picocom    |
 
 Try some forth commands and debugger:
 ```
