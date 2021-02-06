@@ -6,23 +6,10 @@ const int font_height = 16;
 const int char_per_line = 32;
 const int lines = 8;
 
-int get_font_column(int c, int column) {
-
-   // Invert every 4 columns because in words MSB comes first)
-   int ofs = column % 4;
-   column = column - ofs + (3-ofs);
-   
-   int result = 0;
-   int char_line   = c / char_per_line;
-   int char_column = c % char_per_line;
-   for(int i=0; i<font_height; ++i) {
-      int xpm_line   = 3 + (char_line * font_height) + i;
-      int xpm_column = (char_column * font_width) + column;
-      if(font8x16_xpm[xpm_line][xpm_column] != ' ') {
-	 result = result | (1 << i);
-      }
+void printb(int x) {
+   for(int b=0; b<16; ++b) {
+      printf("%c", (x & (1<<b)) ? '*' : ' ');
    }
-   return result;
 }
 
 char digit_to_hex(int x) {
@@ -48,10 +35,24 @@ char* int_to_hex(int x) {
    return buf;
 }
 
-void printb(int x) {
-   for(int b=0; b<8; ++b) {
-      printf("%c", (x & (1<<b)) ? '*' : ' ');
+void printh(int x) {
+  printf("0x");
+  printf("%s",int_to_hex((x >> 8)&255));
+  printf("%s",int_to_hex(x&255));	 
+}
+
+int get_font_column(int c, int column) {
+   int result = 0;
+   int char_line   = c / char_per_line;
+   int char_column = c % char_per_line;
+   for(int i=0; i<font_height; ++i) {
+      int xpm_line   = 3 + (char_line * font_height) + i;
+      int xpm_column = (char_column * font_width) + column;
+      if(font8x16_xpm[xpm_line][xpm_column] != ' ') {
+	 result = result | (1 << i);
+      }
    }
+   return result;
 }
 
 
@@ -76,27 +77,27 @@ void gen_chars(int init_lineno, int first) {
 
 
 int main() {
-   int character = 0;
-   printf ("font_8x16:\n");
-   for(int init_lineno=0; init_lineno<16; ++init_lineno) {
-      gen_chars(init_lineno, character);
-      character += 4;
-   }
-   /*  printf("\n"); */
-   for(int init_lineno=0; init_lineno<16; ++init_lineno) {
-      gen_chars(init_lineno, character);
-      character += 4;
-   }
-   /*
-   printf("\n");
-   for(int init_lineno=0; init_lineno<16; ++init_lineno) {
-      gen_chars(init_lineno, character);
-      character += 4;
-   }
-   printf("\n");
-   for(int init_lineno=0; init_lineno<16; ++init_lineno) {
-      gen_chars(init_lineno, character);
-      character += 4;
-   }
-   */ 
+  printf(
+	 ".text\n"
+	 ".globl font_8x16\n"
+	 "\n"
+	 ".section .rodata\n"
+	 ".align 4\n"
+	 ".LC0:\n"
+  );
+  for(int c=0; c<255; ++c) {
+    printf(".half ");
+    for(int col=0; col<font_width; ++col) {
+      printh(get_font_column(c,col));
+      if(col < font_width-1) {
+	printf(", ");
+      } else {
+	printf("\n");
+      }
+    }
+  }
+  printf(
+	 "font_8x16:\n"
+	 ".word .LC0\n"
+  );
 }

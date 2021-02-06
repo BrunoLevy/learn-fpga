@@ -152,7 +152,7 @@ NextPNR compilation and installation for ECP5 FPGAs
 Compile and install it:
 ```
 $ cd nextpnr
-$ cmake -DARCH=ecp5 -DTRELLIS_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_PREFIX=/usr/local .
+$ cmake -DARCH=ecp5 -DTRELLIS_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_GUI=on .
 $ make -j 4
 $ sudo make install
 ```

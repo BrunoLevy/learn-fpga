@@ -21,9 +21,8 @@
 #define dy (ymax-ymin)/H
 #define norm_max (4 << mandel_shift)
 
-int main() {
-   GL_init();
-   GL_clear();
+void mandelbrot() __attribute((section(".fastcode")));
+void mandelbrot() {
    oled_write_window(0,0,W-1,H-1);
    int Ci = ymin;
    for(int Y=0; Y<H; ++Y) {
@@ -48,7 +47,13 @@ int main() {
       }
       Ci += dy;
    }
-   
+}
+
+
+int main() {
+   GL_init();
+   GL_clear();
+   mandelbrot();
    int i=0;
    for(;;) {
       i=i+1;

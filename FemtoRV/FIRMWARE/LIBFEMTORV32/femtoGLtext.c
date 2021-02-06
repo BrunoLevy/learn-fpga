@@ -106,7 +106,7 @@ int GL_putchar(int c) {
 void GL_putchar_xy(int X, int Y, char c) {
 #if defined(FONT_8x16)   
    oled_write_window(X,Y,X+7,Y+15);   
-   uint8_t* car_ptr = font_8x16 + (int)c * 16;
+   uint16_t* car_ptr = font_8x16 + (int)c * 8;
    for(int row=0; row<16; ++row) {
       for(int col=0; col<8; ++col) {
 	 uint32_t BW = (car_ptr[col] & (1 << row)) ? 255 : 0;

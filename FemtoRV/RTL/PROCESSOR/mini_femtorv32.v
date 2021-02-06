@@ -83,7 +83,6 @@ module FemtoRV32 #(
    // The instruction decoder, that reads the current instruction 
    // and generates all the signals from it. It is in fact just a
    // big combinatorial function.
-   
    generate
    if(USE_MINI_DECODER) begin
      assign error = 1'b0; // MiniRV32 does not check for errors.
@@ -107,7 +106,7 @@ module FemtoRV32 #(
        .isBranch(isBranch),
        .imm(imm)
      );
-   end else begin 
+   end else begin
      /* verilator lint_off PINMISSING */      
      NrvDecoder decoder(
        .instr(instr),		     
@@ -350,6 +349,9 @@ module FemtoRV32 #(
         // Fetch registers (instr is ready, as well as register ids)
 	state[FETCH_REGS_bit]: state <= FETCH_ALU_OPERANDS;
 
+        // *********************************************************************
+        // Latch ALU operands. This state is not mandatory, but significantly
+	// reduces the critical path.
 	state[FETCH_ALU_OPERANDS_bit]: begin
 	   predOut_latched <= predOut;
 	   aluIn1 <= aluInSel1 ? {ADDR_PAD,PC} : regOut1;
@@ -433,16 +435,17 @@ module FemtoRV32 #(
 `ifdef BENCH
    always @(posedge clk) begin
       case(1'b1)
-	(state == 0): begin end	      // `show_state("initial");
-	state[FETCH_INSTR_bit]:      `show_state("fetch_instr");
-	state[WAIT_INSTR_bit]:       `show_state("wait_instr");
-	state[FETCH_REGS_bit]:       `show_state("fetch_regs");
-	state[EXECUTE_bit]:          `show_state("execute");
-	state[LOAD_bit]:             begin `show_state("load");	`bench($display("        addr: %b",mem_addr)); end
-	state[STORE_bit]:            `show_state("store");
-	state[WAIT_ALU_OR_DATA_bit]: `show_state("wait_alu_or_data");
-	state[WAIT_IO_STORE_bit]:    `show_state("wait_IO_store");	
-	default:  	             `bench($display("UNKNOWN STATE: %b",state));	   	   	   
+	(state == 0): begin end	    
+	state[FETCH_INSTR_bit]:        `show_state("fetch_instr");
+	state[WAIT_INSTR_bit]:         `show_state("wait_instr");
+	state[FETCH_REGS_bit]:         `show_state("fetch_regs");
+	state[FETCH_ALU_OPERANDS_bit]: `show_state("fetch_alu_operands");	
+	state[EXECUTE_bit]:            `show_state("execute");
+	state[LOAD_bit]:         begin `show_state("load"); `bench($display("        addr: %b",mem_addr)); end
+	state[STORE_bit]:              `show_state("store");
+	state[WAIT_ALU_OR_DATA_bit]:   `show_state("wait_alu_or_data");
+	state[WAIT_IO_STORE_bit]:      `show_state("wait_IO_store");	
+	default:  	               `bench($display("UNKNOWN STATE: %b",state));	   	   	   
       endcase
    
       if(state[FETCH_REGS_bit]) begin
