@@ -9,36 +9,21 @@
 
 FIRMWARE_DIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-#####################################################################
-#
-# Target architecture (extract it from verilog config using iverilog)
-# It is a bit convoluted, but it is good to have the firmware 
-# target automatically configured for the active verilog config.
-
-ARCH=$(shell cd $(FIRMWARE_DIR)/../RTL; \
-	  iverilog -DGET_COPT_ARCH get_config.v -o tmp.vvp; \
-	  vvp tmp.vvp; rm -f tmp.vvp)
-
-ABI=$(shell cd $(FIRMWARE_DIR)/../RTL; \
-	  iverilog -DGET_COPT_ABI get_config.v -o tmp.vvp; \
-	  vvp tmp.vvp; rm -f tmp.vvp)
-
-OPTIMIZE=$(shell cd $(FIRMWARE_DIR)/../RTL; \
-	  iverilog -DGET_COPT_OPTIMIZE get_config.v -o tmp.vvp; \
-	  vvp tmp.vvp; rm -f tmp.vvp)
-
-RAM_SIZE=$(shell cd $(FIRMWARE_DIR)/../RTL; \
-	  iverilog -DGET_NRV_RAM get_config.v -o tmp.vvp; \
-	  vvp tmp.vvp; rm -f tmp.vvp)
-
-DEVICES=$(shell cd $(FIRMWARE_DIR)/../RTL; \
-	  iverilog -DGET_DEVICES get_config.v -o tmp.vvp; \
-	  vvp tmp.vvp; rm -f tmp.vvp)
-
+include $(FIRMWARE_DIR)/config.mk
 DEVICES_ASM=$(subst -D,-defsym ,$(DEVICES))
 
 show_config:
-	@echo "ARCH=$(ARCH) ABI=$(ABI) OPTIMIZE=$(OPTIMIZE) DEVICES=$(DEVICES)"
+	@echo "ARCH=$(ARCH)"
+	@echo "ABI=$(ABI)" 
+	@echo "OPTIMIZE=$(OPTIMIZE)" 
+	@echo "DEVICES=$(DEVICES)"
+	@echo "DEVICES_ASM=$(DEVICES_ASM)"	
+
+FEMTORV32_LIBS=$(FIRMWARE_DIR)/CRT_BAREMETAL/syscalls.o \
+               -L$(FIRMWARE_DIR)/CRT_BAREMETAL\
+	       -L$(FIRMWARE_DIR)/LIBFEMTORV32\
+	       -L$(FIRMWARE_DIR)/LIBFEMTOC\
+   	       -lfemtorv32 -lfemtoc -lm 
 
 ################################################################################
 
@@ -88,13 +73,13 @@ RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) $(DEVICES_ASM) $(RVINCS)
 RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax
 RVCPPFLAGS=-fno-exceptions -fno-enforce-eh-specs
 
-#Rule to compile C++ objects
-.cpp.o: $< $(RV_BINARIES)
-	$(RVGPP) $(RVCFLAGS) $(RVCPPFLAGS) $(RVUSERCFLAGS) -c $<
-
 #Rule to compile C objects
 .c.o: $< $(RV_BINARIES)
 	$(RVGCC) $(RVCFLAGS) $(RVUSERCFLAGS) -c $<
+
+#Rule to compile C++ objects
+.cpp.o: $< $(RV_BINARIES)
+	$(RVGPP) $(RVCFLAGS) $(RVUSERCFLAGS) $(RVCPPFLAGS) -c $<
 
 #Rule to compile ASM objects
 .S.o: $< $(RV_BINARIES)

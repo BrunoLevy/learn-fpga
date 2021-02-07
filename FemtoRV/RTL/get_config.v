@@ -4,45 +4,20 @@
 
 `include "femtosoc_config.v"
 
-`ifdef GET_NRV_RAM
 module dummy();
 initial begin
-   $display("%d",`NRV_RAM);
-end
-endmodule
-`endif   
    
-`ifdef GET_COPT_ARCH
-module dummy();
-initial begin
  `ifdef NRV_RV32M
-   $display("rv32im");   
+   $display("ARCH=rv32im");
+   $display("OPTIMIZE=-O3");      
  `else   
-   $display("rv32i");
- `endif   
-end
-endmodule
-`endif
-
-`ifdef GET_COPT_ABI
-module dummy();
-initial begin
-   $display("ilp32");
-end
-endmodule
-`endif
- 
-`ifdef GET_COPT_OPTIMIZE
-module dummy();
-initial begin
- `ifdef NRV_RV32M
-   $display("-O3");   
- `else   
-   $display("-Os");
- `endif   
-end
-endmodule
-`endif
+   $display("ARCH=rv32i");
+   $display("OPTIMIZE=-Os");         
+ `endif
+   
+   $display("ABI=ilp32");
+   
+   $display("RAM_SIZE=%d",`NRV_RAM);
 
 //   Note1: for now we only need FGA here for conditional
 // compilation of OLED->FGA emulation (that pulls too
@@ -52,22 +27,20 @@ endmodule
 //   Note2: need to be "-DXXX=1" rather than "-DXXX" because
 // the makefile also passes that to the assembler after
 // some text substitution, and the assembler needs "=1"
-`ifdef GET_DEVICES
-module dummy();
-initial begin
 
+   $write("DEVICES=");
 `ifdef NRV_IO_FGA
-   $display("-DFGA=1");   
+   $write(" -DFGA=1");   
 `endif   
-
 `ifdef NRV_IO_SSD1351
-   $display("-DSSD1351=1");   
+   $write(" -DSSD1351=1");   
 `endif   
-
 `ifdef NRV_IO_SSD1331
-   $display("-DSSD1331=1");   
-`endif   
-
-end
-endmodule
+   $write(" -DSSD1331=1");   
 `endif
+   $write("\n");
+   
+end 
+endmodule
+
+

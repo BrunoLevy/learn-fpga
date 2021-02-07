@@ -12,5 +12,6 @@ SECTIONS
     {
         crt0.o (.text) 
         *(.text)
+	_end = .;           /* as expected by syscalls.c */
     }
 }

@@ -11,11 +11,12 @@ ULX3S: ULX3S.synth ULX3S.prog_flash
 ULX3S.fast: ULX3S.synth ULX3S.prog
 
 ULX3S.synth: FIRMWARE/firmware.hex
+	TOOLS/make_config.sh -DULX3S
 	yosys $(YOSYS_ULX3S_OPT) $(VERILOGS)
 	nextpnr-ecp5 $(NEXTPNR_ULX3S_OPT)
 	ecppack --compress --svf-rowsize 100000 --svf $(PROJECTNAME).svf $(PROJECTNAME)_out.config $(PROJECTNAME).bit
 
-ULX3S.show: FIRMWARE/firmware.hex
+ULX3S.show: FIRMWARE/firmware.hex 
 	yosys $(YOSYS_ULX3S_OPT) $(VERILOGS)
 	nextpnr-ecp5 $(NEXTPNR_ULX3S_OPT) --gui
 

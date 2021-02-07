@@ -134,6 +134,18 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+  
+             - Compiler des programmes pour l'ULX3S et les envoyer sur 
+	       l'ICESTICK, c'est pas une bonne idee (faire un truc pour 
+	       memoriser la target actuelle)
+  
+             - A un moment, sur ULX3S, le mode mirror ne marchait
+               plus, et plus rien ne s'affichait en FGA: j'avais 
+	       simplement un firmware qui ne correspondait plus au
+	       hardware: j'avais supprimé le SPI en mode IO, et renuméroté
+	       les registres IO, et pas reflashé le bitstream sur le FPGA
+	       de l'ULX3S.
+
              - A un moment, tinyraytracer plantait systematiquement au
                moment d'afficher la premiere sphere. Ca venait de mon
                linker script, qui importait trop de choses en BRAM, en particulier

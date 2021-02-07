@@ -51,11 +51,8 @@ localparam NRV_DEVICES = 0
 // wait: sub a0, a0, a1
 //       bgt a0, zero, wait
 
-`ifdef NRV_RUN_FROM_SPI_FLASH
-   localparam NRV_CPL = 127; // To be measured exactly
-`else   
  `ifdef NRV_MINIRV32
-   localparam NRV_CPL = 9;
+   localparam NRV_CPL = 10;
  `else
   `ifdef NRV_LATCH_ALU
    localparam NRV_CPL = 7;
@@ -63,7 +60,7 @@ localparam NRV_DEVICES = 0
    localparam NRV_CPL = 6;
   `endif
  `endif
-`endif
+
 	
    assign rdata = sel_memory  ? `NRV_RAM  :
 		  sel_devices ?  NRV_DEVICES :

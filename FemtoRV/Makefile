@@ -1,3 +1,4 @@
+FEMTORV_DIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PROJECTNAME=femtosoc
 VERILOGS=RTL/$(PROJECTNAME).v
 
@@ -19,8 +20,7 @@ all:
 
 clean:
 	rm -f *.timings *.asc *.bin *.bit *config *.json *.svf \
-              *~ *.vvp *.dfu *.rpt *.blif femtosoc.txt
-
+              *~ *.vvp *.dfu *.rpt *.blif femtosoc.txt FIRMWARE/config.mk
 
 FIRMWARE/firmware.hex:
 	(cd FIRMWARE; ./make_firmware.sh EXAMPLES/hello.c)

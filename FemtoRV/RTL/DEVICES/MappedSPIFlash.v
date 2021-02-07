@@ -15,6 +15,8 @@
 // https://media-www.micron.com/-/media/client/global/documents/products/data-sheet/nor-flash/serial-nor/n25q/n25q_32mb_3v_65nm.pdf?rev=27fc6016fc5249adb4bb8f221e72b395
 // https://www.winbond.com/resource-files/w25q128jv%20spi%20revc%2011162016.pdf (not the same chip, mostly compatible, datasheet is easier to read)
 
+// The one on the ULX3S: https://www.issi.com/WW/pdf/25LP-WP128F.pdf
+//  this one supports quad-SPI mode, IO0=SI, IO1=SO, IO2=WP, IO3=Hold/Reset
 
 // There are four versions (from slowest to fastest)
 //

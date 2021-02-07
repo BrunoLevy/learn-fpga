@@ -51,6 +51,9 @@ SECTIONS {
 	*/libfemtorv32.a:femtoGLsetpixel.o(.text)
 	*/libfemtorv32.a:ssd1351_1331.o(.text)
 
+        /* timing */
+	wait_cycles.o(.text)
+
         . = ALIGN(4);
         _edata = .;        /* define a global symbol at data end; used by startup code in order to initialise the .data section in RAM */
     } > RAM
@@ -88,5 +91,6 @@ SECTIONS {
     .heap : {
         . = ALIGN(4);
         _heap_start = .;    /* define a global symbol at heap start */
+	_end = .;           /* as expected by syscalls.c            */
     } >RAM
 }

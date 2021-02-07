@@ -6,7 +6,8 @@ NEXTPNR_FOMU_OPT=--json $(PROJECTNAME).json --pcf BOARDS/fomu-pvt.pcf --asc $(PR
 
 FOMU: FOMU.synth FOMU.prog
 
-FOMU.synth: FIRMWARE/firmware.hex
+FOMU.synth: FIRMWARE/firmware.hex 
+	TOOLS/make_config.sh -DFOMU
 	yosys $(YOSYS_FOMU_OPT) $(VERILOGS)
 	nextpnr-ice40 $(NEXTPNR_FOMU_OPT)
 	icetime -p BOARDS/fomu-pvt.pcf -P uwg30 -r $(PROJECTNAME).timings -d up5k -t $(PROJECTNAME).asc
@@ -14,7 +15,7 @@ FOMU.synth: FIRMWARE/firmware.hex
 	mv $(PROJECTNAME).bin $(PROJECTNAME).dfu
 	dfu-suffix -v 1209 -p 70b1 -a $(PROJECTNAME).dfu
 
-FOMU.show: FIRMWARE/firmware.hex
+FOMU.show: FIRMWARE/firmware.hex 
 	yosys $(YOSYS_FOMU_OPT) $(VERILOGS)
 	nextpnr-ice40 $(NEXTPNR_FOMU_OPT) --pcf-allow-unconstrained --gui
 
