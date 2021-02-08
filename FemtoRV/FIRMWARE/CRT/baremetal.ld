@@ -10,7 +10,7 @@ SECTIONS
 {
     .text :
     {
-        crt0.o (.text) 
+        crt0_baremetal.o (.text) 
         *(.text)
 	_end = .;           /* as expected by syscalls.c */
     }

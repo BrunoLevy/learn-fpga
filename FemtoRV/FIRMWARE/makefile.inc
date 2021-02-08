@@ -19,8 +19,9 @@ show_config:
 	@echo "DEVICES=$(DEVICES)"
 	@echo "DEVICES_ASM=$(DEVICES_ASM)"	
 
-FEMTORV32_LIBS=$(FIRMWARE_DIR)/CRT_BAREMETAL/syscalls.o \
-               -L$(FIRMWARE_DIR)/CRT_BAREMETAL\
+FEMTORV32_LIBS=$(FIRMWARE_DIR)/CRT/syscalls.o \
+	       -L$(RVTOOLCHAIN_LIB_DIR)\
+               -L$(FIRMWARE_DIR)/CRT\
 	       -L$(FIRMWARE_DIR)/LIBFEMTORV32\
 	       -L$(FIRMWARE_DIR)/LIBFEMTOC\
    	       -lfemtorv32 -lfemtoc -lm 
@@ -85,6 +86,26 @@ RVCPPFLAGS=-fno-exceptions -fno-enforce-eh-specs
 .S.o: $< $(RV_BINARIES)
 	$(RVAS) $(RVASFLAGS) $(RVUSERASFLAGS) $< -o $@ 
 
+# Generate a "bare metal elf", to be loaded from address 0 (rule for conversion to .hex file in makefile.inc)
+%.baremetal.elf: %.o $(RV_BINARIES)
+	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/baremetal.ld $< -o $@ $(FEMTORV32_LIBS) $(RVGCC_LIB)
+
+# Generate a "femtOS elf executable", to be loaded from address 0x10000 (rule for conversion to .bin file in makefile.inc)
+%.elf: %.o $(RV_BINARIES)
+	$(RVGCC) $(RVCFLAGS) $< -o $@ -Wl,-gc-sections $(FEMTORV32_LIBS)
+
+# Generate a "spi elf", to be loaded from address 0x810000 
+%.spiflash.elf: %.o $(RV_BINARIES) 
+	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/spiflash.ld $< -o $@ $(FEMTORV32_LIBS) $(RVGCC_LIB)
+
+%.spiflash.bin: %.spiflash.elf
+	$(RVOBJDUMP) -Mnumeric -D $< > tmp.list
+	$(RVOBJCOPY) $< $@ -O binary
+
+%.spiflash.prog: %.spiflash.bin
+	iceprog -o 64k $<
+
+
 #Rule to convert a .elf executable into a .hex file for verilog 'readmemh()'
 # command, using my 'firmware_words' utility to parse the .elf executable.
 # It is used for "bare metal" executables, compiled with linker script,
@@ -92,8 +113,10 @@ RVCPPFLAGS=-fno-exceptions -fno-enforce-eh-specs
 # The rules to generate standard (.elf) or bare metal (.bm_elf) executables
 # are in EXAMPLES/Makefile
 
-%.hex: %.bm_elf $(FIRMWARE_DIR)/TOOLS/firmware_words 
+%.hex: %.baremetal.elf $(FIRMWARE_DIR)/TOOLS/firmware_words 
 	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram $(RAM_SIZE) -hex $@
+	cp $@ $(FIRMWARE_DIR)/firmware.hex
+	echo $@ > $(FIRMWARE_DIR)/firmware.txt
 
 ################################################################################
 .PHONY: root clean all get_riscv_toolchain
@@ -101,7 +124,7 @@ RVCPPFLAGS=-fno-exceptions -fno-enforce-eh-specs
 root: all
 
 clean:
-	rm -f *.o *.elf *.hex *.rawhex *.exe *~ *.a *.bin *.bm_elf *.bm_rawhex *.spi_elf
+	rm -f *.o *.elf *.hex *.exe *~ *.a *.bin 
 
 #Generating the conversion utility for hex files
 
