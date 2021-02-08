@@ -54,6 +54,9 @@ int sintab[64] = {
    -142,-120,-97,-74,-49,-25
 };
 
+
+RV32_FASTCODE(void main());
+
 void main() {
     GL_init();
     int frame = 0;

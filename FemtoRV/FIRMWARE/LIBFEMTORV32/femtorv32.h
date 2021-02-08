@@ -4,6 +4,8 @@
 #include "HardwareConfig_bits.h"
 #include "FGA.h"
 
+#define RV32_FASTCODE(PROTO) PROTO __attribute((section(".fastcode")))
+
 #ifndef RV32_NO_INT_TYPES
 typedef unsigned char          uint8_t;
 typedef unsigned short         uint16_t;

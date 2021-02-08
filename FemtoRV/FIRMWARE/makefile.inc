@@ -102,7 +102,7 @@ RVCPPFLAGS=-fno-exceptions -fno-enforce-eh-specs
 	$(RVOBJDUMP) -Mnumeric -D $< > tmp.list
 	$(RVOBJCOPY) $< $@ -O binary
 
-%.spiflash.prog: %.spiflash.bin
+%.prog: %.spiflash.bin
 	iceprog -o 64k $<
 
 

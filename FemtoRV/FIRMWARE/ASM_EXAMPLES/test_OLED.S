@@ -29,6 +29,8 @@
 
 
 .include "femtorv32.inc"
+
+.section .fastcode
 .globl main
 .type  main, @function
 	
