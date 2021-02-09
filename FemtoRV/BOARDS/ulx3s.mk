@@ -28,4 +28,4 @@ ULX3S.prog: # program permanently
 ULX3S.firmware_config:
 	TOOLS/make_config.sh -DULX3S
 	(cd FIRMWARE; make libs)	
-	(cd FIRMWARE/FEMTOS; make commander.hex)
+	(cd FIRMWARE/FEMTOS; make clean commander.hex)

@@ -112,7 +112,7 @@ void draw_frame_fast(int frame) {
 
 
 void main() {
-    GL_init();
+    GL_init(GL_MODE_OLED);
     GL_clear();
     MAX7219_tty_init();
     int frame = 0;

@@ -37,43 +37,18 @@ uint16_t next_word() {
 }
 
 
-/*
- * The graphic mode:
- * One of
- *   OLED_MODE_128x128x16bpp
- *   FGA_MODE_320x200x16bpp  
- *   FGA_MODE_320x200x8bpp   
- *   FGA_MODE_640x400x4bpp   
- */
-#define OLED_MODE_128x128x16bpp -1
-int gfx_mode; 
-int gfx_colormapped; // 1 if colormapped, 0 if RGB16
-
-static inline gfx_clear() {
-   if(gfx_mode == OLED_MODE_128x128x16bpp) {
-      GL_clear();
-   } else {
-      FGA_clear();
-   }
-}
-
-static inline gfx_wait_vbl() {
-   if(gfx_mode != OLED_MODE_128x128x16bpp) {
-      FGA_wait_vbl();
-   }
-}
-
+int colormapped; // 1 if colormapped, 0 if RGB16
 
 static inline void map_vertex(int16_t* X, int16_t* Y) {
-   if(gfx_mode == FGA_MODE_640x400x4bpp) {
+   if(FGA_mode == FGA_MODE_640x400x4bpp) {
       *X = *X << 1;
       *Y = *Y << 1;
-   } else if(gfx_mode == OLED_MODE_128x128x16bpp) {
+   } else if(FGA_mode == GL_MODE_OLED) {
       *X = *X >> 1;
       *Y = *Y >> 1;
 #ifdef SSD1331
-      *X -= (128 - GL_width/2);
-      *Y -= (128 - GL_height/2);      
+      *X -= (128 - OLED_WIDTH)/2;
+      *Y -= (128 - OLED_HEIGHT)/2;      
 #endif
    }
 }
@@ -142,12 +117,12 @@ int read_frame() {
 	}
     }
 
-    gfx_wait_vbl();
+    GL_wait_vbl();
     if(wireframe) {
-       gfx_clear();
+       GL_clear();
     } else {
         if(frame_flags & CLEAR_BIT) {
-	   // gfx_clear(); // Too much flickering, commented-out for now
+	   // GL_clear(); // Too much flickering, commented-out for now
 	}
     }
    
@@ -199,42 +174,30 @@ int read_frame() {
 	       poly[2*i+1] = y;
 	    }
 	}
-        if(gfx_mode == OLED_MODE_128x128x16bpp) {
+        GL_fill_poly(nvrtx,poly,colormapped ? poly_col : cmap[poly_col]);
+        /*       
+        if(FGA_mode == GL_MODE_OLED) {
 	   GL_fill_poly(nvrtx,poly,cmap[poly_col]);
 	} else {
-	   FGA_fill_poly(nvrtx,poly,gfx_colormapped ? poly_col : cmap[poly_col]);
+	   FGA_fill_poly(nvrtx,poly,colormapped ? poly_col : cmap[poly_col]);
 	}
+	*/ 
     }
     return 1; 
 }
 
-char* modes[] = {
-#ifdef SSD1351   
-   "OLED 128x128 16",
-#else
-   "OLED 96x64   16",   
-#endif   
-   "FGA  320x200 16",
-   "FGA  320x200 8",
-   "FGA  640x400 4",
-   NULL
-};
 
 int main() {
-    gfx_mode = GUI_prompt("GFX MODE", modes) - 1;
-    gfx_colormapped = (gfx_mode == FGA_MODE_320x200x8bpp ||
-                       gfx_mode == FGA_MODE_640x400x4bpp  );
+    GL_init(GL_MODE_CHOOSE);
+    GL_clear();
+    colormapped = (FGA_mode == FGA_MODE_320x200x8bpp ||
+                   FGA_mode == FGA_MODE_640x400x4bpp  );
    
     if(filesystem_init()) {
        return -1;
     }
    
     wireframe = 0;
-    if(gfx_mode != -1) {
-       FGA_setmode(gfx_mode);
-    } else {
-       GL_tty_init();
-    }
    
     for(;;) {
         cur_byte_address = 0;
@@ -243,10 +206,10 @@ int main() {
 	    printf("Could not open scene1.dat\n");
 	    return -1;
 	}
-        gfx_clear();
+        GL_clear();
 	GL_polygon_mode(wireframe ? GL_POLY_LINES: GL_POLY_FILL);	
 	while(read_frame()) {
-	   // delay(50); // If gfx_clear() is uncommented, uncomment as well
+	   // delay(50); // If GL_clear() is uncommented, uncomment as well
 	   //            // to reduce flickering.
 	}
         wireframe = !wireframe;

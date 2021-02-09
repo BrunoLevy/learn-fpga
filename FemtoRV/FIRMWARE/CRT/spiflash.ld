@@ -44,12 +44,12 @@ SECTIONS {
 	/* */libgcc.a:mulsf3.o(.text)  */ 
 	/* */libgcc.a:divsf3.o(.text)  */
 
-        /* graphics */
-	*/libfemtorv32.a:femtoGL.o(.text)
-	*/libfemtorv32.a:femtoGLline.o(.text) 
-	*/libfemtorv32.a:femtoGLfill_poly.o(.text) 
-	*/libfemtorv32.a:femtoGLsetpixel.o(.text)
-	*/libfemtorv32.a:ssd1351_1331.o(.text)
+        /* graphics */ /* TODO: tag functions in C sources instead */
+	/* */libfemtoGL.a:femtoGLfill_rect.o(.text) */
+	/* */libfemtoGL.a:femtoGLline.o(.text) */
+	/* */libfemtoGL.a:femtoGLfill_poly.o(.text) */
+	/* */libfemtoGL.a:femtoGLsetpixel.o(.text) */
+	*/libfemtorv32.a:ssd1351_1331.o(.text) 
 
         /* timing */
 	wait_cycles.o(.text)

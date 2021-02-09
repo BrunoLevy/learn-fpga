@@ -38,6 +38,12 @@ initial begin
 `ifdef NRV_IO_SSD1331
    $write(" -DSSD1331=1");   
 `endif
+`ifdef NRV_IO_SDCARD
+   $write(" -DSDCARD=1");   
+`endif
+`ifdef NRV_IO_MAPPED_SPI_FLASH
+   $write(" -DSPIFLASH=1");   
+`endif
 `ifdef ICE_STICK
    $write(" -DICE_STICK=1");   
 `endif

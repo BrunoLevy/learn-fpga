@@ -199,7 +199,7 @@ int read_frame() {
 
 
 int main() {
-    GL_init();
+    GL_init(GL_MODE_OLED);
     GL_clear();
 
     wireframe = 0;

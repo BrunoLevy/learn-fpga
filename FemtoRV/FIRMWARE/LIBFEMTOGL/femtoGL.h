@@ -32,6 +32,7 @@ extern void GL_fill_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uin
 extern void GL_setpixel(int x, int y, uint16_t color);
 extern void GL_line(int x1, int y1, int x2, int y3, uint16_t color);
 extern void GL_fill_poly(int nb_pts, int* points, uint16_t color);
+extern void GL_wait_vbl();
 
 extern int      FGA_mode;
 extern uint16_t FGA_width;
@@ -101,16 +102,19 @@ int GUI_prompt(char* title, char** options);
 #define GL_WRITE_DATA_UINT16(RGB) IO_OUT(IO_GFX_DAT,(RGB))
 #define GL_WRITE_DATA_RGB(R,G,B)  GL_WRITE_DATA_UINT16(GL_RGB(R,G,B))
 
-int FGA_write_window(int x1, int y1, int x2, int y2);
+void FGA_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 
 static inline void GL_write_window(int x1, int y1, int x2, int y2) {
 #if defined(SSD1351) || defined(SSD1331)
+# ifdef FGA
    if(FGA_mode == -1) {
+# endif      
       oled_write_window(x1,y1,x2,y2);
+# ifdef FGA
    }
-   
+# endif
 #endif
-#if defined(FGA)
+#ifdef FGA
    FGA_write_window(x1,y1,x2,y2);   
 #endif   
 }

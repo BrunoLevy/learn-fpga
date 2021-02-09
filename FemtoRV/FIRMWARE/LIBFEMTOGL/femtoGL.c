@@ -15,7 +15,7 @@ void GL_set_bg(uint8_t r, uint8_t g, uint8_t b) {
 extern uint16 GL_width  = 0;
 extern uint16 GL_height = 0;
 
-static char* modes[] = {
+static const char* modes[] = {
 #ifdef SSD1351   
    "OLED 128x128 16",
 #else
@@ -27,7 +27,7 @@ static char* modes[] = {
    NULL
 };
 
-static char* RGB_modes[] = {
+static const char* RGB_modes[] = {
 #ifdef SSD1351   
    "OLED 128x128 16",
 #else
@@ -58,23 +58,13 @@ void GL_init(int mode) {
    }
 }
 
-void GL_fill_rect(
-    uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color
-) {
-  if(FGA_mode == -1) {
-    GL_write_window(x1,y1,x2,y2);
-    for(int y=y1; y<=y2; ++y) {
-      for(int x=x1; x<=x2; ++x) {
-	GL_WRITE_DATA_UINT16(color);
-      }
-    }
-  } else {
-    FGA_fill_rect(x1,y1,x2,y2,color);
-  }
-}
-
 void GL_clear() {
   GL_fill_rect(0,0,GL_width-1,GL_height-1,GL_bg);
 }
 
-		
+void GL_wait_vbl() {		
+   if(FGA_mode != GL_MODE_OLED) {
+      FGA_wait_vbl();
+   }
+}
+
