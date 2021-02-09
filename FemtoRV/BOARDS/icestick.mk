@@ -5,10 +5,9 @@ NEXTPNR_ICESTICK_OPT=--force --json $(PROJECTNAME).json --pcf BOARDS/icestick.pc
 
 #######################################################################################################################
 
-ICESTICK: ICESTICK.synth ICESTICK.prog
+ICESTICK: ICESTICK.firmware_config ICESTICK.synth ICESTICK.prog
 
 ICESTICK.synth: 
-	TOOLS/make_config.sh -DICE_STICK
 	yosys $(YOSYS_ICESTICK_OPT) $(VERILOGS)
 	nextpnr-ice40 $(NEXTPNR_ICESTICK_OPT)
 	icetime -p BOARDS/icestick.pcf -P tq144 -r $(PROJECTNAME).timings -d hx1k -t $(PROJECTNAME).asc 
@@ -21,4 +20,8 @@ ICESTICK.show:
 ICESTICK.prog:
 	iceprog $(PROJECTNAME).bin
 
+ICESTICK.firmware_config:
+	TOOLS/make_config.sh -DICE_STICK
+	(cd FIRMWARE; make libs)
+	
 #######################################################################################################################

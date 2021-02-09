@@ -4,7 +4,7 @@ NEXTPNR_ICESUGAR_OPT=--force --json $(PROJECTNAME).json --pcf BOARDS/icesugar.pc
 
 #######################################################################################################################
 
-ICESUGAR: ICESUGAR.synth ICESUGAR.prog
+ICESUGAR: ICESUGAR.firmware_config ICESUGAR.synth ICESUGAR.prog
 
 ICESUGAR.synth: FIRMWARE/firmware.hex 
 	TOOLS/make_config.sh -DICE_SUGAR
@@ -20,3 +20,6 @@ ICESUGAR.show: FIRMWARE/firmware.hex
 ICESUGAR.prog:
 	icesprog $(PROJECTNAME).bin
 
+ICESUGAR.firmware_config:
+	TOOLS/make_config.sh -DICE_SUGAR
+	(cd FIRMWARE; make libs)

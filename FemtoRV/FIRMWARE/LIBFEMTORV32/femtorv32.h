@@ -4,7 +4,17 @@
 #include "HardwareConfig_bits.h"
 #include "FGA.h"
 
+/* 
+ * On the IceStick, code is entirely executed from the (slow) SPI flash,
+ * except for functions marked as fastcode that will be loaded in the
+ * (much faster) RAM (but use it wisely, you only got 7kB).
+ * Other devices are sufficient RAM to load all the code.
+ */
+#ifdef ICE_STICK
 #define RV32_FASTCODE(PROTO) PROTO __attribute((section(".fastcode")))
+#else
+#define RV32_FASTCODE(PROTO) PROTO 
+#endif
 
 #ifndef RV32_NO_INT_TYPES
 typedef unsigned char          uint8_t;

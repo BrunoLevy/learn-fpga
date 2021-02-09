@@ -4,7 +4,7 @@ NEXTPNR_ICEFEATHER_OPT=--force --json $(PROJECTNAME).json --pcf BOARDS/icefeathe
 
 #######################################################################################################################
 
-ICEFEATHER: ICEFEATHER.synth ICEFEATHER.prog
+ICEFEATHER: ICEFEATHER.firmware_config ICEFEATHER.synth ICEFEATHER.prog
 
 ICEFEATHER.synth: FIRMWARE/firmware.hex 
 	TOOLS/make_config.sh -DICE_FEATHER
@@ -20,3 +20,6 @@ ICEFEATHER.show: FIRMWARE/firmware.hex
 ICEFEATHER.prog:
 	iceprog $(PROJECTNAME).bin
 
+ICEFEATHER.firmware_config:
+	TOOLS/make_config.sh -DICE_FEATHER
+	(cd FIRMWARE; make libs)

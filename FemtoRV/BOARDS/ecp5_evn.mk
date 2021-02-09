@@ -4,7 +4,7 @@ NEXTPNR_ECP5_EVN_OPT=--force --json $(PROJECTNAME).json --lpf BOARDS/ecp5_evn.lp
 
 #######################################################################################################################
 
-ECP5_EVN:ECP5_EVN.synth ECP5_EVN.prog
+ECP5_EVN: ECP5_EVN.firmware_config ECP5_EVN.synth ECP5_EVN.prog
 
 ECP5_EVN.synth: FIRMWARE/firmware.hex 
 	TOOLS/make_config.sh -DECP5_EVN
@@ -19,3 +19,6 @@ ECP5_EVN.prog:
 ECP5_EVN.prog_flash:
 	ujprog -j flash $(PROJECTNAME).bit           
 
+ECP5_EVN.firmware_config:
+	TOOLS/make_config.sh -DECP5_EVN
+	(cd FIRMWARE; make libs)

@@ -102,7 +102,7 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 
 # Generate a "femtOS elf executable", to be loaded from address 0x10000 (rule for conversion to .bin file in makefile.inc)
 %.elf: %.o $(RV_BINARIES)
-	$(RVGCC) $(RVCFLAGS) $< -o $@ -Wl,-gc-sections $(FEMTORV32_LIBS)
+	$(RVGPP) $(RVCFLAGS) $(RVCPPFLAGS) -nostdlib $< -o $@ -Wl,-gc-sections $(FEMTORV32_LIBS) -lsupc++ $(RVGCC_LIB) $(FIRMWARE_DIR)/CRT/crt0_baremetal.o
 
 # Generate a "spi elf", to be loaded from address 0x810000 
 %.spiflash.elf: %.o $(RV_BINARIES) 

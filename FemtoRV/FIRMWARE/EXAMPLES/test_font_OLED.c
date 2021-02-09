@@ -4,6 +4,7 @@
 
 extern int GL_putchar(int);
 
+RV32_FASTCODE(int main());
 int main() {
    
     GL_init();
@@ -24,8 +25,8 @@ int main() {
 	       
 	        uint32_t BW = (font_8x8[car*8+col] & (1 << row)) ? 255 : 0;
 	       
-		uint32_t R = (y+frame)  & 63;
-		uint32_t G = (y >> 3)   & 63;
+	        uint32_t R = BW ? ((y+frame)  & 63) : 0;
+	        uint32_t G = BW ? 0 : (y >> 3)   & 63;
 		uint32_t B = (-y+frame) & 63;
 
 	        OLED_WRITE_DATA_UINT16(B | (G << 6) | (R << 11));

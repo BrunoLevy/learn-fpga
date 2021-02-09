@@ -4,7 +4,7 @@ NEXTPNR_FOMU_OPT=--json $(PROJECTNAME).json --pcf BOARDS/fomu-pvt.pcf --asc $(PR
 
 #######################################################################################################################
 
-FOMU: FOMU.synth FOMU.prog
+FOMU: FOMU.firmware_config FOMU.synth FOMU.prog
 
 FOMU.synth: FIRMWARE/firmware.hex 
 	TOOLS/make_config.sh -DFOMU
@@ -22,4 +22,7 @@ FOMU.show: FIRMWARE/firmware.hex
 FOMU.prog:
 	dfu-util -D $(PROJECTNAME).dfu
 
+FOMU.firmware_config:
+	TOOLS/make_config.sh -DFOMU
+	(cd FIRMWARE; make libs)
 #######################################################################################################################
