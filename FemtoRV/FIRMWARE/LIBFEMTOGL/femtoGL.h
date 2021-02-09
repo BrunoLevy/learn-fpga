@@ -2,6 +2,7 @@
 #define H__FEMTOGL__H
 
 #include <femtorv32.h>
+#include <FGA.h>
 
 /* Font maps */
 extern uint16_t* font_8x16;   /*  8 half-words per char. Each half-word corresponds to a column.   */
@@ -38,6 +39,7 @@ extern uint16_t FGA_height;
 
 extern void FGA_wait_vbl();
 extern void FGA_clear();
+extern void FGA_setpixel(int x, int y, uint16_t color);
 extern void FGA_line(int x1, int y1, int x2, int y3, uint16_t color);
 extern void FGA_fill_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color);
 extern void FGA_fill_poly(int nb_pts, int* points, uint16_t color);
@@ -99,7 +101,9 @@ int GUI_prompt(char* title, char** options);
 #define GL_WRITE_DATA_UINT16(RGB) IO_OUT(IO_GFX_DAT,(RGB))
 #define GL_WRITE_DATA_RGB(R,G,B)  GL_WRITE_DATA_UINT16(GL_RGB(R,G,B))
 
-static inline GL_write_window(int x1, int y1, int x2, int y2) {
+int FGA_write_window(int x1, int y1, int x2, int y2);
+
+static inline void GL_write_window(int x1, int y1, int x2, int y2) {
 #if defined(SSD1351) || defined(SSD1331)
    if(FGA_mode == -1) {
       oled_write_window(x1,y1,x2,y2);
