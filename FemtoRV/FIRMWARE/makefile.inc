@@ -19,13 +19,6 @@ show_config:
 	@echo "DEVICES=$(DEVICES)"
 	@echo "DEVICES_ASM=$(DEVICES_ASM)"	
 
-FEMTORV32_LIBS=$(FIRMWARE_DIR)/CRT/syscalls.o \
-	       -L$(RVTOOLCHAIN_LIB_DIR)\
-               -L$(FIRMWARE_DIR)/CRT\
-	       -L$(FIRMWARE_DIR)/LIBFEMTORV32\
-	       -L$(FIRMWARE_DIR)/LIBFEMTOC\
-   	       -lfemtorv32 -lfemtoc -lm 
-
 ################################################################################
 
 # Website to get the RISCV toolchain
@@ -86,9 +79,26 @@ RVCPPFLAGS=-fno-exceptions -fno-enforce-eh-specs
 .S.o: $< $(RV_BINARIES)
 	$(RVAS) $(RVASFLAGS) $(RVUSERASFLAGS) $< -o $@ 
 
+# Libraries to link with standard executables
+FEMTORV32_LIBS=$(FIRMWARE_DIR)/CRT/syscalls.o \
+	       -L$(RVTOOLCHAIN_LIB_DIR)\
+               -L$(FIRMWARE_DIR)/CRT\
+	       -L$(FIRMWARE_DIR)/LIBFEMTORV32\
+	       -L$(FIRMWARE_DIR)/LIBFEMTOC\
+   	       -lfemtorv32 -lfemtoc -lm 
+
+# Libraries to link with small executable 
+# (e.g., ".hex" memory image for IceStick)
+FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
+                     -L$(FIRMWARE_DIR)/CRT\
+	             -L$(FIRMWARE_DIR)/LIBFEMTORV32\
+	             -L$(FIRMWARE_DIR)/LIBFEMTOC\
+   	             -lfemtorv32 -lfemtoc 
+
 # Generate a "bare metal elf", to be loaded from address 0 (rule for conversion to .hex file in makefile.inc)
+# The generated ".hex" file is directly included in the Verilog files, for memory initialization
 %.baremetal.elf: %.o $(RV_BINARIES)
-	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/baremetal.ld $< -o $@ $(FEMTORV32_LIBS) $(RVGCC_LIB)
+	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/baremetal.ld $< -o $@ $(FEMTORV32_LIBS_SMALL) $(RVGCC_LIB)
 
 # Generate a "femtOS elf executable", to be loaded from address 0x10000 (rule for conversion to .bin file in makefile.inc)
 %.elf: %.o $(RV_BINARIES)

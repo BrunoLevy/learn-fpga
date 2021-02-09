@@ -10,15 +10,15 @@ test_spi_flash.elf test_spi_sdcard.elf tinyraytracer.elf tty_OLED.elf\
 test_FGA.elf 
 
 all:
-	@echo "Please specify target (progname.elf or progname.bin) or 'everything'"
+	@echo "Please specify target (progname.elf, progname.bin, progname.hex) or 'everything'"
 
 everything: $(ALL_PROGRAMS)
 
 # Generate a "bare metal elf", to be loaded from address 0 (rule for conversion to .hex file in makefile.inc)
-%.bm_elf: %.o $(RV_BINARIES)
-	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/baremetal.ld $< -o $@ $(FEMTORV32_LIBS) $(RVGCC_LIB)
+#%.bm_elf: %.o $(RV_BINARIES)
+#	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/baremetal.ld $< -o $@ $(FEMTORV32_LIBS) $(RVGCC_LIB)
 
 # Generate a "femtOS elf executable", to be loaded from address 0x10000 (rule for conversion to .bin file in makefile.inc)
-%.elf: %.o $(RV_BINARIES)
-	$(RVGCC) $(RVCFLAGS) $< -o $@ -Wl,-gc-sections $(FEMTORV32_LIBS)
+#%.elf: %.o $(RV_BINARIES)
+#	$(RVGCC) $(RVCFLAGS) $< -o $@ -Wl,-gc-sections $(FEMTORV32_LIBS)
 

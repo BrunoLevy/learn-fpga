@@ -65,12 +65,12 @@ int main() {
     show_colors();
     delay(1000);
     GL_clear();
-    for(cnt=0; cnt<20000; ++cnt) {
+    for(cnt=0; cnt<5000; ++cnt) {
 	random_pixel();
     }
     delay(1000);
     GL_clear();
-    for(cnt=0; cnt<4000; ++cnt) {
+    for(cnt=0; cnt<1000; ++cnt) {
 	random_line();
     }
     delay(1000);
