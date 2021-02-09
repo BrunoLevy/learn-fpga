@@ -1,4 +1,4 @@
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 //#define FONT_8x16 // VGA font (WIP)
 //#define FONT_8x8 // CGA font
@@ -26,7 +26,7 @@ static int display_start_line = 0;
 static int last_char_was_CR = 0;
 
 void GL_tty_init() {
-    GL_init();
+    GL_init(GL_MODE_OLED);
     GL_clear();
     set_putcharfunc(GL_putchar);
     cursor_X = 0;
@@ -47,16 +47,16 @@ void GL_tty_goto_xy(int X, int Y) {
  contents anywhere !    
  */
 void GL_tty_scroll() {
-    if(cursor_Y >= OLED_HEIGHT) {
+    if(cursor_Y >= GL_height) {
        scrolling = 1;
        cursor_Y = 0;
     }
     if(!scrolling) {
 	return;
     }
-    GL_fill_rect(0,cursor_Y,OLED_WIDTH-1,cursor_Y+FONT_HEIGHT-1, GL_bg);
+    GL_fill_rect(0,cursor_Y,GL_width-1,cursor_Y+FONT_HEIGHT-1, GL_bg);
     display_start_line += FONT_HEIGHT;
-    if(display_start_line >= OLED_HEIGHT) {
+    if(display_start_line >= GL_height) {
        display_start_line = 0;
     }
     oled1(0xA1, display_start_line);
@@ -97,7 +97,7 @@ int GL_putchar(int c) {
    
     GL_putchar_xy(cursor_X, cursor_Y, (char)c); 
     cursor_X += FONT_WIDTH;
-    if(cursor_X >= OLED_WIDTH) {
+    if(cursor_X >= GL_width) {
        GL_putchar('\n');
     }
     return c;
@@ -105,25 +105,25 @@ int GL_putchar(int c) {
 
 void GL_putchar_xy(int X, int Y, char c) {
 #if defined(FONT_8x16)   
-   oled_write_window(X,Y,X+7,Y+15);   
+   GL_write_window(X,Y,X+7,Y+15);   
    uint16_t* car_ptr = font_8x16 + (int)c * 8;
    for(int row=0; row<16; ++row) {
       for(int col=0; col<8; ++col) {
 	 uint32_t BW = (car_ptr[col] & (1 << row)) ? 255 : 0;
-	 OLED_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);
+	 GL_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);
       }
    }
 #elif defined(FONT_8x8)
-   oled_write_window(X,Y,X+7,Y+7);   
+   GL_write_window(X,Y,X+7,Y+7);   
    uint8_t* car_ptr = font_8x8 + (int)c * 8;
    for(int row=0; row<8; ++row) {
       for(int col=0; col<8; ++col) {
 	 uint32_t BW = (car_ptr[col] & (1 << row)) ? 255 : 0;
-	 OLED_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);
+	 GL_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);
       }
    }
 #elif defined(FONT_5x6)
-   oled_write_window(X,Y,X+5,Y+7);
+   GL_write_window(X,Y,X+5,Y+7);
    uint32_t chardata = font_5x6[c - ' '];
    // bit 30 indicates whether character needs to be shifted downwards by
    // two pixels (for instance, for letters 'p','q','g')
@@ -138,11 +138,11 @@ void GL_putchar_xy(int X, int Y, char c) {
 	       }
 	       BW = (coldata & (1 << row)) ? 255 : 0;
 	   }
-	   OLED_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);
+	   GL_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);
        }
    }
 #elif defined(FONT_3x5)
-   oled_write_window(X,Y,X+3,Y+5);
+   GL_write_window(X,Y,X+3,Y+5);
    uint16_t car_data = font_3x5[c - ' '];
    for(int row=0; row<6; ++row) {
       for(int col=0; col<4; ++col) {
@@ -151,7 +151,7 @@ void GL_putchar_xy(int X, int Y, char c) {
 	      uint32_t coldata = (car_data >> (5 * col)) & 31;
 	      BW = (coldata & (1 << row)) ? 255 : 0;
 	  }
-          OLED_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);	 
+          GL_WRITE_DATA_UINT16(BW ? GL_fg : GL_bg);	 
       }
    }
 #endif

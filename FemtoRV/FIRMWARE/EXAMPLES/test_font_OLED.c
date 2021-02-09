@@ -1,6 +1,6 @@
 // Testing the OLED screen, displaying the font map.
 
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 extern int GL_putchar(int);
 
@@ -13,9 +13,9 @@ int main() {
     int frame=0;
    
     for(;;) {
-        oled_write_window(0,0,OLED_WIDTH-1,OLED_HEIGHT-1);
-	for(uint32_t y=0; y<OLED_HEIGHT; ++y) {
-	    for(uint32_t x=0; x<OLED_WIDTH; ++x) {
+        GL_write_window(0,0,GL_width-1,GL_height-1);
+	for(uint32_t y=0; y<GL_height; ++y) {
+	    for(uint32_t x=0; x<GL_width; ++x) {
 	        uint32_t car_x = (x + frame)/8;
 	        uint32_t car_y = (y + frame)/8;
 	        uint32_t car = (car_y * (128/8) + car_x) & 127;
@@ -29,7 +29,7 @@ int main() {
 	        uint32_t G = BW ? 0 : (y >> 3)   & 63;
 		uint32_t B = (-y+frame) & 63;
 
-	        OLED_WRITE_DATA_UINT16(B | (G << 6) | (R << 11));
+	        GL_WRITE_DATA_UINT16(B | (G << 6) | (R << 11));
 	    }
 	}
 	++frame;

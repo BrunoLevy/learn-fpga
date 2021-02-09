@@ -3,7 +3,7 @@
 
 #include <math.h>
 #include <fenv.h>
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 /*******************************************************************/
 
@@ -209,23 +209,50 @@ vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* light
   return result;
 }
 
+const uint8_t dither[4][4] = {
+  { 0, 8, 2,10},
+  {12, 4,14, 6},
+  { 3,11, 1, 9},
+  {15, 7,13, 5}
+};
+
 void set_pixel(int x, int y, float r, float g, float b) {
    r = max(0.0f, min(1.0f, r));
    g = max(0.0f, min(1.0f, g));
    b = max(0.0f, min(1.0f, b));
-   uint8_t R = (uint8_t)(255.0f * r);
-   uint8_t G = (uint8_t)(255.0f * g);
-   uint8_t B = (uint8_t)(255.0f * b);
-   GL_setpixel(x,y,GL_RGB(R,G,B));
+   switch(FGA_mode) {
+   case GL_MODE_OLED: {
+     uint8_t R = (uint8_t)(255.0f * r);
+     uint8_t G = (uint8_t)(255.0f * g);
+     uint8_t B = (uint8_t)(255.0f * b);
+     GL_setpixel(x,y,GL_RGB(R,G,B));
+   } break;
+   case FGA_MODE_320x200x16bpp: {
+     uint8_t R = (uint8_t)(255.0f * r);
+     uint8_t G = (uint8_t)(255.0f * g);
+     uint8_t B = (uint8_t)(255.0f * b);
+     FGA_setpixel(x,y,GL_RGB(R,G,B));     
+   } break;
+   case FGA_MODE_320x200x8bpp: {
+     float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+     FGA_setpixel(x,y,(uint16_t)(gray*255.0f));
+   } break;
+   case FGA_MODE_640x400x4bpp: {
+     float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+     uint16_t GRAY = (uint16_t)(gray*255.0f);
+     uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
+     FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15));
+   } break;
+   }
 }
 
 void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
    const float fov  = M_PI/3.;
-   for (int j = 0; j<OLED_HEIGHT; j++) { // actual rendering loop
-      for (int i = 0; i<OLED_WIDTH; i++) {
-	 float dir_x =  (i + 0.5) -  OLED_WIDTH/2.;
-	 float dir_y = -(j + 0.5) + OLED_HEIGHT/2.;    // this flips the image at the same time
-	 float dir_z = -OLED_HEIGHT/(2.*tan(fov/2.));
+   for (int j = 0; j<GL_height; j++) { // actual rendering loop
+      for (int i = 0; i<GL_width; i++) {
+	 float dir_x =  (i + 0.5) - GL_width/2.;
+	 float dir_y = -(j + 0.5) + GL_height/2.;    // this flips the image at the same time
+	 float dir_z = -GL_height/(2.*tan(fov/2.));
 	 vec3 C = cast_ray(make_vec3(0,0,0), vec3_normalize(make_vec3(dir_x, dir_y, dir_z)), spheres, nb_spheres, lights, nb_lights, 0);
 	 set_pixel(i,j,C.x,C.y,C.z);
       }
@@ -251,7 +278,16 @@ int main() {
     lights[1] = make_Light(make_vec3( 30, 50, -25), 1.8);
     lights[2] = make_Light(make_vec3( 30, 20,  30), 1.7);
 
-    GL_init();
+    GL_init(GL_MODE_CHOOSE);
+    if(FGA_mode == FGA_MODE_320x200x8bpp ) {
+       for(int i=0; i<256; ++i) {
+	  FGA_setpalette(i,i,i,i);
+       }
+    } else if(FGA_mode == FGA_MODE_640x400x4bpp) {
+       for(int i=0; i<16; ++i) {
+	  FGA_setpalette(i,i<<4,i<<4,i<<4);
+       }
+    }
     GL_clear();
     render(spheres, nb_spheres, lights, nb_lights);
     

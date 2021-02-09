@@ -3,7 +3,7 @@
  * Displaying a rotating RISCV logo
  */ 
 
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 /* The RISCV logo, with a tiny resolution
  * (remember, I only got 4Kb of RAM
@@ -56,7 +56,7 @@ const int sintab[64] = {
 
 
 void draw_frame(int frame) {
-   oled_write_window(0,0,OLED_WIDTH-1,OLED_HEIGHT-1);
+   GL_write_window(0,0,GL_width-1,GL_height-1);
    int scaling = sintab[frame&63]+400;
    int Ux = scaling*sintab[frame & 63];         
    int Uy = scaling*sintab[(frame + 16) & 63];  
@@ -64,12 +64,12 @@ void draw_frame(int frame) {
    int Vy =  Ux;                                
    int X0 = -64*(Ux+Vx); 
    int Y0 = -64*(Uy+Vy);
-   for(int y=0; y<OLED_HEIGHT; ++y) {
+   for(int y=0; y<GL_height; ++y) {
       int X = X0;
       int Y = Y0;
-      for(int x=0; x<OLED_WIDTH; ++x) {
+      for(int x=0; x<GL_width; ++x) {
 	 unsigned char col = logo[(Y >> 18)&15][(X >> 18)&15];
-	 OLED_WRITE_DATA_UINT16(cmap[col]);
+	 GL_WRITE_DATA_UINT16(cmap[col]);
 	 X += Ux;
 	 Y += Uy;
       }
@@ -83,10 +83,11 @@ void draw_frame(int frame) {
  * (see CRT_BAREMETAL/spi_flash.ld).
  * Try this: comment-out the following line.
  */ 
-void draw_frame_fast(int frame) __attribute((section(".fastcode"))); 
+
+RV32_FASTCODE(void draw_frame_fast(int frame));
 
 void draw_frame_fast(int frame) {
-   oled_write_window(0,0,OLED_WIDTH-1,OLED_HEIGHT-1);
+   GL_write_window(0,0,GL_width-1,GL_height-1);
    int scaling = sintab[frame&63]+400;
    int Ux = scaling*sintab[frame & 63];         
    int Uy = scaling*sintab[(frame + 16) & 63];  
@@ -94,12 +95,12 @@ void draw_frame_fast(int frame) {
    int Vy =  Ux;                                
    int X0 = -64*(Ux+Vx); 
    int Y0 = -64*(Uy+Vy);
-   for(int y=0; y<OLED_HEIGHT; ++y) {
+   for(int y=0; y<GL_height; ++y) {
       int X = X0;
       int Y = Y0;
-      for(int x=0; x<OLED_WIDTH; ++x) {
+      for(int x=0; x<GL_width; ++x) {
 	 unsigned char col = logo[(Y >> 18)&15][(X >> 18)&15];
-	 OLED_WRITE_DATA_UINT16(cmap[col]);
+	 GL_WRITE_DATA_UINT16(cmap[col]);
 	 X += Ux;
 	 Y += Uy;
       }

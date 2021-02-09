@@ -1,4 +1,4 @@
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 extern int GL_clip(
     int nb_pts, int** poly, 

@@ -15,7 +15,6 @@
 // to be updated as well.
 #define BITMAP_SIZE 64
 
-typedef unsigned int uint32_t;
 typedef int bool;
 
 static uint32_t bitmap[BITMAP_SIZE/32];

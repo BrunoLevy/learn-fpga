@@ -8,7 +8,7 @@ NEXTPNR_ULX3S_OPT=--force --timing-allow-fail --json $(PROJECTNAME).json --lpf B
 
 ULX3S: ULX3S.firmware_config ULX3S.synth ULX3S.prog_flash
 
-ULX3S.fast: ULX3S.synth ULX3S.prog
+ULX3S.fast: ULX3S.synth ULX3S.prog_fast
 
 ULX3S.synth: FIRMWARE/firmware.hex
 	yosys $(YOSYS_ULX3S_OPT) $(VERILOGS)
@@ -19,12 +19,13 @@ ULX3S.show: FIRMWARE/firmware.hex
 	yosys $(YOSYS_ULX3S_OPT) $(VERILOGS)
 	nextpnr-ecp5 $(NEXTPNR_ULX3S_OPT) --gui
 
-ULX3S.prog: # program once (lost if device restarted)
+ULX3S.prog_fast: # program once (lost if device restarted)
 	ujprog $(PROJECTNAME).bit           
 
-ULX3S.prog_flash: # program permanently
+ULX3S.prog: # program permanently
 	ujprog -j FLASH $(PROJECTNAME).bit  
 
 ULX3S.firmware_config:
 	TOOLS/make_config.sh -DULX3S
 	(cd FIRMWARE; make libs)	
+	(cd FIRMWARE/FEMTOS; make commander.hex)

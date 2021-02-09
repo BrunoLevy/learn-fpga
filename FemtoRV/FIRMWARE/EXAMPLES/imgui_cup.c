@@ -82,8 +82,8 @@ void FX(ImVec2 a,ImVec2 b, ImVec2 S,float t) {
     addRectFilled(a,b,i>97?0xffffd050:0xff608000+(i/9&1)*64+i*65793);
   }
   */
-  GL_fill_rect(0,0,127,62,GL_RGB(0,127,255));
-  GL_fill_rect(0,64,127,127,GL_RGB(0,127,0));  
+  GL_fill_rect(0,0,GL_width-1,GL_height/2,GL_RGB(0,127,255));
+  GL_fill_rect(0,GL_height/2,GL_width-1,GL_height-1,GL_RGB(0,127,0));  
    
   for(i=0;i<n;i++){
     struct Q* o=&(q[i]);l=o->l;

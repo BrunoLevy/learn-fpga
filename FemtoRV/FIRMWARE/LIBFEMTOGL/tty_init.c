@@ -1,4 +1,4 @@
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 void femtosoc_tty_init() {
    

@@ -23,7 +23,7 @@
  * the SPI Flash, so that'd be cheating a bit...). 
  */
 
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 /*
  * Starting address of data stream stored in the 

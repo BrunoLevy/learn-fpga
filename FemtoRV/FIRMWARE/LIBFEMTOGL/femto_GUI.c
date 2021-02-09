@@ -1,4 +1,4 @@
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 static int show_list(char* title, char** options, int sel) {
     GL_tty_goto_xy(0,0);

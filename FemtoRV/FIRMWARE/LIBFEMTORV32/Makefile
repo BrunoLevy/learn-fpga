@@ -7,15 +7,11 @@ FAT_IO_OBJS_WITH_DIR=fat_io_lib/fat_access.o fat_io_lib/fat_cache.o \
 FAT_IO_OBJS=fat_access.o fat_cache.o fat_filelib.o fat_format.o fat_misc.o \
             fat_string.o fat_table.o fat_write.o
 
-OBJECTS=syscalls.o femtorv32.o max7219.o ssd1351_1331.o uart.o \
-         font_8x16.o font_8x8.o font_5x6.o font_3x5.o virtual_io.o femtoGL.o femtoGLtext.o \
-	 femtoGLsetpixel.o femtoGLline.o femtoGLfill_poly.o \
-	 tty_init.o max7219_text.o \
+OBJECTS= femtorv32.o max7219.o ssd1351_1331.o uart.o \
+         virtual_io.o \
 	 wait_cycles.o microwait.o milliwait.o \
          spi_sd.o cycles.o \
-	 filesystem.o exec.o femto_elf.o \
-	 FGA_mode.o FGA.o \
-	 femto_GUI.o
+	 filesystem.o exec.o femto_elf.o 
 	
 all: $(RVGCC) libfemtorv32.a 
 

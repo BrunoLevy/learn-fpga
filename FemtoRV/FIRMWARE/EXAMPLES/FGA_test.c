@@ -1,4 +1,4 @@
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 int main() {
   int frame=0;

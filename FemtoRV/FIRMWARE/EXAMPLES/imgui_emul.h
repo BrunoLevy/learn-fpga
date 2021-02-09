@@ -6,7 +6,7 @@
 #ifndef H_IMGUI_EMUL_H
 #define H_IMGUI_EMUL_H
 
-#include <femtorv32.h>
+#include <femtoGL.h>
 #include <math.h>
 
 
@@ -65,8 +65,8 @@ void addQuad(ImVec2 A, ImVec2 B, ImVec2 C, ImVec2 D, uint32_t color) {
    color = color >> 8;
    uint16_t b = (uint16_t)(color & 255);   
    int pts[8];
-   const int offx = 128/2 - 320/4;
-   const int offy = 128/2 - 180/4;
+   const int offx = GL_width/2 - 320/4;
+   const int offy = GL_height/2 - 180/4;
    pts[0] = (int)A.x / 2 + offx;
    pts[1] = (int)A.y / 2 + offy;
    pts[2] = (int)B.x / 2 + offx;
@@ -85,8 +85,8 @@ void addRectFilled(ImVec2 A, ImVec2 B, uint32_t color) {
    uint16_t g = (uint16_t)(color & 255);
    color = color >> 8;
    uint16_t b = (uint16_t)(color & 255);
-   const int offx = 128/2 - 320/4;
-   const int offy = 128/2 - 180/4;
+   const int offx = GL_width/2  - 320/4;
+   const int offy = GL_height/2 - 180/4;
    int x1 = (int)A.x / 2 + offx;
    int y1 = (int)A.y / 2 + offy;
    int x2 = (int)B.x / 2 + offx;
@@ -109,7 +109,7 @@ void main() {
    ImVec2 b = vec2(320,180);
    ImVec2 d = vec2(320,180);
    float  t = 0.0;
-   GL_init();
+   GL_init(GL_MODE_CHOOSE_RGB);
    GL_clear();
 
    for(;;) {

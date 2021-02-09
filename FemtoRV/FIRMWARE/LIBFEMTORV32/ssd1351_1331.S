@@ -60,9 +60,9 @@
 #################################################################################
 	
 # initialize oled display
-.global	GL_init
-.type	GL_init, @function
-GL_init:
+.global	oled_init
+.type	oled_init, @function
+oled_init:
 	add sp,sp,-4
         sw ra, 0(sp)
 
@@ -132,15 +132,6 @@ GL_init:
 	OLED0 0x2e       # disable scrolling
 	OLED0 0xaf       # display on
 .endif
-	
-# Set FGA mode 0, for SSD1351 emulation.
-# (in conditional compile to avoid pulling too 
-#  much code when we use small devices such as
-#  the iceStick)
-.ifdef FGA
-	li a0, 0
-	call FGA_setmode
-.endif	
 	lw ra, 0(sp)
 	add sp,sp,4
 	ret
@@ -168,17 +159,6 @@ oled_write_window:
 .ifdef SSD1351	
 	li a0, 0x5c
 	call oled0
-.endif	
-# Set write window in FGA, for SSD1351 emulation.
-# (in conditional compile to avoid pulling too 
-#  much code when we use small devices such as
-#  the iceStick)
-.ifdef FGA
-	mv a0,t0
-	mv a1,t2
-	mv a2,t1
-	mv a3,t3
-	call FGA_write_window
 .endif	
 	lw ra, 0(sp)
 	add sp,sp,4

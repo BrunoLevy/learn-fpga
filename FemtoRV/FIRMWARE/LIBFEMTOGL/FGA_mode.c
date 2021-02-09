@@ -1,6 +1,6 @@
-#include <femtorv32.h>
+#include <femtoGL.h>
 
-int      FGA_mode;
+int      FGA_mode = -1;
 uint16_t FGA_width;
 uint16_t FGA_height;
 
@@ -9,6 +9,7 @@ void FGA_setmode(int mode) {
       return;
    }
    FGA_mode = mode;
+   mode = MAX(mode,0); // mode -1 = OLED, emulate with mode 0
    IO_OUT(IO_FGA_CNTL, FGA_SET_MODE | (mode << 8));
    memset(FGA_BASEMEM,0,128000);
    switch(mode) {

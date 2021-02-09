@@ -1,4 +1,4 @@
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 #define INSIDE 0
 #define LEFT   1
@@ -7,13 +7,19 @@
 #define TOP    8
 
 #define XMIN 0
-#define XMAX (OLED_WIDTH-1)
+#define XMAX (GL_width-1)
 #define YMIN 0
-#define YMAX (OLED_HEIGHT-1)
+#define YMAX (GL_height-1)
 
 #define code(x,y) ((x) < XMIN) | (((x) > XMAX)<<1) | (((y) < YMIN)<<2) | (((y) > YMAX)<<3) 
 
 void GL_line(int x1, int y1, int x2, int y2, uint16_t color) {
+
+    if(FGA_mode != -1) {
+      FGA_line(x1, y1, x2, y2, color);
+      return;
+    }
+    
     /* Cohen-Sutherland line clipping. */
     int code1 = code(x1,y1);
     int code2 = code(x2,y2);

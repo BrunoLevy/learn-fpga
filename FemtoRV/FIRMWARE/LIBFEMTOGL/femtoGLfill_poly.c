@@ -1,4 +1,4 @@
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 int gl_polygon_mode = GL_POLY_FILL;
 int gl_culling_mode = GL_FRONT_AND_BACK;
@@ -112,7 +112,11 @@ int GL_clip(
 }
 
 void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
-
+    if(FGA_mode != -1) {
+      FGA_fill_poly(nb_pts, points, color);
+      return;
+    }
+  
     char x_left[128];
     char x_right[128];
 
@@ -146,8 +150,8 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	return;
     }
     
-    if((minx < 0) || (miny < 0) || (maxx >= OLED_WIDTH) || (maxy >= OLED_HEIGHT)) {
-	nb_pts = GL_clip(nb_pts, &points, 0, 0, OLED_WIDTH-1, OLED_HEIGHT-1);
+    if((minx < 0) || (miny < 0) || (maxx >= GL_width) || (maxy >= GL_height)) {
+	nb_pts = GL_clip(nb_pts, &points, 0, 0, GL_width-1, GL_height-1);
 	miny =  256;
 	maxy = -256;
 	for(int i1=0; i1<nb_pts; ++i1) {
@@ -217,9 +221,9 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
     for(int y = miny; y <= maxy; ++y) {
 	int x1 = x_left[y];
 	int x2 = x_right[y];
-	oled_write_window(x1,y,x2,y);
+	GL_write_window(x1,y,x2,y);
 	for(int x=x1; x<=x2; ++x) {
-	    OLED_WRITE_DATA_UINT16(color);
+	    GL_WRITE_DATA_UINT16(color);
 	}
     }
     

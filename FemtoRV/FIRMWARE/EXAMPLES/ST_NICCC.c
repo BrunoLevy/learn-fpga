@@ -14,7 +14,7 @@
  * More details and links in C_EXAMPLES/DATA/notes.txt
  */
 
-#include <femtorv32.h>
+#include <femtoGL.h>
 
 FILE* F = 0;
 int cur_byte_address = 0;
@@ -72,8 +72,8 @@ static inline void map_vertex(int16_t* X, int16_t* Y) {
       *X = *X >> 1;
       *Y = *Y >> 1;
 #ifdef SSD1331
-      *X -= (128 - OLED_WIDTH)/2;
-      *Y -= (128 - OLED_HEIGHT)/2;      
+      *X -= (128 - GL_width/2);
+      *Y -= (128 - GL_height/2);      
 #endif
    }
 }
