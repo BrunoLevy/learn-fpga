@@ -15,19 +15,10 @@ development toolchain (Yosys, NextPNR etc...), instructions to
 do so are given [here](toolchain.md).
 
 
-Configure femtosoc and femtorv32
-================================
-Edit `learn-fpga/FemtoRV/RTL/femtosoc_config.v` as follows:
-```
-// Uncomment one of the following lines
-//`include "CONFIGS/ulx3s_config.v"
-`include "CONFIGS/icestick_config.v"
-//`include "CONFIGS/icestick_spi_flash_config.v" // This one to run from spi-flash 
-// You can also comment the lines above and use this one / modify this one instead:
-//`include "CONFIGS/generic_config.v"
-```
+(Optional) configure femtosoc and femtorv32
+============================================
+Edit `learn-fpga/FemtoRV/RTL/CONFIGS/icestick_config.v`
 
-Then edit `learn-fpga/FemtoRV/RTL/CONFIGS/icestick_config.v`.
 This file lets you define what type
 of RISC-V processor you will create, and which device drivers in the
 associated system-on-chip. For now we activate the LEDs (for visual
@@ -35,20 +26,12 @@ debugging) and the UART (to talk with the system through a
 terminal-over-USB connection). We use 6144 bytes of RAM. It is not 
 very much, but we cannot do more on the IceStick. You will see that
 with 6k of RAM, you can still program nice and interesting RISC-V
-demos. 
+demos. If you do not have an OLED screen or a led matrix screen, you
+can comment out the corresponding lines in the file.
 
-We configure `FemtoRV/RTL/CONFIGS/icestick_config.v` as follows (we keep unused options as commented-out lines):
-```
-`define NRV_IO_LEDS        // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-`define NRV_IO_UART        // Mapped IO, virtual UART (USB)
-//`define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
-//`define NRV_IO_MAX7219   // Mapped IO, 8x8 led matrix
-//`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. Use with MINIRV32 to run code from SPI flash.
-```
-
-Examples
-========
-You can now compile the firmware, synthesize the design and send it to
+Synthethize and program
+=======================
+You can now synthesize the design and send it to
 the device. Plug the device in a USB port, then:
 ```
 $make ICESTICK
@@ -76,19 +59,14 @@ that you can run on the device. On the IceStick, only those that use 6K or less 
 
 To compile a program:
 ```
-$cd FIRMWARE
-$./make_firmware.sh EXAMPLES/NNNN.c
-```
-or:
-```
-$cd FIRMWARE
-$./make_firmware.sh ASM_EXAMPLES/NNNN.c
+$cd FIRMWARE/EXAMPLES
+$make hello.prog
 ```
 
-Then send it to the device and connect to the device using the terminal emulator:
+Then, to see the result
 ```
-$cd ..
-$make ICESTICK terminal
+$cd ../..
+$make terminal
 ```
 
 There are several C and assembly programs you can play with (list below). To learn more about RISC-V assembly,
@@ -131,12 +109,16 @@ deactivate the UART). To do that, configure devices in `FemtoRV/RTL/CONFIGS/ices
 
 ![](Images/IceStick_hello.gif)
 
-Now you can compile the `hello world` program:
+Now you can compile the `hello world` program
+(`FIRMWARE/EXAMPLES/hello.c`). Edit it and uncomment the following line:
 ```
-$cd FIRMWARE
-$./make_firmware.sh EXAMPLES/hello.c
-$cd ..
-$make ICESTICK
+femtosoc_tty_init();
+```
+This line automatically redirects `printf()` to the configured device
+(here the led matrix). Now compile the program and send it to the device:
+```
+$cd FIRMWARE/EXAMPLES
+$make hello.prog
 ```
 When the led matrix is configured, `printf()` is automatically
 redirected to the scroller display routine. The `sieve.c` program will
@@ -149,13 +131,6 @@ There are other examples that you can play with:
 | `ASM_EXAMPLES/test_led_matrix.S`       | display two images on the led matrix in ASM                    |
 | `EXAMPLES/life_led_matrix.c`           | Game of life on a 8x8 toroidal world                           |
 
-To compile one of them, it is still the same procedure, for instance:
-```
-$cd FIRMWARE
-$./make_firmware.sh EXAMPLES/life_led_matrix.c
-$cd ..
-$make ICESTICK
-```
 
 If you want to write your own program: in C, you first need
 to switch the display on using `MAX7219_init()`, then you can use
@@ -187,19 +162,14 @@ on the right to know wich wire goes where.
 Now you need to reconfigure `icestick_config.v` as follows:
 ```
 ...
-`define NRV_IO_LEDS       // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
-//`define NRV_IO_UART       // Mapped IO, virtual UART (USB)
 `define NRV_IO_SSD1351    // Mapped IO, 128x128x64K OLed screen
-//`define NRV_IO_MAX7219    // Mapped IO, 8x8 led matrix
 ...
 ```
 
 Let us compile a test program:
 ```
-$ cd FIRMWARE
-$ ./make_firmware.sh EXAMPLES/test_OLED.c
-$ cd ..
-$ make ICESTICK
+$ cd FIRMWARE/EXAMPLES
+$ make gfx_test.prog
 ```
 If everything goes well, you will see an animated colored pattern on
 the screen. Note that the text-mode demos (`hello.c` and `sieve.c`)
@@ -213,12 +183,12 @@ _(The black diagonal stripes are due to display refresh, they are not visible no
 |----------------------------------------|----------------------------------------------------------------|
 | `ASM_EXAMPLES/test_OLED.S`             | displays an animated pattern.                                  |
 | `ASM_EXAMPLES/mandelbrot_OLED.S`       | displays the Mandelbrot set.                                   |
-| `EXAMPLES/cube_OLED.c`                 | displays a rotating 3D cube.                                   |
-| `EXAMPLES/mandelbrot_OLED.c`           | displays the Mandelbrot set (C version).                       |
-| `EXAMPLES/riscv_logo_OLED.c`           | a rotozoom with the RISCV logo (back to the 90's).             |
-| `EXAMPLES/spirograph_OLED.c`           | rotating squares.                                              |
-| `EXAMPLES/test_OLED.c`                 | displays an animated pattern (C version).                      |
-| `EXAMPLES/demo_OLED.c`                 | demo of graphics functions(old chaps, remember EGAVGA.bgi ?).  |
+| `EXAMPLES/cube.c`                      | displays a rotating 3D cube.                                   |
+| `EXAMPLES/mandelbrot.c`                | displays the Mandelbrot set (C version).                       |
+| `EXAMPLES/riscv_logo.c`                | a rotozoom with the RISCV logo (back to the 90's).             |
+| `EXAMPLES/spirograph.c`                | rotating squares.                                              |
+| `EXAMPLES/gfx_test.c`                  | displays an animated pattern (C version).                      |
+| `EXAMPLES/gfx_demo.c`                  | demo of graphics functions(old chaps, remember EGAVGA.bgi ?).  |
 | `EXAMPLES/test_font_OLED.c`            | test font rendering.                                           |
 | `EXAMPLES/sysconfig.c`                 | displays femtosoc and femtorv configurations.                  |
 
@@ -241,43 +211,52 @@ IceStick stores the configuration of the FPGA in a flash memory, and
 there is plenty of unused room in it: _if it does not fit in one chip,
 we can overflow in the neighborhing chip !_. This flash memory is a tiny 8-legged
 chip, that talks to the external world using a serial protocol (SPI).
-To allow our femtorv32 processor to communicate with it, you need to activate 
-another driver in `FemtoRV/RTL/CONFIGS/icestick_config.v`, as follows:
+In fact we are already using it ! It is where our programs are stored,
+and FemtoRV32 directly executes them from there, this leaves most of
+the 6kB of RAM free for our programs. 
 
-```
-`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. Use with MINIRV32 to run code from SPI flash.
-```
-
-Then, you need to copy the data to the SPI flash:
+Let us copy the data to the SPI flash:
 ```
 $ iceprog -o 1M FIRMWARE/EXAMPLES/DATA/scene1.bin
 ```
 This copies the data starting from a 1Mbytes offset (the lower
-addresses are used to store the configuration of the FPGA, so do not
+addresses are used to store the configuration of the FPGA and to store
+our programs, so do not
 overwrite them). The data file `scene1.bin` is the original one, taken
 from the ST_NICCC demo.
 
 Now you can compile the demo program and send it to the IceStick:
 ```
-$ cd FIRMWARE
-$ ./make_firmware.sh EXAMPLES/ST_NICCC_spi_flash.c
-$ cd ..
-$ make ICESTICK
+$ cd FIRMWARE/EXAMPLES
+$ make ST_NICCC_spi_flash.prog
 ```
 
 ![](Images/ST_NICCC_on_IceStick.gif)
 
-Now if you want to go further, there is a way of mapping the SPI
-flash in the memory space of the processor and directly running code 
-from there, this considerably enhances the possibilities, and makes
-it possible to execute large programs on the IceStick (at the expense
-of speed, it is super-sloooowww). More information
-[here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/FIRMWARE/SPI_FLASH/README.md).
-It is probably possible to make it a bit faster by using more advanced
-modes of the SPI Flash. It is also probably possible to add a little
-instruction cache, that would make it considerably faster...
+Can we do more with this tiny system ? Yes, we can do _raytracing_ !
+```
+$ cd FIRMWARE/EXAMPLES
+$ make tinyraytracer.prog
+```
 
-An easier way to go further is to get an ULX3S. It costs a bit more
+It will display the classical shiny spheres and checkboard scene. It
+takes around 20 minutes to do so, be patient ! This is because not only
+our processor is not super fast, but also it does not have hardware
+multiplication, and it executes floating point software routines from
+the SPI Flash ! They would not fit in RAM.
+
+For smaller programs, it is possible to fit a part of the routines in
+RAM, take a look at `FIRMWARE/EXAMPLES/riscv_logo_2.c` (if you have both
+the led matrix and SSD screen, it will tell you what it is doing). It
+shows the effect of the magic keyword `RV32_FASTCODE`: this keyword is
+expanded as an annotation, indicating to the linker that the
+corresponding function should be copied in RAM instead of SPI Flash.
+Since RAM is much faster to access than SPI Flash, you can do that for
+some small functions that are called often. It is for instance the case
+of some graphic functions, used by our version of the `ST_NICCC` demo.
+
+However, the limits of our tiny system are quicky reached. If you want
+to go further, an easy way is to get an ULX3S. It costs a bit more
 ($130) but it is worth the price (the on-board ECP5 FPGA is HUGE as
 compared to the one of the IceStick). Now time to read the
 [ULX3S tutorial](ULX3S.md) !

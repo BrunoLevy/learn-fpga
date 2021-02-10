@@ -3,7 +3,7 @@
 
 #include <femtoGL.h>
 
-
+int main() RV32_FASTCODE;
 int main() {
     GL_init(GL_MODE_CHOOSE_RGB);
     GL_clear();

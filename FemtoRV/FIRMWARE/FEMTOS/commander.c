@@ -90,12 +90,13 @@ int main() {
     if(filesystem_init() != 0) {
        return -1;
     }
+    /*
     FGA_setmode(2);
     FGA_setpalette(0, 0, 0, 0);
     for(int i=1; i<255; ++i) {
        FGA_setpalette(i, 255, 255, 255);
     }
-   
+    */
     nb = refresh(from,sel);
     /* 
      * Re-constrain sel and nb in case SDCard was

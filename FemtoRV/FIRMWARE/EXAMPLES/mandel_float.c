@@ -49,7 +49,14 @@ void mandel() {
 
 int main() {
    GL_init(GL_MODE_CHOOSE);
-   for(;;) { 
+#ifdef FGA
+   FGA_setpalette(0, 0, 0, 0);
+   for(int i=1; i<255; ++i) {
+      FGA_setpalette(i, random(), random(), random());
+   }
+#endif   
+   for(;;) {
+       GL_clear();
        mandel();
        GL_tty_goto_xy(0,0);
        printf("Mandelbrot Demo.\n");
@@ -58,12 +65,6 @@ int main() {
        printf("\n");
        printf("FemtoRV32 %d MHz\n", FEMTORV32_FREQ);   
        printf("FemtOS 1.0\n");
-       // The 'terminal scrolling' functionality
-       // also scrolls the graphics, funny !
-       for(int i=0; i<13; i++) {
-	   delay(100);
-	   printf("\n");
-       }
        delay(2000);
    }
    return 0;   

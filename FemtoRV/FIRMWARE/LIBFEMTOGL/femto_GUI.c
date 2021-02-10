@@ -41,6 +41,7 @@ int GUI_button() {
 
 int GUI_prompt(char* title, char** options) {
    GL_tty_init();
+#ifdef FGAXXX   
    // Set hires mode so that it does not look
    // too bad on HDMI.
    FGA_setmode(FGA_MODE_640x400x4bpp);
@@ -51,6 +52,9 @@ int GUI_prompt(char* title, char** options) {
    for(int i=1; i<255; ++i) {
       FGA_setpalette(i, 255, 255, 255);
    }
+   GL_width = OLED_WIDTH;
+   GL_height = OLED_HEIGHT;
+#endif   
    int sel = 0;
    int nb_options = show_list(title, options, sel);   
    for(;;) {

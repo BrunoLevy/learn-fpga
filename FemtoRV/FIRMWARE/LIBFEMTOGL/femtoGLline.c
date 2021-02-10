@@ -15,11 +15,13 @@
 
 void GL_line(int x1, int y1, int x2, int y2, uint16_t color) {
 
+#ifdef FGA   
     if(FGA_mode != -1) {
       FGA_line(x1, y1, x2, y2, color);
       return;
     }
-    
+#endif
+   
     /* Cohen-Sutherland line clipping. */
     int code1 = code(x1,y1);
     int code2 = code(x2,y2);

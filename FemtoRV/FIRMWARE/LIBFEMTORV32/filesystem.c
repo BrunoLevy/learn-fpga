@@ -3,7 +3,7 @@
 int filesystem_init() {
   LEDS(1);
   if(sd_init()) {
-    printf("Could not initialize SDCard\n");
+    printf("ERROR:\nCould not init\n SDCard\n");
     return -1;
   }
   fl_init();
@@ -12,7 +12,7 @@ int filesystem_init() {
       (fn_diskio_read)sd_readsector,
       (fn_diskio_write)sd_writesector) != FAT_INIT_OK
   ) {
-    printf("ERROR: Failed to init file system\n");
+    printf("ERROR:\nCould not init\nfile system\n");
     return -1;
   }
   LEDS(4);

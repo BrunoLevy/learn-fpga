@@ -21,6 +21,8 @@
 #define dy (ymax-ymin)/H
 #define norm_max (4 << mandel_shift)
 
+int indexed = 0;
+
 void mandel() {
    GL_write_window(0,0,W-1,H-1);
    int Ci = ymin;
@@ -41,32 +43,60 @@ void mandel() {
 	    }
 	    --iter;
 	 }
-	 GL_WRITE_DATA_UINT16((iter << 19)|(iter << 2));	 
+	 if(indexed) {
+	    GL_WRITE_DATA_UINT16(iter==0?0:(iter%15)+1);
+	 } else {
+	    GL_WRITE_DATA_UINT16((iter << 19)|(iter << 2));
+	 }
+	  
 	 Cr += dx;
       }
       Ci += dy;
    }
 }
 
+#ifdef FGA
+uint8_t palette[16][3];
+#endif
+
 int main() {
    GL_init(GL_MODE_CHOOSE);
-   for(;;) { 
-      mandel();
-      GL_tty_goto_xy(0,127);
-      printf("Mandelbrot Demo.\n");
-      delay(1000);       
-      GL_tty_goto_xy(0,127);
-      printf("\n");
-      printf("FemtoRV32 %d MHz\n", FEMTORV32_FREQ);
-      printf("FemtOS 1.0\n");
-      // The 'terminal scrolling' functionality
-      // also scrolls the graphics, funny !
-      for(int i=0; i<13; i++) {
-	 delay(100);
-	 printf("\n");
-      }
-      delay(2000);
+   
+
+   GL_clear();
+#ifdef FGA
+   palette[0][0] = 0;
+   palette[0][1] = 0;
+   palette[0][2] = 0;
+   FGA_setpalette(0, palette[0][0], palette[0][1], palette[0][2]);
+   for(int i=1; i<16; ++i) {
+      palette[i][0] = random() & 255;
+      palette[i][1] = random() & 255;
+      palette[i][2] = random() & 255;      
+      FGA_setpalette(i, palette[i], palette[i], palette[i]);
    }
+   indexed = (FGA_mode == FGA_MODE_320x200x8bpp ||
+              FGA_mode == FGA_MODE_640x400x4bpp  );
+#endif   
+   mandel();
+   
+#ifdef FGA   
+   for(;;) {
+      GL_wait_vbl();
+      for(int i=15; i>1; --i) {
+	 palette[i][0] = palette[i-1][0];
+	 palette[i][1] = palette[i-1][1];
+	 palette[i][2] = palette[i-1][2]; 
+	 FGA_setpalette(i, palette[i][0], palette[i][1], palette[i][2]);	 
+      }
+      palette[1][0] = random() & 255;
+      palette[1][1] = random() & 255;
+      palette[1][2] = random() & 255;
+      FGA_setpalette(0, palette[0][0], palette[0][1], palette[0][2]);
+      delay(100);
+   }
+#endif
+   
    return 0;   
 }
 

@@ -1,34 +1,13 @@
 # Testing the OLED screen, displaying an animated pattern with
 # all the 65K colors.
 
-.macro OLED0 cmd
-	li a0,\cmd
-	call oled0
-.endm
-
-.macro OLED1 cmd,arg1
-	li a0,\cmd
-	li a1,\arg1
-	call oled1
-.endm
-
-.macro OLED2 cmd,arg1,arg2
-	li a0,\cmd
-	li a1,\arg1
-	li a2,\arg2
-	call oled2
-.endm
-
-.macro OLED3 cmd,arg1,arg2,arg3
-	li a0,\cmd
-	li a1,\arg1
-	li a2,\arg2
-	li a3,\arg3	
-	call oled3
-.endm
-
-
 .include "femtorv32.inc"
+.include "ssd1351_1331.inc"
+
+# On the IceStick, install the code in BRAM (much faster)
+.ifdef ICE_STICK
+.section .fastcode
+.endif
 
 .globl main
 .type  main, @function
@@ -43,11 +22,6 @@ main:   add sp,sp,-4
 	li s2,128	
 	li s3,0
 anim:	
-#        li a0, 0
-#        li a1, 0
-#	li a2, 127
-#	li a3, 127
-#	call oled_write_window
         OLED2 0x15,0x00,0x7f         # column address
 	OLED2 0x75,0x00,0x7f         # row address
 	OLED0 0x5c                   # write RAM

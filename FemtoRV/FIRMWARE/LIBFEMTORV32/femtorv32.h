@@ -2,7 +2,6 @@
 #define H__FEMTORV32__H
 
 #include "HardwareConfig_bits.h"
-#include "FGA.h"
 #include <stdint.h>
 
 /* 
@@ -25,6 +24,7 @@ extern int  getchar();
 extern int  putchar(int c);
 extern int  puts(const char* s);
 
+/* Timing */
 extern uint64_t cycles();            /* gets the number of cycles since last reset       (needs NRV_COUNTERS_64) */
 extern uint64_t milliseconds();      /* gets the number of milliseconds since last reset (needs NRV_COUNTERS_64) */
 extern void wait_cycles(int cycles); /* waits for a number of cycles.       */
