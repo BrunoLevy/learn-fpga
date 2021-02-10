@@ -63,7 +63,22 @@ void femtosoc_tty_init();     /* Initializes tty (putchar()) based on present de
 			       * available 6Kb... Do not use systematically.
 			       */
 void MAX7219_tty_init();      /* Initializes led matrix and redirects output to it.     */
-void GL_tty_init();           /* Initializes OLED screen and redirects output to it.    */
+
+
+typedef void (*GLFontFunc)(int x, int y, char c);
+typedef struct {
+   GLFontFunc func;
+   uint8_t width;
+   uint8_t height;
+} GLFont;
+
+extern const GLFont Font8x16;
+extern const GLFont Font8x8;
+extern const GLFont Font5x6;
+extern const GLFont Font3x5;
+
+void GL_set_font(GLFont* font);
+void GL_tty_init(int mode); /* Initializes OLED screen and redirects output to it.    */
 void GL_tty_goto_xy(int X, int Y);
 int  GL_putchar(int c);
 void GL_putchar_xy(int x, int y, char c);

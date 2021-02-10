@@ -40,7 +40,7 @@ int GUI_button() {
 }
 
 int GUI_prompt(char* title, char** options) {
-   GL_tty_init();
+   GL_tty_init(GL_MODE_OLED);
 #ifdef FGAXXX   
    // Set hires mode so that it does not look
    // too bad on HDMI.

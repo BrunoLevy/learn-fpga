@@ -1,4 +1,5 @@
 #include <femtorv32.h>
+#include <femtoGL.h>
 
 int main() {
   
@@ -12,7 +13,8 @@ int main() {
     * using the led matrix, or GL_tty_init() if you know you are 
     * using the small OLED display.
     */
-    // femtosoc_tty_init();
+   femtosoc_tty_init();
+   GL_set_font(&Font8x16);
    
    for(;;) {
       delay(500);

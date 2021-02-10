@@ -26,6 +26,12 @@ void FGA_setmode(int mode) {
      FGA_height = 400;
      break;
    }
+   // Default palette: 0=black, all other colors=white
+   // so that text will work.
+   FGA_setpalette(0, 0, 0, 0);
+   for(int i=1; i<255; ++i) {
+      FGA_setpalette(i, 255, 255, 255);
+   }
 }
 
 void FGA_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2) {

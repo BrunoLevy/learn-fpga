@@ -11,7 +11,6 @@ void random_pixel() {
     GL_setpixel(x,y,col);
 }
 
-
 void random_line() {
     int x1 = random() % GL_width;
     int y1 = random() % GL_height;
@@ -59,11 +58,24 @@ void show_colors() {
     }
 }
 
+void show_text() {
+   printf("All work and no play makes Jack a dull boy.\n");
+   delay(100);
+   printf("The quick brown fox jumps over the lazy dog.\n");
+   delay(100);	
+}
+
 int main() {
     int cnt = 0;
-    GL_init(GL_MODE_CHOOSE_RGB);
+    GL_init(GL_MODE_CHOOSE);
     GL_clear();
     show_colors();
+#ifdef FGA
+    FGA_setpalette(0,0,0,0);
+    for(int i=1; i<255; ++i) {
+       FGA_setpalette(i, random()&255, random()&255, random()&255);
+    }
+#endif
     delay(1000);
     GL_clear();
     for(cnt=0; cnt<5000; ++cnt) {
@@ -79,12 +91,14 @@ int main() {
     for(cnt=0; cnt<1000; ++cnt) {
 	random_rect();
     }
-    GL_tty_init();
-    for(int i=0; i<20; ++i) {
-	printf("All work and no play makes Jack a dull boy.\n");
-	delay(100);
-	printf("The quick brown fox jumps over the lazy dog.\n");
-	delay(100);	
-    }
+    GL_tty_init(FGA_mode);
+    GL_set_font(&Font3x5);
+    show_text();
+    GL_set_font(&Font5x6);
+    show_text();
+    GL_set_font(&Font8x8);
+    show_text();
+    GL_set_font(&Font8x16);
+    show_text();
     return 0;
  }

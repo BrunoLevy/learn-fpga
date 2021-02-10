@@ -84,9 +84,25 @@ void call_exec(int sel) {
 int sel=0;
 int from=0;
 
+void shell() {
+   GL_tty_init(FGA_MODE_640x400x4bpp);
+   GL_set_font(&Font8x16);
+   for(;;) {
+      int c = getchar();
+      if(c != 10 && c !=13) {
+	 putchar(c);
+      } else {
+	 putchar('\n');
+	 putchar(']');
+      }
+   }
+   GL_tty_init(GL_MODE_OLED);
+}
+
+
 int main() {
     int nb = 0;
-    GL_tty_init();
+    GL_tty_init(GL_MODE_OLED);
     if(filesystem_init() != 0) {
        return -1;
     }
@@ -118,6 +134,7 @@ int main() {
 	    case 2: sel--; break;
 	    case 3: sel++; break;
 	    case 5: call_exec(sel); break;
+   	    case 4: shell(); break;
 	}
         if(sel < 0) {
 	   sel = 0;    
