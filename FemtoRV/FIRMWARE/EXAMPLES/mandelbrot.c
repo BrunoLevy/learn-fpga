@@ -56,7 +56,7 @@ void mandel() {
 }
 
 #ifdef FGA
-uint8_t palette[16][3];
+uint8_t palette[255][3];
 #endif
 
 int main() {
@@ -65,14 +65,22 @@ int main() {
 
    GL_clear();
 #ifdef FGA
-   palette[0][0] = 0;
-   palette[0][1] = 0;
-   palette[0][2] = 0;
-   FGA_setpalette(0, palette[0][0], palette[0][1], palette[0][2]);
+   for(int i=0; i<64; ++i) {
+      int c = (i << 2);
+      palette[i    ][0] = c;
+      palette[i    ][1] = 0;
+      palette[i    ][2] = 0;
+      palette[i+64 ][0] = c;
+      palette[i+64 ][1] = c;
+      palette[i+64 ][2] = 0;
+      palette[i+128][0] = 0;
+      palette[i+128][1] = c;
+      palette[i+128][2] = 0;
+      palette[i+192][0] = 0;
+      palette[i+192][1] = 0;
+      palette[i+192][2] = c;
+   }
    for(int i=1; i<16; ++i) {
-      palette[i][0] = random() & 255;
-      palette[i][1] = random() & 255;
-      palette[i][2] = random() & 255;      
       FGA_setpalette(i, palette[i], palette[i], palette[i]);
    }
    indexed = (FGA_mode == FGA_MODE_320x200x8bpp ||
@@ -83,16 +91,17 @@ int main() {
 #ifdef FGA   
    for(;;) {
       GL_wait_vbl();
-      for(int i=15; i>1; --i) {
+      palette[1][0] = palette[255][0];
+      palette[1][1] = palette[255][1];
+      palette[1][2] = palette[255][2];
+      for(int i=255; i>1; --i) {
 	 palette[i][0] = palette[i-1][0];
 	 palette[i][1] = palette[i-1][1];
 	 palette[i][2] = palette[i-1][2]; 
-	 FGA_setpalette(i, palette[i][0], palette[i][1], palette[i][2]);	 
       }
-      palette[1][0] = random() & 255;
-      palette[1][1] = random() & 255;
-      palette[1][2] = random() & 255;
-      FGA_setpalette(0, palette[0][0], palette[0][1], palette[0][2]);
+      for(int i=1; i<16; ++i) {
+	 FGA_setpalette(i, palette[i][0], palette[i][1], palette[i][2]);
+      }
       delay(100);
    }
 #endif
