@@ -4,6 +4,7 @@
  */ 
 #include "imgui_emul.h"
 
+void FX(ImVec2 a, ImVec2 b, ImVec2 d, float t) RV32_FASTCODE;
 void FX(ImVec2 a, ImVec2 b, ImVec2 d, float t) {
    static float cz = 0;
    static bool first = true;

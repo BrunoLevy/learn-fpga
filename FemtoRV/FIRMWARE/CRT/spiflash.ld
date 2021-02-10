@@ -32,6 +32,7 @@ SECTIONS {
         *(.sdata*)
 	
 	/* functions with attribute((section(".fastcode"))) */	
+	/* (e.g., some functions in femtoGL)                */
 	*(.fastcode*)      
 
 	/* integer mul and div */
@@ -44,11 +45,7 @@ SECTIONS {
 	/* */libgcc.a:mulsf3.o(.text)  */ 
 	/* */libgcc.a:divsf3.o(.text)  */
 
-        /* graphics */ /* TODO: tag functions in C sources instead */
-	/* */libfemtoGL.a:femtoGLfill_rect.o(.text) */
-	/* */libfemtoGL.a:femtoGLline.o(.text) */
-	/* */libfemtoGL.a:femtoGLfill_poly.o(.text) */
-	/* */libfemtoGL.a:femtoGLsetpixel.o(.text) */
+        /* low-level graphics functions */
 	*/libfemtorv32.a:ssd1351_1331.o(.text) 
 
         /* timing */

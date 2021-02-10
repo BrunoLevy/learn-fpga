@@ -30,8 +30,8 @@ int main() {
 	int a = frame << 1;
         int scaling = sintab[(frame >> 2)&63]+400;
 	
-	int Ux = (sintab[a & 63] * scaling) >> 11;         
-        int Uy = (sintab[(a + 16) & 63] * scaling) >> 11;
+	int Ux = (sintab[a & 63] * scaling) >> 12;
+        int Uy = (sintab[(a + 16) & 63] * scaling) >> 12;
 	int Vx = -Uy;
 	int Vy =  Ux;
 	
