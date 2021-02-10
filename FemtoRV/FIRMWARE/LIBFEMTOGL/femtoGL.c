@@ -15,6 +15,8 @@ void GL_set_bg(uint8_t r, uint8_t g, uint8_t b) {
 extern uint16 GL_width  = 0;
 extern uint16 GL_height = 0;
 
+#ifdef FGA
+
 static const char* modes[] = {
 #ifdef SSD1351   
    "OLED 128x128 16",
@@ -40,16 +42,12 @@ static const char* RGB_modes[] = {
 void GL_init(int mode) {
    GL_width  = OLED_WIDTH;
    GL_height = OLED_HEIGHT;
-#ifdef FGA
    if(mode == GL_MODE_CHOOSE) {
       mode = GUI_prompt("GFX MODE", modes) - 1;
    } else if(mode == GL_MODE_CHOOSE_RGB) {
       mode = GUI_prompt("GFX MODE", RGB_modes) - 1;
    }
    FGA_setmode(mode);     
-#else
-   mode = -1;
-#endif
    if(mode == -1) {
      oled_init();     
    } else {
@@ -58,13 +56,24 @@ void GL_init(int mode) {
    }
 }
 
+#else
+
+void GL_init(int mode) {
+   GL_width  = OLED_WIDTH;
+   GL_height = OLED_HEIGHT;
+   oled_init();
+}
+#endif
+
 void GL_clear() {
   GL_fill_rect(0,0,GL_width-1,GL_height-1,GL_bg);
 }
 
-void GL_wait_vbl() {		
+void GL_wait_vbl() {
+#ifdef FGA   
    if(FGA_mode != GL_MODE_OLED) {
       FGA_wait_vbl();
    }
+#endif   
 }
 

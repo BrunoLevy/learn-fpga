@@ -84,7 +84,7 @@ void draw_frame(int frame) {
  * Try this: comment-out the following line.
  */ 
 
-RV32_FASTCODE(void draw_frame_fast(int frame));
+void draw_frame_fast(int frame) RV32_FASTCODE;
 
 void draw_frame_fast(int frame) {
    GL_write_window(0,0,GL_width-1,GL_height-1);

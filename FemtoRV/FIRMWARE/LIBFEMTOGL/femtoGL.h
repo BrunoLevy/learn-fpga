@@ -26,13 +26,15 @@ extern void GL_set_bg(uint8_t r, uint8_t g, uint8_t b);
 #define GL_MODE_CHOOSE     -2
 #define GL_MODE_OLED       -1
 
-extern void GL_init(int mode);
-extern void GL_clear();
-extern void GL_fill_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color);
-extern void GL_setpixel(int x, int y, uint16_t color);
-extern void GL_line(int x1, int y1, int x2, int y3, uint16_t color);
-extern void GL_fill_poly(int nb_pts, int* points, uint16_t color);
-extern void GL_wait_vbl();
+void GL_init(int mode);
+void GL_clear();
+void GL_wait_vbl();
+
+void GL_fill_rect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint16_t color) RV32_FASTCODE;
+void GL_setpixel(int x, int y, uint16_t color) RV32_FASTCODE;
+void GL_line(int x1, int y1, int x2, int y3, uint16_t color) RV32_FASTCODE;
+void GL_fill_poly(int nb_pts, int* points, uint16_t color) RV32_FASTCODE;
+
 
 extern int      FGA_mode;
 extern uint16_t FGA_width;
@@ -104,20 +106,19 @@ int GUI_prompt(char* title, char** options);
 
 void FGA_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 
+#ifdef FGA
 static inline void GL_write_window(int x1, int y1, int x2, int y2) {
-#if defined(SSD1351) || defined(SSD1331)
-# ifdef FGA
+# if defined(SSD1351) || defined(SSD1331)
    if(FGA_mode == -1) {
-# endif      
       oled_write_window(x1,y1,x2,y2);
-# ifdef FGA
    }
 # endif
-#endif
-#ifdef FGA
    FGA_write_window(x1,y1,x2,y2);   
-#endif   
 }
-
+#else
+static inline void GL_write_window(int x1, int y1, int x2, int y2) {
+   oled_write_window(x1,y1,x2,y2);
+}
+#endif
 
 #endif

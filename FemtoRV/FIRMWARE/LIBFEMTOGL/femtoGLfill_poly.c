@@ -112,11 +112,12 @@ int GL_clip(
 }
 
 void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
+#ifdef FGA   
     if(FGA_mode != GL_MODE_OLED) {
        FGA_fill_poly(nb_pts, points, color);
        return;
     }
-  
+#endif  
     char x_left[128];
     char x_right[128];
 

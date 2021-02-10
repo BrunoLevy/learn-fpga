@@ -12,9 +12,9 @@
  * Other devices are sufficient RAM to load all the code.
  */
 #ifdef ICE_STICK
-#define RV32_FASTCODE(PROTO) PROTO __attribute((section(".fastcode")))
+#define RV32_FASTCODE __attribute((section(".fastcode")))
 #else
-#define RV32_FASTCODE(PROTO) PROTO 
+#define RV32_FASTCODE
 #endif
 
 /* Standard library */

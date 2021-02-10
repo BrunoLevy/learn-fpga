@@ -55,7 +55,7 @@ int sintab[64] = {
 };
 
 
-RV32_FASTCODE(void main());
+void main() RV32_FASTCODE;
 
 void main() {
     GL_init(GL_MODE_CHOOSE_RGB);

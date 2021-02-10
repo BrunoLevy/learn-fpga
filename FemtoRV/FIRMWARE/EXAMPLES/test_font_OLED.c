@@ -4,7 +4,7 @@
 
 extern int GL_putchar(int);
 
-RV32_FASTCODE(int main());
+int main() RV32_FASTCODE;
 int main() {
    
     GL_init(GL_MODE_OLED);
