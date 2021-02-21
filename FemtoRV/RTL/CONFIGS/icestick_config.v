@@ -28,5 +28,6 @@
                                // (only if you use your own firmware, libfemtorv32 depends on it)
 
 /******************************************************************************************************************/
+`define NRV_RUN_FROM_SPI_FLASH // Do not 'readmemh()' firmware from '.hex' file
 
 `define NRV_CONFIGURED
