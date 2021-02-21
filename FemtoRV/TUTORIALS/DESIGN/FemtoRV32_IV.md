@@ -83,4 +83,10 @@ result of the test.
 _Same thing here, the comparison can be factored in a single adder as suggested by @mecrisp (see FemtoRV32 source),
 but we will ignore that for now._
 
+_Note: I have seen other designs where ALU operations and predicates
+       are done by the same unit, and address calculation is done by
+       a separate adder. See for instance [this article](http://www.fpgacpu.org/papers/xsoc-series-drafts.pdf
+       (not a RISC-V processor but quite similar). I think that my
+        design has a smaller footprint, needs to be tested_
+
 [Next](FemtoRV32_V.md)

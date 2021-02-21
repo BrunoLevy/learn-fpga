@@ -112,3 +112,10 @@ References to other RISC-V cores
 - Faster cores, Linux capable cores: [biriscv](https://github.com/ultraembedded/biriscv/), [VexRiscv](https://github.com/SpinalHDL/VexRiscv)
 - FemtoRV32's best friend: [ICE-V](https://github.com/sylefeb/Silice/tree/master/projects/ice-v),
      written in [Silice](https://github.com/sylefeb/Silice/) (a higher-level HDL)
+- DarkRiscv
+- Domipheus RPU
+- LamndaConcept Minerva
+- Glacial
+- neorv32
+- j-core
+- Syntacore scr1

@@ -1,5 +1,6 @@
 #include <femtoGL.h>
 #include <femtostdlib.h>
+#include <fat_io_lib/fat_filelib.h>
 
 #define FONT_HEIGHT 8
 #define LINES OLED_HEIGHT / FONT_HEIGHT
@@ -9,7 +10,7 @@
  * TODO: support browsing subdirectories.
  */ 
 
-char* cwd = "/";
+char cwd[PATH_LEN];
 
 int is_executable(const char* filename) {
     int l = strlen(filename);
@@ -66,7 +67,7 @@ void call_exec(int sel) {
     if (fl_opendir(cwd, &dirstat)) {
         struct fs_dir_ent dirent;
         while (fl_readdir(&dirstat, &dirent) == 0) {
-            if (/*dirent.is_dir ||*/ is_executable(dirent.filename)) {
+	    if (is_executable(dirent.filename)) {
 		if(cur == sel && is_executable(dirent.filename)) {
 		    strcpy(buff, cwd);
 		    strcpy(buff+strlen(buff), dirent.filename);
@@ -84,14 +85,55 @@ void call_exec(int sel) {
 int sel=0;
 int from=0;
 
+int shell_exec(int argc, char* argv[]) {
+  if(argc == 0) {
+     return 1;
+  }
+  char buff[PATH_LEN];
+  if(!strcmp(argv[0],"exit")) {
+     return 0;
+  } else if(!strcmp(argv[0],"ls")) {
+     fl_listdirectory(cwd);
+  } else if(!strcmp(argv[0],"pwd")) {
+     printf("\n%s\n",cwd);
+  } else {
+     strcpy(buff,cwd);
+     strcpy(buff+strlen(buff),argv[0]);
+     strcpy(buff+strlen(buff),".elf");     
+     exec(buff);
+  }
+  return 1; 
+}
+
 void shell() {
+   char cmdline[PATH_LEN];
+   char* ptr = cmdline;
+   int argc;
+   char* argv[100];
+   
    GL_tty_init(FGA_MODE_640x400x4bpp);
    GL_set_font(&Font8x16);
+   printf("FemtOS v. 0.0\n");
+   putchar(']');
    for(;;) {
       int c = getchar();
       if(c != 10 && c !=13) {
 	 putchar(c);
+	 if(ptr < cmdline + PATH_LEN-2) {
+	   *ptr = c;
+	   ptr++;
+	 }
       } else {
+	 *ptr = '\0';
+	 argc = 0;
+	 for(ptr=strtok(cmdline," "); ptr; ptr=strtok(NULL," ")) { 
+	    argv[argc] = ptr;
+	    ++argc;
+	 }
+	 ptr = cmdline;
+	 if(!shell_exec(argc, argv)) {
+	    break;
+	 }
 	 putchar('\n');
 	 putchar(']');
       }
@@ -101,18 +143,12 @@ void shell() {
 
 
 int main() {
+    strcpy(cwd,"/");
     int nb = 0;
     GL_tty_init(GL_MODE_OLED);
     if(filesystem_init() != 0) {
        return -1;
     }
-    /*
-    FGA_setmode(2);
-    FGA_setpalette(0, 0, 0, 0);
-    for(int i=1; i<255; ++i) {
-       FGA_setpalette(i, 255, 255, 255);
-    }
-    */
     nb = refresh(from,sel);
     /* 
      * Re-constrain sel and nb in case SDCard was

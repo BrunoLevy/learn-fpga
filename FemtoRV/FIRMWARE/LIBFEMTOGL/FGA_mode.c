@@ -10,7 +10,8 @@ void FGA_setmode(int mode) {
    }
    FGA_mode = mode;
    mode = MAX(mode,0); // mode -1 = OLED, emulate with mode 0
-   IO_OUT(IO_FGA_CNTL, FGA_SET_MODE | (mode << 8));
+   IO_OUT(IO_FGA_CNTL, FGA_SET_MODE   | (mode << 8));
+   IO_OUT(IO_FGA_CNTL, FGA_SET_ORIGIN | (0 << 8));
    memset(FGA_BASEMEM,0,128000);
    switch(mode) {
    case FGA_MODE_320x200x16bpp:
@@ -38,6 +39,17 @@ void FGA_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2) {
   IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_X | x1 << 8 | x2 << 20);
   IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_Y | y1 << 8 | y2 << 20);  
 }
+
+int FGA_bpp() {
+   switch(FGA_mode) {
+    case  GL_MODE_OLED:           return 16;
+    case  FGA_MODE_320x200x16bpp: return 16;
+    case  FGA_MODE_320x200x8bpp:  return 8;
+    case  FGA_MODE_640x400x4bpp:  return 4;
+   }
+   return 0;
+}
+
 
 /***************************************************************************/
 

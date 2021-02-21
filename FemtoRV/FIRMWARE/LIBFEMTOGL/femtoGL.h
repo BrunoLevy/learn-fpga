@@ -39,6 +39,7 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) RV32_FASTCODE;
 extern int      FGA_mode;
 extern uint16_t FGA_width;
 extern uint16_t FGA_height;
+extern int      FGA_bpp();
 
 extern void FGA_wait_vbl();
 extern void FGA_clear();

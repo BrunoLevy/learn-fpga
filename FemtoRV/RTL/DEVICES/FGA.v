@@ -321,7 +321,7 @@ module FGA(
 	       fill_rect <= 1'b0;
 	       mem_busy  <= 1'b0;
 	   end
-	   SET_ORIGIN:    ORIGIN <= mem_wdata[18:0]; 
+	   SET_ORIGIN:    ORIGIN <= mem_wdata[26:8]; 
 	   SET_PALETTE_B: PALETTE[mem_wdata[15:8]][7:0]   <= mem_wdata[23:16];
 	   SET_PALETTE_G: PALETTE[mem_wdata[15:8]][15:8]  <= mem_wdata[23:16];
 	   SET_PALETTE_R: PALETTE[mem_wdata[15:8]][23:16] <= mem_wdata[23:16];
