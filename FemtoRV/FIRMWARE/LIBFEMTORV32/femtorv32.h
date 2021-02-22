@@ -109,6 +109,14 @@ int sd_writesector(uint32_t sector, uint8_t* buffer, uint32_t sector_count); /* 
 #define OLED_HEIGHT 64
 #endif
 
+#ifndef OLED_WIDTH
+#define OLED_WIDTH 0
+#endif
+
+#ifndef OLED_HEIGHT
+#define OLED_HEIGHT 0
+#endif
+
 extern void oled_init();
 extern void oled_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 extern void oled0(uint32_t cmd);
