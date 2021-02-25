@@ -46,6 +46,29 @@ with 6k of RAM, you can still program nice and interesting RISC-V
 demos. If you do not have an OLED screen or a led matrix screen, you
 can comment out the corresponding lines in the file.
 
+There are other options in the file. Normally you will not need to change them. If you want to know, they
+are listed below:
+
+| Option                   | Description                                                                          |
+|--------------------------|--------------------------------------------------------------------------------------|
+| `NRV_FREQ`               | Frequency of the processor in MHz                                                    |
+| `NRV_RAM`                | Amount of RAM (6KB max)                                                              |
+| `NRV_MINIRV32`           | Generate the small version of the processor (RV32I, no counters, exec from SPI Flash)|
+| `NRV_RESET_ADDR`         | Address where to jump at startup and reset (SPI flash + 64KB offset)                 |
+| `NRV_IO_HARDWARE_CONFIG` | Hardware register that can be queried by code to see configured devices              |
+| `NRV_RUN_FROM_SPI_FLASH` | Do not initialize BRAM with firmware (firmware will be read from SPI flash)          |
+
+The default value (66 MHz) corresponds to what is validated by Yosys/NextPNR. If you want you can try overclocking
+a bit, up to 80 - 90 MHz (but you may experience stability problems then).
+Note that frequency can only take some predefined values, listed in `RTL/PLL/frequencies.txt`. You can add your own
+value there if need be, but then you will need to use `RTL/PLL/gen_pll.sh` to re-generate the board-specific Verilog
+for the PLL.
+
+On the IceStick, we use the `MINIRV32` configuration. It deactivates some functionalities (hardware mul, counters),
+and it is a bit slower (simplified state machine at a cost of a higher CPI), but it has the ability of running the
+code directly from the SPI flash. It is very useful on the IceStick, because we got 2 MBs of SPI flash, that can be
+used to store large programs. 
+
 Synthethize and program
 =======================
 You can now synthesize the design and send it to
