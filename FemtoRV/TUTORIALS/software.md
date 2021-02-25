@@ -547,3 +547,4 @@ References and links
 - [picorv32 linker script](https://github.com/cliffordwolf/picorv32/blob/master/picosoc/sections.lds)
 - [Well written tutorial on linker scripts](https://interrupt.memfault.com/blog/how-to-write-linker-scripts-for-firmware)
 - [Another Well written tutorial on linker scripts](https://blog.thea.codes/the-most-thoroughly-commented-linker-script/)
+- [Video about the ELF format](https://www.youtube.com/watch?v=nC1U1LJQL8o)

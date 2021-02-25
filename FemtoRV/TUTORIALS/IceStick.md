@@ -19,9 +19,26 @@ do so are given [here](toolchain.md).
 ============================================
 Edit `learn-fpga/FemtoRV/RTL/CONFIGS/icestick_config.v`
 
-This file lets you define what type
-of RISC-V processor you will create, and which device drivers in the
-associated system-on-chip. For now we activate the LEDs (for visual
+This file lets you define what type of RISC-V processor you will
+create. For IceStick, we use the `MINIRV32`, that has a minimal LUT
+count and that can run code from the SPI flash. It is best suited for
+the IceStick that has a small number of LUTs (1380) and very little
+BRAM (8 kB, but only 6 kB available as RAM, because two kB are used by
+the registers).
+
+The file `learn-fpga/FemtoRV/RTL/CONFIGS/icestick_config.v`
+also lets you select the device drivers present in the associated system-on-chip:
+
+| Device                 | description                    | comment                           |
+|------------------------|--------------------------------|-----------------------------------|
+| `NRV_IO_LEDS`          | 5 leds                         | keep it                           |
+| `NRV_IO_UART`          | serial connection through USB  | keep it                           |
+| `NRV_IO_SSD1351`       | small OLED screen (128x128)    | comment-out if you do not have it |
+| `NRV_IO_SSD1331`       | small OLED screen (96x64)      | comment-out if you do not have it |
+| `NRV_IO_MAX7219`       | led matrix (10x10)             | comment-out if you do not have it |
+| `NRV_MAPPED_SPI_FLASH` | flash mapped in memory space   | keep it                           |
+
+For now we activate the LEDs (for visual
 debugging) and the UART (to talk with the system through a
 terminal-over-USB connection). We use 6144 bytes of RAM. It is not 
 very much, but we cannot do more on the IceStick. You will see that
