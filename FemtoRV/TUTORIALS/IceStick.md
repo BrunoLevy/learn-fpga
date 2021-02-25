@@ -90,6 +90,8 @@ $make terminal
 (if you installed `screen` instead of `python3-serial`, edit
 `Makefile` before accordingly. You may need also to change there ttyUSBnnn).
 
+... but nothing happens. It is normal, we have not loaded any program in the system.
+
 To exit, press `<ctrl> ]` (python-3-serial/miniterm), or `<ctrl> a` then '\\' (screen).
 
 Examples with the serial terminal (UART)
@@ -103,7 +105,8 @@ $cd FIRMWARE/EXAMPLES
 $make hello.prog
 ```
 
-Then, to see the result
+The `.prog` target generates the program and sends it to the device's SPI flash, using `iceprog`.
+To see the result, use:
 ```
 $cd ../..
 $make terminal
