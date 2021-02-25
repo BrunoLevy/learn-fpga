@@ -124,6 +124,11 @@ deactivate the UART). To do that, configure devices in `FemtoRV/RTL/CONFIGS/ices
 ...
 ```
 
+Then you need to re-synthethize and send the bitstream to the IceStick:
+```
+$make ICESTICK
+```
+
 ![](Images/IceStick_hello.gif)
 
 Now you can compile the `hello world` program
@@ -183,6 +188,12 @@ Now you need to reconfigure `icestick_config.v` as follows:
 ...
 ```
 
+Then you need to re-synthethize and send the bitstream to the IceStick:
+```
+$make ICESTICK
+```
+
+
 Let us compile a test program:
 ```
 $ cd FIRMWARE/EXAMPLES
@@ -223,14 +234,14 @@ cannot be rendered in real time by our femto-machine
 so it does render a precomputed stream of 2D
 polygons stored in a file. The file weights 640Kb, and remember, we only
 have 6Kb, so what can we do ? It would be possible to wire a SDCard
-adapter and store the file there, but there is much better: the
-IceStick stores the configuration of the FPGA in a flash memory, and
+adapter and store the file there, but there is a much easier solution:
+the IceStick stores the configuration of the FPGA in a flash memory, and
 there is plenty of unused room in it: _if it does not fit in one chip,
 we can overflow in the neighborhing chip !_. This flash memory is a tiny 8-legged
 chip, that talks to the external world using a serial protocol (SPI).
 In fact we are already using it ! It is where our programs are stored,
-and FemtoRV32 directly executes them from there, this leaves most of
-the 6kB of RAM free for our programs. 
+and FemtoRV32 directly executes them from there. We are also going to store
+some data there.
 
 Let us copy the data to the SPI flash:
 ```
@@ -260,7 +271,8 @@ It will display the classical shiny spheres and checkboard scene. It
 takes around 20 minutes to do so, be patient ! This is because not only
 our processor is not super fast, but also it does not have hardware
 multiplication, and it executes floating point software routines from
-the SPI Flash ! They would not fit in RAM.
+the SPI Flash ! It would be faster to copy them in RAM, but they do
+not fit (remember, we only have 6 KB of RAM).
 
 For smaller programs, it is possible to fit a part of the routines in
 RAM, take a look at `FIRMWARE/EXAMPLES/riscv_logo_2.c` (if you have both
