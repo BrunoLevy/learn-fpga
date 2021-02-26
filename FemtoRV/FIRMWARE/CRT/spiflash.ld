@@ -14,6 +14,16 @@ MEMORY {
 
 SECTIONS {
 
+    /*
+     * I do not understand why, but if I do not put this section, I got
+     * an overlapping sections error with some programs (for instance pi.c)
+     */
+    .eh_frame : {
+        . = ALIGN(4);
+        *(.eh_frame)
+        *(.eh_frame_hdr) 
+    } >FLASH
+
     /* 
      * This is the initialized data and fastcode section
      * The program executes knowing that the data is in the RAM
@@ -70,7 +80,6 @@ SECTIONS {
         _sidata = _etext;       /* This is used by the startup in order to initialize the .data section */
     } >FLASH
 
-
     /* Uninitialized data section */
     .bss : {
         . = ALIGN(4);
@@ -90,4 +99,6 @@ SECTIONS {
         _heap_start = .;    /* define a global symbol at heap start */
 	_end = .;           /* as expected by syscalls.c            */
     } >RAM
+    
+    
 }
