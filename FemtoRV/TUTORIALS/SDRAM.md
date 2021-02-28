@@ -298,3 +298,4 @@ References
 - [Silice](https://github.com/sylefeb/Silice/blob/master/projects/common/sdram_controller_autoprecharge_r16_w16.ice)
 - [A simple one](http://ladybug.xs4all.nl/arlet/fpga/source/sdram.v)
 - [Tutorial for Alchitry (seems to be good)](https://alchitry.com/blogs/tutorials/sdram-verilog)
+- [A twitter thread about the history of SDRAM](https://twitter.com/TubeTimeUS/status/1365774008180908034)

@@ -35,8 +35,9 @@ module FGA(
    reg [31:0] VRAM[32767:0];
    reg [23:0] PALETTE[255:0];
    reg [1:0]  MODE;
-   reg [18:0] ORIGIN;
-
+   reg [17:0] origin_pix_address;
+   reg [17:0] wrap_pix_address;
+   
    /************************* HDMI signal generation ***************************/
 
    localparam MODE_320x200x16bpp = 2'b00;
@@ -98,18 +99,13 @@ module FGA(
 	 MODE == MODE_320x200x8bpp) begin
 	 if(X == 0) begin
 	    if(Y == 0) begin
-	       if(MODE == MODE_320x200x16bpp) begin
-		  row_start_pix_address <= ORIGIN[18:1]; // 16bpp, addr2pixaddr: /2
-		  pix_address           <= ORIGIN[18:1];
-	       end else begin
-		  row_start_pix_address <= ORIGIN[17:0]; // 8bpp
-		  pix_address           <= ORIGIN[17:0];
-	       end
+	       row_start_pix_address <= origin_pix_address;
+	       pix_address           <= origin_pix_address;
 	    end else begin
 	       // Increment row address every 2 Y (2 because 320x200->640x400)
 	       if(Y[0]) begin
-		  row_start_pix_address <= row_start_pix_address + 320;
-		  pix_address           <= row_start_pix_address + 320;
+		  row_start_pix_address <= ((row_start_pix_address + 320) <= wrap_pix_address) ? row_start_pix_address + 320 : 0;
+		  pix_address           <= ((row_start_pix_address + 320) <= wrap_pix_address) ? row_start_pix_address + 320 : 0;
 	       end else begin
 		  pix_address <= row_start_pix_address;	       
 	       end
@@ -119,11 +115,11 @@ module FGA(
       end else begin // MODE_640x400x4bpp
 	 if(X == 0) begin
 	    if(Y == 0) begin
-	       row_start_pix_address <= {ORIGIN[16:0],1'b0}; // 4bpp, addr2pixaddr: *2
-	       pix_address           <= {ORIGIN[16:0],1'b0};
+	       row_start_pix_address <= origin_pix_address; 
+	       pix_address           <= origin_pix_address; 
 	    end else begin
-	       row_start_pix_address <= row_start_pix_address + 640;
-	       pix_address           <= row_start_pix_address + 640;
+	       row_start_pix_address <= ((row_start_pix_address + 640) <= wrap_pix_address) ? row_start_pix_address + 640 : 0;
+	       pix_address           <= ((row_start_pix_address + 640) <= wrap_pix_address) ? row_start_pix_address + 640 : 0;
 	    end
 	 end else begin
 	    pix_address <= pix_address + 1;
@@ -317,11 +313,29 @@ module FGA(
 	 /* verilator lint_off CASEINCOMPLETE */
 	 case(mem_wdata[7:0])
 	   SET_MODE:      begin
-	       MODE      <= mem_wdata[9:8];
-	       fill_rect <= 1'b0;
-	       mem_busy  <= 1'b0;
+	       MODE               <= mem_wdata[9:8];
+	       origin_pix_address <= 0;
+	       wrap_pix_address   <= 640*400;
+	       fill_rect          <= 1'b0;
+	       mem_busy           <= 1'b0;
 	   end
-	   SET_ORIGIN:    ORIGIN <= mem_wdata[26:8]; 
+	   SET_ORIGIN: begin
+	      // ORIGIN is mem_wdata[26:8], convert it as a pixel address.
+	      case(MODE) 
+		 MODE_320x200x16bpp: begin
+		    origin_pix_address <= mem_wdata[18+8:1+8]; // 16bpp, addr2pixaddr: /2
+		    wrap_pix_address   <= 320*200;
+		 end
+		 MODE_320x200x8bpp:  begin
+		    origin_pix_address <= mem_wdata[17+8:0+8]; // 8bpp
+		    wrap_pix_address   <= 320*200;		    
+		 end
+		 MODE_640x400x4bpp:  begin
+		    origin_pix_address <= {mem_wdata[16+8:0+8],1'b0}; // 4bpp, addr2pixaddr: *2
+		    wrap_pix_address   <= 640*400;		    
+		 end
+	      endcase
+	   end
 	   SET_PALETTE_B: PALETTE[mem_wdata[15:8]][7:0]   <= mem_wdata[23:16];
 	   SET_PALETTE_G: PALETTE[mem_wdata[15:8]][15:8]  <= mem_wdata[23:16];
 	   SET_PALETTE_R: PALETTE[mem_wdata[15:8]][23:16] <= mem_wdata[23:16];
