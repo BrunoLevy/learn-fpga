@@ -74,7 +74,12 @@ module femtosoc(
 `endif
 `ifdef NRV_IO_FGA		
    output [3:0] gpdi_dp,
-`endif		
+`endif
+`ifdef NRV_IO_IRDA
+   output irda_TXD,
+   input  irda_RXD,
+   output irda_SD,		
+`endif   		
    input pclk
 );
 
@@ -334,6 +339,11 @@ HardwareConfig hwconfig(
 `ifdef NRV_IO_LEDS
    wire [31:0] leds_rdata;
    LEDDriver leds(
+`ifdef NRV_IO_IRDA
+      .irda_TXD(irda_TXD),
+      .irda_RXD(irda_RXD),
+      .irda_SD(irda_SD),		
+`endif		  
       .clk(clk),
       .rstrb(io_rstrb),		  
       .wstrb(io_wstrb),			

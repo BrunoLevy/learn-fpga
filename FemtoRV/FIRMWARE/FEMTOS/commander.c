@@ -96,7 +96,36 @@ int shell_exec(int argc, char* argv[]) {
      fl_listdirectory(cwd);
   } else if(!strcmp(argv[0],"pwd")) {
      printf("\n%s\n",cwd);
+  } else if(!strcmp(argv[0],"mode")) {
+     if(argc != 2) {
+       printf("invalid number of arguments");
+     } else {
+       int mode = atoi(argv[1]);
+       GL_tty_init(mode);
+     }
+  } else if(!strcmp(argv[0],"font")) {
+     if(argc != 2) {
+       printf("invalid number of arguments");
+     } else {
+       GL_tty_init(FGA_mode);
+       int font = atoi(argv[1]);
+       switch(font) {
+       case 0:
+	 GL_set_font(&Font3x5);
+	 break;
+       case 1:
+	 GL_set_font(&Font5x6);
+	 break;
+       case 2:
+	 GL_set_font(&Font8x8);
+	 break;
+       case 3:
+	 GL_set_font(&Font8x16);
+	 break;
+       }
+     }
   } else {
+     printf("\n");
      strcpy(buff,cwd);
      strcpy(buff+strlen(buff),argv[0]);
      strcpy(buff+strlen(buff),".elf");     

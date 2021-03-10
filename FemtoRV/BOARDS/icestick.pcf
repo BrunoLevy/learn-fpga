@@ -24,4 +24,8 @@ set_io spi_miso 68
 set_io spi_mosi 67
 set_io spi_clk  70
 
-set_io RESET       47
+set_io RESET    47
+
+set_io irda_TXD 105
+set_io irda_RXD 106
+set_io irda_SD  107

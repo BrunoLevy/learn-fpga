@@ -456,6 +456,13 @@ https://zipcpu.com/blog/2017/06/12/minimizing-luts.html
 
 ============================================================================
 
+Thèse sur FPGA adder:
+   https://www.collectionscanada.gc.ca/obj/s4/f2/dsk3/SSU/TC-SSU-08182005161614.pdf
+Review sur FPGA adders:
+   https://link.springer.com/content/pdf/10.1007%2F978-3-319-08422-0_129.pdf
+
+============================================================================
+
 writeBack: combinatorial ou latched
 
 combinatorial:
