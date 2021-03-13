@@ -1,3 +1,5 @@
+// This one does not work on the IceStick (6kB is not sufficient)
+
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <limits>
@@ -174,12 +176,14 @@ int main() {
     Material     mirror(1.0, Vec4f(0.0, 10.0, 0.8, 0.0), Vec3f(1.0, 1.0, 1.0), 1425.);
 
     std::vector<Sphere> spheres;
+    spheres.reserve(4); 
     spheres.push_back(Sphere(Vec3f(-3,    0,   -16), 2,      ivory));
     spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -12), 2,      glass));
     spheres.push_back(Sphere(Vec3f( 1.5, -0.5, -18), 3, red_rubber));
     spheres.push_back(Sphere(Vec3f( 7,    5,   -18), 4,     mirror));
 
     std::vector<Light>  lights;
+    lights.reserve(3);
     lights.push_back(Light(Vec3f(-20, 20,  20), 1.5));
     lights.push_back(Light(Vec3f( 30, 50, -25), 1.8));
     lights.push_back(Light(Vec3f( 30, 20,  30), 1.7));
@@ -194,6 +198,7 @@ int main() {
 	  FGA_setpalette(i,i<<4,i<<4,i<<4);
        }
     }
+
     GL_clear();
     render(spheres, lights);
 

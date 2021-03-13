@@ -1,4 +1,7 @@
 // http://www.pixelbeat.org/programming/gcc/supc++/
+// This one works on the IceStick (but IceStick does
+// not support much more !! 6kB is really too small to
+// do C++ it seems...)
 
 #include <vector>
 #include <algorithm>
