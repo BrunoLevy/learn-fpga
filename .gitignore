@@ -19,6 +19,7 @@
 *.dfu
 *.rpt
 *.blif
+tmp.list
 FemtoRV/FIRMWARE/firmware.txt
 FemtoRV/FIRMWARE/TOOLCHAIN/
 FemtoRV/FIRMWARE/TOOLS/firmware_words
