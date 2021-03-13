@@ -118,7 +118,7 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 
 # Generate a "spi elf", to be loaded from address 0x810000 
 %.spiflash.elf: %.o $(RV_BINARIES) 
-	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/spiflash.ld $< -o $@ $(FEMTORV32_LIBS) $(RVGCC_LIB)
+	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/spiflash.ld $< -o $@ $(FEMTORV32_LIBS) -lsupc++ $(RVGCC_LIB)
 
 %.spiflash.bin: %.spiflash.elf
 	$(RVOBJDUMP) -Mnumeric -D $< > tmp.list

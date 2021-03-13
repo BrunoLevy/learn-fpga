@@ -5,6 +5,7 @@
 
 extern "C" {
 #include <femtorv32.h>
+void femtosoc_tty_init();
 }
 
 int main() {

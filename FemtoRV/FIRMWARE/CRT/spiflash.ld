@@ -16,12 +16,15 @@ SECTIONS {
 
     /*
      * I do not understand why, but if I do not put this section, I got
-     * an overlapping sections error with some programs (for instance pi.c)
+     * an overlapping sections error with some programs (for instance pi.c
+     * or C++ programs)
      */
-    .eh_frame : {
+    .misc : {
         . = ALIGN(4);
         *(.eh_frame)
-        *(.eh_frame_hdr) 
+        *(.eh_frame_hdr)
+        *(.init_array)
+        *(.gcc_except_table*)	
     } >FLASH
 
     /* 
