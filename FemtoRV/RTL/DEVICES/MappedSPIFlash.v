@@ -200,7 +200,7 @@ module MappedSPIFlash(
    assign     rbusy = !CS_N; 
 
    assign  MOSI_oe = !receiving;   
-   assign  MOSI_out = sending && cmd_addr[39];
+   assign  MOSI_out = sending && cmd_addr[31];
 
    initial CS_N = 1'b1;
    assign  CLK  = !CS_N && clk; 

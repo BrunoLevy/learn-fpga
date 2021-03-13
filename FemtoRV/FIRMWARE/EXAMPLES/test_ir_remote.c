@@ -1,5 +1,7 @@
 /**
  * Displays data from IR remote using the built-in irda of the IceStick.
+ * Decodes NEC protocol IR remotes
+ * Tested with "Magic Lighting" remove controller for intelligent light bulb.
  * 
  * Disclaimer: very crappy code ahead !!!
  */ 
