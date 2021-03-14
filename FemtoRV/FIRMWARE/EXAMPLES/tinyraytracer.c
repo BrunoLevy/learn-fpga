@@ -7,10 +7,6 @@
 
 /*******************************************************************/
 
-int __errno = 0; /* With my linker script, __errno is missing, 
-	          * probably I'm doing something wrong...
-	          */ 
-
 typedef int BOOL;
 
 static inline float max(float x, float y) { return x>y?x:y; }

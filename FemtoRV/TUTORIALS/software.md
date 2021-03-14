@@ -516,11 +516,16 @@ BRAM and that is copied there at program startup by the C runtime
 
 C++
 ---
-It is also possible to compile C++ programs for FemtoRV. It
-works on the ULX3S. It can also probably work from SPI Flash with a
-different linker script, but then we will need the adapter
-program/runtime that properly handles `.data` and `.sdata` segments
-(see above).  We will also need an implementation of `sbrk()`. There
+It is also possible to compile C++ programs for FemtoRV. Some examples
+are included in the `FIRMWARE/CPP_EXAMPLES` subdirectory. The simplest
+one (`cpp_test`) works on the IceStick. However, the tiny raytracer does
+not: the C++ runtime eats up too much of the available 6kB BRAM, and
+does not leave sufficient stack space for the program (but it works on
+the ULX3S that has 256kB of BRAM). Note that the C version
+in `EXAMPLES/tinyraytracer.c` works on the IceStick (and fits in 6 KB).
+
+Dynamic allocation works, and uses under the hood an 
+implementation of `sbrk()`. There
 is an example in Claire Wolf's `picorv32`,
 [here](https://github.com/cliffordwolf/picorv32/blob/master/scripts/cxxdemo/syscalls.c).
 It is quite simple, the only tricky thing is how to initialize the brk
@@ -532,10 +537,8 @@ can link with `libsupc++` instead, it has the bare minimum to be able
 to run C++ programs.  You will need also to pass the `-nostdlib` flag
 when linking.  Some examples and the `Makefile` are
 [here](https://github.com/BrunoLevy/learn-fpga/tree/master/FemtoRV/FIRMWARE/CPP_EXAMPLES).
-Note that the 256 kBytes limit is quickly reached. We will need a SDRAM
+Note that on the ULX3S, the 256 kBytes limit is quickly reached. We will need a SDRAM
 controller to have more space !
-
-_TO BE CONTINUED_
 
 References and links
 --------------------

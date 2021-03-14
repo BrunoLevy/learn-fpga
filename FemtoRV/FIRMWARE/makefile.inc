@@ -97,16 +97,6 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 	             -L$(FIRMWARE_DIR)/LIBFEMTOC\
    	             -lfemtoGL -lfemtorv32 -lfemtoc 
 
-#FEMTORV32_LIBS_SMALL=$(FIRMWARE_DIR)/CRT/syscalls.o \
-#                     -L$(RVTOOLCHAIN_LIB_DIR)\
-#                     -L$(FIRMWARE_DIR)/CRT\
-# 	             -L$(FIRMWARE_DIR)/LIBFEMTOGL\
-#	             -L$(FIRMWARE_DIR)/LIBFEMTORV32\
-#	             -L$(FIRMWARE_DIR)/LIBFEMTOC\
-#   	             -lfemtoGL -lfemtorv32 -lfemtoc 
-
-
-
 # Generate a "bare metal elf", to be loaded from address 0 (rule for conversion to .hex file in makefile.inc)
 # The generated ".hex" file is directly included in the Verilog files, for memory initialization
 %.baremetal.elf: %.o $(RV_BINARIES)
@@ -121,8 +111,11 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/spiflash.ld $< -o $@ $(FEMTORV32_LIBS) -lsupc++ $(RVGCC_LIB)
 
 %.spiflash.bin: %.spiflash.elf
-	$(RVOBJDUMP) -Mnumeric -D $< > tmp.list
 	$(RVOBJCOPY) $< $@ -O binary
+
+# Generate a disassembly (for inspection if need be)
+%.list: %.elf
+	$(RVOBJDUMP) -Mnumeric -D $< > $@
 
 %.prog: %.spiflash.bin
 	iceprog -o 64k $<

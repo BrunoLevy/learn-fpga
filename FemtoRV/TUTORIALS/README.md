@@ -6,7 +6,6 @@ FemtoRV32 Tutorials
 - [ECP5 evaluation board tutorial](ECP5_EVN.md) _(WIP)_
 - [FOMU tutorial](FOMU.md) _(WIP)_
 - [Adding a new board](newboard.md)
-- [Run from SPI flash](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/FIRMWARE/SPI_FLASH/README.md) 
 - [Mecrisp-quintus on the IceStick (Forth)](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/FIRMWARE/MECRISP_QUINTUS/README.md)
 
 FemtoRV32 Notes

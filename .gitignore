@@ -13,13 +13,9 @@
 *.000
 *.hex
 *.vvp
-*.bm_elf
-*.bm_rawhex
-*.spi_elf
 *.dfu
 *.rpt
 *.blif
-tmp.list
 FemtoRV/FIRMWARE/firmware.txt
 FemtoRV/FIRMWARE/TOOLCHAIN/
 FemtoRV/FIRMWARE/TOOLS/firmware_words
