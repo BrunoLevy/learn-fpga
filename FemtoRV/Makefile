@@ -22,8 +22,8 @@ clean:
 	rm -f *.timings *.asc *.bin *.bit *config *.json *.svf \
               *~ *.vvp *.dfu *.rpt *.blif femtosoc.txt FIRMWARE/config.mk
 
-FIRMWARE/firmware.hex:
-	(cd FIRMWARE; ./make_firmware.sh EXAMPLES/hello.c)
+#FIRMWARE/firmware.hex:
+#	(cd FIRMWARE; ./make_firmware.sh EXAMPLES/hello.c)
 
 TERMS=/dev/ttyUSB0 /dev/ttyUSB1 
 
@@ -53,7 +53,7 @@ testbench:
 	vvp femtosoc_bench.vvp
 
 lint:
-	verilator --lint-only -DPASSTHROUGH_PLL --top-module $(PROJECTNAME) \
+	verilator -DICE_STICK --lint-only -DPASSTHROUGH_PLL --top-module $(PROJECTNAME) \
          -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL $(VERILOGS)
 
 ################################################################################

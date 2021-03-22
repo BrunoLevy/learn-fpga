@@ -299,3 +299,4 @@ References
 - [A simple one](http://ladybug.xs4all.nl/arlet/fpga/source/sdram.v)
 - [Tutorial for Alchitry (seems to be good)](https://alchitry.com/blogs/tutorials/sdram-verilog)
 - [A twitter thread about the history of SDRAM](https://twitter.com/TubeTimeUS/status/1365774008180908034)
+- [Arlet's SDRAM controller](http://ladybug.xs4all.nl/arlet/fpga/source/sdram.v)

@@ -31,7 +31,7 @@ Let us first see the interface of our SPI flash module:
 module MappedSPIFlash(
     input wire 	       clk,          // system clock
     input wire 	       rstrb,        // read strobe		
-    input wire [17:0]  word_address, // address of the word to be read, offset from 1Mb
+    input wire [17:0]  word_address, // address of the word to be read
 
     output wire [31:0] rdata,        // data read
     output wire        rbusy,        // asserted if busy receiving data			    
@@ -92,7 +92,7 @@ in the 'receiving' state. And we go from the 'sending' to the
    always @(negedge clk) begin
       if(rstrb) begin
 	 CS_N <= 1'b0;
-	 cmd_addr <= {8'h03, 4'b0001,word_address[17:0], 2'b00};
+	 cmd_addr <= {8'h03, 4'b0000,word_address[17:0], 2'b00};
 	 snd_bitcount <= 6'd32;
       end else begin
 	 if(sending) begin
@@ -128,7 +128,7 @@ data. It can be done simply as follows:
 ```
       if(rstrb) begin
 	 CS_N <= 1'b0;
-	 cmd_addr <= {8'h0b, 4'b0001,word_address[17:0], 2'b00};
+	 cmd_addr <= {8'h0b, 4'b0000,word_address[17:0], 2'b00};
 	 snd_bitcount <= 6'd40; // instead of 32 before
 	 ...
 ```
@@ -147,7 +147,7 @@ as before, and the other one from `MOSI`:
 module MappedSPIFlash(
     input wire 	       clk,          // system clock
     input wire 	       rstrb,        // read strobe		
-    input wire [17:0]  word_address, // address of the word to be read, offset from 1Mb
+    input wire [17:0]  word_address, // address of the word to be read
 
     output wire [31:0] rdata,        // data read
     output wire        rbusy,        // asserted if busy receiving data			    
@@ -187,7 +187,7 @@ module MappedSPIFlash(
    always @(negedge clk) begin
       if(rstrb) begin
 	 CS_N <= 1'b0;
-	 cmd_addr <= {8'h3b, 4'b0001,word_address[17:0], 2'b00};
+	 cmd_addr <= {8'h3b, 4'b0000,word_address[17:0], 2'b00};
 	 snd_bitcount <= 6'd40;
       end else begin
 	 if(sending) begin
@@ -229,7 +229,7 @@ the bbyyttee function).
 module MappedSPIFlash(
     input wire 	       clk, // system clock
     input wire 	       rstrb, // read strobe		
-    input wire [17:0]  word_address, // offset from 1Mb
+    input wire [17:0]  word_address, // address of the word to be read
 
 		      
     output wire [31:0] rdata, // data read
@@ -279,7 +279,7 @@ module MappedSPIFlash(
       if(rstrb) begin
 	 CS_N  <= 1'b0;
 	 IO_oe <= 1'b1;            	 
-	 cmd_addr <= {bbyyttee(8'hbb), 4'b0001, word_address[17:0], 2'b00};
+	 cmd_addr <= {bbyyttee(8'hbb), 4'b0000, word_address[17:0], 2'b00};
 	 snd_clock_cnt <= 5'd28; // cmd: 8 clocks  address: 12 clocks  dummy: 8 clocks
       end else begin
 	 if(sending) begin
@@ -321,7 +321,7 @@ every LUT counts.
 module MappedSPIFlash( 
     input wire 	       clk,          // system clock
     input wire 	       rstrb,        // read strobe		
-    input wire [17:0]  word_address, // offset from 1Mb
+    input wire [17:0]  word_address, // address of the word to be read
 
 		      
     output wire [31:0] rdata, // data read
@@ -372,7 +372,7 @@ module MappedSPIFlash(
 	 CS_N  <= 1'b0;
 	 IO_oe <= 1'b1;
 	 dir   <= 1'b1;
-	 shifter <= {bbyyttee(8'hbb), 4'b0001, word_address[17:0], 2'b00};
+	 shifter <= {bbyyttee(8'hbb), 4'b0000, word_address[17:0], 2'b00};
 	 clock_cnt <= 5'd28; // cmd: 8 clocks  address: 12 clocks  dummy: 8 clocks
       end else begin
 	 if(busy) begin

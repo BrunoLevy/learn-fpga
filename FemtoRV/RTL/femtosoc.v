@@ -13,6 +13,7 @@
 
 `ifdef NRV_MINIRV32
 `include "PROCESSOR/mini_femtorv32.v" // Minimalistic version of the processor
+//`include "PROCESSOR/femtorv32_single_file.v" // Minimalistic version of the processor
 `else
 `include "PROCESSOR/femtorv32.v"      // The processor
 `endif

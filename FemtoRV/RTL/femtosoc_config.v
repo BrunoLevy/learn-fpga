@@ -8,6 +8,10 @@
 `include "CONFIGS/icestick_config.v"
 `endif
 
+`ifdef ECP5_EVN
+`include "CONFIGS/ecp5evn_config.v"
+`endif
+
 `ifndef NRV_CONFIGURED
 `include "CONFIGS/generic_config.v"
 `endif

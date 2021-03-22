@@ -38,7 +38,7 @@ also lets you select the device drivers present in the associated system-on-chip
 | `NRV_IO_MAX7219`       | led matrix (10x10)             | comment-out if you do not have it |
 | `NRV_MAPPED_SPI_FLASH` | flash mapped in memory space   | keep it                           |
 
-For now we activate the LEDs (for visual
+We activate the LEDs (for visual
 debugging) and the UART (to talk with the system through a
 terminal-over-USB connection). We use 6144 bytes of RAM. It is not 
 very much, but we cannot do more on the IceStick. You will see that
@@ -77,8 +77,8 @@ the device. Plug the device in a USB port, then:
 $make ICESTICK
 ```
 The first time you run it, it will download RISC-V development tools (takes a while).
-The default firmware outputs a welcome message to the terminal-over-USB port. First,
-install a terminal emulator:
+
+Now, install a terminal emulator:
 ```
 $sudo apt-get install python3-serial
 ```
