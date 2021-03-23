@@ -53,7 +53,7 @@ module FemtoRV32(
    wire [31:0] Bimm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
    wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
 
-   // RISC-V only has 10 different instructions !
+   // base RISC-V (RV32I) only has 10 different instructions !
    wire isLoad    =  (instr[6:2] == 5'b00000); 
    wire isALUimm  =  (instr[6:2] == 5'b00100); 
    wire isAUIPC   =  (instr[6:2] == 5'b00101); 
@@ -67,28 +67,13 @@ module FemtoRV32(
    wire isSYSTEM  =  (instr[6:2] == 5'b11100); 
 `endif
    
-   // The immediate multiplexer, that picks the right imm format 
-   // based on the instruction.
-   reg [31:0] imm;
-   always @(*) begin
-     case(instr[6:2])
-       5'b01101, 5'b00101: imm = Uimm; // LUI & AUIPC
-       5'b11011:           imm = Jimm; // JAL
-       5'b11000:           imm = Bimm; // Branch
-       5'b01000:           imm = Simm; // Store
-        default:           imm = Iimm;
-     endcase
-   end
-
    /***************************************************************************/
    // The register file.
    /***************************************************************************/
    
-   // At each cycle, it can read two
-   // registers (available at next cycle) and write one.
-   // Note: yosys is super-smart, and automagically duplicates
-   // the register file in two BRAMs to be able to read two
-   // different registers in a single cycle.
+   // At each cycle, reads two registers (available at next cycle) and writes one.
+   // Note: yosys is super-smart, and automagically duplicates the register file 
+   // in two BRAMs to be able to read two different registers in a single cycle.
    
    reg [31:0] regOut1;
    reg [31:0] regOut2;
@@ -103,14 +88,18 @@ module FemtoRV32(
    end
 
    /***************************************************************************/
-   // The ALU, partly combinatorial, partly state (for shifts).
+   // The ALU.
    /***************************************************************************/
 
    // The ALU reads its operands when wr is set, then, at least at the next cycle,
    // the result is available as soon as aluBusy is zero.
 
-   wire [31:0] aluIn1 =                       regOut1;
-   wire [31:0] aluIn2 = isALUreg | isBranch ? regOut2 : imm;
+   // First ALU source, always first register
+   wire [31:0] aluIn1 = regOut1;
+   
+   // Second ALU source, second register or imm.      (equivalent to isStore ? Simm : Iimm)
+   //                                                                 v
+   wire [31:0] aluIn2 = isALUreg | isBranch ? regOut2 : (instr[6:5] == 2'b01 ? Simm : Iimm);
 
    reg [31:0] aluOut = ALUreg;
    reg [31:0] ALUreg;           // The internal register of the ALU, used by shifts.
@@ -186,22 +175,26 @@ module FemtoRV32(
 `endif
    
    wire [31:0] PCplus4      = PC + 4;
-   wire [31:0] branchtarget = PC + imm; // used by branch and by AUIPC
-                                        // (cannot reuse ALU here because it is already used by predicate).
+   
+   // An adder used to compute branch address, JAL address and AUIPC.
+   // Equivalent to branchtarget = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
+   wire [31:0] branchtarget = PC + (instr[3] ? Jimm : instr[4] ? Uimm : Bimm);
 
    /***************************************************************************/
    // The value written back to the register file.
    /***************************************************************************/
 
+
    wire [31:0] writeBackData  =
 `ifdef NRV_COUNTERS	       
       (isSYSTEM            ? cycles                    : 32'b0) |  // SYSTEM
 `endif	       
-      (isLUI               ? imm                       : 32'b0) |  // LUI
+      (isLUI               ? Uimm                      : 32'b0) |  // LUI
       (isALUimm | isALUreg ? aluOut                    : 32'b0) |  // ALU reg reg and ALU reg imm
       (isAUIPC             ? branchtarget              : 32'b0) |  // AUIPC
       (isJALR   | isJAL    ? PCplus4                   : 32'b0) |  // JAL, JALR
       (isLoad              ? LOAD_data_aligned_for_CPU : 32'b0);   // Load
+
 
    /***************************************************************************/
    // Aligned memory access: Load.

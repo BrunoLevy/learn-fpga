@@ -164,7 +164,7 @@ float my_pow(float x, float y) {
 vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* lights, int nb_lights, int depth /* =0 */) {
   vec3 point,N;
   Material material = make_Material_default();
-  if (depth>4 || !scene_intersect(orig, dir, spheres, nb_spheres, &point, &N, &material)) {
+  if (depth>1 || !scene_intersect(orig, dir, spheres, nb_spheres, &point, &N, &material)) {
     float s = 0.5*(dir.y + 1.0);
     return vec3_add(vec3_scale(s,make_vec3(0.2, 0.7, 0.8)),vec3_scale(s,make_vec3(0.0, 0.0, 0.5)));
   }
