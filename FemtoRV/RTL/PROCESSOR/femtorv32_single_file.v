@@ -25,7 +25,7 @@ module FemtoRV32(
 );
 
 
-   parameter RESET_ADDR       = `NRV_RESET_ADDR; // address the processor jumps to on reset
+   parameter RESET_ADDR       = 24'h810000; // `NRV_RESET_ADDR; // address the processor jumps to on reset
    parameter ADDR_WIDTH       = 24;              // ignored in this version
    parameter USE_MINI_DECODER = 1'b0;            // ignored in this version
 

@@ -13,9 +13,12 @@
 
 `ifdef NRV_MINIRV32
 `include "PROCESSOR/mini_femtorv32.v" // Minimalistic version of the processor
-//`include "PROCESSOR/femtorv32_single_file.v" // Minimalistic version of the processor
 `else
-`include "PROCESSOR/femtorv32.v"      // The processor
+`ifdef NRV_MINIRV32_2
+`include "PROCESSOR/femtorv32_single_file.v" // Minimalistic version of the processor
+`else
+`include "PROCESSOR/femtorv32.v"            // The processor
+`endif
 `endif
 
 `include "PLL/femtopll.v"           // The PLL (generates clock at NRV_FREQ)
@@ -513,11 +516,13 @@ end
    
   FemtoRV32 #(
      .ADDR_WIDTH(24)
-`ifndef NRV_MINIRV32	      
+`ifndef NRV_MINIRV32
+`ifndef NRV_MINIRV32_2
      ,.RV32M(RV32M)
      ,.TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER)
      ,.LATCH_ALU(LATCH_ALU)
-`endif	      
+`endif     
+`endif
   ) processor(
     .clk(clk),			
     .mem_addr(mem_address),
