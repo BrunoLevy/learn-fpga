@@ -33,6 +33,10 @@ module FemtoRV32(
    /***************************************************************************/
    // Instruction decoding.
    /***************************************************************************/
+   
+   // Reference:
+   // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
+   // Table page 104
 
    // The destination and source registers
    wire [4:0] writeBackRegId = instr[11:7];
@@ -42,14 +46,7 @@ module FemtoRV32(
    // The ALU function
    wire [2:0] func           = instr[14:12];
    
-   // Shift is a special case, need to discriminate
-   // signed/unsigned shifts.
-   wire funcIsShift = (func == 3'b001) | (func == 3'b101);
-   
-   // The ALU function qualifier (+/- and signed/unsigned shifts)
-   wire funcQual    = (funcIsShift | instr[5]) & instr[30];
-
-   // The five immediate formats
+   // The five immediate formats, see RiscV reference (link above), Fig. 2.4 p. 12
    wire [31:0] Uimm = {    instr[31],   instr[30:12], {12{1'b0}}};
    wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
    wire [31:0] Simm = {{21{instr[31]}}, instr[30:25], instr[11:7]};
@@ -132,15 +129,19 @@ module FemtoRV32(
    wire        LTU = minus[32];
    wire        EQ  = (minus[31:0] == 0);
 
+   // Note: 
+   // - instr[30] is 1 for SUB and 0 for ADD 
+   // - for SUB, need to test also instr[5] (1 for ADD/SUB, 0 for ADDI, because ADDI imm uses bit 30 !)
+   // - instr[30] is 1 for SRA (do sign extension) and 0 for SRL
    always @(posedge clk) begin
       if(alu_wr) begin
-         case(func)
-            3'b000: ALUreg = funcQual ? minus[31:0] : aluPlus;  // ADD/SUB
-            3'b010: ALUreg = {31'b0, LT} ;                      // SLT
-            3'b011: ALUreg = {31'b0, LTU};                      // SLTU
-            3'b100: ALUreg = aluIn1 ^ aluIn2;                   // XOR
-            3'b110: ALUreg = aluIn1 | aluIn2;                   // OR
-            3'b111: ALUreg = aluIn1 & aluIn2;                   // AND
+         case(func) 
+            3'b000: ALUreg = instr[30] & instr[5] ? minus[31:0] : aluPlus; // ADD/SUB
+            3'b010: ALUreg = {31'b0, LT} ;                                 // SLT
+            3'b011: ALUreg = {31'b0, LTU};                                 // SLTU
+            3'b100: ALUreg = aluIn1 ^ aluIn2;                              // XOR
+            3'b110: ALUreg = aluIn1 | aluIn2;                              // OR
+            3'b111: ALUreg = aluIn1 & aluIn2;                              // AND
             3'b001, 3'b101: begin ALUreg <= aluIn1; shamt <= aluIn2[4:0]; end  // SLL, SRA, SRL
          endcase
       end else begin
@@ -148,9 +149,9 @@ module FemtoRV32(
          if (shamt != 0) begin
             shamt <= shamt - 1;
             case(func)
-               3'b001: ALUreg <= ALUreg << 1;                            // SLL
-               3'b101: ALUreg <= funcQual ? {ALUreg[31], ALUreg[31:1]} : // SRA
-                                            {1'b0,       ALUreg[31:1]} ; // SRL
+               3'b001: ALUreg <= ALUreg << 1;                             // SLL
+               3'b101: ALUreg <= instr[30] ? {ALUreg[31], ALUreg[31:1]} : // SRA
+                                             {1'b0,       ALUreg[31:1]} ; // SRL
             endcase
          end
       end
