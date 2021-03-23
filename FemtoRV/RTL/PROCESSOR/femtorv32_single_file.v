@@ -65,9 +65,11 @@ module FemtoRV32(
    wire isLUI     =  (instr[6:2] == 5'b01101); 
    wire isBranch  =  (instr[6:2] == 5'b11000); 
    wire isJALR    =  (instr[6:2] == 5'b11001); 
-   wire isJAL     =  (instr[6:2] == 5'b11011); 
+   wire isJAL     =  (instr[6:2] == 5'b11011);
+`ifdef NRV_COUNTERS	          
    wire isSYSTEM  =  (instr[6:2] == 5'b11100); 
-
+`endif
+   
    // The immediate multiplexer, that picks the right imm format 
    // based on the instruction.
    reg [31:0] imm;
@@ -119,6 +121,8 @@ module FemtoRV32(
 
    wire [31:0] aluPlus = aluIn1 + aluIn2;
 
+   // Use a single 33 bits subtract to do subtraction and all comparisons
+   // (trick borrowed from swapforth/J1)
    wire [32:0] minus = {1'b1, ~aluIn2} + {1'b0,aluIn1} + 33'b1;
    wire        LT  = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : minus[32];
    wire        LTU = minus[32];
@@ -127,18 +131,16 @@ module FemtoRV32(
    always @(posedge clk) begin
       if(alu_wr) begin
          case(func)
-
             3'b000: ALUreg = funcQual ? minus[31:0] : aluPlus;  // ADD/SUB
             3'b010: ALUreg = {31'b0, LT} ;                      // SLT
             3'b011: ALUreg = {31'b0, LTU};                      // SLTU
             3'b100: ALUreg = aluIn1 ^ aluIn2;                   // XOR
             3'b110: ALUreg = aluIn1 | aluIn2;                   // OR
             3'b111: ALUreg = aluIn1 & aluIn2;                   // AND
-
             3'b001, 3'b101: begin ALUreg <= aluIn1; shamt <= aluIn2[4:0]; end  // SLL, SRA, SRL
          endcase
       end else begin
-
+	 // Shift (multi-cycle)
          if (shamt != 0) begin
             shamt <= shamt - 1;
             case(func)
@@ -147,7 +149,6 @@ module FemtoRV32(
                                             {1'b0,       ALUreg[31:1]} ; // SRL
             endcase
          end
-
       end
    end
 
@@ -156,7 +157,6 @@ module FemtoRV32(
    /***************************************************************************/
 
    reg predicate; // Branch predicates
-
    always @(*) begin
       case(func)
         3'b000: predicate =  EQ;   // BEQ
@@ -175,8 +175,11 @@ module FemtoRV32(
 
    reg  [31:0] PC;         // The program counter.
    reg  [31:0] instr;      // Latched instruction.
-   reg  [31:0] cycles;     // Cycle counter
 
+`ifdef NRV_COUNTERS	       
+   reg [31:0]  cycles;     // Cycle counter
+`endif
+   
    wire [31:0] PCplus4      = PC + 4;
    wire [31:0] branchtarget = PC + imm;
 
@@ -185,8 +188,9 @@ module FemtoRV32(
    /***************************************************************************/
 
    wire [31:0] writeBackData  =
-
+`ifdef NRV_COUNTERS	       
       (isSYSTEM            ? cycles                    : 32'b0) |  // SYSTEM
+`endif	       
       (isLUI               ? imm                       : 32'b0) |  // LUI
       (isALUimm | isALUreg ? aluOut                    : 32'b0) |  // ALU reg reg and ALU reg imm
       (isAUIPC             ? branchtarget              : 32'b0) |  // AUIPC
@@ -351,7 +355,8 @@ module FemtoRV32(
    /***************************************************************************/
    // Cycle counter
    /***************************************************************************/
-
+`ifdef NRV_COUNTERS	             
    always @(posedge clk) cycles <= cycles + 1;
-
+`endif
+   
 endmodule

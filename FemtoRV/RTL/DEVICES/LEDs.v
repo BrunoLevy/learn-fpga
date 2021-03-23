@@ -26,6 +26,7 @@ module LEDDriver(
       led_state = 4'b0000;
    end
    assign rdata = (sel ? {27'b0, irda_RXD, led_state} : 32'b0);
+   // TODO: TXD, SD
 `else   
    reg [3:0] led_state;
    assign LED = led_state;

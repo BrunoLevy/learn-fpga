@@ -9,26 +9,32 @@
 `define NRV_IO_MAX7219       // Mapped IO, 8x8 led matrix
 `define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. Use with MINIRV32 to run code from SPI flash.
 
-/************************* Frequency ********************************************************************************/
+/************************* Processor configuration *******************************************************************/
 
-`define NRV_FREQ 66      // Frequency in MHz. Validated at 63 MHz. Overclocked a bit. Note: LUT count may overflow.
+`define NRV_MINIRV32 // Mini config, can run from SPI flash (mapped at 800000h).
+//`define NRV_MINIRV32_2 // Single-file mini config (Matthias Koch), can run from SPI flash (mapped at 800000h).
+
+// Frequency in MHz
+`ifdef NRV_MINIRV32_2
+`define NRV_FREQ 40    // single-file mini config validated at 40 MHz.
+`else
+`define NRV_FREQ 66    // mini config validated at 63 MHz. Overclocked a bit. Note: LUT count may overflow.
+`endif
+
+`define NRV_RESET_ADDR 24'h810000 // Jump execution to SPI Flash (800000h, +64k(10000h) for FPGA bitstream)
+
+//`define NRV_COUNTERS // for NRV_MINIRV32_2, optional cycles counter
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
-`define NRV_RAM 6144     // default for ICESTICK (cannot do more !)
+`define NRV_RAM 6144           // default for ICESTICK (cannot do more !)
 
-/************************* Processor configuration ******************************************************************/
+/************************* Advanced devices configuration ***********************************************************/
 
-`define NRV_MINIRV32 // Mini config, can execute code stored in SPI flash from 1Mb offset (mapped to address 0x800000)
-
-/************************* Advanced processor configuration *********************************************************/
-
-`define NRV_RESET_ADDR 24'h810000  // Jump execution to SPI Flash (Mapped at 800000h, + leave 64k (10000h) for FPGA bitstream)
-
-`define NRV_IO_HARDWARE_CONFIG // Comment-out to disable hardware config registers mapped in IO-Space
-                               // (only if you use your own firmware, libfemtorv32 depends on it)
-
-/******************************************************************************************************************/
 `define NRV_RUN_FROM_SPI_FLASH // Do not 'readmemh()' firmware from '.hex' file
+`define NRV_IO_HARDWARE_CONFIG // Comment-out to disable hardware config registers mapped in IO-Space
+                               // (note: firmware libfemtorv32 depends on it)
+
+/********************************************************************************************************************/
 
 `define NRV_CONFIGURED
