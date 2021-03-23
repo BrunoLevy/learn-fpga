@@ -43,10 +43,11 @@ module FemtoRV32(
    // The ALU function
    wire [2:0] func           = instr[14:12];
    
-   // Shift is a special case
+   // Shift is a special case, need to discriminate
+   // signed/unsigned shifts.
    wire funcIsShift = (func == 3'b001) | (func == 3'b101);
    
-   // The ALU function qualifier (signed/unsigned shifts)
+   // The ALU function qualifier (+/- and signed/unsigned shifts)
    wire funcQual    = (funcIsShift | instr[5]) & instr[30];
 
    // The five immediate formats
@@ -86,10 +87,13 @@ module FemtoRV32(
    /***************************************************************************/
    // The register file.
    /***************************************************************************/
-
+   
    // At each cycle, it can read two
    // registers (available at next cycle) and write one.
-
+   // Note: yosys is super-smart, and automagically duplicates
+   // the register file in two BRAMs to be able to read two
+   // different registers in a single cycle.
+   
    reg [31:0] regOut1;
    reg [31:0] regOut2;
    reg [31:0] registerfile [31:0];
@@ -119,6 +123,7 @@ module FemtoRV32(
    wire aluBusy = (shamt != 0); // ALU is busy if shift amount is non-zero.
    wire alu_wr;
 
+   // The adder is used by both arithmetic instructions and address computation.
    wire [31:0] aluPlus = aluIn1 + aluIn2;
 
    // Use a single 33 bits subtract to do subtraction and all comparisons
@@ -159,18 +164,18 @@ module FemtoRV32(
    reg predicate; // Branch predicates
    always @(*) begin
       case(func)
-        3'b000: predicate =  EQ;   // BEQ
-        3'b001: predicate = !EQ;   // BNE
-        3'b100: predicate =  LT;   // BLT
-        3'b101: predicate = !LT;   // BGE
-        3'b110: predicate =  LTU;  // BLTU
-        3'b111: predicate = !LTU;  // BGEU
+        3'b000: predicate =  EQ;  // BEQ
+        3'b001: predicate = !EQ;  // BNE
+        3'b100: predicate =  LT;  // BLT
+        3'b101: predicate = !LT;  // BGE
+        3'b110: predicate =  LTU; // BLTU
+        3'b111: predicate = !LTU; // BGEU
        default: predicate = 1'bx; // don't care...
       endcase
    end
 
    /***************************************************************************/
-   // Program counter.
+   // Program counter and branch target computation.
    /***************************************************************************/
 
    reg  [31:0] PC;         // The program counter.
@@ -181,7 +186,8 @@ module FemtoRV32(
 `endif
    
    wire [31:0] PCplus4      = PC + 4;
-   wire [31:0] branchtarget = PC + imm;
+   wire [31:0] branchtarget = PC + imm; // used by branch and by AUIPC
+                                        // (cannot reuse ALU here because it is already used by predicate).
 
    /***************************************************************************/
    // The value written back to the register file.
@@ -201,18 +207,22 @@ module FemtoRV32(
    // Aligned memory access: Load.
    /***************************************************************************/
 
-   wire byteaccess     =  func[1:0] == 0;
-   wire halfwordaccess =  func[1:0] == 1;
+   // A small circuitry that does unaligned word and byte access, based on:
+   // - func[1:0]:        00->byte 01->halfword 10->word
+   // - func[2]:          0->sign expansion   1->no sign expansion
+   // - mem_address[1:0]: indicates which byte/halfword is accessed
+   
+   wire byteaccess     =  func[1:0] == 2'b00;
+   wire halfwordaccess =  func[1:0] == 2'b01;
    wire signedaccess   = !func[2];
 
    wire sign = signedaccess & (byteaccess ? byte[7] : halfword[15]);
 
    wire [31:0] LOAD_data_aligned_for_CPU =
-
          byteaccess ? {{24{sign}},     byte} :
      halfwordaccess ? {{16{sign}}, halfword} :
                                    mem_rdata ;
-
+   
    wire [15:0] halfword = mem_addr[1] ? mem_rdata[31:16] : mem_rdata[15:0];
    wire  [7:0] byte     = mem_addr[0] ?   halfword[15:8] :   halfword[7:0];
 
@@ -220,13 +230,17 @@ module FemtoRV32(
    // Aligned memory access: Store.
    /***************************************************************************/
 
+   // Same thing for unaligned word and byte memory write:
+   // realigns the written value (from regOut2) and computes wmask based on:
+   // - func[1:0]:      00->byte 01->halfword 10->word
+   // - aluPlus[1:0]:   indicates which byte/halfword is accessed (address = ALU output)
+   
    assign mem_wdata[ 7: 0] =              regOut2[7:0];
    assign mem_wdata[15: 8] = aluPlus[0] ? regOut2[7:0] :                              regOut2[15: 8];
    assign mem_wdata[23:16] = aluPlus[1] ? regOut2[7:0] :                              regOut2[23:16];
    assign mem_wdata[31:24] = aluPlus[0] ? regOut2[7:0] : aluPlus[1] ? regOut2[15:8] : regOut2[31:24];
 
    wire [3:0] mem_wmask_store =
-
        byteaccess ? (aluPlus[1] ? (aluPlus[0] ? 4'b1000 : 4'b0100) :   (aluPlus[0] ? 4'b0010 : 4'b0001) ) :
    halfwordaccess ? (aluPlus[1] ?               4'b1100            :                 4'b0011            ) :
                                                 4'b1111;
@@ -237,7 +251,7 @@ module FemtoRV32(
 
    reg [7:0] state;
 
-   // The states, using 1-hot encoding (reduces
+   // The eight states, using 1-hot encoding (reduces
    // both LUT count and critical path).
 
    localparam FETCH_INSTR          = 8'b00000001;
@@ -266,8 +280,8 @@ module FemtoRV32(
 
    // The memory-read signal.
    assign mem_rstrb = state[LOAD_bit] | state[FETCH_INSTR_bit];
-
-   // See also how load_from_mem and store_to_mem are wired.
+   
+   // The mask for memory-write
    assign mem_wmask = state[STORE_bit] ? mem_wmask_store : 4'b0000;
 
    // alu_wr starts computation in the ALU.
@@ -295,16 +309,19 @@ module FemtoRV32(
            mem_addr <= isJALR | isALUimm | isALUreg | isStore | isLoad ? aluPlus :
                        (takebranch ? branchtarget : PCplus4);
 
-
-           state <= {1'b0,                                // WAIT_IO_STORE
-                     isStore,                             // STORE
-                     isALUimm|isALUreg,                   // WAIT_ALU_OR_DATA
-                     isLoad,                              // LOAD
-                     1'b0,                                // EXECUTE
-                     1'b0,                                // FETCH_REGS
-                     1'b0,                                // WAIT_INSTR
-                     !(isStore|isALUimm|isALUreg|isLoad)  // FETCH_INSTR
-                     };
+	   // Transitions from EXECUTE to WAIT_ALU_OR_DATA, STORE, LOAD, and FETCH_INSTR,
+	   // expressed in a single assignment that sets all the (1-hot encoded) bits
+	   // of state.
+           state <= {
+		 1'b0,                                // WAIT_IO_STORE
+                 isStore,                             // STORE
+                 isALUimm|isALUreg,                   // WAIT_ALU_OR_DATA
+                 isLoad,                              // LOAD
+                 1'b0,                                // EXECUTE
+                 1'b0,                                // FETCH_REGS
+                 1'b0,                                // WAIT_INSTR
+                 !(isStore|isALUimm|isALUreg|isLoad)  // FETCH_INSTR
+           };
         end
 
         // *********************************************************************
@@ -320,7 +337,6 @@ module FemtoRV32(
         // *********************************************************************
         // Used by LOAD and by multi-cycle ALU instr (shifts and RV32M ops), writeback from ALU or memory
         //    also waits from data from IO (listens to mem_rbusy)
-        //    Next state: linear execution flow-> update instr with lookahead and prepare next lookahead
 
         state[WAIT_ALU_OR_DATA_bit] | state[WAIT_IO_STORE_bit]: begin
            if(!aluBusy & !mem_rbusy & !mem_wbusy) begin
@@ -330,21 +346,20 @@ module FemtoRV32(
         end
 
         // *********************************************************************
+        // Simple transitions, expressed in a single assignment that sets all 
+	// the (1-hot encoded) bits of state.
 
         default: begin
-
-          // Simple state changes:
           state <= {
 	      state[STORE_bit],       // STORE       -> WAIT_IO_STORE
-	      1'b0,                   // nothing     -> STORE (done in EXECUTE)
+	      1'b0,                   // nothing     -> STORE (transition is from EXECUTE)
 	      state[LOAD_bit],        // LOAD        -> WAIT_ALU_OR_DATA
-	      1'b0,                   // nothing     -> LOAD (done in EXECUTE)
+	      1'b0,                   // nothing     -> LOAD (transition is from EXECUTE)
 	      state[FETCH_REGS_bit],  // FETCH_REGS  -> EXECUTE
-	      1'b0,                   // nothing     -> FETCH_REGS (done in WAIT_INSTR)
+	      1'b0,                   // nothing     -> FETCH_REGS (transition is from WAIT_INSTR)
 	      state[FETCH_INSTR_bit], // FETCH_INSTR -> WAIT_INSTR
-	      1'b0                    // nothing     -> FETCH_INSTR (done in EXECUTE, WAIT_ALU_OR_DATA, WAIT_IO_STORE)
+	      1'b0                    // nothing     -> FETCH_INSTR (transitions are from EXECUTE, WAIT_ALU_OR_DATA, WAIT_IO_STORE)
 	  };
-
         end
 
         // *********************************************************************
