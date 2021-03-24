@@ -208,15 +208,15 @@ module FemtoRV32(
    /***************************************************************************/
 
    // Circuitry that does unaligned word and byte load/store, based on:
-   // - funct3[1:0]:        00->byte 01->halfword 10->word
-   // - funct3[2]:          0->sign expansion   1->no sign expansion
+   // - funct3[1:0]:       00->byte 01->halfword 10->word
 
    wire mem_byteAccess     =  funct3[1:0] == 2'b00;
    wire mem_halfwordAccess =  funct3[1:0] == 2'b01;
 
-   // LOAD
-   // mem_address[1:0]: indicates which byte/halfword is accessed
-
+   // LOAD, in addition to funct3[1:0], depends on:
+   // - mem_address[1:0]: indicates which byte/halfword is accessed
+   // - funct3[2]:        0->sign expansion   1->no sign expansion
+   
    wire LOAD_signedAccess   = !funct3[2];
 
    wire LOAD_sign = LOAD_signedAccess & (mem_byteAccess ? LOAD_byte[7] : LOAD_halfword[15]);
@@ -229,7 +229,7 @@ module FemtoRV32(
    wire [15:0] LOAD_halfword = mem_addr[1] ? mem_rdata[31:16]    : mem_rdata[15:0];
    wire  [7:0] LOAD_byte     = mem_addr[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
 
-   // STORE
+   // STORE, in addition to funct3[1:0], depends on:
    // aluPlus[1:0]: indicates which byte/halfword is accessed (address = ALU output)
    
    assign mem_wdata[ 7: 0] =              rs2Data[7:0];
