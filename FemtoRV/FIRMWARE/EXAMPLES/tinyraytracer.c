@@ -164,7 +164,7 @@ float my_pow(float x, float y) {
 vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* lights, int nb_lights, int depth /* =0 */) {
   vec3 point,N;
   Material material = make_Material_default();
-  if (depth>1 || !scene_intersect(orig, dir, spheres, nb_spheres, &point, &N, &material)) {
+  if (depth>2 || !scene_intersect(orig, dir, spheres, nb_spheres, &point, &N, &material)) {
     float s = 0.5*(dir.y + 1.0);
     return vec3_add(vec3_scale(s,make_vec3(0.2, 0.7, 0.8)),vec3_scale(s,make_vec3(0.0, 0.0, 0.5)));
   }
@@ -255,25 +255,31 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
    }
 }
 
-int main() {
+int nb_spheres = 4;
+Sphere spheres[4];
+
+int nb_lights = 3;
+Light lights[3];
+
+void init_scene() {
     Material      ivory = make_Material(1.0, make_vec4(0.6,  0.3, 0.1, 0.0), make_vec3(0.4, 0.4, 0.3),   50.);
     Material      glass = make_Material(1.5, make_vec4(0.0,  0.5, 0.1, 0.8), make_vec3(0.6, 0.7, 0.8),  125.);
     Material red_rubber = make_Material(1.0, make_vec4(0.9,  0.1, 0.0, 0.0), make_vec3(0.3, 0.1, 0.1),   10.);
     Material     mirror = make_Material(1.0, make_vec4(0.0, 10.0, 0.8, 0.0), make_vec3(1.0, 1.0, 1.0),  142.);
 
-    int nb_spheres = 4;
-    Sphere spheres[4];
     spheres[0] = make_Sphere(make_vec3(-3,    0,   -16), 2,      ivory);
     spheres[1] = make_Sphere(make_vec3(-1.0, -1.5, -12), 2,      glass);
     spheres[2] = make_Sphere(make_vec3( 1.5, -0.5, -18), 3, red_rubber);
     spheres[3] = make_Sphere(make_vec3( 7,    5,   -18), 4,     mirror);
 
-    int nb_lights = 3;
-    Light lights[3];
     lights[0] = make_Light(make_vec3(-20, 20,  20), 1.5);
     lights[1] = make_Light(make_vec3( 30, 50, -25), 1.8);
     lights[2] = make_Light(make_vec3( 30, 20,  30), 1.7);
+}
 
+
+int main() {
+    init_scene(); 
     GL_init(GL_MODE_CHOOSE);
     if(FGA_mode == FGA_MODE_320x200x8bpp ) {
        for(int i=0; i<256; ++i) {

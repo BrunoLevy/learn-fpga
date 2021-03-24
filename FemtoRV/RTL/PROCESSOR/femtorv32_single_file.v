@@ -1,7 +1,7 @@
 /*******************************************************************/
 // FemtoRV32, a minimalistic RISC-V RV32I core.
 // This version: single VERILOG file, compact & understandable code.
-//
+//                 (200 lines of code, 400 lines counting comments)
 // Bruno Levy, May-June 2020
 // Matthias Koch, March 2021
 /*******************************************************************/
@@ -23,7 +23,7 @@ module FemtoRV32(
    output            error      // always 0 in this version (does not check for errors)
 );
 
-   parameter RESET_ADDR       = `NRV_RESET_ADDR; // address the processor jumps to on reset
+   parameter RESET_ADDR       = `NRV_RESET_ADDR; // the address that the processor jumps to on reset
    parameter ADDR_WIDTH       = 24;              // ignored in this version
    parameter USE_MINI_DECODER = 1'b0;            // ignored in this version
    assign error = 1'b0;                          // this version does not check for invalid instr
