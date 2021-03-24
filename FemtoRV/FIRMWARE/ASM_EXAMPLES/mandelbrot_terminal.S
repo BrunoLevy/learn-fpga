@@ -1,6 +1,5 @@
 # Computes and displays the Mandelbrot set on the terminal.
-# Needs both NRV_IO_UART_RX and NRV_IO_UART_TX to be
-# enabled. 
+# Needs NRV_IO_UART to be enabled. 
 #
 # To access it, use:
 #   miniterm.py --dtr=0 /dev/ttyUSB1 115200

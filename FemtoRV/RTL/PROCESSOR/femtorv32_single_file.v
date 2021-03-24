@@ -34,17 +34,16 @@ module FemtoRV32(
    // Instruction decoding.
    /***************************************************************************/
    
-   // Reference:
+   // Reference: Table page 104 of:
    // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
-   // Table page 104
 
    // The destination and source registers
-   wire [4:0] writeBackRegId = instr[11:7];
-   wire [4:0] regId1         = instr[19:15];
-   wire [4:0] regId2         = instr[24:20];
+   wire [4:0] rd  = instr[11:7];
+   wire [4:0] rs1 = instr[19:15];
+   wire [4:0] rs2 = instr[24:20];
    
    // The ALU function
-   wire [2:0] func           = instr[14:12];
+   wire [2:0] funct3           = instr[14:12];
    
    // The five immediate formats, see RiscV reference (link above), Fig. 2.4 p. 12
    wire [31:0] Uimm = {    instr[31],   instr[30:12], {12{1'b0}}};
@@ -75,16 +74,16 @@ module FemtoRV32(
    // Note: yosys is super-smart, and automagically duplicates the register file 
    // in two BRAMs to be able to read two different registers in a single cycle.
    
-   reg [31:0] regOut1;
-   reg [31:0] regOut2;
+   reg [31:0] rs1Data;
+   reg [31:0] rs2Data;
    reg [31:0] registerfile [31:0];
 
    always @(posedge clk) begin
-     regOut1 <= registerfile[regId1];
-     regOut2 <= registerfile[regId2];
+     rs1Data <= registerfile[rs1];
+     rs2Data <= registerfile[rs2];
      if (writeBack)
-       if (writeBackRegId != 0)
-         registerfile[writeBackRegId] <= writeBackData;
+       if (rd != 0)
+         registerfile[rd] <= writeBackData;
    end
 
    /***************************************************************************/
@@ -95,14 +94,14 @@ module FemtoRV32(
    // the result is available as soon as aluBusy is zero.
 
    // First ALU source, always first register
-   wire [31:0] aluIn1 = regOut1;
+   wire [31:0] aluIn1 = rs1Data;
    
    // Second ALU source, second register or imm.      (equivalent to isStore ? Simm : Iimm)
    //                                                                 v
-   wire [31:0] aluIn2 = isALUreg | isBranch ? regOut2 : (instr[6:5] == 2'b01 ? Simm : Iimm);
+   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : (instr[6:5] == 2'b01 ? Simm : Iimm);
 
-   reg [31:0] aluOut = ALUreg;
-   reg [31:0] ALUreg;           // The internal register of the ALU, used by shifts.
+   reg [31:0] aluOut = aluReg;
+   reg [31:0] aluReg;           // The internal register of the ALU, used by shifts.
    reg [4:0]  shamt = 0;        // Current shift amount.
 
    wire aluBusy = (shamt != 0); // ALU is busy if shift amount is non-zero.
@@ -113,10 +112,10 @@ module FemtoRV32(
 
    // Use a single 33 bits subtract to do subtraction and all comparisons
    // (trick borrowed from swapforth/J1)
-   wire [32:0] minus = {1'b1, ~aluIn2} + {1'b0,aluIn1} + 33'b1;
-   wire        LT  = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : minus[32];
-   wire        LTU = minus[32];
-   wire        EQ  = (minus[31:0] == 0);
+   wire [32:0] aluMinus = {1'b1, ~aluIn2} + {1'b0,aluIn1} + 33'b1;
+   wire        LT  = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : aluMinus[32];
+   wire        LTU = aluMinus[32];
+   wire        EQ  = (aluMinus[31:0] == 0);
 
    // Note: 
    // - instr[30] is 1 for SUB and 0 for ADD 
@@ -124,23 +123,23 @@ module FemtoRV32(
    // - instr[30] is 1 for SRA (do sign extension) and 0 for SRL
    always @(posedge clk) begin
       if(alu_wr) begin
-         case(func) 
-            3'b000: ALUreg = instr[30] & instr[5] ? minus[31:0] : aluPlus; // ADD/SUB
-            3'b010: ALUreg = {31'b0, LT} ;                                 // SLT
-            3'b011: ALUreg = {31'b0, LTU};                                 // SLTU
-            3'b100: ALUreg = aluIn1 ^ aluIn2;                              // XOR
-            3'b110: ALUreg = aluIn1 | aluIn2;                              // OR
-            3'b111: ALUreg = aluIn1 & aluIn2;                              // AND
-            3'b001, 3'b101: begin ALUreg <= aluIn1; shamt <= aluIn2[4:0]; end  // SLL, SRA, SRL
+         case(funct3) 
+            3'b000: aluReg = instr[30] & instr[5] ? aluMinus[31:0] : aluPlus; // ADD/SUB
+            3'b010: aluReg = {31'b0, LT} ;                                    // SLT
+            3'b011: aluReg = {31'b0, LTU};                                    // SLTU
+            3'b100: aluReg = aluIn1 ^ aluIn2;                                 // XOR
+            3'b110: aluReg = aluIn1 | aluIn2;                                 // OR
+            3'b111: aluReg = aluIn1 & aluIn2;                                 // AND
+            3'b001, 3'b101: begin aluReg = aluIn1; shamt = aluIn2[4:0]; end  // SLL, SRA, SRL
          endcase
       end else begin
 	 // Shift (multi-cycle)
          if (shamt != 0) begin
             shamt <= shamt - 1;
-            case(func)
-               3'b001: ALUreg <= ALUreg << 1;                             // SLL
-               3'b101: ALUreg <= instr[30] ? {ALUreg[31], ALUreg[31:1]} : // SRA
-                                             {1'b0,       ALUreg[31:1]} ; // SRL
+            case(funct3)
+               3'b001: aluReg <= aluReg << 1;                             // SLL
+               3'b101: aluReg <= instr[30] ? {aluReg[31], aluReg[31:1]} : // SRA
+                                             {1'b0,       aluReg[31:1]} ; // SRL
             endcase
          end
       end
@@ -152,7 +151,7 @@ module FemtoRV32(
 
    reg predicate; // Branch predicates
    always @(*) begin
-      case(func)
+      case(funct3)
         3'b000: predicate =  EQ;  // BEQ
         3'b001: predicate = !EQ;  // BNE
         3'b100: predicate =  LT;  // BLT
@@ -177,6 +176,7 @@ module FemtoRV32(
    wire [31:0] PCplus4      = PC + 4;
    
    // An adder used to compute branch address, JAL address and AUIPC.
+   // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
    // Equivalent to branchtarget = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
    wire [31:0] branchtarget = PC + (instr[3] ? Jimm : instr[4] ? Uimm : Bimm);
 
@@ -201,13 +201,13 @@ module FemtoRV32(
    /***************************************************************************/
 
    // A small circuitry that does unaligned word and byte access, based on:
-   // - func[1:0]:        00->byte 01->halfword 10->word
-   // - func[2]:          0->sign expansion   1->no sign expansion
+   // - funct3[1:0]:        00->byte 01->halfword 10->word
+   // - funct3[2]:          0->sign expansion   1->no sign expansion
    // - mem_address[1:0]: indicates which byte/halfword is accessed
    
-   wire byteaccess     =  func[1:0] == 2'b00;
-   wire halfwordaccess =  func[1:0] == 2'b01;
-   wire signedaccess   = !func[2];
+   wire byteaccess     =  funct3[1:0] == 2'b00;
+   wire halfwordaccess =  funct3[1:0] == 2'b01;
+   wire signedaccess   = !funct3[2];
 
    wire sign = signedaccess & (byteaccess ? byte[7] : halfword[15]);
 
@@ -224,14 +224,14 @@ module FemtoRV32(
    /***************************************************************************/
 
    // Same thing for unaligned word and byte memory write:
-   // realigns the written value (from regOut2) and computes wmask based on:
-   // - func[1:0]:      00->byte 01->halfword 10->word
+   // realigns the written value (from rs2Data) and computes wmask based on:
+   // - funct3[1:0]:    00->byte 01->halfword 10->word
    // - aluPlus[1:0]:   indicates which byte/halfword is accessed (address = ALU output)
    
-   assign mem_wdata[ 7: 0] =              regOut2[7:0];
-   assign mem_wdata[15: 8] = aluPlus[0] ? regOut2[7:0] :                              regOut2[15: 8];
-   assign mem_wdata[23:16] = aluPlus[1] ? regOut2[7:0] :                              regOut2[23:16];
-   assign mem_wdata[31:24] = aluPlus[0] ? regOut2[7:0] : aluPlus[1] ? regOut2[15:8] : regOut2[31:24];
+   assign mem_wdata[ 7: 0] =              rs2Data[7:0];
+   assign mem_wdata[15: 8] = aluPlus[0] ? rs2Data[7:0] :                              rs2Data[15: 8];
+   assign mem_wdata[23:16] = aluPlus[1] ? rs2Data[7:0] :                              rs2Data[23:16];
+   assign mem_wdata[31:24] = aluPlus[0] ? rs2Data[7:0] : aluPlus[1] ? rs2Data[15:8] : rs2Data[31:24];
 
    wire [3:0] mem_wmask_store =
        byteaccess ? (aluPlus[1] ? (aluPlus[0] ? 4'b1000 : 4'b0100) :   (aluPlus[0] ? 4'b0010 : 4'b0001) ) :
