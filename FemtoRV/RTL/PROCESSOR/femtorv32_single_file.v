@@ -33,7 +33,8 @@ module FemtoRV32(
    /***************************************************************************/
    // Instruction decoding.
    /***************************************************************************/
-   
+
+   // Extracts rd,rs1,rs2,funct3,imm and opcode from instruction stored in reg instr[31:0]
    // Reference: Table page 104 of:
    // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
 
@@ -70,9 +71,12 @@ module FemtoRV32(
    // The register file.
    /***************************************************************************/
    
-   // At each cycle, reads two registers (available at next cycle) and writes one.
-   // Note: yosys is super-smart, and automagically duplicates the register file 
-   // in two BRAMs to be able to read two different registers in a single cycle.
+   // At each cycle, reads two registers: rs1 -> rs1Data,   rs2 -> rs2Data
+   //                     and writes one: rd <- writeBackData
+   // Notes:
+   // - rs1Data and rs2Data are available at next cycle
+   // - yosys is super-smart, and automagically duplicates the register file 
+   //   in two BRAMs to be able to read two different registers in a single cycle.
    
    reg [31:0] rs1Data;
    reg [31:0] rs2Data;
@@ -90,22 +94,30 @@ module FemtoRV32(
    // The ALU.
    /***************************************************************************/
 
-   // The ALU reads its operands when wr is set, then, at least at the next cycle,
-   // the result is available as soon as aluBusy is zero.
-
-   // First ALU source, always first register
+   // Operands are given in aluIn1, aluIn2, they are written when aluWr is set.
+   // Result available in aluOut as soon as aluBusy is zero.
+   // Other signals (combinatorially wired):
+   //   aluPlus (aluIn1 + aluIn2) 
+   //   EQ      (aluIn1 == aluIn2) 
+   //   LT      (signed aluIn1 < signed aluIn2)
+   //   LTU     (unsigned aluIn1 < unsigned aluIn2)
+   
+   // First ALU source, always rs1
    wire [31:0] aluIn1 = rs1Data;
    
-   // Second ALU source, second register or imm.      (equivalent to isStore ? Simm : Iimm)
-   //                                                                 v
+   // Second ALU source,                              (equivalent to isStore ? Simm : Iimm)
+   //  Depends on opcode:                                              |
+   //    ALUreg, Branch:     rs2                                       |
+   //    Store:              Simm                                      |
+   //    ALUimm, Load, JALR: Iimm                                      v
    wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : (instr[6:5] == 2'b01 ? Simm : Iimm);
 
    reg [31:0] aluOut = aluReg;
-   reg [31:0] aluReg;           // The internal register of the ALU, used by shifts.
-   reg [4:0]  shamt = 0;        // Current shift amount.
+   reg [31:0] aluReg;           // The internal register of the ALU, used by shift.
+   reg [4:0]  aluShamt = 0;     // Current shift amount.
 
-   wire aluBusy = (shamt != 0); // ALU is busy if shift amount is non-zero.
-   wire alu_wr;
+   wire aluBusy = (aluShamt != 0); // ALU is busy if shift amount is non-zero.
+   wire aluWr;
 
    // The adder is used by both arithmetic instructions and address computation.
    wire [31:0] aluPlus = aluIn1 + aluIn2;
@@ -122,20 +134,20 @@ module FemtoRV32(
    // - for SUB, need to test also instr[5] (1 for ADD/SUB, 0 for ADDI, because ADDI imm uses bit 30 !)
    // - instr[30] is 1 for SRA (do sign extension) and 0 for SRL
    always @(posedge clk) begin
-      if(alu_wr) begin
+      if(aluWr) begin
          case(funct3) 
-            3'b000: aluReg = instr[30] & instr[5] ? aluMinus[31:0] : aluPlus; // ADD/SUB
-            3'b010: aluReg = {31'b0, LT} ;                                    // SLT
-            3'b011: aluReg = {31'b0, LTU};                                    // SLTU
-            3'b100: aluReg = aluIn1 ^ aluIn2;                                 // XOR
-            3'b110: aluReg = aluIn1 | aluIn2;                                 // OR
-            3'b111: aluReg = aluIn1 & aluIn2;                                 // AND
-            3'b001, 3'b101: begin aluReg = aluIn1; shamt = aluIn2[4:0]; end  // SLL, SRA, SRL
+            3'b000: aluReg = instr[30] & instr[5] ? aluMinus[31:0] : aluPlus;  // ADD/SUB
+            3'b010: aluReg = {31'b0, LT} ;                                     // SLT
+            3'b011: aluReg = {31'b0, LTU};                                     // SLTU
+            3'b100: aluReg = aluIn1 ^ aluIn2;                                  // XOR
+            3'b110: aluReg = aluIn1 | aluIn2;                                  // OR
+            3'b111: aluReg = aluIn1 & aluIn2;                                  // AND
+            3'b001, 3'b101: begin aluReg = aluIn1; aluShamt = aluIn2[4:0]; end // SLL, SRA, SRL
          endcase
       end else begin
 	 // Shift (multi-cycle)
-         if (shamt != 0) begin
-            shamt <= shamt - 1;
+         if (aluShamt != 0) begin
+            aluShamt <= aluShamt - 1;
             case(funct3)
                3'b001: aluReg <= aluReg << 1;                             // SLL
                3'b101: aluReg <= instr[30] ? {aluReg[31], aluReg[31:1]} : // SRA
@@ -149,7 +161,7 @@ module FemtoRV32(
    // The predicate for conditional branches.
    /***************************************************************************/
 
-   reg predicate; // Branch predicates
+   reg predicate; 
    always @(*) begin
       case(funct3)
         3'b000: predicate =  EQ;  // BEQ
@@ -178,12 +190,11 @@ module FemtoRV32(
    // An adder used to compute branch address, JAL address and AUIPC.
    // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
    // Equivalent to branchtarget = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
-   wire [31:0] branchtarget = PC + (instr[3] ? Jimm : instr[4] ? Uimm : Bimm);
+   wire [31:0] branchTarget = PC + (instr[3] ? Jimm : instr[4] ? Uimm : Bimm);
 
    /***************************************************************************/
    // The value written back to the register file.
    /***************************************************************************/
-
 
    wire [31:0] writeBackData  =
 `ifdef NRV_COUNTERS	       
@@ -191,7 +202,7 @@ module FemtoRV32(
 `endif	       
       (isLUI               ? Uimm                      : 32'b0) |  // LUI
       (isALUimm | isALUreg ? aluOut                    : 32'b0) |  // ALU reg reg and ALU reg imm
-      (isAUIPC             ? branchtarget              : 32'b0) |  // AUIPC
+      (isAUIPC             ? branchTarget              : 32'b0) |  // AUIPC
       (isJALR   | isJAL    ? PCplus4                   : 32'b0) |  // JAL, JALR
       (isLoad              ? LOAD_data_aligned_for_CPU : 32'b0);   // Load
 
@@ -277,8 +288,8 @@ module FemtoRV32(
    // The mask for memory-write
    assign mem_wmask = state[STORE_bit] ? mem_wmask_store : 4'b0000;
 
-   // alu_wr starts computation in the ALU.
-   assign alu_wr = state[EXECUTE_bit] & (isALUimm|isALUreg);
+   // aluWr starts computation in the ALU.
+   assign aluWr = state[EXECUTE_bit] & (isALUimm|isALUreg);
 
    wire takebranch = isJAL | (isBranch & predicate);
 
@@ -297,10 +308,10 @@ module FemtoRV32(
         state[EXECUTE_bit]: begin
 
            PC       <= isJALR ? aluPlus :
-                       (takebranch ? branchtarget : PCplus4);
+                       (takebranch ? branchTarget : PCplus4);
 
            mem_addr <= isJALR | isALUimm | isALUreg | isStore | isLoad ? aluPlus :
-                       (takebranch ? branchtarget : PCplus4);
+                       (takebranch ? branchTarget : PCplus4);
 
 	   // Transitions from EXECUTE to WAIT_ALU_OR_DATA, STORE, LOAD, and FETCH_INSTR,
 	   // expressed in a single assignment that sets all the (1-hot encoded) bits
