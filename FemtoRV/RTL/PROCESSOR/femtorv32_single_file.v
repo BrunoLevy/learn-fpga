@@ -211,12 +211,12 @@ module FemtoRV32(
    // reason, we need some circuitry that does unaligned word 
    // and byte load/store, based on:
    // - funct3[1:0]:       00->byte 01->halfword 10->word
+   // - mem_address[1:0]: indicates which byte/halfword is accessed
 
    wire mem_byteAccess     =  funct3[1:0] == 2'b00;
    wire mem_halfwordAccess =  funct3[1:0] == 2'b01;
 
    // LOAD, in addition to funct3[1:0], LOAD depends on:
-   // - mem_address[1:0]: indicates which byte/halfword is accessed
    // - funct3[2]:        0->sign expansion   1->no sign expansion
    
    wire LOAD_signedAccess   = !funct3[2];
@@ -230,23 +230,22 @@ module FemtoRV32(
    wire [15:0] LOAD_halfword = mem_addr[1] ? mem_rdata[31:16]    : mem_rdata[15:0];
    wire  [7:0] LOAD_byte     = mem_addr[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
 
-   // STORE, in addition to funct3[1:0], STORE depends on:
-   // aluPlus[1:0]: indicates which byte/halfword is accessed (address = ALU output)
+   // STORE
    
-   assign mem_wdata[ 7: 0] =              rs2Data[7:0];
-   assign mem_wdata[15: 8] = aluPlus[0] ? rs2Data[7:0] :                              rs2Data[15: 8];
-   assign mem_wdata[23:16] = aluPlus[1] ? rs2Data[7:0] :                              rs2Data[23:16];
-   assign mem_wdata[31:24] = aluPlus[0] ? rs2Data[7:0] : aluPlus[1] ? rs2Data[15:8] : rs2Data[31:24];
+   assign mem_wdata[ 7: 0] =               rs2Data[7:0];
+   assign mem_wdata[15: 8] = mem_addr[0] ? rs2Data[7:0] :                               rs2Data[15: 8];
+   assign mem_wdata[23:16] = mem_addr[1] ? rs2Data[7:0] :                               rs2Data[23:16];
+   assign mem_wdata[31:24] = mem_addr[0] ? rs2Data[7:0] : mem_addr[1] ? rs2Data[15:8] : rs2Data[31:24];
 
    // The memory write mask:
    //    1111                     if writing a word
-   //    0011 or 1100             if writing a halfword (depending on aluPlus[1])
-   //    0001, 0010, 0100 or 1000 if writing a byte     (depending on aluPlus[1:0])
+   //    0011 or 1100             if writing a halfword (depending on mem_addr[1])
+   //    0001, 0010, 0100 or 1000 if writing a byte     (depending on mem_addr[1:0])
    
    wire [3:0] STORE_wmask =
-       mem_byteAccess ? (aluPlus[1] ? (aluPlus[0] ? 4'b1000 : 4'b0100) :   (aluPlus[0] ? 4'b0010 : 4'b0001) ) :
-   mem_halfwordAccess ? (aluPlus[1] ?               4'b1100            :                 4'b0011            ) :
-                                                    4'b1111;
+       mem_byteAccess ? (mem_addr[1] ? (mem_addr[0] ? 4'b1000 : 4'b0100) :   (mem_addr[0] ? 4'b0010 : 4'b0001) ) :
+   mem_halfwordAccess ? (mem_addr[1] ?                4'b1100            :                  4'b0011            ) :
+                                                      4'b1111;
 						    
    /*************************************************************************/
    // And, last but not least, the state machine.
