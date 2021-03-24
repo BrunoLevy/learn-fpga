@@ -207,18 +207,19 @@ module FemtoRV32(
    // LOAD/STORE
    /***************************************************************************/
 
-   // Circuitry that does unaligned word and byte load/store, based on:
+   // All memory accesses are aligned on 32 bits boundary. For this 
+   // reason, we need some circuitry that does unaligned word 
+   // and byte load/store, based on:
    // - funct3[1:0]:       00->byte 01->halfword 10->word
 
    wire mem_byteAccess     =  funct3[1:0] == 2'b00;
    wire mem_halfwordAccess =  funct3[1:0] == 2'b01;
 
-   // LOAD, in addition to funct3[1:0], depends on:
+   // LOAD, in addition to funct3[1:0], LOAD depends on:
    // - mem_address[1:0]: indicates which byte/halfword is accessed
    // - funct3[2]:        0->sign expansion   1->no sign expansion
    
    wire LOAD_signedAccess   = !funct3[2];
-
    wire LOAD_sign = LOAD_signedAccess & (mem_byteAccess ? LOAD_byte[7] : LOAD_halfword[15]);
 
    wire [31:0] LOAD_data =
@@ -229,7 +230,7 @@ module FemtoRV32(
    wire [15:0] LOAD_halfword = mem_addr[1] ? mem_rdata[31:16]    : mem_rdata[15:0];
    wire  [7:0] LOAD_byte     = mem_addr[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
 
-   // STORE, in addition to funct3[1:0], depends on:
+   // STORE, in addition to funct3[1:0], STORE depends on:
    // aluPlus[1:0]: indicates which byte/halfword is accessed (address = ALU output)
    
    assign mem_wdata[ 7: 0] =              rs2Data[7:0];
@@ -237,11 +238,16 @@ module FemtoRV32(
    assign mem_wdata[23:16] = aluPlus[1] ? rs2Data[7:0] :                              rs2Data[23:16];
    assign mem_wdata[31:24] = aluPlus[0] ? rs2Data[7:0] : aluPlus[1] ? rs2Data[15:8] : rs2Data[31:24];
 
-   wire [3:0] mem_wmask_store =
+   // The memory write mask:
+   //    1111                     if writing a word
+   //    0011 or 1100             if writing a halfword (depending on aluPlus[1])
+   //    0001, 0010, 0100 or 1000 if writing a byte     (depending on aluPlus[1:0])
+   
+   wire [3:0] STORE_wmask =
        mem_byteAccess ? (aluPlus[1] ? (aluPlus[0] ? 4'b1000 : 4'b0100) :   (aluPlus[0] ? 4'b0010 : 4'b0001) ) :
    mem_halfwordAccess ? (aluPlus[1] ?               4'b1100            :                 4'b0011            ) :
                                                     4'b1111;
-
+						    
    /*************************************************************************/
    // And, last but not least, the state machine.
    /*************************************************************************/
@@ -279,7 +285,7 @@ module FemtoRV32(
    assign mem_rstrb = state[LOAD_bit] | state[FETCH_INSTR_bit];
    
    // The mask for memory-write.
-   assign mem_wmask = state[STORE_bit] ? mem_wmask_store : 4'b0000;
+   assign mem_wmask = state[STORE_bit] ? STORE_wmask : 4'b0000;
 
    // aluWr starts computation in the ALU.
    assign aluWr = state[EXECUTE_bit] & (isALUimm | isALUreg);
