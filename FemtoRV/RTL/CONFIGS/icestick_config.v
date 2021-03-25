@@ -21,9 +21,9 @@
 `define NRV_FREQ 66    // mini config validated at 63 MHz. Overclocked a bit. Note: LUT count may overflow.
 `endif
 
-`define NRV_RESET_ADDR 24'h810000 // Jump execution to SPI Flash (800000h, +64k(10000h) for FPGA bitstream)
+`define NRV_RESET_ADDR 32'h00810000 // Jump execution to SPI Flash (800000h, +64k(10000h) for FPGA bitstream)
 
-`define NRV_COUNTERS // for NRV_MINIRV32_2, optional cycles counter (but you'll need to deactivate UART)
+`define NRV_COUNTER_WIDTH 24 // for NRV_MINIRV32_2, optional cycles counter (but you'll need to deactivate UART)
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 

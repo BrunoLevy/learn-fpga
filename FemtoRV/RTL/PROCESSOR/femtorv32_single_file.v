@@ -61,7 +61,7 @@ module FemtoRV32(
    wire isBranch  =  (instr[6:2] == 5'b11000); 
    wire isJALR    =  (instr[6:2] == 5'b11001); 
    wire isJAL     =  (instr[6:2] == 5'b11011);
-`ifdef NRV_COUNTERS	          
+`ifdef NRV_COUNTER_WIDTH	          
    wire isSYSTEM  =  (instr[6:2] == 5'b11100); 
 `endif
    
@@ -111,7 +111,7 @@ module FemtoRV32(
 
    reg [31:0] aluOut = aluReg; // The output of the ALU (wired to the ALU register)
    reg [31:0] aluReg;          // The internal register of the ALU, used by shift.
-   reg [4:0]  aluShamt = 0;    // Current shift amount.
+   reg [4:0]  aluShamt;        // Current shift amount.
 
    wire aluBusy = |aluShamt;   // ALU is busy if shift amount is non-zero.
    wire aluWr;                 // ALU write strobe, starts computation.
@@ -133,23 +133,23 @@ module FemtoRV32(
    always @(posedge clk) begin
       if(aluWr) begin
          case(funct3) 
-            3'b000: aluReg = instr[30] & instr[5] ? aluMinus[31:0] : aluPlus;  // ADD/SUB
-            3'b010: aluReg = {31'b0, LT} ;                                     // SLT
-            3'b011: aluReg = {31'b0, LTU};                                     // SLTU
-            3'b100: aluReg = aluIn1 ^ aluIn2;                                  // XOR
-            3'b110: aluReg = aluIn1 | aluIn2;                                  // OR
-            3'b111: aluReg = aluIn1 & aluIn2;                                  // AND
-            3'b001, 3'b101: begin aluReg = aluIn1; aluShamt = aluIn2[4:0]; end // SLL, SRA, SRL
+            3'b000: aluReg <= instr[30] & instr[5] ? aluMinus[31:0] : aluPlus;   // ADD/SUB
+            3'b010: aluReg <= {31'b0, LT} ;                                      // SLT
+            3'b011: aluReg <= {31'b0, LTU};                                      // SLTU
+            3'b100: aluReg <= aluIn1 ^ aluIn2;                                   // XOR
+            3'b110: aluReg <= aluIn1 | aluIn2;                                   // OR
+            3'b111: aluReg <= aluIn1 & aluIn2;                                   // AND
+            3'b001, 3'b101: begin aluReg <= aluIn1; aluShamt <= aluIn2[4:0]; end // SLL, SRA, SRL
          endcase
       end else begin
 	 // Shift (multi-cycle)
          if (|aluShamt) begin
             aluShamt <= aluShamt - 1;
-            case(funct3)
-               3'b001: aluReg <= aluReg << 1;                             // SLL
-               3'b101: aluReg <= instr[30] ? {aluReg[31], aluReg[31:1]} : // SRA
-                                             {1'b0,       aluReg[31:1]} ; // SRL
-            endcase
+	    
+	    aluReg <= funct3[2]  ? 
+		      instr[30]  ? {aluReg[31], aluReg[31:1]} : // funct3=101 &  instr[0] -> SRA
+		                   {1'b0,       aluReg[31:1]}   // funct3=101 & !instr[0] -> SRL		      
+                                 : aluReg << 1 ;                // funct3=001             -> SLL
          end
       end
    end
@@ -167,7 +167,7 @@ module FemtoRV32(
         3'b101: predicate = !LT;  // BGE
         3'b110: predicate =  LTU; // BLTU
         3'b111: predicate = !LTU; // BGEU
-       default: predicate = 1'bx; // don't care...
+        default: predicate = 1'bx; // don't care...
       endcase
    end
 
@@ -176,10 +176,10 @@ module FemtoRV32(
    /***************************************************************************/
 
    reg  [31:0] PC;         // The program counter.
-   reg  [31:0] instr;      // Latched instruction.
+   reg  [31:2] instr;      // Latched instruction.
 
-`ifdef NRV_COUNTERS	       
-   reg [31:0]  cycles;     // Cycle counter
+`ifdef NRV_COUNTER_WIDTH	       
+   reg [`NRV_COUNTER_WIDTH-1:0]  cycles;     // Cycle counter
 `endif
    
    wire [31:0] PCplus4      = PC + 4;
@@ -194,8 +194,10 @@ module FemtoRV32(
    /***************************************************************************/
 
    wire [31:0] writeBackData  =
-`ifdef NRV_COUNTERS	       
+`ifdef NRV_COUNTER_WIDTH
+      /* verilator lint_off WIDTH */	       
       (isSYSTEM            ? cycles       : 32'b0) |  // SYSTEM
+      /* verilator lint_on WIDTH */	       	       
 `endif	       
       (isLUI               ? Uimm         : 32'b0) |  // LUI
       (isALUimm | isALUreg ? aluOut       : 32'b0) |  // ALU reg reg and ALU reg imm
@@ -331,7 +333,7 @@ module FemtoRV32(
 
         state[WAIT_INSTR_bit]: begin
            if(!mem_rbusy) begin // rbusy may be high when executing from SPI flash
-              instr <= mem_rdata;
+              instr <= mem_rdata[31:2];
               state <= FETCH_REGS;
            end
         end
@@ -371,7 +373,7 @@ module FemtoRV32(
    /***************************************************************************/
    // Cycle counter
    /***************************************************************************/
-`ifdef NRV_COUNTERS	             
+`ifdef NRV_COUNTER_WIDTH	             
    always @(posedge clk) cycles <= cycles + 1;
 `endif
    
