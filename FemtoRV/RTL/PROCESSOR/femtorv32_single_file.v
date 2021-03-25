@@ -192,7 +192,7 @@ module FemtoRV32(
    reg [`NRV_COUNTER_WIDTH-1:0]  cycles;     // Cycle counter
 `endif
    
-   wire [31:0] PCplus4      = PC + 4;
+   wire [31:0] PCplus4 = PC + 4;
    
    // An adder used to compute branch address, JAL address and AUIPC.
    // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
@@ -267,14 +267,14 @@ module FemtoRV32(
 
    // The eight states, using 1-hot encoding (see note [2] at the end of this file).
 
-   localparam FETCH_INSTR          = 8'b00000001;
-   localparam WAIT_INSTR           = 8'b00000010;
-   localparam FETCH_REGS           = 8'b00000100;
-   localparam EXECUTE              = 8'b00001000;
-   localparam LOAD                 = 8'b00010000;
-   localparam WAIT_ALU_OR_DATA     = 8'b00100000;
-   localparam STORE                = 8'b01000000;
-   localparam WAIT_IO_STORE        = 8'b10000000;
+   localparam FETCH_INSTR          = 8'b00000001; // mem_addr was updated at previous cycle, instr is in flight
+   localparam WAIT_INSTR           = 8'b00000010; // latch instr if available, else wait for it (if run from SPI)
+   localparam FETCH_REGS           = 8'b00000100; // reg ids were updated at previous cycle, reg vals are in flight
+   localparam EXECUTE              = 8'b00001000; // crossroads state
+   localparam LOAD                 = 8'b00010000; // mem_addr updated at previous cycle, data is in flight
+   localparam WAIT_ALU_OR_DATA     = 8'b00100000; // wait for loaded data or ALU
+   localparam STORE                = 8'b01000000; // mem_addr and data updated at previous cycle, mem_wmask is set
+   localparam WAIT_IO_STORE        = 8'b10000000; // wait for mem_wrbusy to go low (when writing to mapped IOs)
 
    localparam FETCH_INSTR_bit          = 0;
    localparam WAIT_INSTR_bit           = 1;
@@ -285,8 +285,8 @@ module FemtoRV32(
    localparam STORE_bit                = 6;
    localparam WAIT_IO_STORE_bit        = 7;
 
-   // The internal signals that are determined combinatorially from
-   // state and other signals.
+   // The signals (internal and external) that are determined 
+   // combinatorially from state and other signals.
 
    // register write-back enable.
    wire writeBack = (state[EXECUTE_bit] & ~(isBranch | isStore)) |
@@ -396,7 +396,6 @@ endmodule
 //
 // [1] About the "reverse case" statement, also used in Claire Wolf's picorv32:
 // It is just a cleaner way of writing a series of cascaded if() statements,
-// see: https://stackoverflow.com/questions/15418636/case-statement-in-verilog
 // To understand it, think about the case statement *in general* as follows:
 // case (expr)
 //       val_1: statement_1
@@ -412,6 +411,7 @@ endmodule
 // It is *exactly the same thing*, the first statement_i such that 
 // expr == cond_i is executed (that is, such that 1'b1 == cond_i, 
 // in other words, such that cond_i is true)
+// More on this: https://stackoverflow.com/questions/15418636/case-statement-in-verilog
 //
 // [2] state uses 1-hot encoding (at any time, state has only one bit set to 1).
 // It uses a larger number of bits (one bit per state), but often results in
