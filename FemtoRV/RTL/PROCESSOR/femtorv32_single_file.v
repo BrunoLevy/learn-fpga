@@ -264,35 +264,32 @@ module FemtoRV32(
    // And, last but not least, the state machine.
    /*************************************************************************/
 
-   reg [7:0] state;
+   reg [6:0] state;
 
    // The eight states, using 1-hot encoding (see note [2] at the end of this file).
 
-   localparam FETCH_INSTR          = 8'b00000001; // mem_addr was updated at previous cycle, instr is in flight
-   localparam WAIT_INSTR           = 8'b00000010; // latch instr if available, else wait for it (if run from SPI)
-   localparam FETCH_REGS           = 8'b00000100; // reg ids were updated at previous cycle, reg vals are in flight
-   localparam EXECUTE              = 8'b00001000; // crossroads state
-   localparam LOAD                 = 8'b00010000; // mem_addr updated at previous cycle, data is in flight
-   localparam WAIT_ALU_OR_DATA     = 8'b00100000; // wait for loaded data or ALU
-   localparam STORE                = 8'b01000000; // mem_addr and data updated at previous cycle, mem_wmask is set
-   localparam WAIT_IO_STORE        = 8'b10000000; // wait for mem_wrbusy to go low (when writing to mapped IOs)
+   localparam FETCH_INSTR     = 7'b0000001; // mem_addr was updated at previous cycle, instr is in flight
+   localparam WAIT_INSTR      = 7'b0000010; // latch instr if available, else wait for it (if run from SPI)
+   localparam FETCH_REGS      = 7'b0000100; // reg ids were updated at previous cycle, reg vals are in flight
+   localparam EXECUTE         = 7'b0001000; // crossroads state
+   localparam LOAD            = 7'b0010000; // mem_addr updated at previous cycle, data is in flight
+   localparam WAIT_ALU_OR_MEM = 7'b0100000; // wait for ALU or mem transfer
+   localparam STORE           = 7'b1000000; // mem_addr and data updated at previous cycle, mem_wmask is set
 
-   localparam FETCH_INSTR_bit          = 0;
-   localparam WAIT_INSTR_bit           = 1;
-   localparam FETCH_REGS_bit           = 2;
-   localparam EXECUTE_bit              = 3;
-   localparam LOAD_bit                 = 4;
-   localparam WAIT_ALU_OR_DATA_bit     = 5;
-   localparam STORE_bit                = 6;
-   localparam WAIT_IO_STORE_bit        = 7;
+   localparam FETCH_INSTR_bit     = 0;
+   localparam WAIT_INSTR_bit      = 1;
+   localparam FETCH_REGS_bit      = 2;
+   localparam EXECUTE_bit         = 3;
+   localparam LOAD_bit            = 4;
+   localparam WAIT_ALU_OR_MEM_bit = 5;
+   localparam STORE_bit           = 6;
 
    // The signals (internal and external) that are determined 
    // combinatorially from state and other signals.
 
    // register write-back enable.
-   wire writeBack = (state[EXECUTE_bit] & ~(isBranch | isStore ) ) |
-                     state[WAIT_ALU_OR_DATA_bit];
-
+   wire  writeBack = ~(isBranch | isStore ) & (state[EXECUTE_bit] | state[WAIT_ALU_OR_MEM_bit]);
+   
    // The memory-read signal.
    assign mem_rstrb = state[LOAD_bit] | state[FETCH_INSTR_bit];
    
@@ -306,7 +303,7 @@ module FemtoRV32(
 
    always @(posedge clk) begin
       if(!reset) begin
-         state      <= WAIT_IO_STORE; // Just waiting for !mem_wbusy
+         state      <= WAIT_ALU_OR_MEM; // Just waiting for !mem_wbusy
          PC         <= RESET_ADDR;
       end else
 
@@ -330,9 +327,8 @@ module FemtoRV32(
 	   // Transitions from EXECUTE to WAIT_ALU_OR_DATA, STORE, LOAD, and FETCH_INSTR,
 	   // See note [3] at the end of this file.
            state <= {
-		 1'b0,                                // WAIT_IO_STORE
                  isStore,                             // STORE
-                 isALUimm|isALUreg,                   // WAIT_ALU_OR_DATA
+                 isALUimm|isALUreg,                   // WAIT_ALU_OR_MEM
                  isLoad,                              // LOAD
                  1'b0,                                // EXECUTE
                  1'b0,                                // FETCH_REGS
@@ -352,10 +348,11 @@ module FemtoRV32(
         end
 
         // *********************************************************************
-        // Used by LOAD and by multi-cycle ALU instr (shifts and RV32M ops), writeback from ALU or memory
-        //    also waits from data from IO (listens to mem_rbusy)
+        // Used by LOAD,STORE and by multi-cycle ALU instr (shifts and RV32M ops), 
+	// writeback from ALU or memory, also waits from data from IO 
+	// (listens to mem_rbusy and mem_wbusy)
 
-        state[WAIT_ALU_OR_DATA_bit] | state[WAIT_IO_STORE_bit]: begin
+        state[WAIT_ALU_OR_MEM_bit]: begin
            if(!aluBusy & !mem_rbusy & !mem_wbusy) begin
               mem_addr <= PC;
               state <= FETCH_INSTR;
@@ -367,9 +364,9 @@ module FemtoRV32(
 
         default: begin
           state <= {
-	      state[STORE_bit],       // STORE           -> WAIT_IO_STORE
 	      1'b0,                   // *no transition* -> STORE (already done from EXECUTE)
-	      state[LOAD_bit],        // LOAD            -> WAIT_ALU_OR_DATA
+	      state[LOAD_bit] | 
+                  state[STORE_bit],   // LOAD,STORE      -> WAIT_ALU_OR_MEM
 	      1'b0,                   // *no transition* -> LOAD (already done from EXECUTE)
 	      state[FETCH_REGS_bit],  // FETCH_REGS      -> EXECUTE
 	      1'b0,                   // *no transition* -> FETCH_REGS (already done from WAIT_INSTR)

@@ -23,7 +23,7 @@
 
 `define NRV_RESET_ADDR 32'h00810000 // Jump execution to SPI Flash (800000h, +64k(10000h) for FPGA bitstream)
 
-`define NRV_COUNTER_WIDTH 24 // for NRV_MINIRV32_2, optional cycles counter (but you'll need to deactivate UART)
+`define NRV_COUNTER_WIDTH 30 // for NRV_MINIRV32_2, optional cycles counter (but you'll need to deactivate UART)
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
