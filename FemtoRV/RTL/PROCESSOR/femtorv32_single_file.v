@@ -2,11 +2,20 @@
 // FemtoRV32, a minimalistic RISC-V RV32I core.
 // This version: single VERILOG file, compact & understandable code.
 //                 (200 lines of code, 400 lines counting comments)
+//
+// Reset address can be defined using NRV_RESET_ADDR (default is 0).
+//
+// If NRV_COUNTER_WIDTH is defined, it generates a cycles counter
+//   (use `define NRV_COUNTER_WIDTH 32 for a 32-bits counter)
+//   It can be read using the RDCYCLES instruction.
+//
 // Bruno Levy, May-June 2020
 // Matthias Koch, March 2021
 /*******************************************************************/
 
-`include "utils.v"
+`ifndef NRV_RESET_ADDR
+ `define NRV_RESET_ADDR 32'b0
+`endif
 
 module FemtoRV32(
    input          clk,

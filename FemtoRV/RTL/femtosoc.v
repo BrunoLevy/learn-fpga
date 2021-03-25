@@ -12,12 +12,13 @@
 `include "femtosoc_config.v"        // User configuration of processor and SOC.
 
 `ifdef NRV_MINIRV32
-`include "PROCESSOR/mini_femtorv32.v" // Minimalistic version of the processor
+ `include "PROCESSOR/mini_femtorv32.v" // Minimalistic version of the processor
 `else
-`ifdef NRV_MINIRV32_2
-`include "PROCESSOR/femtorv32_single_file.v" // Minimalistic version of the processor
+ `ifdef NRV_MINIRV32_2
+  `include "PROCESSOR/utils.v"
+  `include "PROCESSOR/femtorv32_single_file.v" // Minimalistic version of the processor
 `else
-`include "PROCESSOR/femtorv32.v"            // The processor
+ `include "PROCESSOR/femtorv32.v"            // The processor
 `endif
 `endif
 
