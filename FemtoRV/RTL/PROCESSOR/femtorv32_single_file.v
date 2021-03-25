@@ -176,7 +176,8 @@ module FemtoRV32(
    /***************************************************************************/
 
    reg  [31:0] PC;         // The program counter.
-   reg  [31:2] instr;      // Latched instruction.
+   reg  [31:2] instr;      // Latched instruction. Note that bits 0 and 1 are
+                           // ignored (not used in RV32I base instruction set).
 
 `ifdef NRV_COUNTER_WIDTH	       
    reg [`NRV_COUNTER_WIDTH-1:0]  cycles;     // Cycle counter
@@ -333,8 +334,8 @@ module FemtoRV32(
 
         state[WAIT_INSTR_bit]: begin
            if(!mem_rbusy) begin // rbusy may be high when executing from SPI flash
-              instr <= mem_rdata[31:2];
-              state <= FETCH_REGS;
+              instr <= mem_rdata[31:2]; // Note that bits 0 and 1 are ignored (see
+              state <= FETCH_REGS;      //          also the declaration of instr).
            end
         end
 
@@ -385,6 +386,21 @@ endmodule
 // [1] About the "reverse case" statement, also used in Claire Wolf's picorv32:
 // It is just a cleaner way of writing a series of cascaded if() statements,
 // see: https://stackoverflow.com/questions/15418636/case-statement-in-verilog
+// To understand it, think about the case statement *in general* as follows:
+// case (expr)
+//       val_1: statement_1
+//       val_2: statement_2
+//   ... val_n: statement_n
+// endcase
+// The first statement_i such that expr == val_i is executed. Now if expr is 1'b1:
+// case (1'b1)
+//       cond_1: statement_1
+//       cond_2: statement_2
+//   ... cond_n: statement_n
+// endcase
+// It is *exactly the same thing*, the first statement_i such that 
+// expr == cond_i is executed (that is, such that 1'b1 == cond_i, 
+// in other words, such that cond_i is true)
 //
 // [2] state uses 1-hot encoding (at any time, state has only one bit set to 1).
 // It uses a larger number of bits (one bit per state), but often results in
