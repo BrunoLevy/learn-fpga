@@ -16,7 +16,7 @@
 
 // Frequency in MHz
 `ifdef NRV_MINIRV32_2
-`define NRV_FREQ 40    // single-file mini config validated at 45 MHz.
+`define NRV_FREQ 40    // single-file mini config validated at 40 MHz.
 `else
 `define NRV_FREQ 66    // mini config validated at 63 MHz. Overclocked a bit. Note: LUT count may overflow.
 `endif

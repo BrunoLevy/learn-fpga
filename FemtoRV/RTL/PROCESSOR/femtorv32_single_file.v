@@ -81,7 +81,7 @@ module FemtoRV32(
    // At each cycle, reads two registers: rs1 -> rs1Data, rs2 -> rs2Data
    //                     and writes one: rd <- writeBackData
    // Notes:
-   // - rs1Data and rs2Data are available at next cycle
+   // - rs1Data and rs2Data are available after a "data in flight" cycle.
    // - yosys is super-smart, and automagically duplicates the register file 
    //   in two BRAMs to be able to read two different registers in a single cycle.
    
@@ -266,7 +266,7 @@ module FemtoRV32(
 
    reg [6:0] state;
 
-   // The eight states, using 1-hot encoding (see note [2] at the end of this file).
+   // The seven states, using 1-hot encoding (see note [2] at the end of this file).
 
    localparam FETCH_INSTR     = 7'b0000001; // mem_addr was updated at previous cycle, instr is in flight
    localparam WAIT_INSTR      = 7'b0000010; // latch instr if available, else wait for it (if run from SPI)
@@ -294,7 +294,7 @@ module FemtoRV32(
    assign mem_rstrb = state[LOAD_bit] | state[FETCH_INSTR_bit];
    
    // The mask for memory-write.
-   assign mem_wmask = state[STORE_bit] ? STORE_wmask : 4'b0000;
+   assign mem_wmask = {4{state[STORE_bit]}} & STORE_wmask; 
 
    // aluWr starts computation in the ALU.
    assign aluWr = state[EXECUTE_bit] & (isALUimm | isALUreg);
@@ -317,12 +317,16 @@ module FemtoRV32(
         state[EXECUTE_bit]: begin
 
 	   // Prepare next PC
-           PC <= isJALR ? aluPlus : (jumpToPCplusImm ? PCplusImm : PCplus4);
+           PC <= isJALR          ? aluPlus   : 
+		 jumpToPCplusImm ? PCplusImm : 
+		 PCplus4;
 
 	   // Prepare address for:
-	   //  next instruction fetch: PCplusImm (branch, JAL), aluPlus (JALR), PCplus4 (all other instr.)
+	   //  next instruction fetch: PCplusImm (taken branch, JAL), aluPlus (JALR), PCplus4 (all other instr.)
 	   //  load/store: aluPlus
-           mem_addr <= isJALR | isStore | isLoad ? aluPlus : (jumpToPCplusImm ? PCplusImm : PCplus4);
+           mem_addr <= isJALR | isStore | isLoad ? aluPlus   : 
+		       jumpToPCplusImm           ? PCplusImm : 
+		       PCplus4;
 
 	   // Transitions from EXECUTE to WAIT_ALU_OR_DATA, STORE, LOAD, and FETCH_INSTR,
 	   // See note [3] at the end of this file.
