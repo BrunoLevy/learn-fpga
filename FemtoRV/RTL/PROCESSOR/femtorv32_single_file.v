@@ -61,19 +61,19 @@ module FemtoRV32(
    wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
 
    // base RISC-V (RV32I) has only 10 different instructions !
-   wire isLoad    =  (instr[6:2] == 5'b00000); 
-   wire isALUimm  =  (instr[6:2] == 5'b00100); 
-   wire isAUIPC   =  (instr[6:2] == 5'b00101); 
-   wire isStore   =  (instr[6:2] == 5'b01000); 
-   wire isALUreg  =  (instr[6:2] == 5'b01100); 
-   wire isLUI     =  (instr[6:2] == 5'b01101); 
-   wire isBranch  =  (instr[6:2] == 5'b11000); 
-   wire isJALR    =  (instr[6:2] == 5'b11001); 
-   wire isJAL     =  (instr[6:2] == 5'b11011);
+   wire isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
+   wire isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
+   wire isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
+   wire isStore   =  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
+   wire isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
+   wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
+   wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
+   wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-PC+Iimm
+   wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
 `ifdef NRV_COUNTER_WIDTH	          
-   wire isSYSTEM  =  (instr[6:2] == 5'b11100); 
+   wire isSYSTEM  =  (instr[6:2] == 5'b11100); // rd <- cycles
 `endif
-   
+
    /***************************************************************************/
    // The register file.
    /***************************************************************************/
@@ -155,10 +155,11 @@ module FemtoRV32(
          if (|aluShamt) begin
             aluShamt <= aluShamt - 1;
 	    
-	    aluReg <= funct3[2]  ? 
-		      instr[30]  ? {aluReg[31], aluReg[31:1]} : // funct3=101 &  instr[0] -> SRA
-		                   {1'b0,       aluReg[31:1]}   // funct3=101 & !instr[0] -> SRL		      
-                                 : aluReg << 1 ;                // funct3=001             -> SLL
+	    // Compact form of:
+	    //   funct3=101 &  instr[0] -> SRA  (aluReg <= {aluReg[31], aluReg[31:1]})
+	    //   funct3=101 & !instr[0] -> SRL  (aluReg <= {1'b0,       aluReg[31:1]})		      
+            //   funct3=001             -> SLL  (aluReg <= aluReg << 1)
+	    aluReg <= funct3[2] ? {instr[30] & aluReg[31], aluReg[31:1]} : aluReg << 1 ;
          end
       end
    end
@@ -289,7 +290,7 @@ module FemtoRV32(
    // combinatorially from state and other signals.
 
    // register write-back enable.
-   wire writeBack = (state[EXECUTE_bit] & ~(isBranch | isStore)) |
+   wire writeBack = (state[EXECUTE_bit] & ~(isBranch | isStore ) ) |
                      state[WAIT_ALU_OR_DATA_bit];
 
    // The memory-read signal.

@@ -20,13 +20,14 @@ module LEDDriver(
 );
 
 `ifdef NRV_IO_IRDA
-   reg [3:0] led_state;
+   reg [5:0] led_state;
    assign LED = led_state;
    initial begin
       led_state = 4'b0000;
    end
-   assign rdata = (sel ? {27'b0, irda_RXD, led_state} : 32'b0);
-   // TODO: TXD, SD
+   assign rdata = (sel ? {25'b0, irda_RXD, led_state} : 32'b0);
+   assign irda_SD  = led_state[5];
+   assign irda_TXD = led_state[4];
 `else   
    reg [3:0] led_state;
    assign LED = led_state;
