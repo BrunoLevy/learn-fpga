@@ -292,7 +292,7 @@ module FemtoRV32(
    // aluWr starts computation in the ALU.
    assign aluWr = state[EXECUTE_bit] & (isALUimm | isALUreg);
 
-   wire jumToPCplusImm = isJAL | (isBranch & predicate);
+   wire jumpToPCplusImm = isJAL | (isBranch & predicate);
 
    always @(posedge clk) begin
       if(!reset) begin
@@ -309,11 +309,13 @@ module FemtoRV32(
 
         state[EXECUTE_bit]: begin
 
-           PC       <= isJALR ? aluPlus :
-                       (jumToPCplusImm ? PCplusImm : PCplus4);
+	   // Prepare next PC
+           PC <= isJALR ? aluPlus : (jumpToPCplusImm ? PCplusImm : PCplus4);
 
-           mem_addr <= isJALR | isStore | isLoad ? aluPlus :
-                       (jumToPCplusImm ? PCplusImm : PCplus4);
+	   // Prepare address for:
+	   //  next instruction fetch: PCplusImm (branch, JAL), aluPlus (JALR), PCplus4 (all other instr.)
+	   //  load/store: aluPlus
+           mem_addr <= isJALR | isStore | isLoad ? aluPlus : (jumpToPCplusImm ? PCplusImm : PCplus4);
 
 	   // Transitions from EXECUTE to WAIT_ALU_OR_DATA, STORE, LOAD, and FETCH_INSTR,
 	   // See note [3] at the end of this file.
