@@ -187,8 +187,8 @@ module FemtoRV32(
    
    // An adder used to compute branch address, JAL address and AUIPC.
    // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
-   // Equivalent to branchtarget = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
-   wire [31:0] branchTarget = PC + (instr[3] ? Jimm : instr[4] ? Uimm : Bimm);
+   // Equivalent to PCplusImm = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
+   wire [31:0] PCplusImm = PC + (instr[3] ? Jimm : instr[4] ? Uimm : Bimm);
 
    /***************************************************************************/
    // The value written back to the register file.
@@ -202,7 +202,7 @@ module FemtoRV32(
 `endif	       
       (isLUI               ? Uimm         : 32'b0) |  // LUI
       (isALUimm | isALUreg ? aluOut       : 32'b0) |  // ALU reg reg and ALU reg imm
-      (isAUIPC             ? branchTarget : 32'b0) |  // AUIPC
+      (isAUIPC             ? PCplusImm : 32'b0) |  // AUIPC
       (isJALR   | isJAL    ? PCplus4      : 32'b0) |  // JAL, JALR
       (isLoad              ? LOAD_data    : 32'b0);   // Load
 
@@ -292,7 +292,7 @@ module FemtoRV32(
    // aluWr starts computation in the ALU.
    assign aluWr = state[EXECUTE_bit] & (isALUimm | isALUreg);
 
-   wire takeBranch = isJAL | (isBranch & predicate);
+   wire jumToPCplusImm = isJAL | (isBranch & predicate);
 
    always @(posedge clk) begin
       if(!reset) begin
@@ -310,10 +310,10 @@ module FemtoRV32(
         state[EXECUTE_bit]: begin
 
            PC       <= isJALR ? aluPlus :
-                       (takeBranch ? branchTarget : PCplus4);
+                       (jumToPCplusImm ? PCplusImm : PCplus4);
 
-           mem_addr <= isJALR | isALUimm | isALUreg | isStore | isLoad ? aluPlus :
-                       (takeBranch ? branchTarget : PCplus4);
+           mem_addr <= isJALR | isStore | isLoad ? aluPlus :
+                       (jumToPCplusImm ? PCplusImm : PCplus4);
 
 	   // Transitions from EXECUTE to WAIT_ALU_OR_DATA, STORE, LOAD, and FETCH_INSTR,
 	   // See note [3] at the end of this file.
