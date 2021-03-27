@@ -4,4 +4,3 @@ libs:
 	  (cd LIBFEMTOC;    make clean all) # Compile lib with printf() replacement function
 	  (cd CRT;          make clean all) # Compile C runtime for baremetal
 	  @echo ==== Generated femtorv32 libs.
-	  

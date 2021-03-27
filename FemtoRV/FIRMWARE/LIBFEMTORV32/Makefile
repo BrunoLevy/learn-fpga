@@ -10,9 +10,9 @@ FAT_IO_OBJS=fat_access.o fat_cache.o fat_filelib.o fat_format.o fat_misc.o \
 OBJECTS= femtorv32.o max7219.o ssd1351_1331.o ssd1351_1331_init.o uart.o \
          virtual_io.o \
 	 wait_cycles.o microwait.o milliwait.o \
-         spi_sd.o cycles.o \
+         spi_sd.o cycles_ice_stick.o cycles.o \
 	 filesystem.o exec.o femto_elf.o 
-	
+
 all: $(RVGCC) libfemtorv32.a 
 
 libfemtorv32.a: $(OBJECTS) $(FAT_IO_OBJS_WITH_DIR) 
