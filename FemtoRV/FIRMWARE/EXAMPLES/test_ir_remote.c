@@ -10,7 +10,7 @@
 #include <femtoGL.h>
 
 static inline int ir_status() {
-   return !(IO_IN(IO_LEDS) & 16);
+   return !(IO_IN(IO_LEDS) & 64);
 }
 
 static inline int get_pulse_width() {

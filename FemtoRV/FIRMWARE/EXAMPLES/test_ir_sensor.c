@@ -1,14 +1,13 @@
 #include <femtorv32.h>
 
 static inline int ir_status() {
-   return !(IO_IN(IO_LEDS) & 16);
+   return !(IO_IN(IO_LEDS) & 64);
 }
 
 void test_irda() RV32_FASTCODE;
 void test_irda() {
    for(;;) {
-      int status = !(IO_IN(IO_LEDS) & 16);
-      printf("%c",status ? '*' : ' ');
+      printf("%c",ir_status() ? '*' : ' ');
    }
 }
 

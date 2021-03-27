@@ -60,20 +60,27 @@ module FemtoRV32(
    wire [31:0] Bimm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
    wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
 
-   // base RISC-V (RV32I) has only 10 different instructions !
-   wire isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
-   wire isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
-   wire isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
-   wire isStore   =  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
-   wire isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
-   wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
-   wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
-   wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-PC+Iimm
-   wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
-`ifdef NRV_COUNTER_WIDTH	          
-   wire isSYSTEM  =  (instr[6:2] == 5'b11100); // rd <- cycles
+   // Base RISC-V (RV32I) has only 10 different instructions !
+   // Signals that recognize them are latched.
+   reg isLoad, isALUimm, isAUIPC, isStore, isALUreg, isLUI,  isBranch, isJALR, isJAL;
+   always @(posedge clk) begin 
+      isLoad    <=  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
+      isALUimm  <=  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
+      isAUIPC   <=  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
+      isStore   <=  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
+      isALUreg  <=  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
+      isLUI     <=  (instr[6:2] == 5'b01101); // rd <- Uimm
+      isBranch  <=  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
+      isJALR    <=  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-PC+Iimm
+      isJAL     <=  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
+   end
+   wire isALU = isALUimm | isALUreg;
+   
+`ifdef NRV_COUNTER_WIDTH
+   reg isSYSTEM;
+   always @(posedge clk) isSYSTEM  <=  (instr[6:2] == 5'b11100); // rd <- cycles
 `endif
-
+   
    /***************************************************************************/
    // The register file.
    /***************************************************************************/
@@ -113,11 +120,11 @@ module FemtoRV32(
    wire [31:0] aluIn1 = rs1Data;
    
    // Second ALU source, depends on opcode:                              
-   //    ALUreg, Branch:     rs2                      (equivalent to isStore ? Simm : Iimm)
-   //    Store:              Simm                                      |
-   //    ALUimm, Load, JALR: Iimm                                      v
-   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : (instr[6:5] == 2'b01 ? Simm : Iimm);
-
+   //    ALUreg, Branch:     rs2                      
+   //    Store:              Simm                     
+   //    ALUimm, Load, JALR: Iimm                     
+   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : (isStore ? Simm : Iimm);
+   
    reg [31:0] aluOut = aluReg; // The output of the ALU (wired to the ALU register)
    reg [31:0] aluReg;          // The internal register of the ALU, used by shift.
    reg [4:0]  aluShamt;        // Current shift amount.
@@ -211,8 +218,8 @@ module FemtoRV32(
       /* verilator lint_on WIDTH */	       	       
 `endif	       
       (isLUI               ? Uimm         : 32'b0) |  // LUI
-      (isALUimm | isALUreg ? aluOut       : 32'b0) |  // ALU reg reg and ALU reg imm
-      (isAUIPC             ? PCplusImm : 32'b0) |  // AUIPC
+      (isALU               ? aluOut       : 32'b0) |  // ALU reg reg and ALU reg imm
+      (isAUIPC             ? PCplusImm    : 32'b0) |  // AUIPC
       (isJALR   | isJAL    ? PCplus4      : 32'b0) |  // JAL, JALR
       (isLoad              ? LOAD_data    : 32'b0);   // Load
 
@@ -297,7 +304,7 @@ module FemtoRV32(
    assign mem_wmask = {4{state[STORE_bit]}} & STORE_wmask; 
 
    // aluWr starts computation in the ALU.
-   assign aluWr = state[EXECUTE_bit] & (isALUimm | isALUreg);
+   assign aluWr = state[EXECUTE_bit] & isALU;
 
    wire jumpToPCplusImm = isJAL | (isBranch & predicate);
 
@@ -331,13 +338,13 @@ module FemtoRV32(
 	   // Transitions from EXECUTE to WAIT_ALU_OR_DATA, STORE, LOAD, and FETCH_INSTR,
 	   // See note [3] at the end of this file.
            state <= {
-                 isStore,                             // STORE
-                 isALUimm|isALUreg,                   // WAIT_ALU_OR_MEM
-                 isLoad,                              // LOAD
-                 1'b0,                                // EXECUTE
-                 1'b0,                                // FETCH_REGS
-                 1'b0,                                // WAIT_INSTR
-                 !(isStore|isALUimm|isALUreg|isLoad)  // FETCH_INSTR
+                 isStore,                 // STORE
+                 isALU,                   // WAIT_ALU_OR_MEM
+                 isLoad,                  // LOAD
+                 1'b0,                    // EXECUTE
+                 1'b0,                    // FETCH_REGS
+                 1'b0,                    // WAIT_INSTR
+                 !(isStore|isALU|isLoad)  // FETCH_INSTR
            };
         end
 

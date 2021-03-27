@@ -19,12 +19,11 @@ module LEDDriver(
     output wire [3:0]  LED    // LED pins
 );
 
+// The IceStick has an infrared reveiver/transmitter pair
+// See EXAMPLES/test_ir_sensor.c and EXAMPLES/test_ir_remote.c
 `ifdef NRV_IO_IRDA
    reg [5:0] led_state;
    assign LED = led_state;
-   initial begin
-      led_state = 4'b0000;
-   end
    assign rdata = (sel ? {25'b0, irda_RXD, led_state} : 32'b0);
    assign irda_SD  = led_state[5];
    assign irda_TXD = led_state[4];

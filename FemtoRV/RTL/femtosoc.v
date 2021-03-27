@@ -307,7 +307,7 @@ module femtosoc(
  *   IO word address (it is also possible to write a real
  *   address decoder, at the expense of eating-up a larger 
  *   number of LUTs).
- * - If the device requites wait cycles for writing and/or reading, 
+ * - If the device requires wait cycles for writing and/or reading, 
  *   it can have a .wbusy and/or .rbusy signal(s). All the .wbusy
  *   and .rbusy signals of all the devices are ORed at the end of
  *   this file to form the .io_rbusy and .io_wbusy signals.
