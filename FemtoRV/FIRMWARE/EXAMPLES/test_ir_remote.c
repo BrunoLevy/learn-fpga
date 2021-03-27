@@ -33,7 +33,8 @@ static inline int decode() {
    int start = idx-16;
    if(start < 0) return -1;
    for(int b=0; b+start<idx; ++b) {
-      if(frame[b+start] > 100) {
+      // printf("%d\n",frame[b+start]);
+      if(frame[b+start] > 300) {
 	 result |= (1 << b);
       }
    }

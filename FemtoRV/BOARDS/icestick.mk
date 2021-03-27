@@ -23,5 +23,5 @@ ICESTICK.prog:
 ICESTICK.firmware_config:
 	TOOLS/make_config.sh -DICE_STICK
 	(cd FIRMWARE; make libs)
-	
+
 #######################################################################################################################

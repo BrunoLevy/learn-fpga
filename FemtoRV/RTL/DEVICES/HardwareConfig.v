@@ -45,25 +45,16 @@ localparam NRV_DEVICES = 0
 `endif			 
 ;
 
-// CPL (Cycles per Loop)
-// number of cycles for each
-// iteration of:
-// wait: sub a0, a0, a1
-//       bgt a0, zero, wait
-
- `ifdef NRV_MINIRV32
-   localparam NRV_CPL = 10;
+ // number of bits in cycles counter (available through
+ // the rdcycle asm instruction).
+ `ifdef ICE_STICK
+   localparam NRV_COUNTER_BITS = 24;
  `else
-  `ifdef NRV_LATCH_ALU
-   localparam NRV_CPL = 7;
-  `else
-   localparam NRV_CPL = 6;
-  `endif
+   localparam NRV_COUNTER_BITS = 64;
  `endif
 
-	
    assign rdata = sel_memory  ? `NRV_RAM  :
 		  sel_devices ?  NRV_DEVICES :
-                  sel_cpuinfo ? (`NRV_FREQ << 16) | (NRV_CPL << 26) : 32'b0;
+                  sel_cpuinfo ? (`NRV_FREQ << 16) | (NRV_COUNTER_BITS << 26) : 32'b0;
    
 endmodule
