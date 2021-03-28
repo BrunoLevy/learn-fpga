@@ -48,7 +48,7 @@ localparam NRV_DEVICES = 0
  // number of bits in cycles counter (available through
  // the rdcycle asm instruction).
  `ifdef ICE_STICK
-   localparam NRV_COUNTER_BITS = 24;
+   localparam NRV_COUNTER_BITS = `NRV_COUNTER_WIDTH;
  `else
    localparam NRV_COUNTER_BITS = 64;
  `endif
