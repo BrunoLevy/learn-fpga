@@ -3,7 +3,14 @@
  * Decodes NEC protocol IR remotes
  * Tested with "Magic Lighting" remove controller for intelligent light bulb.
  * 
- * Reference: http://www.technoblogy.com/show?UVE
+ * References:
+ * 
+ * NEC infrared protocol:
+ *   http://www.technoblogy.com/show?UVE
+ *   https://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
+ *
+ * Magic Lighting remote controller codes:
+ * https://docs.google.com/spreadsheets/d/1pGp-7BIC4l7Ogg4i09QTNGyKOmQkkMjxEph5mRSQdFA/edit#gid=0
  */ 
 
 #include <femtorv32.h>
@@ -27,7 +34,7 @@
 // _|||||||______
 //  <----> <---->
 // 562.5us 562.5us 
-//
+// 
 // Bit set to "1":
 //           
 //  |||||||         
@@ -101,7 +108,8 @@ void nec_init() {
 // Returns bit value, or -1 on error
 int nec_read_bit() RV32_FASTCODE;
 int nec_read_bit() {
-  microwait(600);
+  microwait(600); // skip the pulse burst
+                  // (562.5 us plus security margin)
   uint32_t space_width = get_space_cycles();
   if(space_width < min_space0_cycles) return -1;
   if(space_width > max_space1_cycles) return -1;
@@ -122,8 +130,8 @@ uint32_t nec_read() {
   // Now measure the length of the first space (supposed to be 4.5ms, minus
   // the 1ms security margin we added at the previous line).
   uint32_t space_width = get_space_cycles();
-  
-  // space outside of tolerance [3ms,4ms]
+
+  // space outside of tolerance [3ms,4ms]  
   if(space_width < min_space_cycles || space_width > max_space_cycles) {
     return 0;
   }
