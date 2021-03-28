@@ -1,7 +1,11 @@
 /**
  * Displays data from IR remote using the built-in irda of the IceStick.
- * Decodes NEC protocol IR remotes
+ * Decodes NEC protocol and SHARP protocol IR remotes
+ * 
  * Tested with "Magic Lighting" remove controller for intelligent light bulb.
+ *        and "Sharp LCDTV"
+ * 
+ * Select device in main() function at the end of this file.
  * 
  * References:
  * 
@@ -11,6 +15,9 @@
  *
  * Magic Lighting remote controller codes:
  * https://docs.google.com/spreadsheets/d/1pGp-7BIC4l7Ogg4i09QTNGyKOmQkkMjxEph5mRSQdFA/edit#gid=0
+ * 
+ * Sharp protocol: https://www.sbprojects.net/knowledge/ir/sharp.php
+ *
  */ 
 
 #include <femtorv32.h>
@@ -147,14 +154,71 @@ uint32_t nec_read() {
   return result;
 }
 
-int main() RV32_FASTCODE;
+/********************************************************************************/
+
+// Sharp protocol
+// https://www.sbprojects.net/knowledge/ir/sharp.php
+// 5 bits of address, 8 bits of command
+// logical "0": 320 us pulse burst, then 680 us space
+// logical "1": 320 us pulse burst, then 1680 us space
+
+
+void sharp_init() {
+  min_space0_cycles = microseconds_to_cycles(300);
+  space01_cycles    = microseconds_to_cycles(1000);
+  max_space1_cycles = microseconds_to_cycles(2000);      
+}
+
+// Returns bit value, or -1 on error
+int sharp_read_bit() RV32_FASTCODE;
+int sharp_read_bit() {
+  microwait(500); // skip the pulse burst
+                  // (320 us plus security margin)
+  uint32_t space_width = get_space_cycles();
+  if(space_width < min_space0_cycles) return -1;
+  if(space_width > max_space1_cycles) return -1;
+  return (space_width > space01_cycles);
+}
+
+// Returns a single 13-bits value with
+//  address (5 bits) command (8 bits)
+// or 0 on error
+uint32_t sharp_read() RV32_FASTCODE;
+uint32_t sharp_read() {
+  uint32_t result = 0;
+  while(!ir_status()); // Wait for IR
+  // read the 5 bits of address and 8 bits of command
+  for(int i=0; i<13; ++i) {
+    int bit = nec_read_bit();
+    if(bit == -1) {
+      return 0;
+    }
+     result = (result << 1) | bit;
+  }
+  if(nec_read_bit() == -1) { // exp bit
+     return 0;
+  }
+  if(nec_read_bit() == -1) { // chk bit
+     return 0;
+  }
+  // One could wait 40 ms and load the next command that contains the same
+  // address and inverted bits, and check the inverted bits. We simply 
+  // ignore the second message...
+  milliwait(250);
+  return result;
+}
+
+
+/********************************************************************************/
+
 int main() {
-   nec_init();
+   //nec_init();
+   sharp_init();
    femtosoc_tty_init();
    GL_set_font(&Font8x16);
-
    for(;;) {
-     uint32_t cmdaddr = nec_read();
+     //uint32_t cmdaddr = nec_read();
+     uint32_t cmdaddr = sharp_read();
      if(cmdaddr) {
        printf("%x\n",cmdaddr);
      }
