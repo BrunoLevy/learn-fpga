@@ -1,3 +1,5 @@
+ 
+`default_nettype none // Makes it easier to detect typos !
 
   module vga (
                 input clki,      // ->48 Mhz clock input
@@ -13,74 +15,96 @@
                 output usb_dp_pu // /
   );
 
+  // USB pins driven low
   assign usb_dp=0;
   assign usb_dn=0;
   assign usb_dp_pu=0;
-  
-  wire hs;
-  wire vs;
-  reg pixel;
 
-  wire [31:0] dist = (counter_x - 320)*(counter_x - 320) + (counter_y - 200) * (counter_y - 200) - (counter << 8);
+  wire pixclk;
 
-  reg [31:0] counter;
-
-  assign user_1 = hs;
-  assign user_2 = vs;
-  assign user_3 = dist[15]; // pixel;
-  assign user_4 = dist[14]; // 0;
-
+  // PLL: converts system clock (48 MHz) 
+  // to pixel clock (25.125 MHz for 640x480)
   SB_PLL40_CORE #(
-                  .FEEDBACK_PATH("SIMPLE"),
-                  .DIVR(4'b0010),
-                  .DIVF(7'b0100111),
-                  .DIVQ(3'b100),
-                  .FILTER_RANGE(3'b001),
-                  ) uut (
-                         .REFERENCECLK   (clki),
-                         .PLLOUTCORE     (pixclk),
-                         .BYPASS         (1'b0),
-                         .RESETB         (1'b1)
-                  );
-
-  // Use counter logic to divide system clock.  The clock is 48 MHz,
-  // so we divide it down by 2^28.
-  reg [10:0] counter_x = 0;
-  reg [10:0] counter_y = 0;
-
-  // 800 840 968 1056 600 601 605 628 @ 40MHz
+     .FEEDBACK_PATH("SIMPLE"),
+     .DIVR(4'b0011),
+     .DIVF(7'b1000010),
+     .DIVQ(3'b101),
+     .FILTER_RANGE(3'b001),
+  ) pll (
+     .REFERENCECLK   (clki),
+     .PLLOUTCORE     (pixclk),
+     .BYPASS         (1'b0),
+     .RESETB         (1'b1)
+  );
   
-  localparam HS_START = 16;
-  localparam HS_END = 16+(968-840);
-  localparam H_TOTAL = 1056;
-  
-  localparam VS_START = 601;
-  localparam VS_END = 605;
-  localparam V_TOTAL = 628;
-  
-  assign hs = ~((counter_x >= HS_START) & (counter_x < HS_END));
-  assign vs = ~((counter_y >= VS_START) & (counter_y < VS_END));
 
-  always @(posedge vs) begin
-     counter <= counter + 1;
-  end
+   // video structure constants
+   parameter width         = 640;
+   parameter height        = 480;
+   parameter h_front_porch = 16;
+   parameter h_sync_width  = 96;
+   parameter h_back_porch  = 48;
+   parameter v_front_porch = 11;
+   parameter v_sync_width  = 2;
+   parameter v_back_porch  = 28;
 
-  always @(posedge pixclk) begin
-    if (counter_x < H_TOTAL)
-      counter_x <= counter_x + 1;
-    else begin
-      counter_x <= 0;
-      if (counter_y < V_TOTAL)
-        counter_y <= counter_y + 1;
-      else
-        counter_y <= 0;
-    end
+   // --------------------------------------------------------------------
+   parameter h_blank       = h_front_porch + h_sync_width + h_back_porch;
+   parameter h_pixels      = width + h_blank; 
+   parameter v_blank       = v_front_porch + v_sync_width + v_back_porch;
+   parameter v_lines       = height + v_blank; 
+   parameter hbp = h_back_porch + h_sync_width ; // end of horizontal back porch
+   parameter hfp = hbp + width;  // beginning of horizontal front porch
+   parameter vbp = v_back_porch + v_sync_width ; // end of vertical back porch
+   parameter vfp = vbp + height; // beginning of vertical front porch
+   // -------------------------------------------------------------------- 
 
-    if (counter_x>300 && counter_x<400 && counter_y>200 && counter_y<300)
-      pixel = 1;
-    else
-      pixel = 0;
-  end
+   // horizontal & vertical counters
+   reg [9:0] hc;
+   reg [9:0] vc;
+
+   wire in_display_zone = (vc >= vbp && vc < vfp && hc >= hbp && hc < hfp);
+
+   // frame counter
+   reg [15:0] frame;
+
+   // horizontal and vertical counters 
+   always @(posedge pixclk)
+   begin
+      if (hc < h_pixels - 1) begin
+          hc <= hc + 1;
+      end else begin
+	hc <= 0;
+	if (vc < v_lines - 1) begin
+	   vc <= vc + 1;
+	end else begin
+	   frame <= frame + 1;
+	   vc <= 0;
+        end
+      end	
+   end
+
+   // horizontal and vertical synchro
+   wire hsync = (hc < h_sync_width) ? 0:1;
+   wire vsync = (vc < v_sync_width) ? 0:1;
+
+   // X,Y coordinates of current pixel
+   wire [9:0] X = hc - hbp;
+   wire [9:0] Y = vc - vbp;
+
+   wire [1:0] out_color;
+
+   wire signed [9:0] dx = $signed(X) - 320;
+   wire signed [9:0] dy = $signed(Y) - 240;
+   wire signed [15:0] R2 = dx*dx + dy*dy - $signed(frame << 6);
+
+   assign out_color = in_display_zone ? {R2[12],R2[13]} : 2'b00;
+
+   assign user_1 = hsync;
+   assign user_2 = vsync;
+   assign user_3 = out_color[0];
+   assign user_4 = out_color[1];
+
 
   // Instantiate iCE40 LED driver hard logic, connecting up
   // latched button state, counter state, and LEDs.
@@ -95,9 +119,9 @@
   SB_RGBA_DRV RGBA_DRIVER (
                            .CURREN(1'b1),
                            .RGBLEDEN(1'b1),
-                           .RGB0PWM(counter[8]), // red
-                           .RGB1PWM(counter[9]), // green			   
-                           .RGB2PWM(counter[10]), // blue  
+                           .RGB0PWM(frame[5]), // red
+                           .RGB1PWM(frame[6]), // green			   
+                           .RGB2PWM(frame[7]), // blue  
                            .RGB0(rgb0),
                            .RGB1(rgb1),
                            .RGB2(rgb2)
