@@ -25,7 +25,7 @@ module vga (
    assign usb_dn=0;
    assign usb_dp_pu=0;
 
-   wire   pixclk;
+   wire   pixel_clk;
 
    // PLL: converts system clock (48 MHz) 
    // to pixel clock (25.125 MHz for 640x480)
@@ -39,75 +39,66 @@ module vga (
      .FILTER_RANGE(3'b001),
    ) pll (
      .REFERENCECLK   (clki),
-     .PLLOUTCORE     (pixclk),
+     .PLLOUTCORE     (pixel_clk),
      .BYPASS         (1'b0),
      .RESETB         (1'b1)
    );
 
-   // Video mode constants
-   parameter VGA_width         = 640;
-   parameter VGA_height        = 480;
-   parameter VGA_h_front_porch = 16;
-   parameter VGA_h_sync_width  = 96;
-   parameter VGA_h_back_porch  = 48;
-   parameter VGA_v_front_porch = 10;
-   parameter VGA_v_sync_width  = 2;
-   parameter VGA_v_back_porch  = 32;
+   // video structure constants
+   parameter width         = 640;
+   parameter height        = 480;
+   parameter h_front_porch = 16;
+   parameter h_sync_width  = 96;
+   parameter h_back_porch  = 48;
+   parameter v_front_porch = 11;
+   parameter v_sync_width  = 2;
+   parameter v_back_porch  = 28;
 
-   parameter VGA_line_width = VGA_width  + VGA_h_front_porch + VGA_h_sync_width + VGA_h_back_porch;
-   parameter VGA_lines      = VGA_height + VGA_v_front_porch + VGA_v_sync_width + VGA_v_back_porch;
-
-   reg [9:0] VGA_X, VGA_Y;   // current pixel coordinates
-   reg VGA_hSync, VGA_vSync; // horizontal and vertical synchronization
-   reg VGA_DrawArea;         // asserted if current pixel is in drawing area
-   reg [15:0] VGA_frame;     // frame counter
+   reg  [9:0] X, Y;  // current pixel coordinates
+   reg hSync, vSync; // horizontal and vertical synchronization
+   reg DrawArea;     // asserted if current pixel is in drawing area
+   reg [15:0] frame; // frame counter
    
    always @(posedge pixel_clk) begin
-      VGA_DrawArea <= (VGA_X<VGA_width) && (VGA_Y<VGA_height);
-      if(VGA_X==VGA_line_width-1) begin
-	 if(VGA_Y==VGA_lines) begin 
-	    VGA_Y <= 0;
-	    VGA_frame <= VGA_frame + 1;
+      DrawArea <= (X<640) && (Y<480);
+      X        <= (X==799) ? 0 : X+1;
+      if(X==799) begin
+	 if(Y==524) begin
+	    Y <= 0;
+	    frame <= frame + 1;
 	 end else begin
-	    VGA_Y <= VGA_Y+1;
+	    Y <= Y+1;
 	 end
-      end else begin
-         VGA_X <= VGA_X + 1;
       end
-      VGA_hSync <= (VGA_X>=VGA_width+VGA_h_front_porch)  && (VGA_X<VGA_width+VGA_h_front_porch+VGA_h_sync_width);
-      VGA_vSync <= (VGA_Y>=VGA_height+VGA_v_front_porch) && (VGA_Y<VGA_height+VGA_v_front_porch+VGA_v_sync_width);
+      hSync <= (X>=656) && (X<752);
+      vSync <= (Y>=490) && (Y<492);
    end
    
 
    wire [1:0] out_color;
-   wire signed [9:0] dx = $signed(VGA_X) - VGA_width/2;
-   wire signed [9:0] dy = $signed(VGA_Y) - VGA_height/2;
+   wire signed [9:0] dx = $signed(X) - 320;
+   wire signed [9:0] dy = $signed(Y) - 240;
    wire signed [15:0] R2 = dx*dx + dy*dy - $signed(frame << 6);
 
-   assign out_color = VGA_DrawArea ? {R2[12],R2[13]} : 2'b00;
+   assign out_color = DrawArea ? {R2[12],R2[13]} : 2'b00;
 
-   assign user_1 = VGA_hSync;
-   assign user_2 = VGA_vSync;
+   assign user_1 = hSync;
+   assign user_2 = vSync;
    assign user_3 = out_color[0];
    assign user_4 = out_color[1];
 
    // LED driver
-   // Note: the LED driver is more intelligent than I wish, it changes color
-   // at the same frequency whatever the bit of frame I'm using, I need to 
-   // understand what's going on here (supposed to be a PWM, maybe I should
-   // generate pulses of varying length to control intensity of r,g,b...)
-
-   SB_RGBA_DRV led_driver #(
-    .CURRENT_MODE("0b1");       // half current mode 
-    .RGB0_CURRENT("0b001111");  // Blue - Needs more current.
-    .RGB1_CURRENT("0b000011");  // Red
-    .RGB2_CURRENT("0b000011");  // Green
-   )(
+   SB_RGBA_DRV #(
+    .CURRENT_MODE("0b1"),       // half current mode
+    .RGB0_CURRENT("0b001111"),  // Blue - Needs more current.
+    .RGB1_CURRENT("0b000011"),  // Red
+    .RGB2_CURRENT("0b000011"),  // Green
+   ) led_driver(
     .CURREN(1'b1),
     .RGBLEDEN(1'b1),
-    .RGB0PWM(frame[0]), // red
-    .RGB1PWM(frame[1]), // green			   
-    .RGB2PWM(frame[2]), // blue  
+    .RGB0PWM(frame[3]), // red
+    .RGB1PWM(frame[4]), // green			   
+    .RGB2PWM(frame[5]), // blue  
     .RGB0(rgb0),
     .RGB1(rgb1),
     .RGB2(rgb2)
