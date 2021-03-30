@@ -20,95 +20,74 @@ module vga (
    output usb_dp_pu // /
 );
 
-  // USB pins driven low
-  assign usb_dp=0;
-  assign usb_dn=0;
-  assign usb_dp_pu=0;
+   // USB pins driven low
+   assign usb_dp=0;
+   assign usb_dn=0;
+   assign usb_dp_pu=0;
 
-  wire pixclk;
+   wire   pixclk;
 
-  // PLL: converts system clock (48 MHz) 
-  // to pixel clock (25.125 MHz for 640x480)
-  // Values obtained using:
-  // icepll -i 48 -o 25.125
-  SB_PLL40_CORE #(
+   // PLL: converts system clock (48 MHz) 
+   // to pixel clock (25.125 MHz for 640x480)
+   // Values obtained using:
+   // icepll -i 48 -o 25.125
+   SB_PLL40_CORE #(
      .FEEDBACK_PATH("SIMPLE"),
      .DIVR(4'b0011),
      .DIVF(7'b1000010),
      .DIVQ(3'b101),
      .FILTER_RANGE(3'b001),
-  ) pll (
+   ) pll (
      .REFERENCECLK   (clki),
      .PLLOUTCORE     (pixclk),
      .BYPASS         (1'b0),
      .RESETB         (1'b1)
-  );
-  
+   );
 
-   // video structure constants
-   parameter width         = 640;
-   parameter height        = 480;
-   parameter h_front_porch = 16;
-   parameter h_sync_width  = 96;
-   parameter h_back_porch  = 48;
-   parameter v_front_porch = 11;
-   parameter v_sync_width  = 2;
-   parameter v_back_porch  = 28;
+   // Video mode constants
+   parameter VGA_width         = 640;
+   parameter VGA_height        = 480;
+   parameter VGA_h_front_porch = 16;
+   parameter VGA_h_sync_width  = 96;
+   parameter VGA_h_back_porch  = 48;
+   parameter VGA_v_front_porch = 10;
+   parameter VGA_v_sync_width  = 2;
+   parameter VGA_v_back_porch  = 32;
 
-   // --------------------------------------------------------------------
-   parameter h_blank       = h_front_porch + h_sync_width + h_back_porch;
-   parameter h_pixels      = width + h_blank; 
-   parameter v_blank       = v_front_porch + v_sync_width + v_back_porch;
-   parameter v_lines       = height + v_blank; 
-   parameter hbp = h_back_porch + h_sync_width ; // end of horizontal back porch
-   parameter hfp = hbp + width;  // beginning of horizontal front porch
-   parameter vbp = v_back_porch + v_sync_width ; // end of vertical back porch
-   parameter vfp = vbp + height; // beginning of vertical front porch
-   // -------------------------------------------------------------------- 
+   parameter VGA_line_width = VGA_width  + VGA_h_front_porch + VGA_h_sync_width + VGA_h_back_porch;
+   parameter VGA_lines      = VGA_height + VGA_v_front_porch + VGA_v_sync_width + VGA_v_back_porch;
 
-   // horizontal & vertical counters
-   reg [9:0] hc;
-   reg [9:0] vc;
-
-   wire in_display_zone = (vc >= vbp && vc < vfp && hc >= hbp && hc < hfp);
-
-   // frame counter
-   reg [15:0] frame;
-
-   // horizontal and vertical counters 
-   always @(posedge pixclk)
-   begin
-      if (hc < h_pixels - 1) begin
-          hc <= hc + 1;
+   reg [9:0] VGA_X, VGA_Y;   // current pixel coordinates
+   reg VGA_hSync, VGA_vSync; // horizontal and vertical synchronization
+   reg VGA_DrawArea;         // asserted if current pixel is in drawing area
+   reg [15:0] VGA_frame;     // frame counter
+   
+   always @(posedge pixel_clk) begin
+      VGA_DrawArea <= (VGA_X<VGA_width) && (VGA_Y<VGA_height);
+      if(VGA_X==VGA_line_width-1) begin
+	 if(VGA_Y==VGA_lines) begin 
+	    VGA_Y <= 0;
+	    VGA_frame <= VGA_frame + 1;
+	 end else begin
+	    VGA_Y <= VGA_Y+1;
+	 end
       end else begin
-	hc <= 0;
-	if (vc < v_lines - 1) begin
-	   vc <= vc + 1;
-	end else begin
-	   frame <= frame + 1;
-	   vc <= 0;
-        end
-      end	
+         VGA_X <= VGA_X + 1;
+      end
+      VGA_hSync <= (VGA_X>=VGA_width+VGA_h_front_porch)  && (VGA_X<VGA_width+VGA_h_front_porch+VGA_h_sync_width);
+      VGA_vSync <= (VGA_Y>=VGA_height+VGA_v_front_porch) && (VGA_Y<VGA_height+VGA_v_front_porch+VGA_v_sync_width);
    end
-
-   // horizontal and vertical synchro
-   wire hsync = (hc < h_sync_width) ? 0:1;
-   wire vsync = (vc < v_sync_width) ? 0:1;
-
-   // X,Y coordinates of current pixel
-   wire [9:0] X = hc - hbp;
-   wire [9:0] Y = vc - vbp;
+   
 
    wire [1:0] out_color;
-
-   wire signed [9:0] dx = $signed(X) - 320;
-   wire signed [9:0] dy = $signed(Y) - 240;
+   wire signed [9:0] dx = $signed(VGA_X) - VGA_width/2;
+   wire signed [9:0] dy = $signed(VGA_Y) - VGA_height/2;
    wire signed [15:0] R2 = dx*dx + dy*dy - $signed(frame << 6);
 
-   assign out_color = in_display_zone ? {R2[12],R2[13]} : 2'b00;
+   assign out_color = VGA_DrawArea ? {R2[12],R2[13]} : 2'b00;
 
-   assign user_1 = hsync;
-   assign user_2 = vsync;
+   assign user_1 = VGA_hSync;
+   assign user_2 = VGA_vSync;
    assign user_3 = out_color[0];
    assign user_4 = out_color[1];
 
