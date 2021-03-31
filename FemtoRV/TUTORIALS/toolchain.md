@@ -135,6 +135,8 @@ Follow setup instructions from [nextpnr website](https://github.com/YosysHQ/next
 Get the sources:
 ```
 $ git clone https://github.com/YosysHQ/nextpnr.git
+$ cd nextpnr
+$ git submodule update --init --recursive
 ```
 
 NextPNR compilation and installation for Ice40 FPGAs
