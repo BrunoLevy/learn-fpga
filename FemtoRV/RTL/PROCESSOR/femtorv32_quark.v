@@ -10,6 +10,9 @@
 //   (use `define NRV_COUNTER_WIDTH 32 for a 32-bits counter)
 //   It can be read using the RDCYCLES instruction.
 //
+// The ADDR_WIDTH parameter lets you define the width of the internal
+//   address bus (and address computation logic). 
+//
 // Bruno Levy, May-June 2020
 // Matthias Koch, March 2021
 /*******************************************************************/

@@ -22,7 +22,6 @@
 # cnt: s10
 # 128: s11
 
-
 .globl main
 .type  main, @function
 main:
