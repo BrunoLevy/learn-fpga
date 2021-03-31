@@ -11,8 +11,8 @@
 
 /************************* Processor configuration *******************************************************************/
 
-`define NRV_MINIRV32 // Mini config, can run from SPI flash (mapped at 800000h).
-//`define NRV_MINIRV32_2 // Single-file mini config (Matthias Koch), can run from SPI flash (mapped at 800000h).
+//`define NRV_MINIRV32 // Mini config, can run from SPI flash (mapped at 800000h).
+`define NRV_MINIRV32_2 // Single-file mini config (Matthias Koch), can run from SPI flash (mapped at 800000h).
 
 // Frequency in MHz
 `ifdef NRV_MINIRV32_2
