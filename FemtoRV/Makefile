@@ -22,9 +22,6 @@ clean:
 	rm -f *.timings *.asc *.bin *.bit *config *.json *.svf \
               *~ *.vvp *.dfu *.rpt *.blif femtosoc.txt FIRMWARE/config.mk
 
-#FIRMWARE/firmware.hex:
-#	(cd FIRMWARE; ./make_firmware.sh EXAMPLES/hello.c)
-
 TERMS=/dev/ttyUSB0 /dev/ttyUSB1 
 
 # Uncomment one of the following lines (pick your favorite term emulator)
@@ -51,9 +48,5 @@ testbench:
 	(cd RTL; iverilog -IPROCESSOR -IDEVICES femtosoc_bench.v \
          -o ../femtosoc_bench.vvp)
 	vvp femtosoc_bench.vvp
-
-lint:
-	verilator -DICE_STICK --lint-only -DPASSTHROUGH_PLL --top-module $(PROJECTNAME) \
-         -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL $(VERILOGS)
 
 ################################################################################

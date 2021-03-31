@@ -24,4 +24,8 @@ ICESTICK.firmware_config:
 	TOOLS/make_config.sh -DICE_STICK
 	(cd FIRMWARE; make libs)
 
+ICESTICK.lint:
+	verilator -DICE_STICK -DBENCH --lint-only --top-module $(PROJECTNAME) \
+         -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL $(VERILOGS)
+
 #######################################################################################################################

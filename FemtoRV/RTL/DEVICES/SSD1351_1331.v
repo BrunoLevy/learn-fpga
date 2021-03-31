@@ -55,11 +55,14 @@ module SSD1351(
    //   experimentally, seems to work up to 30 Mhz (but not more)
    
    // Seems that iverilog and verilator do not like the way I'm using 'generate' below.
- `ifdef BENCH_OR_LINT
-   reg[1:0] slow_cnt;
-   localparam cnt_bit = 1;
-   localparam cnt_max = 2'b11;
- `else   
+   // ... the way I'm using generate is *wrong* (signals declared in a generate block
+   // are supposed to be only visible in that block), need to find antother way (TODO)
+   
+   `ifdef BENCH_OR_LINT
+    reg[1:0] slow_cnt;
+    localparam cnt_bit = 1;
+    localparam cnt_max = 2'b11;
+   `else   
    generate
       if(`NRV_FREQ <= 60) begin           // Divide by 2-> 30 MHz
 	 reg slow_cnt;
@@ -74,8 +77,8 @@ module SSD1351(
 	 localparam cnt_bit = 2;
 	 localparam cnt_max = 3'b111;
       end
-   endgenerate
- `endif
+    endgenerate
+   `endif
 
    // Currently sent bit, 1-based index
    // (0000 config. corresponds to idle)
@@ -136,5 +139,4 @@ module SSD1351(
 	 end
       end
    end
-
 endmodule

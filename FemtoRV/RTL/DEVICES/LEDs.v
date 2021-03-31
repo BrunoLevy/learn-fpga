@@ -23,7 +23,7 @@ module LEDDriver(
 // See EXAMPLES/test_ir_sensor.c and EXAMPLES/test_ir_remote.c
 `ifdef NRV_IO_IRDA
    reg [5:0] led_state;
-   assign LED = led_state;
+   assign LED = led_state[3:0];
    assign rdata = (sel ? {25'b0, irda_RXD, led_state} : 32'b0);
    assign irda_SD  = led_state[5];
    assign irda_TXD = led_state[4];
@@ -40,7 +40,11 @@ module LEDDriver(
    
    always @(posedge clk) begin
       if(sel && wstrb) begin
-	 led_state <= wdata[3:0];
+`ifdef NRV_IO_IRDA
+	 led_state <= wdata[5:0];
+`else
+	 led_state <= wdata[3:0];	 
+`endif	 
 	 `bench($display("****************** LEDs = %b  0x%h %d", wdata[3:0],wdata,$signed(wdata)));
       end
    end

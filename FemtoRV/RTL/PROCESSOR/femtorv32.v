@@ -459,7 +459,7 @@ module FemtoRV32 #(
 	state[STORE_bit]:            `show_state("store");
 	state[WAIT_ALU_OR_DATA_bit]: `show_state("wait_alu_or_data");
 	state[WAIT_IO_STORE_bit]:    `show_state("wait_IO_store");	
-	state[ERROR_bit]:   	     `bench($display("ERROR"));	   	   	   
+	state[ERROR_bit]:   	     `bench($display("ERROR"));
 	default:  	             `bench($display("UNKNOWN STATE: %b",state));	   	   	   
       endcase
    
@@ -476,6 +476,7 @@ module FemtoRV32 #(
 	   7'b0100011: `show_opcode("STORE");
 	   7'b0001111: `show_opcode("FENCE");
 	   7'b1110011: `show_opcode("SYSTEM");
+	   default:    `bench($display("UNKNOWN OPCODE"));
 	 endcase 
       end 
    end

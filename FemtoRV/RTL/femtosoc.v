@@ -98,12 +98,14 @@ module femtosoc(
 
 // On the ULX3S, the CLK pin of the SPI is multiplexed with the ESP32.
 // It can be accessed using the USRMCLK primitive of the ECP5
-// as follows.   
+// as follows.
 `ifdef NRV_SPI_FLASH
  `ifdef ULX3S
    wire   spi_clk;
    wire   tristate = 1'b0;
-   USRMCLK u1 (.USRMCLKI(spi_clk), .USRMCLKTS(tristate));
+   `ifndef BENCH   
+      USRMCLK u1 (.USRMCLKI(spi_clk), .USRMCLKTS(tristate));
+   `endif
  `endif   
 `endif
 
