@@ -11,14 +11,14 @@
 
 /************************* Processor configuration *******************************************************************/
 
-//`define NRV_MINIRV32 // Mini config, can run from SPI flash (mapped at 800000h).
-`define NRV_MINIRV32_2 // Single-file mini config (Matthias Koch), can run from SPI flash (mapped at 800000h).
+`define NRV_MINIRV32 // Mini config, can run from SPI flash (mapped at 800000h).
+//`define NRV_MINIRV32_2 // Single-file mini config (Matthias Koch), can run from SPI flash (mapped at 800000h).
 
 // Frequency in MHz
 `ifdef NRV_MINIRV32_2
 `define NRV_FREQ 50    // single-file mini config validated at 50 MHz.
 `else
-`define NRV_FREQ 66    // mini config validated at 63 MHz. Overclocked a bit. Note: LUT count may overflow.
+`define NRV_FREQ 90    // mini config validated at 63 MHz. Overclocked a bit. Note: LUT count may overflow.
 `endif
 
 `define NRV_RESET_ADDR 32'h00810000 // Jump execution to SPI Flash (800000h, +64k(10000h) for FPGA bitstream)

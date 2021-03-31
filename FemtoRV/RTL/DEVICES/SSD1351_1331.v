@@ -17,6 +17,21 @@
 `define NRV_IO_SSD1351_1331
 `endif
 
+module SSD1351_clk #(
+   parameter width=1
+)(
+   input  wire clk,               // input system clock
+   output wire CLK,               // SSD1351 clock
+   output wire CLK_falling_edge   // pulses at each falling edge of CLK		   
+);
+   reg [width-1:0] slow_cnt;
+   always @(posedge clk) begin
+      slow_cnt <= slow_cnt + 1;
+   end
+   assign CLK = slow_cnt[width-1];
+   assign CLK_falling_edge = (slow_cnt == (1 << width)-1);
+endmodule   
+
 module SSD1351(
     input wire 	      clk,       // system clock
     input wire 	      wstrb,     // write strobe (use one of sel_xxx to select dest)
@@ -54,28 +69,33 @@ module SSD1351(
    //   max freq = 1/(40ns) = 25 MHz
    //   experimentally, seems to work up to 30 Mhz (but not more)
    
-   // Seems that iverilog and verilator do not like the way I'm using 'generate' below.
-   // ... the way I'm using generate is *wrong* (signals declared in a generate block
-   // are supposed to be only visible in that block), need to find antother way (TODO)
+   wire CLK_falling_edge;
    
-   `ifdef BENCH_OR_LINT
-    reg[1:0] slow_cnt;
-    localparam cnt_bit = 1;
-    localparam cnt_max = 2'b11;
-   `else   
    generate
       if(`NRV_FREQ <= 60) begin           // Divide by 2-> 30 MHz
-	 reg slow_cnt;
-	 localparam cnt_bit = 0;
-	 localparam cnt_max = 1'b1;
+	 SSD1351_clk #(
+            .width(1)
+         )slow_clk(
+            .clk(clk),
+            .CLK(CLK),
+            .CLK_falling_edge(CLK_falling_edge)
+	);
       end else if(`NRV_FREQ <= 120) begin // Divide by 4
-	 reg[1:0] slow_cnt;
-	 localparam cnt_bit = 1;
-	 localparam cnt_max = 2'b11;
+	 SSD1351_clk #(
+            .width(2)
+         )slow_clk(
+            .clk(clk),
+            .CLK(CLK),
+            .CLK_falling_edge(CLK_falling_edge)
+         );
       end else begin                      // Divide by 8
-	 reg[2:0] slow_cnt;
-	 localparam cnt_bit = 2;
-	 localparam cnt_max = 3'b111;
+	 SSD1351_clk #(
+            .width(3)
+         )slow_clk(
+            .clk(clk),
+            .CLK(CLK),
+            .CLK_falling_edge(CLK_falling_edge)
+         );
       end
     endgenerate
    `endif
@@ -87,12 +107,7 @@ module SSD1351(
    wire      sending  = (bitcount != 0);
 
    assign DIN = shifter[15];
-   assign CLK = slow_cnt[cnt_bit]; 
    assign wbusy = sending;
-
-   always @(posedge clk) begin
-      slow_cnt <= slow_cnt + 1;
-   end
 
    /*************************************************************************/
    
@@ -125,7 +140,7 @@ module SSD1351(
 	 end
       end else begin 
 	 // detect falling edge of slow_clk
-	 if(slow_cnt == cnt_max) begin 
+	 if(CLK_falling_edge) begin 
 	    if(sending) begin
 	       if(CS) begin    // first tick activates CS (low)
 		  CS <= 1'b0;
