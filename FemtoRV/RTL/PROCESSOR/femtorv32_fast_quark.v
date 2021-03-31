@@ -174,7 +174,7 @@ module FemtoRV32(
             aluShamt <= aluShamt - 4;
 	    aluReg <= funct3[2] ? {{4{instr[30] & aluReg[31]}}, aluReg[31:4]} : aluReg << 4 ;	    
 	 end else
-`endif	   
+`endif 	   
          if (|aluShamt) begin
             aluShamt <= aluShamt - 1;
 	    // Compact form of:
