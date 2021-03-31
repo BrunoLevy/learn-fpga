@@ -132,7 +132,7 @@ module FemtoRV32(
    //    ALUimm, Load, JALR: Iimm                     
    wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : (isStore ? Simm : Iimm);
    
-   reg [31:0] aluOut = aluReg; // The output of the ALU (wired to the ALU register)
+   wire [31:0] aluOut = aluReg; // The output of the ALU (wired to the ALU register)
    reg [31:0] aluReg;          // The internal register of the ALU, used by shift.
    reg [4:0]  aluShamt;        // Current shift amount.
 

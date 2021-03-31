@@ -80,7 +80,7 @@ void draw_frame(int frame) {
 
 /*
  * Tell the linker to put this function in BRAM instead of FLASH
- * (see CRT_BAREMETAL/spi_flash.ld).
+ * (see CRT/spi_flash.ld).
  * Try this: comment-out the following line.
  */ 
 

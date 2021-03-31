@@ -27,9 +27,9 @@ module vga (
 
    wire   pixel_clk;
 
-//`define VGA_MODE_640x480
+`define VGA_MODE_640x480
 //`define VGA_MODE_1024x768
-`define VGA_MODE_1280x1024
+//`define VGA_MODE_1280x1024
 
 `ifdef VGA_MODE_640x480
    // PLL: converts system clock (48 MHz) to pixel clock (25.125 MHz for 640x480)
