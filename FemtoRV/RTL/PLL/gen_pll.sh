@@ -47,9 +47,9 @@ EOF
       .FEEDBACK_PATH("SIMPLE"),
       .PLLOUT_SELECT("GENCLK"),
       .DIVR(4'b0000),
-      .DIVF(DIVF), 
-      .DIVQ(DIVQ), 
-      .FILTER_RANGE(FILTER_RANGE),
+      .DIVF(7'b0000000), 
+      .DIVQ(3'b000), 
+      .FILTER_RANGE(3'b000),
    ) pll (
       .REFERENCECLK(pclk),
       .PLLOUTCORE(clk),

@@ -55,6 +55,11 @@ module SSD1351(
    //   experimentally, seems to work up to 30 Mhz (but not more)
    
    // Seems that iverilog and verilator do not like the way I'm using 'generate' below.
+   // Because: Variables declared within a generate scope
+   //          are local to that generate scope.
+   // Then Verilog compiler issues "ERROR: Identifier is implicitly declared"
+   // whenever you'll use one of the parameters declared in the 'generate' block.
+ `define BENCH_OR_LINT  // TODO this is only a temporary fix
  `ifdef BENCH_OR_LINT
    reg[1:0] slow_cnt;
    localparam cnt_bit = 1;
