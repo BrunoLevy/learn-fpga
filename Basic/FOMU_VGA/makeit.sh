@@ -1,5 +1,5 @@
 rm -fr vga.bit vga.dfu vga.asc vga.json
-yosys -DPVT -p 'synth_ice40 -dsp -top vga -json vga.json' vga.v
+yosys -DPVT -q -p 'synth_ice40 -dsp -top vga -json vga.json' vga.v
 nextpnr-ice40 --up5k --package uwg30 --pcf fomu-pvt.pcf --json vga.json --asc vga.asc
 icepack vga.asc vga.bit
 cp vga.bit vga.dfu
