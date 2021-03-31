@@ -169,9 +169,14 @@ module FemtoRV32(
          endcase
       end else begin
 	 // Shift (multi-cycle)
+`ifdef NRV_TWOLEVEL_SHIFTER	 
+	 if(|aluShamt[3:2]) begin
+            aluShamt <= aluShamt - 4;
+	    aluReg <= funct3[2] ? {{4{instr[30] & aluReg[31]}}, aluReg[31:4]} : aluReg << 4 ;	    
+	 end else
+`endif	   
          if (|aluShamt) begin
             aluShamt <= aluShamt - 1;
-	    
 	    // Compact form of:
 	    //   funct3=101 &  instr[0] -> SRA  (aluReg <= {aluReg[31], aluReg[31:1]})
 	    //   funct3=101 & !instr[0] -> SRL  (aluReg <= {1'b0,       aluReg[31:1]})		      

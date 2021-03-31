@@ -16,14 +16,14 @@
 `ifdef FAST
 `define NRV_FEMTORV32_FAST_QUARK    // Use the "fast Quark" version (minimalist, and can run code from SPI flash).
 `define NRV_FREQ 60                 // The "fast Quark" is validated at 60 MHz on the IceStick. Can overclock to 85 MHz.
+`define NRV_TWOLEVEL_SHIFTER        // an optional two-level shifter, inspired from picorv32. If used, max overclock = 75 MHz.
 `else
 `define NRV_FEMTORV32_QUARK        // Use the "Quark" version (even more minimalist).
 `define NRV_FREQ 50                // The "Quark" is validated at 50 MHz on the IceStick. Can overclock to 75 MHz.
 `endif
 
 `define NRV_RESET_ADDR 32'h00810000 // Jump execution to SPI Flash (800000h, +64k(10000h) for FPGA bitstream)
-`define NRV_COUNTER_WIDTH  24       // the "Quark" has an optional cycles counter.
-                                    // up to 32 bits (note: with all devices acrivated, 32 bits do not fit on the IceStick)
+`define NRV_COUNTER_WIDTH  24       // the "Quark" has an optional cycles counter, up to 32 bits.
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
