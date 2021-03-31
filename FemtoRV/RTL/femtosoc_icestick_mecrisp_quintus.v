@@ -6,8 +6,9 @@
 `define NRV_MINIRV32               // Mini config, can execute code stored in SPI flash from 1Mb offset (mapped to address 0x800000)
 `define NRV_RUN_FROM_SPI_FLASH     // Running code from the SPI flash (changes the constant for delay loops)
 `define NRV_RESET_ADDR 24'h810000  // Directly jump into mapped SPI Flash,
+`define NRV_COUNTER_WIDTH 32       // Number of bits in click counter
 
-`include "PROCESSOR/mini_femtorv32.v"    // Minimalistic version of the processor
+`include "PROCESSOR/femtorv32_quark.v"    // Minimalistic version of the processor
 `include "DEVICES/uart_picosoc_shrunk.v"
 `include "DEVICES/MappedSPIFlash.v"
 

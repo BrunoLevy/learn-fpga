@@ -212,13 +212,13 @@ uint32_t sharp_read() {
 /********************************************************************************/
 
 int main() {
-   //nec_init();
-   sharp_init();
+   nec_init();
+   //sharp_init();
    femtosoc_tty_init();
    GL_set_font(&Font8x16);
    for(;;) {
-     //uint32_t cmdaddr = nec_read();
-     uint32_t cmdaddr = sharp_read();
+     uint32_t cmdaddr = nec_read();
+     //uint32_t cmdaddr = sharp_read();
      if(cmdaddr) {
        printf("%x\n",cmdaddr);
      }

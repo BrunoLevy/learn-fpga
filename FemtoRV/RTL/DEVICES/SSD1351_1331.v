@@ -98,7 +98,6 @@ module SSD1351(
          );
       end
     endgenerate
-   `endif
 
    // Currently sent bit, 1-based index
    // (0000 config. corresponds to idle)

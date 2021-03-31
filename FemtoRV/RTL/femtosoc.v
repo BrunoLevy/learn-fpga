@@ -10,17 +10,20 @@
 `default_nettype none // Makes it easier to detect typos !
 
 `include "femtosoc_config.v"        // User configuration of processor and SOC.
+`include "PROCESSOR/utils.v"
 
-`ifdef NRV_MINIRV32
- `include "PROCESSOR/mini_femtorv32.v" // Minimalistic version of the processor
-`else
- `ifdef NRV_MINIRV32_2
-  `include "PROCESSOR/utils.v"
-  `include "PROCESSOR/femtorv32_single_file.v" // Minimalistic version of the processor
-`else
- `include "PROCESSOR/femtorv32.v"            // The processor
+`ifdef NRV_FEMTORV32_QUARK
+ `include "PROCESSOR/femtorv32_quark.v" // Minimalistic version of the processor for IceStick
 `endif
+
+`ifdef NRV_FEMTORV32_FAST_QUARK
+ `include "PROCESSOR/femtorv32_fast_quark.v" // Minimalistic version of the processor for IceStick
 `endif
+
+`ifndef NRV_FEMTORV32_DEFINED
+ `include "PROCESSOR/femtorv32_generic.v" // Generic version of the processor
+`endif
+
 
 `include "PLL/femtopll.v"           // The PLL (generates clock at NRV_FREQ)
 
@@ -519,12 +522,10 @@ end
    
   FemtoRV32 #(
      .ADDR_WIDTH(24)
-`ifndef NRV_MINIRV32
-`ifndef NRV_MINIRV32_2
+`ifndef NRV_FEMTORV32_QUARK
      ,.RV32M(RV32M)
      ,.TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER)
      ,.LATCH_ALU(LATCH_ALU)
-`endif     
 `endif
   ) processor(
     .clk(clk),			

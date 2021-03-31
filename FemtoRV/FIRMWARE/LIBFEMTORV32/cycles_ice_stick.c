@@ -11,8 +11,9 @@ uint64_t cycles() {
   uint32_t cycles32_;
   asm volatile ("rdcycle %0" : "=r"(cycles32_));
   int dcycle = cycles32_ - last_cycles32_;
-  // Detect 24-bits counter overflow
+  // Detect counter overflow
   if(dcycle < 0) {
+    // dcycle += ~0u;
     dcycle += (1u << 24);
   }
   cycles_ += dcycle;

@@ -1,7 +1,11 @@
 /*******************************************************************/
 // FemtoRV32, a minimalistic RISC-V RV32I core.
-// This version: single VERILOG file, compact & understandable code.
-//                 (200 lines of code, 400 lines counting comments)
+// This version: The fast "Quark":
+//       single VERILOG file, compact & understandable code.
+//       (200 lines of code, 400 lines counting comments)
+//
+// Comparison with the "Quark": one additional ALU state, latched
+//   predicates (validates at 60 MHz on the IceStick)
 //
 // Reset address can be defined using NRV_RESET_ADDR (default is 0).
 //
@@ -18,18 +22,18 @@
 `endif
 
 module FemtoRV32(
-   input          clk,
+   input clk,
 
-   output reg [31:0] mem_addr,  // address bus
-   output     [31:0] mem_wdata, // data to be written
-   output      [3:0] mem_wmask, // write mask for the 4 bytes of each word
-   input      [31:0] mem_rdata, // input lines for both data and instr
-   output            mem_rstrb, // active to initiate memory read (used by IO)
-   input             mem_rbusy, // asserted if memory is busy reading value
-   input             mem_wbusy, // asserted if memory is busy writing value
+   output [31:0] mem_addr,  // address bus
+   output [31:0] mem_wdata, // data to be written
+   output  [3:0] mem_wmask, // write mask for the 4 bytes of each word
+   input  [31:0] mem_rdata, // input lines for both data and instr
+   output        mem_rstrb, // active to initiate memory read (used by IO)
+   input         mem_rbusy, // asserted if memory is busy reading value
+   input         mem_wbusy, // asserted if memory is busy writing value
 
-   input             reset,     // set to 0 to reset the processor
-   output            error      // always 0 in this version (does not check for errors)
+   input         reset,     // set to 0 to reset the processor
+   output        error      // always 0 in this version (does not check for errors)
 );
 
    parameter RESET_ADDR       = `NRV_RESET_ADDR; // the address that the processor jumps to on reset
@@ -37,6 +41,10 @@ module FemtoRV32(
    parameter USE_MINI_DECODER = 1'b0;            // ignored in this version
    assign error = 1'b0;                          // this version does not check for invalid instr
 
+   parameter ADDR_PAD= {(32-ADDR_WIDTH){1'b0}};  // 32-bits padding for addresses
+   reg [ADDR_WIDTH-1:0] addr_reg;                // The internal register plugged to mem_addr
+   assign mem_addr = {ADDR_PAD,addr_reg};
+   
    /***************************************************************************/
    // Instruction decoding.
    /***************************************************************************/
@@ -52,7 +60,7 @@ module FemtoRV32(
    
    // The ALU function
    wire [2:0] funct3 = instr[14:12];
-   
+
    // The five immediate formats, see RiscV reference (link above), Fig. 2.4 p. 12
    wire [31:0] Uimm = {    instr[31],   instr[30:12], {12{1'b0}}};
    wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
@@ -74,12 +82,13 @@ module FemtoRV32(
       isJALR    <=  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-PC+Iimm
       isJAL     <=  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
    end
-   wire isALU = isALUimm | isALUreg;
-   
+
 `ifdef NRV_COUNTER_WIDTH
    reg isSYSTEM;
    always @(posedge clk) isSYSTEM  <=  (instr[6:2] == 5'b11100); // rd <- cycles
 `endif
+
+   wire isALU = isALUimm | isALUreg;
    
    /***************************************************************************/
    // The register file.
@@ -120,11 +129,12 @@ module FemtoRV32(
    wire [31:0] aluIn1 = rs1Data;
    
    // Second ALU source, depends on opcode:                              
-   //    ALUreg, Branch:     rs2                      
-   //    Store:              Simm                     
-   //    ALUimm, Load, JALR: Iimm                     
-   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : (isStore ? Simm : Iimm);
-   
+   //    ALUreg, Branch:     rs2                      (equivalent to isStore ? Simm : Iimm)
+   //    Store:              Simm                                      |
+   //    ALUimm, Load, JALR: Iimm                                      v
+   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : (instr[6:5] == 2'b01 ? Simm : Iimm);
+  // wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : (isStore ? Simm : Iimm);
+
    reg [31:0] aluOut = aluReg; // The output of the ALU (wired to the ALU register)
    reg [31:0] aluReg;          // The internal register of the ALU, used by shift.
    reg [4:0]  aluShamt;        // Current shift amount.
@@ -176,15 +186,15 @@ module FemtoRV32(
    /***************************************************************************/
 
    reg predicate; 
-   always @(*) begin
+   always @(posedge clk) begin
       case(funct3)
-        3'b000: predicate =  EQ;  // BEQ
-        3'b001: predicate = !EQ;  // BNE
-        3'b100: predicate =  LT;  // BLT
-        3'b101: predicate = !LT;  // BGE
-        3'b110: predicate =  LTU; // BLTU
-        3'b111: predicate = !LTU; // BGEU
-        default: predicate = 1'bx; // don't care...
+        3'b000: predicate <=  EQ;   // BEQ
+        3'b001: predicate <= !EQ;   // BNE
+        3'b100: predicate <=  LT;   // BLT
+        3'b101: predicate <= !LT;   // BGE
+        3'b110: predicate <=  LTU;  // BLTU
+        3'b111: predicate <= !LTU;  // BGEU
+        default: predicate <= 1'bx; // don't care...
       endcase
    end
 
@@ -192,20 +202,23 @@ module FemtoRV32(
    // Program counter and branch target computation.
    /***************************************************************************/
 
-   reg  [31:0] PC;         // The program counter.
-   reg  [31:2] instr;      // Latched instruction. Note that bits 0 and 1 are
-                           // ignored (not used in RV32I base instruction set).
+   reg  [ADDR_WIDTH-1:0] PC; // The program counter.
+   reg  [31:2] instr;         // Latched instruction. Note that bits 0 and 1 are
+                              // ignored (not used in RV32I base instruction set).
 
 `ifdef NRV_COUNTER_WIDTH	       
    reg [`NRV_COUNTER_WIDTH-1:0]  cycles;     // Cycle counter
 `endif
    
-   wire [31:0] PCplus4 = PC + 4;
+   wire [ADDR_WIDTH-1:0] PCplus4 = PC + 4;
    
    // An adder used to compute branch address, JAL address and AUIPC.
    // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
    // Equivalent to PCplusImm = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
-   wire [31:0] PCplusImm = PC + (instr[3] ? Jimm : instr[4] ? Uimm : Bimm);
+   wire [ADDR_WIDTH-1:0] PCplusImm = 
+		    PC + (
+			  instr[3] ? Jimm[ADDR_WIDTH-1:0] : 
+			  instr[4] ? Uimm[ADDR_WIDTH-1:0] : Bimm[ADDR_WIDTH-1:0]);
 
    /***************************************************************************/
    // The value written back to the register file.
@@ -217,11 +230,11 @@ module FemtoRV32(
       (isSYSTEM            ? cycles       : 32'b0) |  // SYSTEM
       /* verilator lint_on WIDTH */	       	       
 `endif	       
-      (isLUI               ? Uimm         : 32'b0) |  // LUI
-      (isALU               ? aluOut       : 32'b0) |  // ALU reg reg and ALU reg imm
-      (isAUIPC             ? PCplusImm    : 32'b0) |  // AUIPC
-      (isJALR   | isJAL    ? PCplus4      : 32'b0) |  // JAL, JALR
-      (isLoad              ? LOAD_data    : 32'b0);   // Load
+      (isLUI               ? Uimm                 : 32'b0) |  // LUI
+      (isALU               ? aluOut               : 32'b0) |  // ALU reg reg and ALU reg imm
+      (isAUIPC             ? {ADDR_PAD,PCplusImm} : 32'b0) |  // AUIPC
+      (isJALR   | isJAL    ? {ADDR_PAD,PCplus4  } : 32'b0) |  // JAL, JALR
+      (isLoad              ? LOAD_data            : 32'b0);   // Load
 
    /***************************************************************************/
    // LOAD/STORE
@@ -247,41 +260,42 @@ module FemtoRV32(
      mem_halfwordAccess ? {{16{LOAD_sign}}, LOAD_halfword} :
                           mem_rdata ;
    
-   wire [15:0] LOAD_halfword = mem_addr[1] ? mem_rdata[31:16]    : mem_rdata[15:0];
-   wire  [7:0] LOAD_byte     = mem_addr[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
+   wire [15:0] LOAD_halfword = addr_reg[1] ? mem_rdata[31:16]    : mem_rdata[15:0];
+   wire  [7:0] LOAD_byte     = addr_reg[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
 
    // STORE
    
    assign mem_wdata[ 7: 0] =               rs2Data[7:0];
-   assign mem_wdata[15: 8] = mem_addr[0] ? rs2Data[7:0] :                               rs2Data[15: 8];
-   assign mem_wdata[23:16] = mem_addr[1] ? rs2Data[7:0] :                               rs2Data[23:16];
-   assign mem_wdata[31:24] = mem_addr[0] ? rs2Data[7:0] : mem_addr[1] ? rs2Data[15:8] : rs2Data[31:24];
+   assign mem_wdata[15: 8] = addr_reg[0] ? rs2Data[7:0] :                               rs2Data[15: 8];
+   assign mem_wdata[23:16] = addr_reg[1] ? rs2Data[7:0] :                               rs2Data[23:16];
+   assign mem_wdata[31:24] = addr_reg[0] ? rs2Data[7:0] : addr_reg[1] ? rs2Data[15:8] : rs2Data[31:24];
 
    // The memory write mask:
    //    1111                     if writing a word
-   //    0011 or 1100             if writing a halfword (depending on mem_addr[1])
-   //    0001, 0010, 0100 or 1000 if writing a byte     (depending on mem_addr[1:0])
+   //    0011 or 1100             if writing a halfword (depending on addr_reg[1])
+   //    0001, 0010, 0100 or 1000 if writing a byte     (depending on addr_reg[1:0])
    
    wire [3:0] STORE_wmask =
-       mem_byteAccess ? (mem_addr[1] ? (mem_addr[0] ? 4'b1000 : 4'b0100) :   (mem_addr[0] ? 4'b0010 : 4'b0001) ) :
-   mem_halfwordAccess ? (mem_addr[1] ?                4'b1100            :                  4'b0011            ) :
+       mem_byteAccess ? (addr_reg[1] ? (addr_reg[0] ? 4'b1000 : 4'b0100) :   (addr_reg[0] ? 4'b0010 : 4'b0001) ) :
+   mem_halfwordAccess ? (addr_reg[1] ?                4'b1100            :                  4'b0011            ) :
                                                       4'b1111;
 						    
    /*************************************************************************/
    // And, last but not least, the state machine.
    /*************************************************************************/
 
-   reg [6:0] state;
+   reg [7:0] state;
 
-   // The seven states, using 1-hot encoding (see note [2] at the end of this file).
+   // The eight states, using 1-hot encoding (see note [2] at the end of this file).
 
-   localparam FETCH_INSTR     = 7'b0000001; // mem_addr was updated at previous cycle, instr is in flight
-   localparam WAIT_INSTR      = 7'b0000010; // latch instr if available, else wait for it (if run from SPI)
-   localparam FETCH_REGS      = 7'b0000100; // reg ids were updated at previous cycle, reg vals are in flight
-   localparam EXECUTE         = 7'b0001000; // crossroads state
-   localparam LOAD            = 7'b0010000; // mem_addr updated at previous cycle, data is in flight
-   localparam WAIT_ALU_OR_MEM = 7'b0100000; // wait for ALU or mem transfer
-   localparam STORE           = 7'b1000000; // mem_addr and data updated at previous cycle, mem_wmask is set
+   localparam FETCH_INSTR     = 8'b00000001; // mem_addr was updated at previous cycle, instr is in flight
+   localparam WAIT_INSTR      = 8'b00000010; // latch instr if available, else wait for it (if run from SPI)
+   localparam FETCH_REGS      = 8'b00000100; // reg ids were updated at previous cycle, reg vals are in flight
+   localparam EXECUTE         = 8'b00001000; // crossroads state
+   localparam LOAD            = 8'b00010000; // mem_addr updated at previous cycle, data is in flight
+   localparam WAIT_ALU_OR_MEM = 8'b00100000; // wait for ALU or mem transfer
+   localparam STORE           = 8'b01000000; // mem_addr and data updated at previous cycle, mem_wmask is set
+   localparam ALU             = 8'b10000000; // mem_addr and data updated at previous cycle, mem_wmask is set   
 
    localparam FETCH_INSTR_bit     = 0;
    localparam WAIT_INSTR_bit      = 1;
@@ -290,6 +304,8 @@ module FemtoRV32(
    localparam LOAD_bit            = 4;
    localparam WAIT_ALU_OR_MEM_bit = 5;
    localparam STORE_bit           = 6;
+   localparam ALU_bit             = 7;   
+    
 
    // The signals (internal and external) that are determined 
    // combinatorially from state and other signals.
@@ -304,14 +320,14 @@ module FemtoRV32(
    assign mem_wmask = {4{state[STORE_bit]}} & STORE_wmask; 
 
    // aluWr starts computation in the ALU.
-   assign aluWr = state[EXECUTE_bit] & isALU;
+   assign aluWr = state[ALU_bit] & isALU;
 
    wire jumpToPCplusImm = isJAL | (isBranch & predicate);
 
    always @(posedge clk) begin
       if(!reset) begin
          state      <= WAIT_ALU_OR_MEM; // Just waiting for !mem_wbusy
-         PC         <= RESET_ADDR;
+         PC         <= RESET_ADDR[ADDR_WIDTH-1:0];
       end else
 
       // See note [1] at the end of this file.
@@ -324,27 +340,28 @@ module FemtoRV32(
         state[EXECUTE_bit]: begin
 
 	   // Prepare next PC
-           PC <= isJALR          ? aluPlus   : 
+           PC <= isJALR          ? aluPlus[ADDR_WIDTH-1:0] : 
 		 jumpToPCplusImm ? PCplusImm : 
 		 PCplus4;
 
 	   // Prepare address for:
 	   //  next instruction fetch: PCplusImm (taken branch, JAL), aluPlus (JALR), PCplus4 (all other instr.)
 	   //  load/store: aluPlus
-           mem_addr <= isJALR | isStore | isLoad ? aluPlus   : 
+           addr_reg <= isJALR | isStore | isLoad ? aluPlus[ADDR_WIDTH-1:0] : 
 		       jumpToPCplusImm           ? PCplusImm : 
 		       PCplus4;
 
 	   // Transitions from EXECUTE to WAIT_ALU_OR_DATA, STORE, LOAD, and FETCH_INSTR,
 	   // See note [3] at the end of this file.
            state <= {
-                 isStore,                 // STORE
-                 isALU,                   // WAIT_ALU_OR_MEM
-                 isLoad,                  // LOAD
-                 1'b0,                    // EXECUTE
-                 1'b0,                    // FETCH_REGS
-                 1'b0,                    // WAIT_INSTR
-                 !(isStore|isALU|isLoad)  // FETCH_INSTR
+		 1'b0,                                // ALU    
+                 isStore,                             // STORE
+                 aluBusy,                             // WAIT_ALU_OR_MEM
+                 isLoad,                              // LOAD
+                 1'b0,                                // EXECUTE
+                 1'b0,                                // FETCH_REGS
+                 1'b0,                                // WAIT_INSTR
+                 !(isStore|isALU|isLoad) | (isALU & !aluBusy) // FETCH_INSTR
            };
         end
 
@@ -365,7 +382,7 @@ module FemtoRV32(
 
         state[WAIT_ALU_OR_MEM_bit]: begin
            if(!aluBusy & !mem_rbusy & !mem_wbusy) begin
-              mem_addr <= PC;
+              addr_reg <= PC;
               state <= FETCH_INSTR;
            end
         end
@@ -375,11 +392,12 @@ module FemtoRV32(
 
         default: begin
           state <= {
+	      state[FETCH_REGS_bit],  // FETCH_REGS      -> ALU 
 	      1'b0,                   // *no transition* -> STORE (already done from EXECUTE)
 	      state[LOAD_bit] | 
                   state[STORE_bit],   // LOAD,STORE      -> WAIT_ALU_OR_MEM
 	      1'b0,                   // *no transition* -> LOAD (already done from EXECUTE)
-	      state[FETCH_REGS_bit],  // FETCH_REGS      -> EXECUTE
+	      state[ALU_bit],         // ALU             -> EXECUTE
 	      1'b0,                   // *no transition* -> FETCH_REGS (already done from WAIT_INSTR)
 	      state[FETCH_INSTR_bit], // FETCH_INSTR     -> WAIT_INSTR
 	      1'b0                    // *no transition* -> FETCH_INSTR (already done from EXECUTE, 
@@ -399,6 +417,9 @@ module FemtoRV32(
 `endif
    
 endmodule
+
+`define NRV_FEMTORV32_DEFINED // Used by femtosoc.v (we have a processor).
+`define NRV_FEMTORV32_QUARK   // Used by femtosoc.v (we use the "Quark").
 
 /*****************************************************************************/
 // Notes:

@@ -11,24 +11,23 @@
 
 /************************* Processor configuration *******************************************************************/
 
-//`define NRV_MINIRV32 // Mini config, can run from SPI flash (mapped at 800000h).
-`define NRV_MINIRV32_2 // Single-file mini config (Matthias Koch), can run from SPI flash (mapped at 800000h).
+//`define FAST
 
-// Frequency in MHz
-`ifdef NRV_MINIRV32_2
-`define NRV_FREQ 50    // single-file mini config validated at 50 MHz.
+`ifdef FAST
+`define NRV_FEMTORV32_FAST_QUARK    // Use the "fast Quark" version (minimalist, and can run code from SPI flash.
+`define NRV_FREQ 60                 // The "fast Quark" is validated at 60 MHz on the IceStick. Can overclock to 85 MHz.
 `else
-`define NRV_FREQ 90    // mini config validated at 63 MHz. Overclocked a bit. Note: LUT count may overflow.
+`define NRV_FEMTORV32_QUARK        // Use the "Quark" version.
+`define NRV_FREQ 50                // The "Quark" is validated at 50 MHz on the IceStick. Can overclock to 75 MHz.
 `endif
 
 `define NRV_RESET_ADDR 32'h00810000 // Jump execution to SPI Flash (800000h, +64k(10000h) for FPGA bitstream)
-
-`define NRV_COUNTER_WIDTH  24 // for NRV_MINIRV32_2, optional cycles counter
-                              // up to 32 bits (note: with all devices acrivated, 32 bits do not fit on the IceStick)
+`define NRV_COUNTER_WIDTH  24       // the "Quark" has an optional cycles counter.
+                                    // up to 32 bits (note: with all devices acrivated, 32 bits do not fit on the IceStick)
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
-`define NRV_RAM 6144           // default for ICESTICK (cannot do more !)
+`define NRV_RAM 6144 // default for ICESTICK (cannot do more !)
 
 /************************* Advanced devices configuration ***********************************************************/
 
