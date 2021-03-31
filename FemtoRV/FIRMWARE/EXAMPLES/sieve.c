@@ -72,7 +72,10 @@ int main(void)
 	*/
         femtosoc_tty_init();
 
-	int idx = 1;
+	int idx;
+
+start:
+	idx = 1;
 	hash = 5381;
 	print_prime(idx++, 2);
 	for (int i = 0; i < BITMAP_SIZE; i++) {
@@ -98,8 +101,11 @@ int main(void)
 	        printf(" OK\n");
 	} else {
 		printf(" ERROR\n");
-		abort();
 	}
+
+   delay(1000);
+   goto start;  // loop forever
+
    return 0;
 }
 
