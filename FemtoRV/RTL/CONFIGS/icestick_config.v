@@ -11,7 +11,7 @@
 
 /************************* Processor configuration *******************************************************************/
 
-//`define FAST
+`define FAST
 
 `ifdef FAST
 `define NRV_FEMTORV32_FAST_QUARK    // Use the "fast Quark" version (minimalist, and can run code from SPI flash.
