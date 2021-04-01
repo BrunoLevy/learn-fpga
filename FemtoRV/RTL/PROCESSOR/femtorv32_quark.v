@@ -13,6 +13,10 @@
 // The ADDR_WIDTH parameter lets you define the width of the internal
 //   address bus (and address computation logic). 
 //
+// If NRV_LATCH_RECOGNIZERS is defined, then signals that recognize
+//   instructions are latched (may increase maxfreq / decrease LUT
+//   count but depends on yosys version).
+//
 // Bruno Levy, May-June 2020
 // Matthias Koch, March 2021
 /*******************************************************************/
@@ -68,20 +72,22 @@ module FemtoRV32(
    wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
 
    // Base RISC-V (RV32I) has only 10 different instructions !
-
-   // Base RISC-V (RV32I) has only 10 different instructions !
-   // Signals that recognize them are latched.
+   // Signals that recognize them can be optionally latched.
    reg isLoad, isALUimm, isAUIPC, isStore, isALUreg, isLUI,  isBranch, isJALR, isJAL;
-   always @(posedge clk) begin 
-      isLoad    <=  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
-      isALUimm  <=  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
-      isAUIPC   <=  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
-      isStore   <=  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
-      isALUreg  <=  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
-      isLUI     <=  (instr[6:2] == 5'b01101); // rd <- Uimm
-      isBranch  <=  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
-      isJALR    <=  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-PC+Iimm
-      isJAL     <=  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
+   `ifdef NRV_LATCH_RECOGNIZERS
+   always @(posedge clk) begin
+   `else
+   always @(*) begin
+   `endif
+      isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
+      isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
+      isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
+      isStore   =  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
+      isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
+      isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
+      isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
+      isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-PC+Iimm
+      isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
    end
 
 `ifdef NRV_COUNTER_WIDTH

@@ -29,7 +29,7 @@ extern uint64_t cycles();            /* gets the number of cycles since last res
 extern uint64_t milliseconds();      /* gets the number of milliseconds since last reset (needs NRV_COUNTERS_64) */
 extern void wait_cycles(int cycles); /* waits for a number of cycles.       */
 extern void milliwait(int ms);       /* waits for a number of milliseconds. */
-extern void microwait(int ns);       /* waits for a number of microseconds. */
+extern void microwait(int us);       /* waits for a number of microseconds. */
 #define delay(ms) milliwait(ms)
 
 /* System */

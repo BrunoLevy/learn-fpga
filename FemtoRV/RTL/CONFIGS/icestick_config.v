@@ -13,9 +13,11 @@
 
 `define FAST
 
+`define NRV_LATCH_RECOGNIZERS       // Latch the signals that recognize instructions.
+
 `ifdef FAST
 `define NRV_FEMTORV32_FAST_QUARK    // Use the "fast Quark" version (minimalist, and can run code from SPI flash).
-`define NRV_FREQ 60                 // The "fast Quark" is validated at 60 MHz on the IceStick. Can overclock to 85 MHz.
+`define NRV_FREQ 75                 // The "fast Quark" is validated at 60 MHz on the IceStick. Can overclock to 85 MHz.
 `define NRV_TWOLEVEL_SHIFTER        // an optional two-level shifter, inspired from picorv32. If used, max overclock = 75 MHz.
 `else
 `define NRV_FEMTORV32_QUARK        // Use the "Quark" version (even more minimalist).
