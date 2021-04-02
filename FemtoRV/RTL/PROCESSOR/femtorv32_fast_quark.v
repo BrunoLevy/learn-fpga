@@ -79,27 +79,21 @@ module FemtoRV32(
    wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
 
    // Base RISC-V (RV32I) has only 10 different instructions !
-   // Signals that recognize them are latched.
-   reg isLoad, isALUimm, isAUIPC, isStore, isALUreg, isLUI,  isBranch, isJALR, isJAL;
-   `ifdef NRV_LATCH_RECOGNIZERS
-   always @(posedge clk) begin
-   `else
-   always @(*) begin
-   `endif
-      isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
-      isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
-      isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
-      isStore   =  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
-      isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
-      isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
-      isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
-      isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-PC+Iimm
-      isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
-   end
+   // Note: maxfreq may be sometimes improved by latching the following 
+   // signals (not done here because it makes the code less legible).
+   
+   wire isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
+   wire isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
+   wire isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
+   wire isStore   =  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
+   wire isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
+   wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
+   wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
+   wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-PC+Iimm
+   wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
 
 `ifdef NRV_COUNTER_WIDTH
-   reg isSYSTEM;
-   always @(posedge clk) isSYSTEM  <=  (instr[6:2] == 5'b11100); // rd <- cycles
+   wire isSYSTEM  =  (instr[6:2] == 5'b11100); // rd <- cycles
 `endif
 
    wire isALU = isALUimm | isALUreg;
@@ -147,7 +141,6 @@ module FemtoRV32(
    //    Store:              Simm                                      |
    //    ALUimm, Load, JALR: Iimm                                      v
    wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : (instr[6:5] == 2'b01 ? Simm : Iimm);
-  // wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : (isStore ? Simm : Iimm);
 
    wire [31:0] aluOut = aluReg; // The output of the ALU (wired to the ALU register)
    reg [31:0] aluReg;          // The internal register of the ALU, used by shift.
@@ -186,15 +179,19 @@ module FemtoRV32(
 `ifdef NRV_TWOLEVEL_SHIFTER	 
 	 if(|aluShamt[3:2]) begin
             aluShamt <= aluShamt - 4;
+	    // Compact form of:
+	    //   funct3=101 &  instr[30] -> SRA  (aluReg <= {{4{aluReg[31]}}, aluReg[31:4]})
+	    //   funct3=101 & !instr[30] -> SRL  (aluReg <= { 4'b0000,        aluReg[31:4]})		      
+            //   funct3=001              -> SLL  (aluReg <= aluReg << 4)
 	    aluReg <= funct3[2] ? {{4{instr[30] & aluReg[31]}}, aluReg[31:4]} : aluReg << 4 ;	    
 	 end else
 `endif 	   
          if (|aluShamt) begin
             aluShamt <= aluShamt - 1;
 	    // Compact form of:
-	    //   funct3=101 &  instr[0] -> SRA  (aluReg <= {aluReg[31], aluReg[31:1]})
-	    //   funct3=101 & !instr[0] -> SRL  (aluReg <= {1'b0,       aluReg[31:1]})		      
-            //   funct3=001             -> SLL  (aluReg <= aluReg << 1)
+	    //   funct3=101 &  instr[30] -> SRA  (aluReg <= {aluReg[31], aluReg[31:1]})
+	    //   funct3=101 & !instr[30] -> SRL  (aluReg <= {1'b0,       aluReg[31:1]})		      
+            //   funct3=001              -> SLL  (aluReg <= aluReg << 1)
 	    aluReg <= funct3[2] ? {instr[30] & aluReg[31], aluReg[31:1]} : aluReg << 1 ;
          end
       end
