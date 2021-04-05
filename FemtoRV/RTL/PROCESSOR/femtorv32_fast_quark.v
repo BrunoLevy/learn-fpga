@@ -313,7 +313,7 @@ module FemtoRV32(
    localparam LOAD            = 8'b00010000; // mem_addr updated at previous cycle, data is in flight
    localparam WAIT_ALU_OR_MEM = 8'b00100000; // wait for ALU or mem transfer
    localparam STORE           = 8'b01000000; // mem_addr and data updated at previous cycle, mem_wmask is set
-   localparam ALU             = 8'b10000000; // ALU operands ready, start ALU and predicates computation
+   localparam ADDR_AND_ALU    = 8'b10000000; // address computation (branch target, load, store) and start ALU
 
    localparam FETCH_INSTR_bit     = 0;
    localparam WAIT_INSTR_bit      = 1;
@@ -322,7 +322,7 @@ module FemtoRV32(
    localparam LOAD_bit            = 4;
    localparam WAIT_ALU_OR_MEM_bit = 5;
    localparam STORE_bit           = 6;
-   localparam ALU_bit             = 7;   
+   localparam ADDR_AND_ALU_bit    = 7;   
     
 
    // The signals (internal and external) that are determined 
@@ -338,7 +338,7 @@ module FemtoRV32(
    assign mem_wmask = {4{state[STORE_bit]}} & STORE_wmask; 
 
    // aluWr starts computation in the ALU.
-   assign aluWr = state[ALU_bit] & isALU;
+   assign aluWr = state[ADDR_AND_ALU_bit] & isALU;
 
    wire jumpOrTakeBranch = isJAL | isJALR | (isBranch & predicate);
 
@@ -360,15 +360,16 @@ module FemtoRV32(
 	   // Prepare next PC
            PC <= jumpOrTakeBranch ? addrAdderOut : PCplus4;
 
-	   // Prepare address for:
-	   //  next instruction fetch: PCplusImm (taken branch, JAL), rs1plusImm (JALR), PCplus4 (all other instr.)
-	   //  load/store: aluPlus
+	   // Prepare address for next instruction fetch: 
+	   //    taken branch, JAL: PCplusImm  (addrAdderOut)
+	   //    JALR, load, store: rs1plusImm (addrAdderOut)
+	   //    All other instr  : PCplus4
            addr_reg <= isLoad | isStore | jumpOrTakeBranch ? addrAdderOut : PCplus4;
 	   
 	   // Transitions from EXECUTE to WAIT_ALU_OR_DATA, STORE, LOAD, and FETCH_INSTR,
 	   // See note [3] at the end of this file.
            state <= {
-		 1'b0,                                // ALU    
+		 1'b0,                                // ADDR_AND_ALU    
                  isStore,                             // STORE
                  aluBusy,                             // WAIT_ALU_OR_MEM
                  isLoad,                              // LOAD
@@ -414,11 +415,11 @@ module FemtoRV32(
 
         default: begin
           state <= {
-	      state[FETCH_REGS_bit],  // FETCH_REGS      -> ALU 
+	      state[FETCH_REGS_bit],  // FETCH_REGS      -> ADDR_AND_ALU 
 	      1'b0,                   // *no transition* -> STORE (already done from EXECUTE)
 	      state[LOAD_bit],        // LOAD,STORE      -> WAIT_ALU_OR_MEM
 	      1'b0,                   // *no transition* -> LOAD (already done from EXECUTE)
-	      state[ALU_bit],         // ALU             -> EXECUTE
+	      state[ADDR_AND_ALU_bit],// ADDR_AND_ALU    -> EXECUTE
 	      1'b0,                   // *no transition* -> FETCH_REGS (already done from WAIT_INSTR)
 	      state[FETCH_INSTR_bit], // FETCH_INSTR     -> WAIT_INSTR
 	      1'b0                    // *no transition* -> FETCH_INSTR (already done from EXECUTE, 
@@ -426,7 +427,6 @@ module FemtoRV32(
         end
 
         // *********************************************************************
-
       endcase
    end
 
