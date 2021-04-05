@@ -89,4 +89,14 @@ _Note: I have seen other designs where ALU operations and predicates
        (not a RISC-V processor but quite similar). I think that my
         design has a smaller footprint, needs to be tested_
 
+_Update 04/04/2021: after testing many designs, the classical design
+(with predicates computed by the ALU and address computation done in a
+separate adder) is better. It is shown in [this figure](Images/FemtoRV32_design_addradd.jpg)
+and implemented in [this file](../../RTL/PROCESSOR/femtorv32_fast_quark.v).
+The rest of this tutorial continues with address computation done by
+the ALU and tests done by a separate predicate component (it also
+works well, but I will rewrite everything when I have time, because
+the classic design is in fact simpler to understand)._
+
+
 [Next](FemtoRV32_V.md)
