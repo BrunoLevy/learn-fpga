@@ -31,6 +31,10 @@
  `define NRV_RESET_ADDR 32'b0
 `endif
 
+// Tests whether a given address is in mapped devices space. If asserted,
+// reading/writing needs to wait for mem_rbusy/mem_wbusy to go low.
+`define NRV_IS_IO_ADDR(addr) |addr[23:22]
+
 module FemtoRV32(
    input clk,
 
@@ -48,7 +52,6 @@ module FemtoRV32(
 
    parameter RESET_ADDR       = `NRV_RESET_ADDR; // the address that the processor jumps to on reset
    parameter ADDR_WIDTH       = 24;              // ignored in this version
-   parameter USE_MINI_DECODER = 1'b0;            // ignored in this version
    assign error = 1'b0;                          // this version does not check for invalid instr
 
    parameter ADDR_PAD= {(32-ADDR_WIDTH){1'b0}};  // 32-bits padding for addresses
@@ -89,7 +92,7 @@ module FemtoRV32(
    wire isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
    wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
    wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
-   wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-PC+Iimm
+   wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
    wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
 
 `ifdef NRV_COUNTER_WIDTH
@@ -133,25 +136,17 @@ module FemtoRV32(
    //   LT      (signed aluIn1 < signed aluIn2)
    //   LTU     (unsigned aluIn1 < unsigned aluIn2)
    
-   // First ALU source, always rs1
+   // ALU sources
    wire [31:0] aluIn1 = rs1Data;
-   
-   // Second ALU source, depends on opcode:                              
-   //    ALUreg, Branch:     rs2                      (equivalent to isStore ? Simm : Iimm)
-   //    Store:              Simm                                      |
-   //    ALUimm, Load, JALR: Iimm                                      v
-   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : (instr[6:5] == 2'b01 ? Simm : Iimm);
-
+   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : Iimm;
    wire [31:0] aluOut = aluReg; // The output of the ALU (wired to the ALU register)
-   reg [31:0] aluReg;          // The internal register of the ALU, used by shift.
-   reg [4:0]  aluShamt;        // Current shift amount.
+   reg [31:0] aluReg;           // The internal register of the ALU, used by shift.
+   reg [4:0]  aluShamt;         // Current shift amount.
 
    wire aluBusy = |aluShamt;   // ALU is busy if shift amount is non-zero.
    wire aluWr;                 // ALU write strobe, starts computation.
 
-   // The adder is used by both arithmetic instructions and address computation.
-   wire [31:0] aluPlus = aluIn1 + aluIn2;
-
+   wire [31:0] aluPlus = aluIn1 + aluIn2; // The adder of the ALU
    // Use a single 33 bits subtract to do subtraction and all comparisons
    // (trick borrowed from swapforth/J1)
    wire [32:0] aluMinus = {1'b1, ~aluIn2} + {1'b0,aluIn1} + 33'b1;
@@ -215,27 +210,34 @@ module FemtoRV32(
    end
 
    /***************************************************************************/
-   // Program counter and branch target computation.
+   // Program counter and address computation.
    /***************************************************************************/
 
    reg  [ADDR_WIDTH-1:0] PC; // The program counter.
-   reg  [31:2] instr;         // Latched instruction. Note that bits 0 and 1 are
-                              // ignored (not used in RV32I base instruction set).
+   reg  [31:2] instr;        // Latched instruction. Note that bits 0 and 1 are
+                             // ignored (not used in RV32I base instruction set).
+
+   wire [ADDR_WIDTH-1:0] PCplus4 = PC + 4;
+
+   // The address adder, that computes PC+imm / rs1+imm
+   wire [ADDR_WIDTH-1:0] addrAdderIn1 = (isLoad | isStore | isJALR) ? rs1Data[ADDR_WIDTH-1:0] : PC;
+   wire [ADDR_WIDTH-1:0] addrAdderIn2 = isJAL    ? Jimm[ADDR_WIDTH-1:0] :
+			                isAUIPC  ? Uimm[ADDR_WIDTH-1:0] :
+			                isStore  ? Simm[ADDR_WIDTH-1:0] :
+			                isBranch ? Bimm[ADDR_WIDTH-1:0] :
+			                           Iimm[ADDR_WIDTH-1:0] ; // LOAD and JALR
+   
+   reg [ADDR_WIDTH-1:0]  addrAdderOut;
+   always @(posedge clk) addrAdderOut <= addrAdderIn1 + addrAdderIn2;
+   
+   /***************************************************************************/
+   // Cycle counter
+   /***************************************************************************/
 
 `ifdef NRV_COUNTER_WIDTH	       
    reg [`NRV_COUNTER_WIDTH-1:0]  cycles;     // Cycle counter
 `endif
    
-   wire [ADDR_WIDTH-1:0] PCplus4 = PC + 4;
-   
-   // An adder used to compute branch address, JAL address and AUIPC.
-   // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
-   // Equivalent to PCplusImm = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
-   wire [ADDR_WIDTH-1:0] PCplusImm = 
-		    PC + (
-			  instr[3] ? Jimm[ADDR_WIDTH-1:0] : 
-			  instr[4] ? Uimm[ADDR_WIDTH-1:0] : Bimm[ADDR_WIDTH-1:0]);
-
    /***************************************************************************/
    // The value written back to the register file.
    /***************************************************************************/
@@ -246,11 +248,11 @@ module FemtoRV32(
       (isSYSTEM            ? cycles       : 32'b0) |  // SYSTEM
       /* verilator lint_on WIDTH */	       	       
 `endif	       
-      (isLUI               ? Uimm                 : 32'b0) |  // LUI
-      (isALU               ? aluOut               : 32'b0) |  // ALU reg reg and ALU reg imm
-      (isAUIPC             ? {ADDR_PAD,PCplusImm} : 32'b0) |  // AUIPC
-      (isJALR   | isJAL    ? {ADDR_PAD,PCplus4  } : 32'b0) |  // JAL, JALR
-      (isLoad              ? LOAD_data            : 32'b0);   // Load
+      (isLUI               ? Uimm                    : 32'b0) |  // LUI
+      (isALU               ? aluOut                  : 32'b0) |  // ALU reg reg and ALU reg imm
+      (isAUIPC             ? {ADDR_PAD,addrAdderOut} : 32'b0) |  // AUIPC
+      (isJALR   | isJAL    ? {ADDR_PAD,PCplus4     } : 32'b0) |  // JAL, JALR
+      (isLoad              ? LOAD_data               : 32'b0);   // Load
 
    /***************************************************************************/
    // LOAD/STORE
@@ -311,7 +313,7 @@ module FemtoRV32(
    localparam LOAD            = 8'b00010000; // mem_addr updated at previous cycle, data is in flight
    localparam WAIT_ALU_OR_MEM = 8'b00100000; // wait for ALU or mem transfer
    localparam STORE           = 8'b01000000; // mem_addr and data updated at previous cycle, mem_wmask is set
-   localparam ALU             = 8'b10000000; // mem_addr and data updated at previous cycle, mem_wmask is set   
+   localparam ALU             = 8'b10000000; // ALU operands ready, start ALU and predicates computation
 
    localparam FETCH_INSTR_bit     = 0;
    localparam WAIT_INSTR_bit      = 1;
@@ -338,7 +340,7 @@ module FemtoRV32(
    // aluWr starts computation in the ALU.
    assign aluWr = state[ALU_bit] & isALU;
 
-   wire jumpToPCplusImm = isJAL | (isBranch & predicate);
+   wire jumpOrTakeBranch = isJAL | isJALR | (isBranch & predicate);
 
    always @(posedge clk) begin
       if(!reset) begin
@@ -356,17 +358,13 @@ module FemtoRV32(
         state[EXECUTE_bit]: begin
 
 	   // Prepare next PC
-           PC <= isJALR          ? aluPlus[ADDR_WIDTH-1:0] : 
-		 jumpToPCplusImm ? PCplusImm : 
-		 PCplus4;
+           PC <= jumpOrTakeBranch ? addrAdderOut : PCplus4;
 
 	   // Prepare address for:
-	   //  next instruction fetch: PCplusImm (taken branch, JAL), aluPlus (JALR), PCplus4 (all other instr.)
+	   //  next instruction fetch: PCplusImm (taken branch, JAL), rs1plusImm (JALR), PCplus4 (all other instr.)
 	   //  load/store: aluPlus
-           addr_reg <= isJALR | isStore | isLoad ? aluPlus[ADDR_WIDTH-1:0] : 
-		       jumpToPCplusImm           ? PCplusImm : 
-		       PCplus4;
-
+           addr_reg <= isLoad | isStore | jumpOrTakeBranch ? addrAdderOut : PCplus4;
+	   
 	   // Transitions from EXECUTE to WAIT_ALU_OR_DATA, STORE, LOAD, and FETCH_INSTR,
 	   // See note [3] at the end of this file.
            state <= {
@@ -377,7 +375,7 @@ module FemtoRV32(
                  1'b0,                                // EXECUTE
                  1'b0,                                // FETCH_REGS
                  1'b0,                                // WAIT_INSTR
-                 !(isStore|isALU|isLoad) | (isALU & !aluBusy) // FETCH_INSTR
+                 !(isLoad|isStore|isALU) | (isALU & !aluBusy) // FETCH_INSTR
            };
         end
 
@@ -391,6 +389,14 @@ module FemtoRV32(
            end
         end
 
+	// *********************************************************************
+	// STORE: if the address is in mapped IO space, transition to wait state.
+	
+        state[STORE_bit]: begin
+	   state <= `NRV_IS_IO_ADDR(addr_reg) ? WAIT_ALU_OR_MEM : FETCH_INSTR;
+           addr_reg <= PC;	   
+	end
+	
         // *********************************************************************
         // Used by LOAD,STORE and by multi-cycle ALU instr (shifts and RV32M ops), 
 	// writeback from ALU or memory, also waits from data from IO 
@@ -399,7 +405,7 @@ module FemtoRV32(
         state[WAIT_ALU_OR_MEM_bit]: begin
            if(!aluBusy & !mem_rbusy & !mem_wbusy) begin
               addr_reg <= PC;
-              state <= FETCH_INSTR;
+	      state <= FETCH_INSTR;
            end
         end
 
@@ -410,8 +416,7 @@ module FemtoRV32(
           state <= {
 	      state[FETCH_REGS_bit],  // FETCH_REGS      -> ALU 
 	      1'b0,                   // *no transition* -> STORE (already done from EXECUTE)
-	      state[LOAD_bit] | 
-                  state[STORE_bit],   // LOAD,STORE      -> WAIT_ALU_OR_MEM
+	      state[LOAD_bit],        // LOAD,STORE      -> WAIT_ALU_OR_MEM
 	      1'b0,                   // *no transition* -> LOAD (already done from EXECUTE)
 	      state[ALU_bit],         // ALU             -> EXECUTE
 	      1'b0,                   // *no transition* -> FETCH_REGS (already done from WAIT_INSTR)
@@ -428,7 +433,8 @@ module FemtoRV32(
    /***************************************************************************/
    // Cycle counter
    /***************************************************************************/
-`ifdef NRV_COUNTER_WIDTH	             
+   
+`ifdef NRV_COUNTER_WIDTH	       
    always @(posedge clk) cycles <= cycles + 1;
 `endif
    

@@ -17,7 +17,7 @@
  *
  */
 
- // October 2019, Matthias Koch: Renamed wires
+ // October 2019, Matthias Koch: Renamed wires and optimizations.
  // December 2020, Bruno Levy: parameterization with freq and bauds
  //                            Factorized recv_divcnt and send_divcnt
  //                            Additional LUT golfing tricks
@@ -85,7 +85,10 @@ module buart #(
          1: begin
                if (recv_baud_clk) begin
 
-                 // Inverted start bit shifted through the whole register ?
+                 // Inverted start bit shifted through the whole register 
+		 // The idea is to use the start bit as marker for "reception complete", 
+		 // but as initialising registers to 10'b1_11111111_1 is more costly than 
+		 // using zero, it is done with inverted logic. 
                  if (recv_pattern[0]) begin
                    recv_buf_data  <= ~recv_pattern[8:1];
                    recv_buf_valid <= 1;
@@ -111,6 +114,7 @@ module buart #(
     assign tx = send_pattern[0];
     assign busy = |send_pattern[9:1];
 
+    // The transmitter shifts until the stop bit is on the wire, and stops shifting then.
     always @(posedge clk) begin
        if (wr) send_pattern <= {1'b1, tx_data[7:0], 1'b0};
        else if (send_baud_clk & busy) send_pattern <= send_pattern >> 1;

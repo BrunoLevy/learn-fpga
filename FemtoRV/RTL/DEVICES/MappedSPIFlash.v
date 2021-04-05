@@ -2,6 +2,7 @@
 //    (minus SYSTEM and FENCE that are not implemented)
 //
 //       Bruno Levy, 2020-2021
+//       Matthias Koch, 2021
 //
 // This file: driver for SPI Flash, projected in memory space (readonly)
 //
@@ -28,7 +29,7 @@
 // SPI_FLASH_FAST_READ_DUAL_IO     | 44 fast                 | Reverts MISO and MOSI |
 
 // One can go even faster by configuring number of dummy cycles (can save up to 4 cycles per read) 
-// and/or using XIP mode (that just requires the address to be send, saves 16 cycles per 32-bits read)
+// and/or using XIP mode (that just requires the address to be sent, saves 16 cycles per 32-bits read)
 // (I tried both without success).
 //
 // Most chips support a QUAD IO mode, using four bidirectional pins,
@@ -237,6 +238,7 @@ endmodule
 /********************************************************************************************************************************/
 
 `ifdef SPI_FLASH_FAST_READ_DUAL_IO
+
 module MappedSPIFlash( 
     input wire 	       clk,          // system clock
     input wire 	       rstrb,        // read strobe		
@@ -308,4 +310,52 @@ module MappedSPIFlash(
       end
    end
 endmodule
+ 
+
+/*
+// 04/02/2021 This version optimized by Matthias Koch
+module MappedSPIFlash(
+    input  wire        clk,          // system clock
+    input  wire        rstrb,        // read strobe
+    input  wire [19:0] word_address, // read address
+
+    output wire [31:0] rdata,        // data read
+    output wire        rbusy,        // asserted if busy receiving data
+
+    output wire        CLK,          // clock
+    output wire        CS_N,         // chip select negated (active low)
+    inout  wire [1:0]  IO            // two bidirectional IO pins
+);
+
+   reg [6:0]  clock_cnt; // send/receive clock, 2 bits per clock (dual IO)
+   reg [39:0] shifter;   // used for sending and receiving
+
+   wire    busy   = ~clock_cnt[6];
+   assign  CS_N   =  clock_cnt[6];
+   assign  rbusy  =  busy;
+   assign  CLK    =  busy & clk; // CLK needs to be disabled when not active.
+
+   // Since least significant bytes are read first, we need to swizzle...
+   assign rdata={shifter[7:0],shifter[15:8],shifter[23:16],shifter[31:24]};
+
+   // The two data pins IO0 (=MOSI) and IO1 (=MISO) used in bidirectional mode.
+   wire [1:0] IO_out = shifter[39:38];
+   wire [1:0] IO_in  = IO;
+   assign IO = clock_cnt > 7'd15 ? IO_out : 2'bZZ;
+// assign IO = |clock_cnt[5:4] ? IO_out : 2'bZZ; // optimized version of the line above
+
+   always @(negedge clk) begin
+      if(rstrb) begin
+         shifter <= {16'hCFCF, 2'b00, word_address[19:0], 2'b00}; // 16'hCFCF is 8'hbb with bits doubled
+         clock_cnt <= 7'd43; // cmd: 8 clocks address: 12 clocks dummy: 8 clocks. data: 16 clocks, 2 bits per clock
+      end else begin
+         if(busy) begin
+            shifter <= {shifter[37:0], IO_in};
+            clock_cnt <= clock_cnt - 7'd1;
+         end
+      end
+   end
+endmodule
+*/
+
 `endif
