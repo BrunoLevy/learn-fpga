@@ -3,7 +3,7 @@
 // Gets the number of cycles elapsed from device startup.
 // IceStick version: internal counter has only 24 bits.
 
-#ifdef ICE_STICK
+#if defined(ICE_STICK) || defined(ICE_BREAKER)
 uint64_t cycles() RV32_FASTCODE;
 uint64_t cycles() {
   static uint64_t cycles_=0;

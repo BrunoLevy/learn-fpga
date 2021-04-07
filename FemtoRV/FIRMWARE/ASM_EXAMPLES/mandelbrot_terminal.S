@@ -37,7 +37,7 @@ mandelstart:
 	call print_string
 	
 	li   a0, 250
-	call milliwait
+#	call milliwait
 	li   t0, 0
 	sw   t0, IO_LEDS(gp)
 

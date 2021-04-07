@@ -47,6 +47,9 @@ initial begin
 `ifdef ICE_STICK
    $write(" -DICE_STICK=1");   
 `endif
+`ifdef ICE_BREAKER
+   $write(" -DICE_BREAKER=1");   
+`endif
    $write("\n");
    
 end 

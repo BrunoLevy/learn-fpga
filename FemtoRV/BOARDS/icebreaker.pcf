@@ -1,0 +1,24 @@
+set_io pclk 35
+
+set_io D1 27
+set_io D2 25
+set_io D3 21
+set_io D4 23
+set_io D5 26
+
+set_io TXD 9
+set_io RXD 6
+
+set_io RESET 10
+
+# wired to PMOD 1A
+set_io ledmtx_DIN 45
+set_io ledmtx_CS  47 
+set_io ledmtx_CLK 2   
+
+# wired to PMOD 1A
+set_io oled_DIN  44
+set_io oled_CLK  46
+set_io oled_CS   48
+set_io oled_DC   3
+set_io oled_RST  4

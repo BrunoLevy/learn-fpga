@@ -23,6 +23,7 @@
 
 int indexed = 0;
 
+void mandel() RV32_FASTCODE;
 void mandel() {
    GL_write_window(0,0,W-1,H-1);
    int Ci = ymin;

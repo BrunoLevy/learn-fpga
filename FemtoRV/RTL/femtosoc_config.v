@@ -8,6 +8,10 @@
 `include "CONFIGS/icestick_config.v"
 `endif
 
+`ifdef ICE_BREAKER
+`include "CONFIGS/icebreaker_config.v"
+`endif
+
 `ifdef ECP5_EVN
 `include "CONFIGS/ecp5evn_config.v"
 `endif
@@ -51,6 +55,10 @@
 // Board defines are set in Makefile.
 
 `ifdef ICE_STICK
+ `define ICE40
+`endif
+
+`ifdef ICE_BREAKER
  `define ICE40
 `endif
 

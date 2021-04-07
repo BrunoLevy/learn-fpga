@@ -456,7 +456,7 @@ HardwareConfig hwconfig(
 
 /*
  * io_rdata is latched. Not mandatory, but probably allow higher freq, to be tested.
- */ 
+ */
 always @(posedge clk) begin
    io_rdata <= 0
 `ifdef NRV_IO_HARDWARE_CONFIG	       

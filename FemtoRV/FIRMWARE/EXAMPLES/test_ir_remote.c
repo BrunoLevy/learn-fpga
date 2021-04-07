@@ -23,6 +23,21 @@
 #include <femtorv32.h>
 #include <femtoGL.h>
 
+// Uncomment one of the following lines depending
+// on the type of IR remote you have:
+  #define IR_PROTOCOL_NEC
+//#define IR_PROTOCOL_SHARP
+
+#if defined(IR_PROTOCOL_NEC)
+#define ir_init nec_init
+#define ir_read nec_read
+#define ir_protocol_name "nec"
+#elif defined(IR_PROTOCOL_SHARP)
+#define ir_init sharp_init
+#define ir_read sharp_read
+#define ir_protocol_name "sharp"
+#endif
+
 // NEC protocol:
 //                             ________   ________   ________   ________
 //  |||||||||||||||           /        \ /        \ /        \ /        \
@@ -212,13 +227,12 @@ uint32_t sharp_read() {
 /********************************************************************************/
 
 int main() {
-   nec_init();
-   //sharp_init();
+   ir_init();
    femtosoc_tty_init();
    GL_set_font(&Font8x16);
+   printf("%s IR remote\n",ir_protocol_name);
    for(;;) {
-     uint32_t cmdaddr = nec_read();
-     //uint32_t cmdaddr = sharp_read();
+     uint32_t cmdaddr = ir_read();
      if(cmdaddr) {
        printf("%x\n",cmdaddr);
      }

@@ -1,6 +1,7 @@
 .include "femtorv32.inc"
 
 .ifndef ICE_STICK
+.ifndef ICE_BREAKER
 .global	cycles
 .type	cycles, @function
 
@@ -11,4 +12,6 @@ cycles:
 	bne t0, a1, cycles
 	ret
 .endif	
+.endif
+
 	

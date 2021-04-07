@@ -71,7 +71,7 @@ SPI Flash:
    * From ICEStick schematics, seems that only one line for MOSI/MISO is wired, I wonder
      whether dual output / quad output are possible (maybe dual output, since one of the
      pins seems to be reversible, but probaby not quad output, since only two pins seem to
-     be wired).
+     be wired). -> dual output: yes   quad output: no
    * Maybe we can switch to high speed SPI
    * DDR mode does not seem to be supported (did not see mention of it in spec sheet)
    * Even if I don't manage to execute code from there, maybe we can put font data in the SPI Flash.
@@ -120,6 +120,6 @@ SPI Flash:
       on the icestick.
       
       Is it possible to tag functions / variables to assign them to either slow SPI
-      ROM or fast BRAM ? In asm yes, but in C ?
+      ROM or fast BRAM ? In asm yes, but in C ?  ---> YES
 
 
