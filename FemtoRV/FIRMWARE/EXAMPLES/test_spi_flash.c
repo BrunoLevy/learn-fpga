@@ -48,6 +48,7 @@ int main() {
 	printf("\n");
 	++addr;
      }
+     milliwait(1000);
   }
   return 0;
 }
