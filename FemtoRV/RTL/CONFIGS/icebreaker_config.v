@@ -7,11 +7,11 @@
 `define NRV_IO_UART      // Mapped IO, virtual UART (USB)
 `define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
 `define NRV_IO_MAX7219   // Mapped IO, 8x8 led matrix
-//`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. Can be used with MINIRV32 to run code from SPI flash.
+`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. Can be used with MINIRV32 to run code from SPI flash.
 
 /************************* Frequency ********************************************************************************/
 
-`define NRV_FREQ 50      // Frequency in MHz. Recomm: 50 MHz (FOMU: 16MHz) Overclocking: 80-100 MHz (HX1K, ECP5)
+`define NRV_FREQ 20      // Frequency in MHz. Recomm: 50 MHz (FOMU: 16MHz) Overclocking: 80-100 MHz (HX1K, ECP5)
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 

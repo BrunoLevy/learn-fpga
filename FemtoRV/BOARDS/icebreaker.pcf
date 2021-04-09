@@ -22,3 +22,13 @@ set_io oled_CLK  46
 set_io oled_CS   48
 set_io oled_DC   3
 set_io oled_RST  4
+
+set_io spi_cs_n 16
+set_io spi_miso 17
+set_io spi_mosi 14
+set_io spi_clk  15
+
+set_io spi_io0  14
+set_io spi_io1  17
+set_io spi_io2  12
+set_io spi_io3  13

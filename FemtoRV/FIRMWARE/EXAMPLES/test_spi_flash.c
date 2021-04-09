@@ -14,7 +14,6 @@
 
 // Access through mapped address space
 int get_spi_byte_mapped(int addr) {
-  addr -= (1024*1024);
   union {
     uint32_t word;
     uint8_t bytes[4];
@@ -34,7 +33,7 @@ int main() {
   // Test whether mapped memory space is activated
   int has_SPI = FEMTOSOC_HAS_DEVICE(IO_MAPPED_SPI_FLASH_bit);
 
-  int addr = 1024*1024;
+  int addr = 0; // 1024*1024;
   int data;
   GL_tty_init(); // uncomment if using OLED display instead of tty output.
   printf("SPI flash [has_it:%c]\n",has_SPI?'Y':'N');

@@ -1,0 +1,19 @@
+https://github.com/icebreaker-fpga/icebreaker
+
+SPI: QSPI-DDR-capable flash 128 MBit (16 MB)
+   http://www.winbond.com/resource-files/w25q128jv_dtr%20revc%2003272018%20plus.pdf
+   
+   Fast Read Dual Output (3B) / Fast Read Dual IO (BB)
+   Fast Read Quad Output (6B) / Fast Read Quad IO (EB)  -> need the non-volatile Quad Enable bit (QE) to be set
+   QPI mode (after "enter QPI" (38h) instruction)       -> need the non-volatile Quad Enable bit (QE) to be set
+   + DTR
+   
+   En mode Quad IO: 8 cycles pour transmettre 32 bits, ou 4 cycles en DTR
+   
+   
+   
+   
+   
+   
+   
+

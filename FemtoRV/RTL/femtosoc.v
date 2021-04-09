@@ -61,6 +61,9 @@ module femtosoc(
    inout spi_mosi, inout spi_miso, output spi_cs_n,
  `ifndef ULX3S	
    output spi_clk, // ULX3S has spi clk shared with ESP32, using USRMCLK (below)	
+ `endif
+ `ifdef ICE_BREAKER
+   output spi_io2, output spi_io3,
  `endif		
 `endif
 `ifdef NRV_IO_SDCARD
@@ -109,6 +112,10 @@ module femtosoc(
    `ifndef BENCH   
       USRMCLK u1 (.USRMCLKI(spi_clk), .USRMCLKTS(tristate));
    `endif
+  `endif
+  `ifdef ICE_BREAKER
+   assign spi_io2 = 1'b1;
+   assign spi_io3 = 1'b1;   
  `endif   
 `endif
 
@@ -191,6 +198,7 @@ module femtosoc(
    wire mem_address_is_spi_flash = (mem_address[23:22] == 2'b10);
    wire mapped_spi_flash_rbusy;
    wire [31:0] mapped_spi_flash_rdata;
+   
    MappedSPIFlash mapped_spi_flash(
       .clk(clk),
       .rstrb(mem_rstrb && mem_address_is_spi_flash),
@@ -201,7 +209,7 @@ module femtosoc(
       .CS_N(spi_cs_n),
 `ifdef SPI_FLASH_FAST_READ_DUAL_IO				   
       .IO({spi_miso,spi_mosi})
-`else				   
+`else	
       .MISO(spi_miso),
       .MOSI(spi_mosi)
 `endif				   

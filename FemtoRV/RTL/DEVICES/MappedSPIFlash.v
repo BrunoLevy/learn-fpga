@@ -40,10 +40,12 @@
 
 // Select version based on the board.
 // The last two versions don't seem to be supported by the chip on the ULX3S
+
 `ifdef ICE_STICK
 `define SPI_FLASH_FAST_READ_DUAL_IO
 `else
-`define SPI_FLASH_FAST_READ
+//`define SPI_FLASH_FAST_READ
+`define SPI_FLASH_READ
 `endif
 
 
@@ -54,7 +56,7 @@
 module MappedSPIFlash( 
     input wire 	       clk,          // system clock
     input wire 	       rstrb,        // read strobe		
-    input wire [19:0]  word_address, // address of the word to be read, offset from 1Mb
+    input wire [19:0]  word_address, // address of the word to be read
 
     output wire [31:0] rdata,        // data read
     output wire        rbusy,        // asserted if busy receiving data			    
@@ -77,7 +79,7 @@ module MappedSPIFlash(
    
    assign  MOSI  = cmd_addr[31];
    initial CS_N  = 1'b1;
-   assign  CLK   = !CS_N && clk; 
+   assign  CLK   = !CS_N && clk;
 
    // since least significant bytes are read first, we need to swizzle...
    assign rdata = {rcv_data[7:0],rcv_data[15:8],rcv_data[23:16],rcv_data[31:24]};
@@ -113,7 +115,7 @@ endmodule
 module MappedSPIFlash( 
     input wire 	       clk,          // system clock
     input wire 	       rstrb,        // read strobe		
-    input wire [19:0]  word_address, // address of the word to be read, offset from 1Mb
+    input wire [19:0]  word_address, // address of the word to be read
 
     output wire [31:0] rdata,        // data read
     output wire        rbusy,        // asserted if busy receiving data			    
@@ -172,7 +174,7 @@ endmodule
 module MappedSPIFlash( 
     input wire 	       clk,          // system clock
     input wire 	       rstrb,        // read strobe		
-    input wire [19:0]  word_address, // address of the word to be read, offset from 1Mb
+    input wire [19:0]  word_address, // address of the word to be read
 
     output wire [31:0] rdata,        // data read
     output wire        rbusy,        // asserted if busy receiving data			    
@@ -242,7 +244,7 @@ endmodule
 module MappedSPIFlash( 
     input wire 	       clk,          // system clock
     input wire 	       rstrb,        // read strobe		
-    input wire [19:0]  word_address, // offset from 1Mb
+    input wire [19:0]  word_address, // address to be read
 
 		      
     output wire [31:0] rdata, // data read
