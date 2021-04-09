@@ -35,16 +35,19 @@ int main() {
 
   int addr = 0; // 1024*1024;
   int data;
-  GL_tty_init(); // uncomment if using OLED display instead of tty output.
-  printf("SPI flash [has_it:%c]\n",has_SPI?'Y':'N');
-  for(int i=0; i<14; ++i) {
-    data = get_spi_byte_mapped(addr);
-    printf("%x:",data);
-    printb(data);
-    putchar(':');
-    putchar(data);
-    printf("\n");
-    ++addr;
+  // GL_tty_init(); // uncomment if using OLED display instead of tty output.
+
+  for(;;) {
+     printf("SPI flash [has_it:%c]\n",has_SPI?'Y':'N');
+     for(int i=0; i<14; ++i) {
+	data = get_spi_byte_mapped(addr);
+	printf("%x:",data);
+	printb(data);
+	putchar(':');
+	putchar(data);
+	printf("\n");
+	++addr;
+     }
   }
   return 0;
 }
