@@ -69,7 +69,7 @@ compile time, and is called by `make lint` in our build system. `verilator` does
 which is vital for debugging. It is also used by the build system to transfer hardware configuration
 parameters to the firmware.
 ```
-apt-get install iverilog verilator
+sudo apt-get install iverilog verilator
 ```
 
 Step 3: FPGA support libraries
@@ -118,7 +118,7 @@ $ git clone --recursive https://github.com/YosysHQ/prjtrellis
 
 Compile and install it:
 ```
-$ cd libtrellis
+$ cd prjtrellis/libtrellis
 $ cmake -DCMAKE_INSTALL_PREFIX=/usr/local .
 $ make
 $ sudo make install
@@ -134,7 +134,7 @@ Follow setup instructions from [nextpnr website](https://github.com/YosysHQ/next
 
 Get the sources:
 ```
-$ git clone https://github.com/YosysHQ/nextpnr.git
+$ git clone --recursive https://github.com/YosysHQ/nextpnr.git
 ```
 
 NextPNR compilation and installation for Ice40 FPGAs
