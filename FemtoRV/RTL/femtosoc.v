@@ -37,6 +37,10 @@
 `include "DEVICES/FGA.v"            // Femto Graphic Adapter
 `include "DEVICES/HardwareConfig.v" // Constant registers to query hardware config.
 
+`ifdef ICE40UP5K_SPRAM
+`include "DEVICES/ice40up5k_spram.v"
+`endif
+
 /*************************************************************************************/
 
 module femtosoc(
@@ -62,9 +66,6 @@ module femtosoc(
  `ifndef ULX3S	
    output spi_clk, // ULX3S has spi clk shared with ESP32, using USRMCLK (below)	
  `endif
- `ifdef ICE_BREAKER
-   output spi_io2, output spi_io3,
- `endif		
 `endif
 `ifdef NRV_IO_SDCARD
    output sd_mosi, input sd_miso, output sd_cs_n, output sd_clk,
@@ -113,10 +114,6 @@ module femtosoc(
       USRMCLK u1 (.USRMCLKI(spi_clk), .USRMCLKTS(tristate));
    `endif
   `endif
-  `ifdef ICE_BREAKER
-   assign spi_io2 = 1'b1;
-   assign spi_io3 = 1'b1;   
- `endif   
 `endif
 
 `ifdef FOMU

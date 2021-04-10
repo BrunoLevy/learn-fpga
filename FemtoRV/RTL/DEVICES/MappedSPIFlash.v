@@ -30,7 +30,7 @@
 
 // One can go even faster by configuring number of dummy cycles (can save up to 4 cycles per read) 
 // and/or using XIP mode (that just requires the address to be sent, saves 16 cycles per 32-bits read)
-// (I tried both without success).
+// (I tried both without success). This may require another mechanism to change configuration register.
 //
 // Most chips support a QUAD IO mode, using four bidirectional pins,
 // however, is not possible because the IO2 and IO3 pins
@@ -38,8 +38,7 @@
 // to a GPIO pin but I haven't soldering skills for things of that size !!)
 // It is a pity, because one could go really fast with these pins !
 
-// Select version based on the board.
-// The last two versions don't seem to be supported by the chip on the ULX3S
+// Macros to select version and number of dummy cycles based on the board.
 
 `ifdef ICE_STICK
  `define SPI_FLASH_FAST_READ_DUAL_IO
@@ -53,7 +52,7 @@
 `endif
 
 `ifdef ULX3S
- `define SPI_FLASH_FAST_READ
+ `define SPI_FLASH_FAST_READ // TODO check whether dual IO mode can be done / dummy clocks
  `define SPI_FLASH_CONFIGURED
 `endif
 
@@ -61,11 +60,9 @@
  `define SPI_FLASH_DUMMY_CLOCKS 8
 `endif
 
-`ifndef SPI_FLASH_CONFIGURED
+`ifndef SPI_FLASH_CONFIGURED // Default: using slowest / simplest mode (command $03)
  `define SPI_FLASH_READ
 `endif
-
-
 
 /********************************************************************************************************************************/
 
@@ -96,12 +93,13 @@ module MappedSPIFlash(
    
    assign  MOSI  = cmd_addr[31];
    initial CS_N  = 1'b1;
-   assign  CLK   = !CS_N && clk;
+   assign  CLK   = !CS_N && !clk; // CLK needs to be inverted (sample on posedge, shift of negedge) 
+                                  // and needs to be disabled when not sending/receiving (&& !CS_N).
 
    // since least significant bytes are read first, we need to swizzle...
    assign rdata = {rcv_data[7:0],rcv_data[15:8],rcv_data[23:16],rcv_data[31:24]};
    
-   always @(negedge clk) begin
+   always @(posedge clk) begin
       if(rstrb) begin
 	 CS_N <= 1'b0;
 	 cmd_addr <= {8'h03, 2'b00,word_address[19:0], 2'b00};
@@ -155,12 +153,12 @@ module MappedSPIFlash(
    
    assign  MOSI  = cmd_addr[31];
    initial CS_N  = 1'b1;
-   assign  CLK   = !CS_N && clk; 
+   assign  CLK   = !CS_N && !clk; 
 
    // since least significant bytes are read first, we need to swizzle...
    assign rdata = {rcv_data[7:0],rcv_data[15:8],rcv_data[23:16],rcv_data[31:24]};
    
-   always @(negedge clk) begin
+   always @(posedge clk) begin
       if(rstrb) begin
 	 CS_N <= 1'b0;
 	 cmd_addr <= {8'h0b, 2'b00,word_address[19:0], 2'b00};
@@ -223,12 +221,12 @@ module MappedSPIFlash(
    assign  MOSI_out = sending && cmd_addr[31];
 
    initial CS_N = 1'b1;
-   assign  CLK  = !CS_N && clk; 
+   assign  CLK  = !CS_N && !clk; 
 
    // since least significant bytes are read first, we need to swizzle...
    assign rdata = {rcv_data[7:0],rcv_data[15:8],rcv_data[23:16],rcv_data[31:24]};
 
-   always @(negedge clk) begin
+   always @(posedge clk) begin
       if(rstrb) begin
 	 CS_N <= 1'b0;
 	 cmd_addr <= {8'h3b, 2'b00,word_address[19:0], 2'b00};
@@ -289,7 +287,7 @@ module MappedSPIFlash(
    assign IO = IO_oe ? IO_out : 2'bZZ;
    
    initial CS_N = 1'b1;
-   assign  CLK  = !CS_N && clk; // CLK needs to be disabled when not active.
+   assign  CLK  = !CS_N && !clk; 
 
    // since least significant bytes are read first, we need to swizzle...
    assign rdata={shifter[7:0],shifter[15:8],shifter[23:16],shifter[31:24]};
@@ -307,7 +305,7 @@ module MappedSPIFlash(
       end
    endfunction;  
 
-   always @(negedge clk) begin
+   always @(posedge clk) begin
       if(rstrb) begin
 	 CS_N  <= 1'b0;
 	 IO_oe <= 1'b1;
@@ -352,7 +350,7 @@ module MappedSPIFlash(
    wire    busy   = ~clock_cnt[6];
    assign  CS_N   =  clock_cnt[6];
    assign  rbusy  =  busy;
-   assign  CLK    =  busy & clk; // CLK needs to be disabled when not active.
+   assign  CLK    =  busy & !clk; // CLK needs to be disabled when not active.
 
    // Since least significant bytes are read first, we need to swizzle...
    assign rdata={shifter[7:0],shifter[15:8],shifter[23:16],shifter[31:24]};
@@ -363,7 +361,7 @@ module MappedSPIFlash(
    assign IO = clock_cnt > 7'd15 ? IO_out : 2'bZZ;
 // assign IO = |clock_cnt[5:4] ? IO_out : 2'bZZ; // optimized version of the line above
 
-   always @(negedge clk) begin
+   always @(posedge clk) begin
       if(rstrb) begin
          shifter <= {16'hCFCF, 2'b00, word_address[19:0], 2'b00}; // 16'hCFCF is 8'hbb with bits doubled
          clock_cnt <= 7'd43; // cmd: 8 clocks address: 12 clocks dummy: 8 clocks. data: 16 clocks, 2 bits per clock
