@@ -15,6 +15,13 @@
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
+// Using the 128 kbytes of single-ported RAM of the ice40-up5k
+// Note: cannot initialize it from .hex file, need to run from SPI Flash
+//`define ICE40UP5K_SPRAM
+//`define NRV_RAM 131072 
+// WIP: cube and riscv-logo do not work properly
+
+// (other option, the 12 kbytes of BRAM, this one can be initialized from .hex file).
 `define NRV_RAM 12288
 
 /************************* Processor configuration ******************************************************************/

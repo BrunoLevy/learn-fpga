@@ -232,9 +232,27 @@ module femtosoc(
    
    assign      mem_wbusy = io_wbusy; 
 
+`ifdef NRV_IO_FGA
+   wire mem_address_is_vram = mem_address[21];
+`else
+   parameter mem_address_is_vram = 1'b0;
+`endif
 
-   
    wire [19:0] ram_word_address = mem_address[21:2];
+   
+`ifdef ICE40UP5K_SPRAM
+   
+   wire [31:0]  ram_rdata;   
+   ice40up5k_spram RAM(
+      .clk(clk),
+      .wen(mem_wmask),
+      .addr(ram_word_address),
+      .wdata(mem_wdata),
+      .rdata(ram_rdata)		       
+   );
+   
+`else   
+   
    reg [31:0] RAM[(`NRV_RAM/4)-1:0];
    reg [31:0] ram_rdata;
 
@@ -246,12 +264,6 @@ module femtosoc(
    end
 `endif
 
-`ifdef NRV_IO_FGA
-   wire mem_address_is_vram = mem_address[21];
-`else
-   parameter mem_address_is_vram = 1'b0;
-`endif
-   
    // The power of YOSYS: it infers SB_RAM40_4K BRAM primitives automatically ! (and recognizes
    // masked writes, amazing ...)
    /* verilator lint_off WIDTH */
@@ -265,7 +277,8 @@ module femtosoc(
       ram_rdata <= RAM[ram_word_address];
    end
    /* verilator lint_on WIDTH */
-
+`endif
+   
 `ifdef NRV_IO_FGA
    wire [31:0] FGA_rdata;
    FGA graphic_adapter(
