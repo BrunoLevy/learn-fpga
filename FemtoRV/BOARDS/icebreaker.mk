@@ -11,7 +11,7 @@ ICEBREAKER.synth:
 	yosys $(YOSYS_ICEBREAKER_OPT) $(VERILOGS)
 	nextpnr-ice40 $(NEXTPNR_ICEBREAKER_OPT)
 	icetime -p BOARDS/icebreaker.pcf -P sg48 -r $(PROJECTNAME).timings -d up5k -t $(PROJECTNAME).asc 
-	icepack $(PROJECTNAME).asc $(PROJECTNAME).bin
+	icepack -s $(PROJECTNAME).asc $(PROJECTNAME).bin
 
 ICEBREAKER.show: 
 	yosys $(YOSYS_ICEBREAKER_OPT) $(VERILOGS)

@@ -11,7 +11,7 @@ ICESUGAR_NANO.synth: FIRMWARE/firmware.hex
 	yosys $(YOSYS_ICESUGAR_NANO_OPT) $(VERILOGS)
 	nextpnr-ice40 $(NEXTPNR_ICESUGAR_NANO_OPT)
 	icetime -p BOARDS/icesugar_nano.pcf -P cm36 -r $(PROJECTNAME).timings -d lp1k -t $(PROJECTNAME).asc
-	icepack $(PROJECTNAME).asc $(PROJECTNAME).bin
+	icepack -s $(PROJECTNAME).asc $(PROJECTNAME).bin
 
 ICESUGAR_NANO.show: FIRMWARE/firmware.hex 
 	yosys $(YOSYS_ICESUGAR_NANO_OPT) $(VERILOGS)

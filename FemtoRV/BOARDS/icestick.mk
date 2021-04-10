@@ -11,7 +11,7 @@ ICESTICK.synth:
 	yosys $(YOSYS_ICESTICK_OPT) $(VERILOGS)
 	nextpnr-ice40 $(NEXTPNR_ICESTICK_OPT)
 	icetime -p BOARDS/icestick.pcf -P tq144 -r $(PROJECTNAME).timings -d hx1k -t $(PROJECTNAME).asc 
-	icepack $(PROJECTNAME).asc $(PROJECTNAME).bin
+	icepack -s $(PROJECTNAME).asc $(PROJECTNAME).bin
 
 ICESTICK.show: 
 	yosys $(YOSYS_ICESTICK_OPT) $(VERILOGS)

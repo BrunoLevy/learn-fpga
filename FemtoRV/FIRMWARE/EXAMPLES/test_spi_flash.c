@@ -35,7 +35,7 @@ int main() {
 
   int addr = 0; // 1024*1024;
   int data;
-  // GL_tty_init(); // uncomment if using OLED display instead of tty output.
+  GL_tty_init(); // uncomment if using OLED display instead of tty output.
 
   for(;;) {
      printf("SPI flash [has_it:%c]\n",has_SPI?'Y':'N');
