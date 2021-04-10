@@ -239,19 +239,21 @@ module femtosoc(
 `endif
 
    wire [19:0] ram_word_address = mem_address[21:2];
-   
+
+// Using the 128 KBytes of SPRAM (single-ported RAM) embedded in the Ice40 UP5K   
 `ifdef ICE40UP5K_SPRAM
-   
-   wire [31:0]  ram_rdata;   
+
+   wire [31:0]  ram_rdata;
+   wire 	spram_wr = mem_address_is_ram && !mem_address_is_vram;
    ice40up5k_spram RAM(
       .clk(clk),
-      .wen(mem_wmask),
-      .addr(ram_word_address),
+      .wen({4{spram_wr}} & mem_wmask),
+      .addr(ram_word_address[14:0]),
       .wdata(mem_wdata),
       .rdata(ram_rdata)		       
    );
-   
-`else   
+
+`else // Synthethizing BRAM
    
    reg [31:0] RAM[(`NRV_RAM/4)-1:0];
    reg [31:0] ram_rdata;

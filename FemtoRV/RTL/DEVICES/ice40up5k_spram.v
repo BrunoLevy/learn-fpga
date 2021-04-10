@@ -24,7 +24,7 @@ module ice40up5k_spram #(
 ) (
 	input clk,
 	input [3:0] wen,
-	input [19:0] addr,
+	input [14:0] addr,
 	input [31:0] wdata,
 	output [31:0] rdata
 );
