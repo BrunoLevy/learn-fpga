@@ -42,10 +42,27 @@
 // The last two versions don't seem to be supported by the chip on the ULX3S
 
 `ifdef ICE_STICK
-`define SPI_FLASH_FAST_READ_DUAL_IO
-`else
-//`define SPI_FLASH_FAST_READ
-`define SPI_FLASH_READ
+ `define SPI_FLASH_FAST_READ_DUAL_IO
+ `define SPI_FLASH_CONFIGURED
+`endif
+
+`ifdef ICE_BREAKER
+ `define SPI_FLASH_FAST_READ_DUAL_IO
+ `define SPI_FLASH_DUMMY_CLOCKS 4 // Winbond SPI chips on icebreaker uses 4 dummy clocks
+ `define SPI_FLASH_CONFIGURED
+`endif
+
+`ifdef ULX3S
+ `define SPI_FLASH_FAST_READ
+ `define SPI_FLASH_CONFIGURED
+`endif
+
+`ifndef SPI_FLASH_DUMMY_CLOCKS
+ `define SPI_FLASH_DUMMY_CLOCKS 8
+`endif
+
+`ifndef SPI_FLASH_CONFIGURED
+ `define SPI_FLASH_READ
 `endif
 
 
@@ -147,7 +164,7 @@ module MappedSPIFlash(
       if(rstrb) begin
 	 CS_N <= 1'b0;
 	 cmd_addr <= {8'h0b, 2'b00,word_address[19:0], 2'b00};
-	 snd_bitcount <= 6'd40;
+	 snd_bitcount <= 6'd40; // TODO: check dummy clocks
       end else begin
 	 if(sending) begin
 	    if(snd_bitcount == 1) begin
@@ -215,7 +232,7 @@ module MappedSPIFlash(
       if(rstrb) begin
 	 CS_N <= 1'b0;
 	 cmd_addr <= {8'h3b, 2'b00,word_address[19:0], 2'b00};
-	 snd_bitcount <= 6'd40;
+	 snd_bitcount <= 6'd40; // TODO: check dummy clocks
       end else begin
 	 if(sending) begin
 	    if(snd_bitcount == 1) begin
@@ -296,7 +313,7 @@ module MappedSPIFlash(
 	 IO_oe <= 1'b1;
 	 dir   <= 1'b1;
 	 shifter <= {bbyyttee(8'hbb), 2'b00, word_address[19:0], 2'b00};
-	 clock_cnt <= 5'd28; // cmd: 8 clocks  address: 12 clocks  dummy: 8 clocks
+	 clock_cnt <= 5'd20 + `SPI_FLASH_DUMMY_CLOCKS; // cmd: 8 clocks  address: 12 clocks  + dummy clocks
       end else begin
 	 if(busy) begin
 	    shifter <= {shifter[37:0], (receiving ? IO_in : 2'b11)};

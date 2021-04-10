@@ -110,16 +110,17 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 %.spiflash.elf: %.o $(RV_BINARIES) 
 	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/spiflash.ld $< -o $@ $(FEMTORV32_LIBS) -lsupc++ $(RVGCC_LIB)
 
+# Converts the ELF executable to flat binary form, ready to be sent to SPI flash.
 %.spiflash.bin: %.spiflash.elf
 	$(RVOBJCOPY) $< $@ -O binary
+
+# Sends the generated executable in flat binary form to SPI flash
+%.prog: %.spiflash.bin
+	iceprog -o 128k $<
 
 # Generate a disassembly (for inspection if need be)
 %.list: %.elf
 	$(RVOBJDUMP) -Mnumeric -D $< > $@
-
-%.prog: %.spiflash.bin
-	iceprog -o 64k $<
-
 
 #Rule to convert a .elf executable into a .hex file for verilog 'readmemh()'
 # command, using my 'firmware_words' utility to parse the .elf executable.
