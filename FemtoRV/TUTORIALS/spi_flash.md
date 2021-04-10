@@ -11,6 +11,20 @@ that has only 6Kb of RAM available, it is excellent news, because
 it makes it possible to run much larger programs, and all the RAM is
 available for our data. However there is a price to pay: it is much
 slower than the RAM.
+
+Before starting, there is something important to know (that made me
+bang my head against the wall !). By default, on some devices (e.g.,
+IceBreaker), on FPGA startup, the SPI Flash will go into "Deep Power Down" 
+mode right after the FPGA has loaded its configuration from it. 
+For this reason _it will ignore any command you send to it !_. 
+There are two ways to wake it up:
+- send the wake up command `$AB` to it, which is the only one it will
+respond to in deep power mode (thank you @mecrisp), or
+- (simpler) use the `-s` option for `icepack` that puts a marker in
+the bitstream indicating that the SPI Flash should stay awake
+(thank you @at91rm9200). This is the option I'm using (in the
+`BOARDS/xxx.mk` makefiles).
+
 There are four versions (from slowest to fastest). They are implemented in
 [this file](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/RTL/DEVICES/MappedSPIFlash.v).
 
