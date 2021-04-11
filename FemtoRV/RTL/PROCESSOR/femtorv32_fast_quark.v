@@ -31,19 +31,19 @@
 // reading/writing needs to wait for mem_rbusy/mem_wbusy to go low.
 `define NRV_IS_IO_ADDR(addr) |addr[23:22]
 
-
+// The ALU, used for reg-reg, reg-imm and branch tests
 module ALU(
-  input 	clk,
-  input 	wrALU,
-  input 	wrPred,
-  input [31:0] 	in1,
-  input [31:0] 	in2,
-  output [31:0] out,
-  output reg 	predicate,
-  output 	busy,
-  input [2:0] 	funct3,
-  input 	add_sub,
-  input 	srl_sra	   
+  input 	clk,   
+  input 	wr,        // write strobe to start ALU and predicate computation
+  input 	isALU,     // asserted is current instr is ALUimm or ALUreg
+  input [31:0] 	in1,       // \
+  input [31:0] 	in2,       //  > ALU input and output
+  output [31:0] out,       // /
+  output reg 	predicate, // test result for branch (available 1 clock after wr)
+  output 	busy,      // asserted if ALU is busy shifting
+  input [2:0] 	funct3,    // 3-bits code for ALU and tests (instr[14:12])
+  input 	add_sub,   // 0 for add, 1 for sub
+  input 	srl_sra	   // 0 for logical right shift, 1 for arithmetic right shift
 );
    reg [31:0] A;    // The internal register of the ALU.
    reg [4:0] shamt; // Current shift amount.
@@ -62,7 +62,7 @@ module ALU(
    wire EQ  = (minus[31:0] == 0);
 
    always @(posedge clk) begin
-      if(wrALU) begin
+      if(wr && isALU) begin
          case(funct3) 
             3'b000: A <= add_sub ? minus[31:0] : plus;             // ADD/SUB
             3'b010: A <= {31'b0, LT} ;                             // SLT
@@ -95,12 +95,8 @@ module ALU(
       end
    end
 
-   /***************************************************************************/
-   // The predicate for conditional branches.
-   /***************************************************************************/
-
    always @(posedge clk) begin
-      if(wrPred) begin
+      if(wr && !isALU) begin
 	 case(funct3)
            3'b000:  predicate <=  EQ;  // BEQ
            3'b001:  predicate <= !EQ;  // BNE
@@ -211,8 +207,6 @@ module FemtoRV32(
    /***************************************************************************/
    // The ALU.
    /***************************************************************************/
-
-
    wire aluWr;
    wire [31:0] aluOut;
    wire        predicate;
@@ -220,8 +214,8 @@ module FemtoRV32(
    
    ALU alu(
      .clk(clk),
-     .wrALU(aluWr),
-     .wrPred(state[ADDR_AND_ALU_bit]),	   
+     .wr(aluWr),
+     .isALU(isALU),	   
      .in1(rs1Data),
      .in2(isALUreg | isBranch ? rs2Data : Iimm),
      .out(aluOut),
@@ -364,7 +358,7 @@ module FemtoRV32(
    assign mem_wmask = {4{state[STORE_bit]}} & STORE_wmask; 
 
    // aluWr starts computation in the ALU.
-   assign aluWr = state[ADDR_AND_ALU_bit] & isALU;
+   assign aluWr = state[ADDR_AND_ALU_bit];  // & isALU;
 
    wire jumpOrTakeBranch = isJAL | isJALR | (isBranch & predicate);
 
