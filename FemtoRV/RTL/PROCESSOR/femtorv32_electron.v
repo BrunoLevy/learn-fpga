@@ -16,13 +16,6 @@
 // The ADDR_WIDTH parameter lets you define the width of the internal
 //   address bus (and address computation logic). 
 //
-// If NRV_TWOLEVEL_SHIFTER is defined, shifts are much faster (without it
-//  they can take up to 32 cycles !). But it eats up some LUTs (no free lunch)
-//
-// If NRV_LATCH_RECOGNIZERS is defined, then signals that recognize
-//   instructions are latched (may increase maxfreq / decrease LUT
-//   count but depends on yosys version).
-//
 // Bruno Levy, May-June 2020
 // Matthias Koch, March 2021
 /****************************************************************************/
@@ -34,6 +27,91 @@
 // Tests whether a given address is in mapped devices space. If asserted,
 // reading/writing needs to wait for mem_rbusy/mem_wbusy to go low.
 `define NRV_IS_IO_ADDR(addr) |addr[23:22]
+
+// The ALU, used for reg-reg, reg-imm and branch tests
+module ALU(
+  input 	clk,   
+  input 	wr,        // write strobe to start ALU and predicate computation
+  input 	isALU,     // asserted is current instr is ALUimm or ALUreg
+  input [31:0] 	in1,       // \
+  input [31:0] 	in2,       //  > ALU input and output
+  output [31:0] out,       // /
+  output reg 	predicate, // test result for branch (available 1 clock after wr)
+  output 	busy,      // asserted if ALU is busy shifting
+  input [2:0] 	funct3,    // 3-bits code for ALU and tests (instr[14:12])
+  input 	add_sub,   // 0 for add, 1 for sub
+  input 	srl_sra	   // 0 for logical right shift, 1 for arithmetic right shift
+);
+   reg [31:0] A;    // The internal register of the ALU.
+   assign out = A;
+   assign busy = 1'b0; // For now (then we'll add DIV/REM that will need wait cycles)
+
+   wire [31:0] plus = in1 + in2; 
+   
+   // Use a single 33 bits subtract to do subtraction and all comparisons
+   // (trick borrowed from swapforth/J1)
+   wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
+
+   // Predicates
+   wire LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
+   wire LTU = minus[32];
+   wire EQ  = (minus[31:0] == 0);
+
+   // Shifter (a right-shifter is used for left and right shifts.
+   // Its input/output is flipped for left shifts).
+   function [31:0] flip;
+      input [31:0] x;
+      flip = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7],
+              x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15],
+              x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
+              x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]} ;
+   endfunction;  
+   wire [31:0] shifter_in = funct3[2] ? in1 : flip(in1);
+   /* verilator lint_off WIDTH */
+   wire [31:0] shifter   = $signed({srl_sra & in1[31], shifter_in}) >>> in2[4:0];
+   /* verilator lint_on WIDTH */
+   wire [31:0] leftshift = flip(shifter);
+   
+   always @(posedge clk) begin
+      if(wr && isALU) begin
+         case(funct3) 
+            3'b000: A <= add_sub ? minus[31:0] : plus;                   // ADD/SUB
+            3'b010: A <= {31'b0, LT} ;                                   // SLT
+            3'b011: A <= {31'b0, LTU};                                   // SLTU
+            3'b100: A <= in1 ^ in2;                                      // XOR
+            3'b110: A <= in1 | in2;                                      // OR
+            3'b111: A <= in1 & in2;                                      // AND
+
+            3'b001: A <= leftshift;                                      // SLL
+	    3'b101: A <= shifter;                                        // SRL/SRA
+
+	   
+	   /*
+            3'b001: A <= in1 << in2[4:0];                                // SLL
+	    3'b101: A <= $signed({srl_sra & in1[31], in1}) >>> in2[4:0]; // SRL/SRA
+	   */ 
+         endcase
+      end 
+   end
+
+   always @(posedge clk) begin
+      if(wr && !isALU) begin
+	 case(funct3)
+           3'b000:  predicate <=  EQ;  // BEQ
+           3'b001:  predicate <= !EQ;  // BNE
+           3'b100:  predicate <=  LT;  // BLT
+           3'b101:  predicate <= !LT;  // BGE
+           3'b110:  predicate <=  LTU; // BLTU
+           3'b111:  predicate <= !LTU; // BGEU
+           default: predicate <= 1'bx; // don't care...
+	 endcase
+      end 
+   end 
+   
+endmodule
+
+/***********************************************************************/
+
 
 module FemtoRV32(
    input clk,
@@ -128,69 +206,24 @@ module FemtoRV32(
    /***************************************************************************/
    // The ALU.
    /***************************************************************************/
-
-   // Operands are given in aluIn1 and aluIn2. They are written when aluWr is set.
-   // Result is available in aluOut from next cycle as soon as aluBusy is zero.
-   // Other signals (combinatorially wired):
-   //   aluPlus (aluIn1 + aluIn2) 
-   //   EQ      (aluIn1 == aluIn2) 
-   //   LT      (signed aluIn1 < signed aluIn2)
-   //   LTU     (unsigned aluIn1 < unsigned aluIn2)
+   wire aluWr;
+   wire [31:0] aluOut;
+   wire        predicate;
+   wire        aluBusy;
    
-   // ALU inputs and outputs.
-   wire [31:0] aluIn1 = rs1Data;
-   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : Iimm;
-   wire [31:0] aluOut = aluReg; // The output of the ALU (wired to the ALU register)
-   reg predicate;
-   
-   reg [31:0] aluReg;           // The internal register of the ALU, used by shift.
-
-   wire aluBusy = 1'b0; // ALU is busy if DIV operation is running (not implemented for now)
-   wire aluWr;          // ALU write strobe, starts computation.
-
-   wire [31:0] aluPlus = aluIn1 + aluIn2; // The adder of the ALU
-   // Use a single 33 bits subtract to do subtraction and all comparisons
-   // (trick borrowed from swapforth/J1)
-   wire [32:0] aluMinus = {1'b1, ~aluIn2} + {1'b0,aluIn1} + 33'b1;
-   wire        LT  = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : aluMinus[32];
-   wire        LTU = aluMinus[32];
-   wire        EQ  = (aluMinus[31:0] == 0);
-
-   // Notes: 
-   // - instr[30] is 1 for SUB and 0 for ADD 
-   // - for SUB, need to test also instr[5] (1 for ADD/SUB, 0 for ADDI, because ADDI imm uses bit 30 !)
-   // - instr[30] is 1 for SRA (do sign extension) and 0 for SRL
-   always @(posedge clk) begin
-      if(aluWr) begin
-         case(funct3) 
-            3'b000: aluReg <= instr[30] & instr[5] ? aluMinus[31:0] : aluPlus;   // ADD/SUB
-            3'b010: aluReg <= {31'b0, LT} ;                                      // SLT
-            3'b011: aluReg <= {31'b0, LTU};                                      // SLTU
-            3'b100: aluReg <= aluIn1 ^ aluIn2;                                   // XOR
-            3'b110: aluReg <= aluIn1 | aluIn2;                                   // OR
-            3'b111: aluReg <= aluIn1 & aluIn2;                                   // AND
-            3'b001: aluReg <= aluIn1 << aluIn2[4:0];                             // SLL
-	    3'b101: aluReg <= $signed({instr[30] & aluIn1[31], aluIn1}) >>> aluIn2[4:0];  // SRL/SRA
-         endcase
-      end 
-   end
-
-   /***************************************************************************/
-   // The predicate for conditional branches.
-   /***************************************************************************/
-
-   always @(posedge clk) begin
-      if(state[ADDR_AND_ALU_bit])
-	case(funct3)
-          3'b000: predicate <=  EQ;   // BEQ
-          3'b001: predicate <= !EQ;   // BNE
-          3'b100: predicate <=  LT;   // BLT
-          3'b101: predicate <= !LT;   // BGE
-          3'b110: predicate <=  LTU;  // BLTU
-          3'b111: predicate <= !LTU;  // BGEU
-          default: predicate <= 1'bx; // don't care...
-	endcase
-   end
+   ALU alu(
+     .clk(clk),
+     .wr(aluWr),
+     .isALU(isALU),	   
+     .in1(rs1Data),
+     .in2(isALUreg | isBranch ? rs2Data : Iimm),
+     .out(aluOut),
+     .predicate(predicate),
+     .busy(aluBusy),
+     .funct3(funct3),
+     .add_sub(instr[30] & instr[5]), // instr[30] is 1 for SUB and 0 for ADD, need to test also instr[5] because ADDI imm uses bit 30 !
+     .srl_sra(instr[30]),	   
+   );
 
    /***************************************************************************/
    // Program counter and address computation.
@@ -324,7 +357,7 @@ module FemtoRV32(
    assign mem_wmask = {4{state[STORE_bit]}} & STORE_wmask; 
 
    // aluWr starts computation in the ALU.
-   assign aluWr = state[ADDR_AND_ALU_bit] & isALU;
+   assign aluWr = state[ADDR_AND_ALU_bit];  // & isALU;
 
    wire jumpOrTakeBranch = isJAL | isJALR | (isBranch & predicate);
 
