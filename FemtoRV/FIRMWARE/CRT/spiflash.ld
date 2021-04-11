@@ -9,8 +9,8 @@
 
 MEMORY {
     FLASH (rx)  : ORIGIN = 0x00820000, LENGTH = 0x100000    /* 4 MB in flash */
-/*    RAM   (rwx) : ORIGIN = 0x00000000, LENGTH = 0x1800  */    /* 6 kB in RAM   */
-      RAM   (rwx) : ORIGIN = 0x00000000, LENGTH = 0x10000     /* 64 kB in RAM   */
+    RAM   (rwx) : ORIGIN = 0x00000000, LENGTH = 0x1800      /* 6 kB in RAM   */
+/*    RAM   (rwx) : ORIGIN = 0x00000000, LENGTH = 0x10000 */   /* 64 kB in RAM   */
 }
 
 SECTIONS {

@@ -20,6 +20,10 @@
  `include "PROCESSOR/femtorv32_fast_quark.v" // Minimalistic version of the processor for IceStick
 `endif
 
+`ifdef NRV_FEMTORV32_ELECTRON
+ `include "PROCESSOR/femtorv32_electron.v" // run from spi flash, barrel shifter
+`endif
+
 `ifndef NRV_FEMTORV32_DEFINED
  `include "PROCESSOR/femtorv32_generic.v" // Generic version of the processor
 `endif
