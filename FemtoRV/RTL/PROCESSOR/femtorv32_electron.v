@@ -32,19 +32,19 @@
 module ALU(
   input 	clk,   
   input 	wr,        // write strobe to start ALU and predicate computation
-  input 	isALU,     // asserted is current instr is ALUimm or ALUreg
+  input 	isALU,     // asserted is current instr is ALUimm or ALUreg or RV32M
   input [31:0] 	in1,       // \
   input [31:0] 	in2,       //  > ALU input and output
   output [31:0] out,       // /
   output reg 	predicate, // test result for branch (available 1 clock after wr)
-  output 	busy,      // asserted if ALU is busy shifting
+  output 	busy,      // asserted if ALU is busy computing (RV32IM only)
   input [2:0] 	funct3,    // 3-bits code for ALU and tests (instr[14:12])
   input 	add_sub,   // 0 for add, 1 for sub
-  input 	srl_sra	   // 0 for logical right shift, 1 for arithmetic right shift
+  input 	srl_sra,   // 0 for logical right shift, 1 for arithmetic right shift
+  input         isRV32M	   // asserted if RV32M instr  (instr[25])
 );
    reg [31:0] A;    // The internal register of the ALU.
    assign out = A;
-   assign busy = 1'b0; // For now (then we'll add DIV/REM that will need wait cycles)
 
    wire [31:0] plus = in1 + in2; 
    
@@ -57,41 +57,108 @@ module ALU(
    wire LTU = minus[32];
    wire EQ  = (minus[31:0] == 0);
 
-   // Shifter (a right-shifter is used for left and right shifts.
-   // Its input/output is flipped for left shifts).
+   // The shifter
+   // A right-shifter is used for left and right shifts.
+   // Its input/output is flipped for left shifts.
+   
    function [31:0] flip;
       input [31:0] x;
       flip = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7],
               x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15],
               x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
               x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]} ;
-   endfunction;  
+   endfunction; 
+   
    wire [31:0] shifter_in = funct3[2] ? in1 : flip(in1);
    /* verilator lint_off WIDTH */
    wire [31:0] shifter   = $signed({srl_sra & in1[31], shifter_in}) >>> in2[4:0];
    /* verilator lint_on WIDTH */
    wire [31:0] leftshift = flip(shifter);
+
+   // RV32M MUL, MULH, MULHSU, MULHU
+   // Using a 33x33 bits signed multiply for all signed/unsigned
+   // configurations. Yosys synthethizes a DSP block. For FPGAs that
+   // do not have DSP blocks, one can use an interative algorithm instead.
+
+   wire isMUL    = (funct3 == 3'b000);
+   wire isMULH   = (funct3 == 3'b001);
+// wire isMULHSU = (funct3 == 3'b010);
+   wire isMULHU  = (funct3 == 3'b011);   
+
+   wire sign1 = in1[31] & !isMULHU;
+   wire sign2 = in2[31] & (isMUL|isMULH);
+   wire signed [32:0] signed1 = {sign1, in1};
+   wire signed [32:0] signed2 = {sign2, in2};
+   wire signed [63:0] multiply = signed1 * signed2;
+
+   // RV32M DIV/REM instructions, highly inspired by PICORV32
+   reg [31:0] 	      dividend;
+   reg [62:0] 	      divisor;
+   reg [31:0] 	      quotient;
+   reg [31:0] 	      quotient_msk;
+   reg 		      outsign;
+
+   wire divstep_do = (divisor <= {31'b0, dividend});
+
+   wire [31:0] dividendN     = divstep_do ? dividend - divisor[31:0] : dividend;
+   wire [31:0] quotientN     = divstep_do ? quotient | quotient_msk : quotient;
+   wire [62:0] divisorN      = divisor >> 1;
+   wire [31:0] quotient_mskN = quotient_msk >> 1;
+
+   wire [31:0] minusIn1    = -in1;
+   wire [31:0] minusIn2    = -in2;
+   wire [31:0] minusquotientN = -dividendN;
+   wire [31:0] minusdividendN = -quotientN;
+   
+   assign busy = |quotient_msk; 
    
    always @(posedge clk) begin
       if(wr && isALU) begin
-         case(funct3) 
-            3'b000: A <= add_sub ? minus[31:0] : plus;                   // ADD/SUB
-            3'b010: A <= {31'b0, LT} ;                                   // SLT
-            3'b011: A <= {31'b0, LTU};                                   // SLTU
-            3'b100: A <= in1 ^ in2;                                      // XOR
-            3'b110: A <= in1 | in2;                                      // OR
-            3'b111: A <= in1 & in2;                                      // AND
-
-            3'b001: A <= leftshift;                                      // SLL
-	    3'b101: A <= shifter;                                        // SRL/SRA
-
-	   
-	   /*
-            3'b001: A <= in1 << in2[4:0];                                // SLL
-	    3'b101: A <= $signed({srl_sra & in1[31], in1}) >>> in2[4:0]; // SRL/SRA
-	   */ 
-         endcase
+	 if(isRV32M) begin
+	    case(funct3)
+	      3'b000:                  A <= multiply[31:0];  // MUL
+	      3'b001, 3'b010, 3'b011 : A <= multiply[63:32]; // MULH, MULHSU, MULHU
+              3'b100, 3'b110: begin // DIV, REM
+		 dividend <=          in1[31] ? minusIn1 : in1;
+		 divisor  <= {31'b0, (in2[31] ? minusIn2 : in2)} << 31;
+		 quotient <= 0;
+		 quotient_msk <= 1 << 31;
+              end
+              3'b101, 3'b111: begin // DIVU, REMU
+		 dividend <= in1;
+		 divisor  <= {31'b0, in2} << 31;
+		 quotient <= 0;
+		 quotient_msk <= 1 << 31;
+              end
+	    endcase	    
+	 end else begin
+	    case(funct3) 
+              3'b000: A <= add_sub ? minus[31:0] : plus; // ADD/SUB
+              3'b010: A <= {31'b0, LT} ;                 // SLT
+              3'b011: A <= {31'b0, LTU};                 // SLTU
+              3'b100: A <= in1 ^ in2;                    // XOR
+              3'b110: A <= in1 | in2;                    // OR
+              3'b111: A <= in1 & in2;                    // AND
+              3'b001: A <= leftshift;                    // SLL
+	      3'b101: A <= shifter;                      // SRL/SRA
+            endcase 
+	 end
       end 
+
+      if(!wr && |quotient_msk) begin
+         dividend <= dividendN;
+         divisor  <= divisorN;
+         quotient <= quotientN;
+         quotient_msk <= quotient_mskN;
+	 if(quotient_msk[0]) begin
+            case(funct3[1:0])
+              2'b00: A <= (in1[31] != in2[31]) & |in2 ? minusquotientN : quotientN;   // DIV
+              2'b10: A <=  in1[31]                    ? minusdividendN : dividendN;   // REM
+              2'b01: A <=                                                quotientN;   // DIVU
+              2'b11: A <=                                                dividendN;   // REMU
+            endcase 
+	 end
+      end
    end
 
    always @(posedge clk) begin
@@ -103,7 +170,7 @@ module ALU(
            3'b101:  predicate <= !LT;  // BGE
            3'b110:  predicate <=  LTU; // BLTU
            3'b111:  predicate <= !LTU; // BGEU
-           default: predicate <= 1'bx; // don't care...
+           default: begin end
 	 endcase
       end 
    end 
@@ -214,7 +281,8 @@ module FemtoRV32(
    ALU alu(
      .clk(clk),
      .wr(aluWr),
-     .isALU(isALU),	   
+     .isALU(isALU),	
+     .isRV32M(instr[5] && instr[25]), // instr[5] for isALUreg and instr[25] for RV32M
      .in1(rs1Data),
      .in2(isALUreg | isBranch ? rs2Data : Iimm),
      .out(aluOut),

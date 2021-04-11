@@ -25,9 +25,8 @@
 
 /************************* Processor configuration ******************************************************************/
 
-//`define NRV_FEMTORV32_FAST_QUARK // Use the "fast quark" version (minimalist, and can run code from SPI flash)
+`define NRV_RV32M
 `define NRV_FEMTORV32_ELECTRON
-`define NRV_TWOLEVEL_SHIFTER
 `define NRV_COUNTER_WIDTH  24
 
 /************************* Advanced processor configuration *********************************************************/
