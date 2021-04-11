@@ -19,10 +19,6 @@
 // If NRV_TWOLEVEL_SHIFTER is defined, shifts are much faster (without it
 //  they can take up to 32 cycles !). But it eats up some LUTs (no free lunch)
 //
-// If NRV_LATCH_RECOGNIZERS is defined, then signals that recognize
-//   instructions are latched (may increase maxfreq / decrease LUT
-//   count but depends on yosys version).
-//
 // Bruno Levy, May-June 2020
 // Matthias Koch, March 2021
 /****************************************************************************/
@@ -34,6 +30,93 @@
 // Tests whether a given address is in mapped devices space. If asserted,
 // reading/writing needs to wait for mem_rbusy/mem_wbusy to go low.
 `define NRV_IS_IO_ADDR(addr) |addr[23:22]
+
+
+module ALU(
+  input 	clk,
+  input 	wrALU,
+  input 	wrPred,
+  input [31:0] 	in1,
+  input [31:0] 	in2,
+  output [31:0] out,
+  output reg 	predicate,
+  output 	busy,
+  input [2:0] 	funct3,
+  input 	add_sub,
+  input 	srl_sra	   
+);
+   reg [31:0] A;    // The internal register of the ALU.
+   reg [4:0] shamt; // Current shift amount.
+   assign out = A;
+   assign busy = |shamt;
+
+   wire [31:0] plus = in1 + in2; 
+   
+   // Use a single 33 bits subtract to do subtraction and all comparisons
+   // (trick borrowed from swapforth/J1)
+   wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
+
+   // Predicates
+   wire LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
+   wire LTU = minus[32];
+   wire EQ  = (minus[31:0] == 0);
+
+   always @(posedge clk) begin
+      if(wrALU) begin
+         case(funct3) 
+            3'b000: A <= add_sub ? minus[31:0] : plus;             // ADD/SUB
+            3'b010: A <= {31'b0, LT} ;                             // SLT
+            3'b011: A <= {31'b0, LTU};                             // SLTU
+            3'b100: A <= in1 ^ in2;                                // XOR
+            3'b110: A <= in1 | in2;                                // OR
+            3'b111: A <= in1 & in2;                                // AND
+            3'b001, 3'b101: begin A <= in1; shamt <= in2[4:0]; end // SLL, SRA, SRL
+         endcase
+      end else begin
+	 // Shift (multi-cycle)
+`ifdef NRV_TWOLEVEL_SHIFTER	 
+	 if(|shamt[3:2]) begin
+            shamt <= shamt - 4;
+	    // Compact form of:
+	    //   funct3=101 &  instr[30] -> SRA  (A <= {{4{A[31]}}, A[31:4]})
+	    //   funct3=101 & !instr[30] -> SRL  (A <= { 4'b0000,        A[31:4]})		      
+            //   funct3=001              -> SLL  (A <= A << 4)
+	    A <= funct3[2] ? {{4{srl_sra & A[31]}}, A[31:4]} : A << 4 ;	    
+	 end else
+`endif 	   
+         if (|shamt) begin
+            shamt <= shamt - 1;
+	    // Compact form of:
+	    //   funct3=101 &  srl_sra -> SRA  (A <= {A[31], A[31:1]})
+	    //   funct3=101 & !srl_sra -> SRL  (A <= {1'b0,       A[31:1]})		      
+            //   funct3=001            -> SLL  (A <= A << 1)
+	    A <= funct3[2] ? {srl_sra & A[31], A[31:1]} : A << 1 ;
+         end
+      end
+   end
+
+   /***************************************************************************/
+   // The predicate for conditional branches.
+   /***************************************************************************/
+
+   always @(posedge clk) begin
+      if(wrPred) begin
+	 case(funct3)
+           3'b000:  predicate <=  EQ;  // BEQ
+           3'b001:  predicate <= !EQ;  // BNE
+           3'b100:  predicate <=  LT;  // BLT
+           3'b101:  predicate <= !LT;  // BGE
+           3'b110:  predicate <=  LTU; // BLTU
+           3'b111:  predicate <= !LTU; // BGEU
+           default: predicate <= 1'bx; // don't care...
+	 endcase
+      end 
+   end 
+   
+endmodule
+
+/***********************************************************************/
+
 
 module FemtoRV32(
    input clk,
@@ -129,88 +212,25 @@ module FemtoRV32(
    // The ALU.
    /***************************************************************************/
 
-   // Operands are given in aluIn1 and aluIn2. They are written when aluWr is set.
-   // Result is available in aluOut from next cycle as soon as aluBusy is zero.
-   // Other signals (combinatorially wired):
-   //   aluPlus (aluIn1 + aluIn2) 
-   //   EQ      (aluIn1 == aluIn2) 
-   //   LT      (signed aluIn1 < signed aluIn2)
-   //   LTU     (unsigned aluIn1 < unsigned aluIn2)
+
+   wire aluWr;
+   wire [31:0] aluOut;
+   wire        predicate;
+   wire        aluBusy;
    
-   // ALU inputs and outputs.
-   wire [31:0] aluIn1 = rs1Data;
-   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : Iimm;
-   wire [31:0] aluOut = aluReg; // The output of the ALU (wired to the ALU register)
-   reg predicate;
-   
-   reg [31:0] aluReg;           // The internal register of the ALU, used by shift.
-   reg [4:0]  aluShamt;         // Current shift amount.
-
-   wire aluBusy = |aluShamt;   // ALU is busy if shift amount is non-zero.
-   wire aluWr;                 // ALU write strobe, starts computation.
-
-   wire [31:0] aluPlus = aluIn1 + aluIn2; // The adder of the ALU
-   // Use a single 33 bits subtract to do subtraction and all comparisons
-   // (trick borrowed from swapforth/J1)
-   wire [32:0] aluMinus = {1'b1, ~aluIn2} + {1'b0,aluIn1} + 33'b1;
-   wire        LT  = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : aluMinus[32];
-   wire        LTU = aluMinus[32];
-   wire        EQ  = (aluMinus[31:0] == 0);
-
-   // Notes: 
-   // - instr[30] is 1 for SUB and 0 for ADD 
-   // - for SUB, need to test also instr[5] (1 for ADD/SUB, 0 for ADDI, because ADDI imm uses bit 30 !)
-   // - instr[30] is 1 for SRA (do sign extension) and 0 for SRL
-   always @(posedge clk) begin
-      if(aluWr) begin
-         case(funct3) 
-            3'b000: aluReg <= instr[30] & instr[5] ? aluMinus[31:0] : aluPlus;   // ADD/SUB
-            3'b010: aluReg <= {31'b0, LT} ;                                      // SLT
-            3'b011: aluReg <= {31'b0, LTU};                                      // SLTU
-            3'b100: aluReg <= aluIn1 ^ aluIn2;                                   // XOR
-            3'b110: aluReg <= aluIn1 | aluIn2;                                   // OR
-            3'b111: aluReg <= aluIn1 & aluIn2;                                   // AND
-            3'b001, 3'b101: begin aluReg <= aluIn1; aluShamt <= aluIn2[4:0]; end // SLL, SRA, SRL
-         endcase
-      end else begin
-	 // Shift (multi-cycle)
-`ifdef NRV_TWOLEVEL_SHIFTER	 
-	 if(|aluShamt[3:2]) begin
-            aluShamt <= aluShamt - 4;
-	    // Compact form of:
-	    //   funct3=101 &  instr[30] -> SRA  (aluReg <= {{4{aluReg[31]}}, aluReg[31:4]})
-	    //   funct3=101 & !instr[30] -> SRL  (aluReg <= { 4'b0000,        aluReg[31:4]})		      
-            //   funct3=001              -> SLL  (aluReg <= aluReg << 4)
-	    aluReg <= funct3[2] ? {{4{instr[30] & aluReg[31]}}, aluReg[31:4]} : aluReg << 4 ;	    
-	 end else
-`endif 	   
-         if (|aluShamt) begin
-            aluShamt <= aluShamt - 1;
-	    // Compact form of:
-	    //   funct3=101 &  instr[30] -> SRA  (aluReg <= {aluReg[31], aluReg[31:1]})
-	    //   funct3=101 & !instr[30] -> SRL  (aluReg <= {1'b0,       aluReg[31:1]})		      
-            //   funct3=001              -> SLL  (aluReg <= aluReg << 1)
-	    aluReg <= funct3[2] ? {instr[30] & aluReg[31], aluReg[31:1]} : aluReg << 1 ;
-         end
-      end
-   end
-
-   /***************************************************************************/
-   // The predicate for conditional branches.
-   /***************************************************************************/
-
-   always @(posedge clk) begin
-      if(state[ADDR_AND_ALU_bit])
-	case(funct3)
-          3'b000: predicate <=  EQ;   // BEQ
-          3'b001: predicate <= !EQ;   // BNE
-          3'b100: predicate <=  LT;   // BLT
-          3'b101: predicate <= !LT;   // BGE
-          3'b110: predicate <=  LTU;  // BLTU
-          3'b111: predicate <= !LTU;  // BGEU
-          default: predicate <= 1'bx; // don't care...
-	endcase
-   end
+   ALU alu(
+     .clk(clk),
+     .wrALU(aluWr),
+     .wrPred(state[ADDR_AND_ALU_bit]),	   
+     .in1(rs1Data),
+     .in2(isALUreg | isBranch ? rs2Data : Iimm),
+     .out(aluOut),
+     .predicate(predicate),
+     .busy(aluBusy),
+     .funct3(funct3),
+     .add_sub(instr[30] & instr[5]), // instr[30] is 1 for SUB and 0 for ADD, need to test also instr[5] because ADDI imm uses bit 30 !
+     .srl_sra(instr[30]),	   
+   );
 
    /***************************************************************************/
    // Program counter and address computation.
