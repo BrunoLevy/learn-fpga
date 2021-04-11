@@ -10,7 +10,7 @@
  * (much faster) RAM (but use it wisely, you only got 7kB).
  * Other devices are sufficient RAM to load all the code.
  */
-#ifdef ICE_STICK
+#if defined(ICE_STICK) || defined(ICE_BREAKER)
 #define RV32_FASTCODE __attribute((section(".fastcode")))
 #else
 #define RV32_FASTCODE

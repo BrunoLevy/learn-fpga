@@ -70,6 +70,9 @@ module FemtoRV32(
    wire [4:0] rd  = instr[11:7];
    wire [4:0] rs1 = instr[19:15];
    wire [4:0] rs2 = instr[24:20];
+
+   wire [4:0] rs1_ = mem_rdata[19:15];
+   wire [4:0] rs2_ = mem_rdata[24:20];
    
    // The ALU function
    wire [2:0] funct3 = instr[14:12];
@@ -117,11 +120,9 @@ module FemtoRV32(
    reg [31:0] registerFile [31:0];
 
    always @(posedge clk) begin
-     rs1Data <= registerFile[rs1];
-     rs2Data <= registerFile[rs2];
-     if (writeBack)
-       if (rd != 0)
+     if (writeBack && rd != 0) begin
          registerFile[rd] <= writeBackData;
+     end
    end
 
    /***************************************************************************/
@@ -136,10 +137,12 @@ module FemtoRV32(
    //   LT      (signed aluIn1 < signed aluIn2)
    //   LTU     (unsigned aluIn1 < unsigned aluIn2)
    
-   // ALU sources
+   // ALU inputs and outputs.
    wire [31:0] aluIn1 = rs1Data;
    wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : Iimm;
    wire [31:0] aluOut = aluReg; // The output of the ALU (wired to the ALU register)
+   reg predicate;
+   
    reg [31:0] aluReg;           // The internal register of the ALU, used by shift.
    reg [4:0]  aluShamt;         // Current shift amount.
 
@@ -196,17 +199,17 @@ module FemtoRV32(
    // The predicate for conditional branches.
    /***************************************************************************/
 
-   reg predicate; 
    always @(posedge clk) begin
-      case(funct3)
-        3'b000: predicate <=  EQ;   // BEQ
-        3'b001: predicate <= !EQ;   // BNE
-        3'b100: predicate <=  LT;   // BLT
-        3'b101: predicate <= !LT;   // BGE
-        3'b110: predicate <=  LTU;  // BLTU
-        3'b111: predicate <= !LTU;  // BGEU
-        default: predicate <= 1'bx; // don't care...
-      endcase
+      if(state[ADDR_AND_ALU_bit])
+	case(funct3)
+          3'b000: predicate <=  EQ;   // BEQ
+          3'b001: predicate <= !EQ;   // BNE
+          3'b100: predicate <=  LT;   // BLT
+          3'b101: predicate <= !LT;   // BGE
+          3'b110: predicate <=  LTU;  // BLTU
+          3'b111: predicate <= !LTU;  // BGEU
+          default: predicate <= 1'bx; // don't care...
+	endcase
    end
 
    /***************************************************************************/
@@ -228,7 +231,10 @@ module FemtoRV32(
 			                           Iimm[ADDR_WIDTH-1:0] ; // LOAD and JALR
    
    reg [ADDR_WIDTH-1:0]  addrAdderOut;
-   always @(posedge clk) addrAdderOut <= addrAdderIn1 + addrAdderIn2;
+   always @(posedge clk) begin
+      if(state[ADDR_AND_ALU_bit])
+	addrAdderOut <= addrAdderIn1 + addrAdderIn2;
+   end
    
    /***************************************************************************/
    // Cycle counter
@@ -387,6 +393,8 @@ module FemtoRV32(
            if(!mem_rbusy) begin // rbusy may be high when executing from SPI flash
               instr <= mem_rdata[31:2]; // Note that bits 0 and 1 are ignored (see
               state <= FETCH_REGS;      //          also the declaration of instr).
+	      rs1Data <= registerFile[rs1_];
+	      rs2Data <= registerFile[rs2_];
            end
         end
 
