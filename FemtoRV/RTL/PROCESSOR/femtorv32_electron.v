@@ -78,7 +78,8 @@ module ALU(
    // RV32M MUL, MULH, MULHSU, MULHU
    // Using a 33x33 bits signed multiply for all signed/unsigned
    // configurations. Yosys synthethizes a DSP block. For FPGAs that
-   // do not have DSP blocks, one can use an interative algorithm instead.
+   // do not have DSP blocks, one can use an interative algorithm 
+   // instead (left as an excercise...).
 
    wire isMUL    = (funct3 == 3'b000);
    wire isMULH   = (funct3 == 3'b001);
@@ -92,46 +93,49 @@ module ALU(
    wire signed [63:0] multiply = signed1 * signed2;
 
    // RV32M DIV/REM instructions, highly inspired by PICORV32
-   reg [31:0] 	      dividend;
-   reg [62:0] 	      divisor;
-   reg [31:0] 	      quotient;
-   reg [31:0] 	      quotient_msk;
-   reg 		      outsign;
-
-   wire divstep_do = (divisor <= {31'b0, dividend});
-
-   wire [31:0] dividendN     = divstep_do ? dividend - divisor[31:0] : dividend;
-   wire [31:0] quotientN     = divstep_do ? quotient | quotient_msk : quotient;
-   wire [62:0] divisorN      = divisor >> 1;
-   wire [31:0] quotient_mskN = quotient_msk >> 1;
-
-   wire [31:0] minusIn1    = -in1;
-   wire [31:0] minusIn2    = -in2;
-   wire [31:0] minusquotientN = -dividendN;
-   wire [31:0] minusdividendN = -quotientN;
+   reg 	      div_sign;
+   reg 	      div_busy;
+   reg [31:0] dividend;
+   reg [62:0] divisor;
+   reg [31:0] quotient;
+   reg [31:0] quotient_msk;
+   reg 	      div_finished;
    
-   assign busy = |quotient_msk; 
+   assign busy = div_busy;
    
    always @(posedge clk) begin
       if(wr && isALU) begin
 	 if(isRV32M) begin
+	    div_busy <= funct3[2]; // funct3[2] is 1 for DIV,REM,DIVU,REMU
 	    case(funct3)
-	      3'b000:                  A <= multiply[31:0];  // MUL
-	      3'b001, 3'b010, 3'b011 : A <= multiply[63:32]; // MULH, MULHSU, MULHU
-              3'b100, 3'b110: begin // DIV, REM
-		 dividend <=          in1[31] ? minusIn1 : in1;
-		 divisor  <= {31'b0, (in2[31] ? minusIn2 : in2)} << 31;
+	      // MUL (1 cycle, using DSP)
+	      3'b000: A <= multiply[31:0];
+
+	      // MULH, MULHSU, MULHU (1 cycle, using DSP)
+	      3'b001, 3'b010, 3'b011 : A <= multiply[63:32];
+
+	      // DIV, REM (initialize iterative algorithm)
+              3'b100, 3'b110: begin
+		 // compute |in1|/|in2|, reinject sign after
+		 dividend <=          in1[31] ? -in1 : in1;
+		 divisor  <= {31'b0, (in2[31] ? -in2 : in2)} << 31;
 		 quotient <= 0;
 		 quotient_msk <= 1 << 31;
+		 div_sign <= funct3[1] ? in1[31]                      // REM
+			               : (in1[31] != in2[31]) & |in2; // DIV
               end
-              3'b101, 3'b111: begin // DIVU, REMU
+
+	      // DIVU, REMU (initialize iterative algorithm)
+              3'b101, 3'b111: begin 
 		 dividend <= in1;
 		 divisor  <= {31'b0, in2} << 31;
 		 quotient <= 0;
 		 quotient_msk <= 1 << 31;
+		 div_sign <= 1'b0;
               end
 	    endcase	    
-	 end else begin
+	 end else begin 
+	    // RV32I functions (1 cycle)
 	    case(funct3) 
               3'b000: A <= add_sub ? minus[31:0] : plus; // ADD/SUB
               3'b010: A <= {31'b0, LT} ;                 // SLT
@@ -145,18 +149,24 @@ module ALU(
 	 end
       end 
 
-      if(!wr && |quotient_msk) begin
-         dividend <= dividendN;
-         divisor  <= divisorN;
-         quotient <= quotientN;
-         quotient_msk <= quotient_mskN;
-	 if(quotient_msk[0]) begin
-            case(funct3[1:0])
-              2'b00: A <= (in1[31] != in2[31]) & |in2 ? minusquotientN : quotientN;   // DIV
-              2'b10: A <=  in1[31]                    ? minusdividendN : dividendN;   // REM
-              2'b01: A <=                                                quotientN;   // DIVU
-              2'b11: A <=                                                dividendN;   // REMU
-            endcase 
+      // DIV, REM, DIVU, REMU (iterative algorithm)
+      if(div_busy) begin
+         divisor <= divisor >> 1;
+         {quotient_msk, div_finished} <= {quotient_msk, div_finished} >> 1;
+	 if((divisor <= {31'b0, dividend})) begin
+	    quotient <= quotient | quotient_msk;
+	    dividend <= dividend - divisor[31:0];
+	 end
+	 // 1 additional cycle to write-back result to A and reinject sign (DIV/REM)
+	 if(div_finished) begin
+	    div_finished <= 1'b0;
+	    div_busy <= 1'b0;
+	    case({funct3[1],div_sign}) // funct3[1]: 0->DIV 1->REM
+	      2'b00: A <=  quotient;
+	      2'b01: A <= -quotient;
+	      2'b10: A <=  dividend;
+	      2'b11: A <= -dividend;
+	    endcase
 	 end
       end
    end
