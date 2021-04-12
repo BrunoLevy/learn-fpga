@@ -50,7 +50,7 @@ SECTIONS {
 
         /* Put soft floating-point and math functions in fast ram */
 	/* (we got enough RAM to do that on the UP5K)             */
-        */libgcc.a:*.o(.text)
+        */libgcc.a:*.o(.text) 
         */libm.a:*.o(.text)	
 
         /* low-level graphics functions */

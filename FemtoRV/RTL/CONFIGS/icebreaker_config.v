@@ -11,7 +11,7 @@
 
 /************************* Frequency ********************************************************************************/
 
-`define NRV_FREQ 40      // Frequency in MHz. Recomm: 20 MHz   Overclocking: 40 MHz
+`define NRV_FREQ 35      // Frequency in MHz. Recomm: 20 MHz   Overclocking: 35 MHz
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
@@ -25,9 +25,9 @@
 
 /************************* Processor configuration ******************************************************************/
 
-`define NRV_RV32M
 `define NRV_FEMTORV32_ELECTRON
 `define NRV_COUNTER_WIDTH  24
+`define NRV_RV32M // Tell the build system that we support RV32M
 
 /************************* Advanced processor configuration *********************************************************/
 
