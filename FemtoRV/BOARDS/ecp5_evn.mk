@@ -20,5 +20,5 @@ ECP5_EVN.prog_flash:
 	ujprog -j flash $(PROJECTNAME).bit           
 
 ECP5_EVN.firmware_config:
-	TOOLS/make_config.sh -DECP5_EVN
+	BOARD=ecp5_evn TOOLS/make_config.sh -DECP5_EVN
 	(cd FIRMWARE; make libs)

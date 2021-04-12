@@ -21,5 +21,5 @@ ICEFEATHER.prog:
 	iceprog $(PROJECTNAME).bin
 
 ICEFEATHER.firmware_config:
-	TOOLS/make_config.sh -DICE_FEATHER
+	BOARD=icefeather TOOLS/make_config.sh -DICE_FEATHER
 	(cd FIRMWARE; make libs)

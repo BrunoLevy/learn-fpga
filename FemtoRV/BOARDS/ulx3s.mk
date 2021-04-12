@@ -26,7 +26,7 @@ ULX3S.prog: # program permanently
 	ujprog -j FLASH $(PROJECTNAME).bit  
 
 ULX3S.firmware_config:
-	TOOLS/make_config.sh -DULX3S
+	BOARD=ulx3s TOOLS/make_config.sh -DULX3S
 	(cd FIRMWARE; make libs)	
 	(cd FIRMWARE/FEMTOS; make clean commander.hex)
 	

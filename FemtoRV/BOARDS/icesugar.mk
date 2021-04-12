@@ -21,5 +21,5 @@ ICESUGAR.prog:
 	icesprog $(PROJECTNAME).bin
 
 ICESUGAR.firmware_config:
-	TOOLS/make_config.sh -DICE_SUGAR
+	BOARD=icesugar TOOLS/make_config.sh -DICE_SUGAR
 	(cd FIRMWARE; make libs)

@@ -21,7 +21,7 @@ ICESTICK.prog:
 	iceprog $(PROJECTNAME).bin
 
 ICESTICK.firmware_config:
-	TOOLS/make_config.sh -DICE_STICK
+	BOARD=icestick TOOLS/make_config.sh -DICE_STICK
 	(cd FIRMWARE; make libs)
 
 ICESTICK.lint:

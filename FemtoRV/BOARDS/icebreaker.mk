@@ -20,7 +20,7 @@ ICEBREAKER.prog:
 	iceprog $(PROJECTNAME).bin
 
 ICEBREAKER.firmware_config:
-	TOOLS/make_config.sh -DICE_BREAKER
+	BOARD=icebreaker TOOLS/make_config.sh -DICE_BREAKER
 	(cd FIRMWARE; make libs)
 
 ICEBREAKER.lint:

@@ -23,6 +23,6 @@ FOMU.prog:
 	dfu-util -D $(PROJECTNAME).dfu
 
 FOMU.firmware_config:
-	TOOLS/make_config.sh -DFOMU
+	BOARD=fomu TOOLS/make_config.sh -DFOMU
 	(cd FIRMWARE; make libs)
 #######################################################################################################################
