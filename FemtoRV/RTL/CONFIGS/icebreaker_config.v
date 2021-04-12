@@ -11,7 +11,7 @@
 
 /************************* Frequency ********************************************************************************/
 
-`define NRV_FREQ 35      // Frequency in MHz. Recomm: 20 MHz   Overclocking: 35 MHz
+`define NRV_FREQ 40      // Frequency in MHz. Recomm: 20 MHz   Overclocking: 35 MHz
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 

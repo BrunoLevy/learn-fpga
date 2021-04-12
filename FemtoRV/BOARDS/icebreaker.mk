@@ -1,4 +1,4 @@
-YOSYS_ICEBREAKER_OPT=-DICE_BREAKER -q -p "synth_ice40 -dsp -top $(PROJECTNAME) -json $(PROJECTNAME).json"
+YOSYS_ICEBREAKER_OPT=-DICE_BREAKER -q -p "synth_ice40 -abc9 -device u -dsp -top $(PROJECTNAME) -json $(PROJECTNAME).json"
 NEXTPNR_ICEBREAKER_OPT=--force --json $(PROJECTNAME).json --pcf BOARDS/icebreaker.pcf --asc $(PROJECTNAME).asc \
                      --freq 12 --up5k --package sg48 --opt-timing
 
