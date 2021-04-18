@@ -7,8 +7,8 @@ void show_config() {
   if(mode) {
     printf("[Processor]\n");
     printf(" Femtorv32 core\n");
-    printf(" freq:   %d MHz\n", FEMTORV32_FREQ);
-    printf("  CPL:   %d\n",     FEMTORV32_CPL);
+    printf(" freq:   %d MHz\n",   FEMTORV32_FREQ);
+    printf(" counter bits: %d\n", FEMTORV32_COUNTER_BITS);
     printf("  \n");
     printf("[RAM]\n");
     printf("  %d bytes\n", IO_IN(IO_HW_CONFIG_RAM));

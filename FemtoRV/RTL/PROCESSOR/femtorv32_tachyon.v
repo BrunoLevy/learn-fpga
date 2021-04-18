@@ -2,7 +2,8 @@
 // FemtoRV32-Tachyon, small and fast RISC-V RV32I core for the IceStick.
 //   Features: 
 //      a two-level shifter, a tick counters.
-//      maxfreq on the IceStick: validated:65 MHz  experimental:90 MHz
+//      maxfreq on the IceStick: validated:60 MHz  experimental:90 MHz
+//      latches all ALU ops and address computation (has two EXEC states)
 //
 // Parameters:
 //    RESET_ADDR initial value of PC (default = 0)
