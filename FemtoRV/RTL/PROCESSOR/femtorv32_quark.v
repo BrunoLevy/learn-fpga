@@ -18,6 +18,9 @@
 //    by the ticks counter. If not defined, a 32-bits counter is generated.
 //    (reducing its width may be useful for space-constrained designs).
 //
+//    NRV_TWOLEVEL_SHIFTER may be defined to make shift operations faster
+//    (uses a two-level shifter inspired by picorv32).
+//
 // Bruno Levy & Matthias Koch, 2020-2021
 /**************************************************************************/
 
