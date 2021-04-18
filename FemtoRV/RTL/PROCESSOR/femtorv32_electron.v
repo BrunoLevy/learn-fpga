@@ -290,9 +290,7 @@ module FemtoRV32(
    /***************************************************************************/
 
    wire [31:0] writeBackData  =
-      /* verilator lint_off WIDTH */	       	       
       (isSYSTEM            ? cycles               : 32'b0) |  // SYSTEM
-      /* verilator lint_on WIDTH */	       	       	       
       (isLUI               ? Uimm                 : 32'b0) |  // LUI
       (isALU               ? aluOut               : 32'b0) |  // ALU reg reg and ALU reg imm
       (isAUIPC             ? {ADDR_PAD,PCplusImm} : 32'b0) |  // AUIPC
@@ -480,11 +478,7 @@ module FemtoRV32(
    // Cycle counter
    /***************************************************************************/
 
-`ifdef NRV_COUNTER_WIDTH
-   reg [`NRV_COUNTER_WIDTH-1:0]  cycles;   
-`else   
    reg [31:0]  cycles;
-`endif   
    always @(posedge clk) cycles <= cycles + 1;
 
 endmodule

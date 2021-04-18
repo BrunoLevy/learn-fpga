@@ -14,6 +14,10 @@
 //    (additional wait states are used when in IO space).
 //    If left undefined, wait states are always used.
 //
+//    NRV_COUNTER_WIDTH may be defined to reduce the number of bits used
+//    by the ticks counter. If not defined, a 32-bits counter is generated.
+//    (reducing its width may be useful for space-constrained designs).
+//
 // Bruno Levy & Matthias Koch, 2020-2021
 /**************************************************************************/
 
