@@ -17,6 +17,15 @@
 `define NRV_COUNTER_WIDTH 24        // Number of bits in cycles counter
 `define NRV_TWOLEVEL_SHIFTER        // Faster shifts
 
+/*
+`define NRV_FEMTORV32_QUARK
+`define NRV_FREQ 65
+`define NRV_RESET_ADDR 32'h00820000 // Jump execution to SPI Flash (800000h, +128k(20000h) for FPGA bitstream)
+`define NRV_COUNTER_WIDTH 24        // Number of bits in cycles counter
+`define NRV_TWOLEVEL_SHIFTER        // Faster shifts
+// tinyraytracer: 18:50 
+*/
+
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
 `define NRV_RAM 6144 // default for ICESTICK (cannot do more !)

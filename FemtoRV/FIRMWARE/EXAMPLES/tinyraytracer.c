@@ -243,16 +243,22 @@ void set_pixel(int x, int y, float r, float g, float b) {
 }
 
 void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
+   uint32_t total_ticks = 0;
    const float fov  = M_PI/3.;
    for (int j = 0; j<GL_height; j++) { // actual rendering loop
       for (int i = 0; i<GL_width; i++) {
+	 uint64_t pixel_ticks = cycles();
 	 float dir_x =  (i + 0.5) - GL_width/2.;
 	 float dir_y = -(j + 0.5) + GL_height/2.;    // this flips the image at the same time
 	 float dir_z = -GL_height/(2.*tan(fov/2.));
 	 vec3 C = cast_ray(make_vec3(0,0,0), vec3_normalize(make_vec3(dir_x, dir_y, dir_z)), spheres, nb_spheres, lights, nb_lights, 0);
 	 set_pixel(i,j,C.x,C.y,C.z);
+	 pixel_ticks = cycles() - pixel_ticks;
+	 total_ticks += (uint32_t)pixel_ticks/1000;
       }
    }
+   total_ticks /= (FEMTORV32_FREQ * 1000);
+   printf("%d:%d\n", total_ticks / 60, total_ticks % 60);
 }
 
 int nb_spheres = 4;
@@ -279,8 +285,9 @@ void init_scene() {
 
 
 int main() {
-    init_scene(); 
+    init_scene();
     GL_init(GL_MODE_CHOOSE);
+    GL_tty_init(FGA_mode);
     if(FGA_mode == FGA_MODE_320x200x8bpp ) {
        for(int i=0; i<256; ++i) {
 	  FGA_setpalette(i,i,i,i);
