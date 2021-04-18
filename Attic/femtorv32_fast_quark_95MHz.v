@@ -322,6 +322,7 @@ module FemtoRV32(
    // And, last but not least, the state machine.
    /*************************************************************************/
 
+   (* onehot *)
    reg [7:0] state;
 
    // The eight states, using 1-hot encoding (see note [2] at the end of this file).

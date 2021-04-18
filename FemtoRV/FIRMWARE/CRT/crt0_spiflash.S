@@ -15,7 +15,8 @@ _start:
      lw   sp,0(t0)             # initialize SP at end of RAM
      li   t0,0                 # reset t0 to 0
 
-# zero-init bss section
+# zero-init bss section:
+# clears from _sbss to _ebss
 # _sbss and _ebss are defined by linker script (spi_flash.ld)
      la a0, _sbss
      la a1, _ebss
@@ -26,7 +27,8 @@ loop_init_bss:
      blt a0, a1, loop_init_bss
 end_init_bss:
 
-# copy data section from SPI Flash to BRAM
+# copy data section from SPI Flash to BRAM:
+# copies from _sidata (in flash) to _sdata ... _edata (in BRAM)
 # _sidata, _sdata and _edata are defined by linker script (spi_flash.ld)
      la a0, _sidata
      la a1, _sdata

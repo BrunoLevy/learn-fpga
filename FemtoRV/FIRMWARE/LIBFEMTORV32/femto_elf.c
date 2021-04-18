@@ -104,7 +104,7 @@ int elf32_parse(const char* filename, Elf32Info* info) {
   uint8_t* base_mem = (uint8_t*)(info->base_address);
   
   info->text_address = 0;
-  
+
   if(f == NULL) {
     return ELF32_FILE_NOT_FOUND;
   }

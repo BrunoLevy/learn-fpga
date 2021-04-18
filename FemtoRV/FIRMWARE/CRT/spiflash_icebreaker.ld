@@ -1,5 +1,5 @@
 /* Linker script for programs stored in SPI flash */
-/* Taken from picorv32/picosoc/sections.lds       */
+/* Inspired from picorv32/picosoc/sections.lds       */
 /*                                                */
 /* text and rodata sections are sent to flash     */
 /* bss sections are sent to BRAM                  */

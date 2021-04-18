@@ -1,7 +1,8 @@
 .include "femtorv32.inc"
 
-.ifndef ICE_STICK
-.ifndef ICE_BREAKER
+# This version for processors that have a 64-bits ticks counter.
+
+.ifdef CYCLES_64
 .global	cycles
 .type	cycles, @function
 
@@ -12,6 +13,6 @@ cycles:
 	bne t0, a1, cycles
 	ret
 .endif	
-.endif
+
 
 	

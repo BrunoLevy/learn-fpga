@@ -13,21 +13,12 @@
 `include "PROCESSOR/utils.v"
 
 `ifdef NRV_FEMTORV32_QUARK
- `include "PROCESSOR/femtorv32_quark.v" // Minimalistic version of the processor for IceStick
-`endif
-
-`ifdef NRV_FEMTORV32_FAST_QUARK
- `include "PROCESSOR/femtorv32_fast_quark.v" // Minimalistic version of the processor for IceStick
+ `include "PROCESSOR/femtorv32_quark.v" // Minimalistic version of the processor for IceStick (RV32I)
 `endif
 
 `ifdef NRV_FEMTORV32_ELECTRON
- `include "PROCESSOR/femtorv32_electron.v" // run from spi flash, barrel shifter
+ `include "PROCESSOR/femtorv32_electron.v" // RV32IM with barrel shifter
 `endif
-
-`ifndef NRV_FEMTORV32_DEFINED
- `include "PROCESSOR/femtorv32_generic.v" // Generic version of the processor
-`endif
-
 
 `include "PLL/femtopll.v"           // The PLL (generates clock at NRV_FREQ)
 
@@ -41,8 +32,20 @@
 `include "DEVICES/FGA.v"            // Femto Graphic Adapter
 `include "DEVICES/HardwareConfig.v" // Constant registers to query hardware config.
 
+// The Ice40UP5K has ample quantities (128 KB) of single-ported RAM that can be
+// used as system RAM (but cannot be inferred, uses a special block).
 `ifdef ICE40UP5K_SPRAM
 `include "DEVICES/ice40up5k_spram.v"
+`endif
+
+/*************************************************************************************/
+
+`ifndef NRV_RESET_ADDR
+ `define NRV_RESET_ADDR 0
+`endif
+
+`ifndef NRV_ADDR_WIDTH
+ `define NRV_ADDR_WIDTH 24
 `endif
 
 /*************************************************************************************/
@@ -524,33 +527,12 @@ end
 /****************************************************************/
 /* And last but not least, the processor                        */
    
-  wire error;
+  reg error=1'b0;
 
-`ifdef NRV_RV32M
-   parameter RV32M = 1;   
-`else
-   parameter RV32M = 0;      
-`endif
-   
-`ifdef NRV_TWOSTAGE_SHIFTER
-   parameter TWOSTAGE_SHIFTER = 1;
-`else
-   parameter TWOSTAGE_SHIFTER = 0;
-`endif   
-
-`ifdef NRV_LATCH_ALU
-   parameter LATCH_ALU = 1;
-`else
-   parameter LATCH_ALU = 0;
-`endif   
    
   FemtoRV32 #(
-     .ADDR_WIDTH(24)
-`ifndef NRV_FEMTORV32_QUARK
-     ,.RV32M(RV32M)
-     ,.TWOSTAGE_SHIFTER(TWOSTAGE_SHIFTER)
-     ,.LATCH_ALU(LATCH_ALU)
-`endif
+     .ADDR_WIDTH(`NRV_ADDR_WIDTH),
+     .RESET_ADDR(`NRV_RESET_ADDR)	      
   ) processor(
     .clk(clk),			
     .mem_addr(mem_address),
@@ -560,8 +542,7 @@ end
     .mem_rstrb(mem_rstrb),
     .mem_rbusy(mem_rbusy),
     .mem_wbusy(mem_wbusy),	      
-    .reset(reset), 
-    .error(error)
+    .reset(reset)
   );
 
 `ifdef NRV_IO_LEDS  

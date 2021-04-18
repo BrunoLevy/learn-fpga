@@ -9,20 +9,12 @@
 //
 // Reset address can be defined using NRV_RESET_ADDR (default is 0).
 //
-// If NRV_COUNTER_WIDTH is defined, it generates a cycles counter
-//   (use `define NRV_COUNTER_WIDTH 32 for a 32-bits counter)
-//   It can be read using the RDCYCLES instruction.
-//
 // The ADDR_WIDTH parameter lets you define the width of the internal
 //   address bus (and address computation logic). 
 //
 // Bruno Levy, May-June 2020
 // Matthias Koch, March 2021
 /****************************************************************************/
-
-`ifndef NRV_RESET_ADDR
- `define NRV_RESET_ADDR 32'b0
-`endif
 
 // Tests whether a given address is in mapped devices space. If asserted,
 // reading/writing needs to wait for mem_rbusy/mem_wbusy to go low.
@@ -150,7 +142,7 @@ module ALU(
       end 
 
       // DIV, REM, DIVU, REMU (iterative algorithm)
-      if(div_busy) begin
+      if(!wr && div_busy) begin
          divisor <= divisor >> 1;
          {quotient_msk, div_finished} <= {quotient_msk, div_finished} >> 1;
 	 if((divisor <= {31'b0, dividend})) begin
@@ -201,13 +193,11 @@ module FemtoRV32(
    input         mem_rbusy, // asserted if memory is busy reading value
    input         mem_wbusy, // asserted if memory is busy writing value
 
-   input         reset,     // set to 0 to reset the processor
-   output        error      // always 0 in this version (does not check for errors)
+   input         reset      // set to 0 to reset the processor
 );
 
-   parameter RESET_ADDR       = `NRV_RESET_ADDR; // the address that the processor jumps to on reset
-   parameter ADDR_WIDTH       = 24;              // ignored in this version
-   assign error = 1'b0;                          // this version does not check for invalid instr
+   parameter RESET_ADDR       = 0;  // the address that the processor jumps to on reset
+   parameter ADDR_WIDTH       = 24; // ignored in this version
 
    parameter ADDR_PAD= {(32-ADDR_WIDTH){1'b0}};  // 32-bits padding for addresses
    reg [ADDR_WIDTH-1:0] addr_reg;                // The internal register plugged to mem_addr
@@ -252,10 +242,7 @@ module FemtoRV32(
    wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
    wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
    wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
-
-`ifdef NRV_COUNTER_WIDTH
    wire isSYSTEM  =  (instr[6:2] == 5'b11100); // rd <- cycles
-`endif
 
    wire isALU = isALUimm | isALUreg;
    
@@ -300,7 +287,7 @@ module FemtoRV32(
      .busy(aluBusy),
      .funct3(funct3),
      .add_sub(instr[30] & instr[5]), // instr[30] is 1 for SUB and 0 for ADD, need to test also instr[5] because ADDI imm uses bit 30 !
-     .srl_sra(instr[30]),	   
+     .srl_sra(instr[30])
    );
 
    /***************************************************************************/
@@ -331,20 +318,14 @@ module FemtoRV32(
    // Cycle counter
    /***************************************************************************/
 
-`ifdef NRV_COUNTER_WIDTH	       
-   reg [`NRV_COUNTER_WIDTH-1:0]  cycles;     // Cycle counter
-`endif
+   reg [31:0]  cycles;     // Cycle counter
    
    /***************************************************************************/
    // The value written back to the register file.
    /***************************************************************************/
 
    wire [31:0] writeBackData  =
-`ifdef NRV_COUNTER_WIDTH
-      /* verilator lint_off WIDTH */	       
-      (isSYSTEM            ? cycles       : 32'b0) |  // SYSTEM
-      /* verilator lint_on WIDTH */	       	       
-`endif	       
+      (isSYSTEM            ? cycles                  : 32'b0) |  // SYSTEM
       (isLUI               ? Uimm                    : 32'b0) |  // LUI
       (isALU               ? aluOut                  : 32'b0) |  // ALU reg reg and ALU reg imm
       (isAUIPC             ? {ADDR_PAD,addrAdderOut} : 32'b0) |  // AUIPC
@@ -399,6 +380,7 @@ module FemtoRV32(
    // And, last but not least, the state machine.
    /*************************************************************************/
 
+   (* onehot *)
    reg [7:0] state;
 
    // The eight states, using 1-hot encoding (see note [2] at the end of this file).
@@ -533,14 +515,9 @@ module FemtoRV32(
    // Cycle counter
    /***************************************************************************/
    
-`ifdef NRV_COUNTER_WIDTH	       
    always @(posedge clk) cycles <= cycles + 1;
-`endif
    
 endmodule
-
-`define NRV_FEMTORV32_DEFINED // Used by femtosoc.v (we have a processor).
-`define NRV_FEMTORV32_QUARK   // Used by femtosoc.v (we use the "Quark").
 
 /*****************************************************************************/
 // Notes:

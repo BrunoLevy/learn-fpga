@@ -25,9 +25,8 @@
 
 /************************* Processor configuration ******************************************************************/
 
-`define NRV_FEMTORV32_ELECTRON
-`define NRV_COUNTER_WIDTH  24
-`define NRV_RV32M // Tell the build system that we support RV32M
+`define NRV_FEMTORV32_ELECTRON // RV32IM, barrel shifter
+`define NRV_RV32M              // Tell the build system that we support RV32M
 
 /************************* Advanced processor configuration *********************************************************/
 
