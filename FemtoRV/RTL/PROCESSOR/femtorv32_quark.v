@@ -275,7 +275,7 @@ module FemtoRV32(
    localparam LOAD_bit            = 3;
    localparam STORE_bit           = 4;   
    localparam WAIT_ALU_OR_MEM_bit = 5;
-   localparam MAX_STATE           = 5;
+   localparam NB_STATES           = 6;
 
    localparam FETCH_INSTR     = 1 << FETCH_INSTR_bit;
    localparam WAIT_INSTR      = 1 << WAIT_INSTR_bit;
@@ -285,7 +285,7 @@ module FemtoRV32(
    localparam STORE           = 1 << STORE_bit;
 
    (* onehot *)
-   reg [MAX_STATE:0] state;
+   reg [NB_STATES-1:0] state;
 
    // The signals (internal and external) that are determined
    // combinatorially from state and other signals.

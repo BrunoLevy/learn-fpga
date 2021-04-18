@@ -14,7 +14,7 @@
 
 /************************* Frequency ********************************************************************************/
 
-`define NRV_FREQ 85            // Frequency in MHz. Recomm: 50 MHz   Overclocking: 80-100 MHz (HX1K, ECP5)
+`define NRV_FREQ 85           // Frequency in MHz. Recomm: 50 MHz   Overclocking: 80-100 MHz (HX1K, ECP5)
 `define NRV_FEMTORV32_ELECTRON // RV32IM, barrel shifter
 `define NRV_RESET_ADDR 0       // The address the processor jumps to on reset 
 `define NRV_RV32M              // Tell the build system that we support RV32M
