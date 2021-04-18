@@ -136,7 +136,7 @@ module FemtoRV32(
       (funct3Equals[4]  ? aluIn1 ^ aluIn2                                 : 32'b0) | // XOR
       (funct3Equals[6]  ? aluIn1 | aluIn2                                 : 32'b0) | // OR
       (funct3Equals[7]  ? aluIn1 & aluIn2                                 : 32'b0) | // AND
-      (functIsShift    ? aluReg                                          : 32'b0) ; // SLL, SRA, SRL
+      (functIsShift     ? aluReg                                          : 32'b0) ; // SLL, SRA, SRL
 
    wire functIsShift = funct3Equals[1] | funct3Equals[5];
    wire srl_sra = instr[30]; // asserted if shift is arithmetic (then we do sign expansion)

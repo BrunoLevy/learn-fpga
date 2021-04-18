@@ -5,7 +5,8 @@
  * Tested with "Magic Lighting" remove controller for intelligent light bulb.
  *        and "Sharp LCDTV"
  * 
- * Select device in main() function at the end of this file.
+ * Select device by uncommenting IR_PROTOCOL_NEC or IR_PROTOCOL_SHARP at the
+ * beginning of this file.
  * 
  * References:
  * 

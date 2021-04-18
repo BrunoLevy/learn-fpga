@@ -161,7 +161,7 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 root: all
 
 clean:
-	rm -f *.o *.elf *.hex *.exe *~ *.a *.bin 
+	rm -f *.o *.elf *.hex *.exe *~ *.a *.bin *.list
 
 #Generating the conversion utility for hex files
 
