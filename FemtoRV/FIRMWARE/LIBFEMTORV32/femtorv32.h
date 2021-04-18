@@ -95,7 +95,7 @@ int sd_writesector(uint32_t sector, uint8_t* buffer, uint32_t sector_count); /* 
 
 #define FEMTOSOC_HAS_DEVICE(bit)  (IO_IN(IO_HW_CONFIG_DEVICES) & (1 << bit))
 #define FEMTORV32_FREQ           ((IO_IN(IO_HW_CONFIG_CPUINFO) >> 16) & 1023)
-#define FEMTORV32_CPL             (IO_IN(IO_HW_CONFIG_CPUINFO) >> 26)
+#define FEMTORV32_COUNTER_BITS    (IO_IN(IO_HW_CONFIG_CPUINFO) & 127)
 
 /* SSD1331/SSD1351 Oled display on 4-wire SPI bus */
 

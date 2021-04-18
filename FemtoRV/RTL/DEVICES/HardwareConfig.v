@@ -14,6 +14,13 @@ module HardwareConfig(
 
 `include "HardwareConfig_bits.v"   
 
+`ifdef NRV_COUNTER_WIDTH
+   localparam counter_width = `NRV_COUNTER_WIDTH;
+`else
+   localparam counter_width = 64;
+`endif   
+
+   
 // configured devices
 localparam NRV_DEVICES = 0
 `ifdef NRV_IO_LEDS
@@ -44,9 +51,9 @@ localparam NRV_DEVICES = 0
    | (1 << IO_FGA_CNTL_bit) | (1 << IO_FGA_DAT_bit)
 `endif			 
 ;
-
+   
    assign rdata = sel_memory  ? `NRV_RAM  :
 		  sel_devices ?  NRV_DEVICES :
-                  sel_cpuinfo ? (`NRV_FREQ << 16) : 32'b0;
+                  sel_cpuinfo ? (`NRV_FREQ << 16) | counter_width : 32'b0;
    
 endmodule

@@ -18,6 +18,10 @@
  `include "PROCESSOR/femtorv32_quark.v" // Minimalistic version of the processor for IceStick (RV32I)
 `endif
 
+`ifdef NRV_FEMTORV32_TACHYON
+ `include "PROCESSOR/femtorv32_tachyon.v" // Version for the IceStick with higher maxfreq (RV32I)
+`endif
+
 `ifdef NRV_FEMTORV32_ELECTRON
  `include "PROCESSOR/femtorv32_electron.v" // RV32IM with barrel shifter
 `endif
