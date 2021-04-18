@@ -344,24 +344,25 @@ module FemtoRV32(
    // And, last but not least, the state machine.
    /*************************************************************************/
 
-   (* onehot *)
-   reg [5:0] state;
-
-   // The seven states, using 1-hot encoding (see note [2] at the end of this file).
-
-   localparam FETCH_INSTR     = 6'b000001; // mem_addr was updated at previous cycle, instr is in flight
-   localparam WAIT_INSTR      = 6'b000010; // latch instr if available, else wait for it (if run from SPI)
-   localparam EXECUTE         = 6'b000100; // crossroads state
-   localparam LOAD            = 6'b001000; // mem_addr updated at previous cycle, data is in flight
-   localparam WAIT_ALU_OR_MEM = 6'b010000; // wait for ALU or mem transfer
-   localparam STORE           = 6'b100000; // mem_addr and data updated at previous cycle, mem_wmask is set
+   // The states, using 1-hot encoding (see note [2] at the end of this file).
 
    localparam FETCH_INSTR_bit     = 0;
    localparam WAIT_INSTR_bit      = 1;
    localparam EXECUTE_bit         = 2;
    localparam LOAD_bit            = 3;
-   localparam WAIT_ALU_OR_MEM_bit = 4;
-   localparam STORE_bit           = 5;
+   localparam STORE_bit           = 4;   
+   localparam WAIT_ALU_OR_MEM_bit = 5;
+   localparam MAX_STATE           = 5;
+
+   localparam FETCH_INSTR     = 1 << FETCH_INSTR_bit;
+   localparam WAIT_INSTR      = 1 << WAIT_INSTR_bit;
+   localparam EXECUTE         = 1 << EXECUTE_bit;
+   localparam LOAD            = 1 << LOAD_bit;
+   localparam WAIT_ALU_OR_MEM = 1 << WAIT_ALU_OR_MEM_bit;
+   localparam STORE           = 1 << STORE_bit;
+
+   (* onehot *)
+   reg [MAX_STATE:0] state;
 
    // The signals (internal and external) that are determined
    // combinatorially from state and other signals.
@@ -387,17 +388,30 @@ module FemtoRV32(
       end else
 
       // See note [1] at the end of this file.
-      (* parallel_case *)
+      (* parallel_case, full_case *)
       case(1'b1)
 
+        // *********************************************************************	
+	state[FETCH_INSTR_bit]: begin
+	   state <= WAIT_INSTR;
+	end
+	
         // *********************************************************************
-        // Handles jump/branch, or transitions to waitALU, load, store
-
+        state[WAIT_INSTR_bit]: begin
+           if(!mem_rbusy) begin // rbusy may be high when executing from SPI flash
+              rs1Data <= registerFile[mem_rdata[19:15]];
+              rs2Data <= registerFile[mem_rdata[24:20]];
+              instr <= mem_rdata[31:2]; // Note that bits 0 and 1 are ignored (see
+              state <= EXECUTE;         //          also the declaration of instr).
+           end
+        end
+	
+        // *********************************************************************
         state[EXECUTE_bit]: begin
 
            // Prepare next PC
            PC <= isJALR          ? rs1plusImm :
-                 jumpToPCplusImm ? PCplusImm  :
+                 jumpToPCplusImm ? PCplusImm :
                  PCplus4;
 
            // Prepare address for:
@@ -407,33 +421,18 @@ module FemtoRV32(
                        jumpToPCplusImm           ? PCplusImm  :
                        PCplus4;
 
-           // Transitions from EXECUTE to WAIT_ALU_OR_DATA, STORE, LOAD, and FETCH_INSTR,
-           // See note [3] at the end of this file.
-           state <= {
-                 isStore,                // STORE
-                 isALU,                  // WAIT_ALU_OR_MEM
-                 isLoad,                 // LOAD
-                 1'b0,                   // EXECUTE
-                 1'b0,                   // WAIT_INSTR
-                 !(isStore|isALU|isLoad) // FETCH_INSTR
-           };
-        end
-
-        // *********************************************************************
-        // Additional wait state for instruction fetch.
-
-        state[WAIT_INSTR_bit]: begin
-           if(!mem_rbusy) begin // rbusy may be high when executing from SPI flash
-              rs1Data <= registerFile[mem_rdata[19:15]];
-              rs2Data <= registerFile[mem_rdata[24:20]];
-              instr <= mem_rdata[31:2]; // Note that bits 0 and 1 are ignored (see
-              state <= EXECUTE;         //          also the declaration of instr).
-           end
-        end
-
-        // *********************************************************************
-        // Store
+           state <= isLoad  ? LOAD            : 
+		    isStore ? STORE           : 
+		    isALU   ? WAIT_ALU_OR_MEM : 
+		              FETCH_INSTR     ;
+        end 
 	
+        // *********************************************************************
+        state[LOAD_bit]: begin
+	   state <= WAIT_ALU_OR_MEM;
+	end
+	
+        // *********************************************************************
         state[STORE_bit]: begin
 `ifdef NRV_IS_IO_ADDR
 	   state <= `NRV_IS_IO_ADDR(addr_reg) ? WAIT_ALU_OR_MEM : FETCH_INSTR;
@@ -444,36 +443,19 @@ module FemtoRV32(
         end
 	
         // *********************************************************************
-        // Used by LOAD,STORE and by multi-cycle ALU instr (shifts and RV32M ops),
-        // writeback from ALU or memory, also waits from data from IO
-        // (listens to mem_rbusy and mem_wbusy)
-
         state[WAIT_ALU_OR_MEM_bit]: begin
+           // Used by LOAD,STORE and by multi-cycle ALU instr (shifts and RV32M ops),
+           // writeback from ALU or memory, also waits from data from IO
+           // (listens to mem_rbusy and mem_wbusy)
            if(!aluBusy & !mem_rbusy & !mem_wbusy) begin
               addr_reg <= PC;
               state <= FETCH_INSTR;
            end
         end
-
-        // *********************************************************************
-        // All the remaining transitions. See note [3] at the end of this file.
-
-        default: begin
-          state <= {
-              1'b0,                   // *no transition* -> STORE (already done from EXECUTE)
-              state[LOAD_bit],        // LOAD            -> WAIT_ALU_OR_MEM
-              1'b0,                   // *no transition* -> LOAD (already done from EXECUTE)
-              1'b0,                   // *no transition* -> EXECUTE (already done from WAIT_INSTR)
-              state[FETCH_INSTR_bit], // FETCH_INSTR     -> WAIT_INSTR
-              1'b0                    // *no transition* -> FETCH_INSTR (already done from EXECUTE,
-          };                          //                                  WAIT_ALU_OR_MEM)
-        end
-
-        // *********************************************************************
-
+	
       endcase
    end
-
+   
    /***************************************************************************/
    // Cycle counter
    /***************************************************************************/
