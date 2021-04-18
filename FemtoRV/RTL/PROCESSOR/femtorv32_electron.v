@@ -428,6 +428,18 @@ module FemtoRV32(
         end
 
         // *********************************************************************
+        // Store
+	
+        state[STORE_bit]: begin
+`ifdef NRV_IS_IO_ADDR
+	   state <= `NRV_IS_IO_ADDR(addr_reg) ? WAIT_ALU_OR_MEM : FETCH_INSTR;
+	   addr_reg <= PC;
+`else
+	   state <= WAIT_ALU_OR_MEM;
+`endif	   
+        end
+	
+        // *********************************************************************
         // Used by LOAD,STORE and by multi-cycle ALU instr (shifts and RV32M ops),
         // writeback from ALU or memory, also waits from data from IO
         // (listens to mem_rbusy and mem_wbusy)
@@ -445,8 +457,7 @@ module FemtoRV32(
         default: begin
           state <= {
               1'b0,                   // *no transition* -> STORE (already done from EXECUTE)
-              state[LOAD_bit] |       //
-                   state[STORE_bit],  // LOAD,STORE      -> WAIT_ALU_OR_MEM
+              state[LOAD_bit],        // LOAD            -> WAIT_ALU_OR_MEM
               1'b0,                   // *no transition* -> LOAD (already done from EXECUTE)
               1'b0,                   // *no transition* -> EXECUTE (already done from WAIT_INSTR)
               state[FETCH_INSTR_bit], // FETCH_INSTR     -> WAIT_INSTR

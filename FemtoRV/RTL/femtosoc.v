@@ -12,6 +12,8 @@
 `include "femtosoc_config.v"        // User configuration of processor and SOC.
 `include "PROCESSOR/utils.v"
 
+`define NRV_IS_IO_ADDR(addr) |addr[23:22] // Asserted if address is in IO space (then it needs additional wait states)
+
 `ifdef NRV_FEMTORV32_QUARK
  `include "PROCESSOR/femtorv32_quark.v" // Minimalistic version of the processor for IceStick (RV32I)
 `endif

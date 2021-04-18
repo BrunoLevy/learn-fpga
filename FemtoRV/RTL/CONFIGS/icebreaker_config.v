@@ -9,9 +9,12 @@
 `define NRV_IO_MAX7219   // Mapped IO, 8x8 led matrix
 `define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. Can be used with MINIRV32 to run code from SPI flash.
 
-/************************* Frequency ********************************************************************************/
+/************************* Processor configuration ******************************************************************/
 
-`define NRV_FREQ 30      // Frequency in MHz. Recomm: 20 MHz   Overclocking: 35 MHz
+`define NRV_FEMTORV32_ELECTRON            // RV32IM, barrel shifter
+`define NRV_FREQ 30                       // Frequency in MHz. Recomm: 20 MHz   Overclocking: 35 MHz
+`define NRV_RESET_ADDR 32'h00820000       // Jump execution to SPI Flash (800000h, +128k(20000h) for FPGA bitstream)
+`define NRV_RV32M                         // Tell the build system that we support RV32M
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
@@ -23,16 +26,9 @@
 // (other option, the 12 kbytes of BRAM, this one can be initialized from .hex file).
 //`define NRV_RAM 12288
 
-/************************* Processor configuration ******************************************************************/
+/************************* Advanced devices configuration *********************************************************/
 
-`define NRV_FEMTORV32_ELECTRON // RV32IM, barrel shifter
-`define NRV_RV32M              // Tell the build system that we support RV32M
-
-/************************* Advanced processor configuration *********************************************************/
-
-`define NRV_RESET_ADDR 32'h00820000 // Jump execution to SPI Flash (800000h, +128k(20000h) for FPGA bitstream)
-`define NRV_RUN_FROM_SPI_FLASH      // Do not 'readmemh()' firmware from '.hex' file
-
+`define NRV_RUN_FROM_SPI_FLASH // Do not 'readmemh()' firmware from '.hex' file
 `define NRV_IO_HARDWARE_CONFIG // Comment-out to disable hardware config registers mapped in IO-Space
                                // (only if you use your own firmware, libfemtorv32 depends on it)
 
