@@ -4,8 +4,14 @@
 //    RESET_ADDR initial value of PC (default = 0)
 //    ADDR_WIDTH number of bits in internal address bus (default = 24)
 //
-// Bruno Levy, May-June 2020
-// Matthias Koch, March 2021
+// Macros: 
+//    optionally one may define NRV_IS_IO_ADDR(addr), that is supposed to:
+//              evaluate to 1 if addr is in mapped IO space, 
+//              evaluate to 0 otherwise
+//    (additional wait states are used when in IO space).
+//    If left undefined, wait states are always used.
+//
+// Bruno Levy & Matthias Koch, 2020-2021
 /**************************************************************************/
 
 // The ALU, used for reg-reg, reg-imm and branch tests
