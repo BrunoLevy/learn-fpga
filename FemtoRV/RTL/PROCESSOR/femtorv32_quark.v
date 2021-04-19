@@ -89,8 +89,8 @@ module FemtoRV32(
    // The register file.
    /***************************************************************************/
    
-   reg [31:0] rs1Data;
-   reg [31:0] rs2Data;
+   reg [31:0] rs1;
+   reg [31:0] rs2;
    reg [31:0] registerFile [31:0];
 
    always @(posedge clk) begin
@@ -104,13 +104,12 @@ module FemtoRV32(
    /***************************************************************************/
 
    // First ALU source, always rs1
-   wire [31:0] aluIn1 = rs1Data;
+   wire [31:0] aluIn1 = rs1;
 
    // Second ALU source, depends on opcode:
    //    ALUreg, Branch:     rs2
-   //    Store:              Simm
    //    ALUimm, Load, JALR: Iimm
-   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2Data : Iimm;
+   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2 : Iimm;
 
    reg  [31:0] aluReg;       // The internal register of the ALU, used by shift.
    reg  [4:0]  aluShamt;     // Current shift amount.
@@ -130,7 +129,7 @@ module FemtoRV32(
 
    // Notes:
    // - instr[30] is 1 for SUB and 0 for ADD
-   // - for SUB, need to test also instr[5] 
+   // - for SUB, need to test also instr[5] to discriminate ADDI:
    //    (1 for ADD/SUB, 0 for ADDI, and Iimm used by ADDI overlaps bit 30 !)
    // - instr[30] is 1 for SRA (do sign extension) and 0 for SRL
    
@@ -202,7 +201,7 @@ module FemtoRV32(
 					               Bimm[ADDR_WIDTH-1:0] );
 
    // A separate adder to compute the destination of load/store.
-   wire [ADDR_WIDTH-1:0] loadstore_addr = rs1Data[ADDR_WIDTH-1:0] + 
+   wire [ADDR_WIDTH-1:0] loadstore_addr = rs1[ADDR_WIDTH-1:0] + 
 		   (isStore ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
 
    assign mem_addr = {ADDR_PAD, 
@@ -229,7 +228,7 @@ module FemtoRV32(
    /***************************************************************************/
 
    // All memory accesses are aligned on 32 bits boundary. For this
-   // reason, we need some circuitry that does unaligned word
+   // reason, we need some circuitry that does unaligned halfword
    // and byte load/store, based on:
    // - funct3[1:0]:  00->byte 01->halfword 10->word
    // - mem_addr[1:0]: indicates which byte/halfword is accessed
@@ -238,7 +237,7 @@ module FemtoRV32(
    wire mem_halfwordAccess = instr[13:12] == 2'b01; // funct3[1:0] == 2'b01;
 
    // LOAD, in addition to funct3[1:0], LOAD depends on:
-   // - funct3[2]:        0->sign expansion   1->no sign expansion
+   // - funct3[2] (instr[14]): 0->do sign expansion   1->no sign expansion
 
    wire LOAD_sign = 
 	!instr[14] & (mem_byteAccess ? LOAD_byte[7] : LOAD_halfword[15]);
@@ -256,11 +255,11 @@ module FemtoRV32(
 
    // STORE
 
-   assign mem_wdata[ 7: 0] = rs2Data[7:0];
-   assign mem_wdata[15: 8] = loadstore_addr[0] ? rs2Data[7:0] : rs2Data[15: 8];
-   assign mem_wdata[23:16] = loadstore_addr[1] ? rs2Data[7:0] : rs2Data[23:16];
-   assign mem_wdata[31:24] = loadstore_addr[0] ? rs2Data[7:0] : 
-			     loadstore_addr[1] ? rs2Data[15:8] : rs2Data[31:24];
+   assign mem_wdata[ 7: 0] = rs2[7:0];
+   assign mem_wdata[15: 8] = loadstore_addr[0] ? rs2[7:0]  : rs2[15: 8];
+   assign mem_wdata[23:16] = loadstore_addr[1] ? rs2[7:0]  : rs2[23:16];
+   assign mem_wdata[31:24] = loadstore_addr[0] ? rs2[7:0]  : 
+			     loadstore_addr[1] ? rs2[15:8] : rs2[31:24];
 
    // The memory write mask:
    //    1111                     if writing a word
@@ -334,8 +333,8 @@ module FemtoRV32(
 
         state[WAIT_INSTR_bit]: begin
            if(!mem_rbusy) begin // may be high when executing from SPI flash
-              rs1Data <= registerFile[mem_rdata[19:15]];
-              rs2Data <= registerFile[mem_rdata[24:20]];
+              rs1 <= registerFile[mem_rdata[19:15]];
+              rs2 <= registerFile[mem_rdata[24:20]];
               instr <= mem_rdata[31:2]; // Bits 0 and 1 are ignored (see
               state <= EXECUTE;         // also the declaration of instr).
            end
