@@ -201,6 +201,7 @@ module FemtoRV32(
 					               Bimm[ADDR_WIDTH-1:0] );
 
    // A separate adder to compute the destination of load/store.
+   // testing instr[5] is equivalent to testing isStore in this context.
    wire [ADDR_WIDTH-1:0] loadstore_addr = rs1[ADDR_WIDTH-1:0] + 
 		   (instr[5] ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
 
