@@ -244,6 +244,8 @@ void set_pixel(int x, int y, float r, float g, float b) {
 
 void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
    uint32_t total_ticks = 0;
+   uint32_t minutes;
+   uint32_t seconds;
    const float fov  = M_PI/3.;
    for (int j = 0; j<GL_height; j++) { // actual rendering loop
       for (int i = 0; i<GL_width; i++) {
@@ -257,8 +259,14 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
 	 total_ticks += (uint32_t)pixel_ticks/1000;
       }
    }
-   total_ticks /= (FEMTORV32_FREQ * 1000);
-   printf("%d:%d\n", total_ticks / 60, total_ticks % 60);
+   seconds = total_ticks /= (FEMTORV32_FREQ * 1000);
+   minutes = seconds / 60;
+   seconds = seconds % 60;
+   printf(
+      "%d:%s%d\n", 
+      minutes, 
+      seconds >= 10 ? "" : "0", seconds
+   );
 }
 
 int nb_spheres = 4;

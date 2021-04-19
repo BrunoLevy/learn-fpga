@@ -1,17 +1,11 @@
 /* Linker script for programs stored in SPI flash */
-/* Inspired from picorv32/picosoc/sections.lds    */
+/* Inspired from picorv32/picosoc/sections.lds       */
 /*                                                */
-/* text sections are sent to BRAM                 */
-/* rodata sections are sent to flash              */
+/* text and rodata sections are sent to flash     */
 /* bss sections are sent to BRAM                  */
 /* data sections are sent to BRAM and have        */
 /*  initialization data in flash.                 */
 /* AT keyword specifies LMA (Load Memory Address) */
-/*                                                */
-/* If you got a lot of code that does not fit in  */
-/* RAM, you may keep text sections in flash using */
-/*   spiflash_icebreaker_run_from_flash.ld        */
-
 
 MEMORY {
     FLASH (rx)  : ORIGIN = 0x00820000, LENGTH = 0x100000    /* 4 MB in flash */
@@ -33,20 +27,6 @@ SECTIONS {
         *(.gcc_except_table*)	
     } >FLASH
 
-    /* The (non fastcode) program code and other data goes into FLASH */
-    .text : {
-        . = ALIGN(4);
-        crt0_spiflash.o(.text)  /* c runtime initialization (code) */
-        . = ALIGN(4);
-        *(.rodata)              /* .rodata sections (constants, strings, etc.) */
-        *(.rodata*)             /* .rodata* sections (constants, strings, etc.) */
-        *(.srodata)             /* .rodata sections (constants, strings, etc.) */
-        *(.srodata*)            /* .rodata* sections (constants, strings, etc.) */
-        _etext = .;             /* define a global symbol at end of code */
-        _sidata = _etext;       /* This is used by the startup in order to initialize the .data section */
-    } >FLASH
-
-
     /* 
      * This is the initialized data and fastcode section
      * The program executes knowing that the data is in the RAM
@@ -57,24 +37,46 @@ SECTIONS {
         . = ALIGN(4);
         _sdata = .;        /* create a global symbol at data start; used by startup code in order to initialise the .data section in RAM */
         _ram_start = .;    /* create a global symbol at ram start (e.g., for garbage collector) */
-
-	/* functions with attribute((section(".fastcode"))) */	
-	/* (e.g., some functions in femtoGL)                */
-	*(.fastcode*)      
-
-        *(.text)                /* .text sections (code) */
-        *(.text*)               /* .text* sections (code) */
-        . = ALIGN(4);
-
+	
 	/* Initialized data */
         *(.data)                     
         *(.data*)          
         *(.sdata)          
         *(.sdata*)
+	
+	/* functions with attribute((section(".fastcode"))) */	
+	/* (e.g., some functions in femtoGL)                */
+	*(.fastcode*)      
+
+        /* Put soft floating-point and math functions in fast ram */
+	/* (we got enough RAM to do that on the UP5K)             */
+        */libgcc.a:*.o(.text) 
+        */libm.a:*.o(.text)	
+
+        /* low-level graphics functions */
+	*/libfemtorv32.a:ssd1351_1331.o(.text) 
+
+        /* timing */
+	wait_cycles.o(.text)
 
         . = ALIGN(4);
         _edata = .;        /* define a global symbol at data end; used by startup code in order to initialise the .data section in RAM */
     } > RAM
+
+    /* The (non fastcode) program code and other data goes into FLASH */
+    .text : {
+        . = ALIGN(4);
+        crt0_spiflash.o(.text)  /* c runtime initialization (code) */
+        *(.text)                /* .text sections (code) */
+        *(.text*)               /* .text* sections (code) */
+        . = ALIGN(4);
+        *(.rodata)              /* .rodata sections (constants, strings, etc.) */
+        *(.rodata*)             /* .rodata* sections (constants, strings, etc.) */
+        *(.srodata)             /* .rodata sections (constants, strings, etc.) */
+        *(.srodata*)            /* .rodata* sections (constants, strings, etc.) */
+        _etext = .;             /* define a global symbol at end of code */
+        _sidata = _etext;       /* This is used by the startup in order to initialize the .data section */
+    } >FLASH
 
     /* Uninitialized data section */
     .bss : {
@@ -96,5 +98,5 @@ SECTIONS {
 	_end = .;           /* as expected by syscalls.c            */
     } >RAM
     
-
+    
 }

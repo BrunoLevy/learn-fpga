@@ -1,8 +1,8 @@
 set_io pclk 35
 
 set_io D1 27
-set_io D2 25
-set_io D3 21
+set_io D2 21
+set_io D3 25
 set_io D4 23
 set_io D5 26
 

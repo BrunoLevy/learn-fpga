@@ -17,7 +17,7 @@ module HardwareConfig(
 `ifdef NRV_COUNTER_WIDTH
    localparam counter_width = `NRV_COUNTER_WIDTH;
 `else
-   localparam counter_width = 64;
+   localparam counter_width = 32;
 `endif   
 
    
