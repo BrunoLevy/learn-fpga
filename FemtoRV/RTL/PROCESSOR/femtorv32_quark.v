@@ -54,8 +54,8 @@ module FemtoRV32(
  // Reference: Table page 104 of:
  // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
 
- // The destination registers
- wire [4:0] rd  = instr[11:7];
+ // The destination register
+ wire [4:0] rdId = instr[11:7];
 
  // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
  // It is used as follows: funct3Is[val] <=> funct3 == val
@@ -95,8 +95,8 @@ module FemtoRV32(
 
    always @(posedge clk) begin
      if (writeBack)
-       if (rd != 0)
-         registerFile[rd] <= writeBackData;
+       if (rdId != 0)
+         registerFile[rdId] <= writeBackData;
    end
 
    /***************************************************************************/
