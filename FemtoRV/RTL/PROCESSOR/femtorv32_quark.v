@@ -11,6 +11,12 @@
 //  address bus (and address computation logic).
 //
 // Macros:
+//    optionally one may define NRV_IS_IO_ADDR(addr), that is supposed to:
+//              evaluate to 1 if addr is in mapped IO space, 
+//              evaluate to 0 otherwise
+//    (additional wait states are used when in IO space).
+//    If left undefined, wait states are always used.
+//
 //    NRV_COUNTER_WIDTH may be defined to reduce the number of bits used
 //    by the ticks counter. If not defined, a 32-bits counter is generated.
 //    (reducing its width may be useful for space-constrained designs).
@@ -94,7 +100,7 @@ module FemtoRV32(
    end
 
    /***************************************************************************/
-   // The ALU.
+   // The ALU. Does operations and tests combinatorially, except shifts.
    /***************************************************************************/
 
    // First ALU source, always rs1
@@ -110,7 +116,7 @@ module FemtoRV32(
    reg  [4:0]  aluShamt;     // Current shift amount.
 
    wire aluBusy = |aluShamt; // ALU is busy if shift amount is non-zero.
-   wire aluWr;               // ALU write strobe, starts computation.
+   wire aluWr;               // ALU write strobe, starts shifting.
 
    // The adder is used by both arithmetic instructions and JALR.
    wire [31:0] aluPlus = aluIn1 + aluIn2;
@@ -135,13 +141,13 @@ module FemtoRV32(
      (funct3Is[4]  ? aluIn1 ^ aluIn2                                 : 32'b0) | 
      (funct3Is[6]  ? aluIn1 | aluIn2                                 : 32'b0) | 
      (funct3Is[7]  ? aluIn1 & aluIn2                                 : 32'b0) | 
-     (functShift   ? aluReg                                          : 32'b0) ; 
+     (funct3IsShift ? aluReg                                         : 32'b0) ; 
 
-   wire functShift = funct3Is[1] | funct3Is[5];
+   wire funct3IsShift = funct3Is[1] | funct3Is[5];
 
    always @(posedge clk) begin
       if(aluWr) begin
-         if (functShift) begin  // SLL, SRA, SRL
+         if (funct3IsShift) begin  // SLL, SRA, SRL
 	    aluReg <= aluIn1; 
 	    aluShamt <= aluIn2[4:0]; 
 	 end 
@@ -155,13 +161,14 @@ module FemtoRV32(
       end  else
 `endif
       // Compact form of:
-      // funct3=101 &  instr[0] -> SRA  (aluReg <= {aluReg[31], aluReg[31:1]})
-      // funct3=101 & !instr[0] -> SRL  (aluReg <= {1'b0,       aluReg[31:1]})
-      // funct3=001             -> SLL  (aluReg <= aluReg << 1)
+      // funct3=001              -> SLL  (aluReg <= aluReg << 1)      
+      // funct3=101 &  instr[30] -> SRA  (aluReg <= {aluReg[31], aluReg[31:1]})
+      // funct3=101 & !instr[30] -> SRL  (aluReg <= {1'b0,       aluReg[31:1]})
+
       if (|aluShamt) begin
          aluShamt <= aluShamt - 1;
-	 aluReg <= funct3Is[1] ? aluReg << 1 : 
-		   {instr[30] & aluReg[31], aluReg[31:1]};
+	 aluReg <= funct3Is[1] ? aluReg << 1 :              // SLL
+		   {instr[30] & aluReg[31], aluReg[31:1]};  // SRA,SRL
       end
    end
 
@@ -307,7 +314,13 @@ module FemtoRV32(
    assign aluWr = state[EXECUTE_bit] & isALU;
 
    wire jumpToPCplusImm = isJAL | (isBranch & predicate);
-   wire needToWait = isLoad | isStore | isALU & functShift;
+`ifdef NRV_IS_IO_ADDR  
+   wire needToWait = isLoad | 
+		     isStore  & `NRV_IS_IO_ADDR(mem_addr) | 
+		     isALU & funct3IsShift;
+`else
+   wire needToWait = isLoad | isStore | isALU & funct3IsShift;   
+`endif
    
    always @(posedge clk) begin
       if(!reset) begin
@@ -339,7 +352,7 @@ module FemtoRV32(
            if(!aluBusy & !mem_rbusy & !mem_wbusy) state <= FETCH_INSTR;
         end
 
-        default: begin
+        default: begin // FETCH_INSTR
           state <= WAIT_INSTR;
         end
 	
