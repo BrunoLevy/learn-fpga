@@ -7,7 +7,7 @@
 #ifndef CYCLES_64
 uint64_t cycles() RV32_FASTCODE;
 uint64_t cycles() {
-  static uint64_t cycles_lap_=0;
+  static uint32_t cycles_lap_=0;
   static uint64_t cycles_=0;
   static uint32_t last_cycles32_=0;
   uint32_t cycles32_;

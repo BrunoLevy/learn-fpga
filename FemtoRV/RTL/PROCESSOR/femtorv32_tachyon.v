@@ -1,15 +1,16 @@
-/**************************************************************************/
-// FemtoRV32-Tachyon, small and fast RISC-V RV32I core for the IceStick.
-//   Features: 
-//      a two-level shifter, a tick counters.
-//      maxfreq on the IceStick: validated:60 MHz  experimental:90 MHz
-//      latches all ALU ops and address computation (has two EXEC states)
+/*******************************************************************/
+// FemtoRV32, a collection of minimalistic RISC-V RV32I cores.
+// This version: The "Quark", the most elementary version of FemtoRV32.
+//             A single VERILOG file, compact & understandable code.
+//             (200 lines of code, 400 lines counting comments)
 //
 // Parameters:
-//    RESET_ADDR initial value of PC (default = 0)
-//    ADDR_WIDTH number of bits in internal address bus (default = 24)
+//  Reset address can be defined using RESET_ADDR (default is 0).
 //
-// Macros: 
+//  The ADDR_WIDTH parameter lets you define the width of the internal
+//  address bus (and address computation logic).
+//
+// Macros:
 //    optionally one may define NRV_IS_IO_ADDR(addr), that is supposed to:
 //              evaluate to 1 if addr is in mapped IO space, 
 //              evaluate to 0 otherwise
@@ -23,88 +24,8 @@
 //    NRV_TWOLEVEL_SHIFTER may be defined to make shift operations faster
 //    (uses a two-level shifter inspired by picorv32).
 //
-// Bruno Levy & Matthias Koch, 2020-2021
-/**************************************************************************/
-
-// The ALU, used for reg-reg, reg-imm and branch tests
-module ALU(
-  input 	clk, 
-  input 	wr,    // write strobe to start ALU and predicate computation
-  input 	isALU, // asserted is current instr is ALUimm or ALUreg
-  input [31:0] 	in1,   // \
-  input [31:0] 	in2,   //  > ALU input and output
-  output [31:0] out,   // /
-  output reg 	predicate, // test result for branch (available 1 clock after wr)
-  output 	busy,      // asserted if ALU is busy shifting
-  input [2:0] 	funct3,    // 3-bits code for ALU and tests (instr[14:12])
-  input 	add_sub,   // 0 for add, 1 for sub
-  input 	srl_sra	   // 0 for logical right shift, 1 for arithmetic right shift
-);
-   reg [31:0] A;    // The internal register of the ALU.
-   reg [4:0] shamt; // Current shift amount.
-   assign out = A;
-   assign busy = |shamt;
-
-   wire [31:0] plus = in1 + in2;
-   
-   // Use a single 33 bits subtract to do subtraction and all comparisons
-   // (trick borrowed from swapforth/J1)
-   wire [32:0] minus = {1'b1, ~in2} + {1'b0,in1} + 33'b1;
-
-   // Predicates
-   wire LT  = (in1[31] ^ in2[31]) ? in1[31] : minus[32];
-   wire LTU = minus[32];
-   wire EQ  = (minus[31:0] == 0);
-
-   always @(posedge clk) begin
-      if(wr && isALU) begin
-         case(funct3) 
-            3'b000: A <= add_sub ? minus[31:0] : plus;             // ADD/SUB
-            3'b010: A <= {31'b0, LT} ;                             // SLT
-            3'b011: A <= {31'b0, LTU};                             // SLTU
-            3'b100: A <= in1 ^ in2;                                // XOR
-            3'b110: A <= in1 | in2;                                // OR
-            3'b111: A <= in1 & in2;                                // AND
-            3'b001, 3'b101: begin A <= in1; shamt <= in2[4:0]; end // SLL, SRA, SRL
-         endcase
-      end else begin
-	 // Shift (multi-cycle)
-`ifdef NRV_TWOLEVEL_SHIFTER	 
-	 if(|shamt[3:2]) begin
-            shamt <= shamt - 4;
-	    // Compact form of:
-	    //   funct3=101 &  instr[30] -> SRA  (A <= {{4{A[31]}}, A[31:4]})
-	    //   funct3=101 & !instr[30] -> SRL  (A <= { 4'b0000,        A[31:4]})		      
-            //   funct3=001              -> SLL  (A <= A << 4)
-	    A <= funct3[2] ? {{4{srl_sra & A[31]}}, A[31:4]} : A << 4 ;	    
-	 end else
-`endif 	   
-         if (|shamt) begin
-            shamt <= shamt - 1;
-	    // Compact form of:
-	    //   funct3=101 &  srl_sra -> SRA  (A <= {A[31], A[31:1]})
-	    //   funct3=101 & !srl_sra -> SRL  (A <= {1'b0,       A[31:1]})		      
-            //   funct3=001            -> SLL  (A <= A << 1)
-	    A <= funct3[2] ? {srl_sra & A[31], A[31:1]} : A << 1 ;
-         end
-      end
-   end
-
-   always @(posedge clk) begin
-      if(wr && !isALU) begin
-	 case(funct3)
-           3'b000:  predicate <=  EQ;  // BEQ
-           3'b001:  predicate <= !EQ;  // BNE
-           3'b100:  predicate <=  LT;  // BLT
-           3'b101:  predicate <= !LT;  // BGE
-           3'b110:  predicate <=  LTU; // BLTU
-           3'b111:  predicate <= !LTU; // BGEU
-           default: predicate <= 1'bx; // don't care...
-	 endcase
-      end 
-   end 
-endmodule
-
+// Bruno Levy, Matthias Koch, 2020-2021
+/*******************************************************************/
 
 module FemtoRV32(
    input          clk,
@@ -116,47 +37,41 @@ module FemtoRV32(
    output        mem_rstrb, // active to initiate memory read (used by IO)
    input         mem_rbusy, // asserted if memory is busy reading value
    input         mem_wbusy, // asserted if memory is busy writing value
-   
+
    input         reset      // set to 0 to reset the processor
 );
 
-   parameter RESET_ADDR       = 0;  // the address that the processor jumps to on reset
-   parameter ADDR_WIDTH       = 24; // number of bits in address registers
+   parameter RESET_ADDR       = 32'h00000000; 
+   parameter ADDR_WIDTH       = 24;           
 
-   localparam ADDR_PAD= {(32-ADDR_WIDTH){1'b0}}; // 32-bits padding for addresses
-   reg [ADDR_WIDTH-1:0] addr_reg;                // The internal register plugged to mem_addr
-   assign mem_addr = {ADDR_PAD,addr_reg};
+   localparam ADDR_PAD = {(32-ADDR_WIDTH){1'b0}}; // 32-bits padding for addrs
 
-   /***************************************************************************/
-   // Instruction decoding.
-   /***************************************************************************/
+ /***************************************************************************/
+ // Instruction decoding.
+ /***************************************************************************/
 
-   // Extracts rd,rs1,rs2,funct3Equals,imm and opcode from instruction stored in reg instr[31:0]
-   // Reference: Table page 104 of:
-   // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
+ // Extracts rd,rs1,rs2,funct3,imm and opcode from instruction. 
+ // Reference: Table page 104 of:
+ // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
 
-   // The destination register
-   wire [4:0] rd  = instr[11:7];
+ // The destination register
+ wire [4:0] rdId = instr[11:7];
 
-   // The ALU function
-   wire [2:0] funct3 = instr[14:12];
+ // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
+ // It is used as follows: funct3Is[val] <=> funct3 == val
+ (* onehot *)
+ wire [7:0] funct3Is = 8'b00000001 << instr[14:12];
 
-   // Decoded ALU function as 1-hot: funct3Equals[i] <=> funct3 == i
-   // (using it reduces overall LUT count)
-   (* onehot *)
-   wire [7:0] funct3Equals = 8'b00000001 << funct3;  
-   
-   // The five immediate formats, see RiscV reference (link above), Fig. 2.4 p. 12
-   wire [31:0] Uimm = {    instr[31],   instr[30:12], {12{1'b0}}};
-   wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
-   wire [31:0] Simm = {{21{instr[31]}}, instr[30:25], instr[11:7]};
-   /* verilator lint_off UNUSED */ // MSBs of Bimm and Jimm are not used if ADDR_WIDTH is less than 32
-   wire [31:0] Bimm = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
-   wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
-   /* verilator lint_on UNUSED */
+ // The five immediate formats, see RiscV reference (link above), Fig. 2.4 p. 12
+ wire [31:0] Uimm = {    instr[31],   instr[30:12], {12{1'b0}}};
+ wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
+ /* verilator lint_off UNUSED */ // MSBs of SBJimms are not used by addr adder. 
+ wire [31:0] Simm = {{21{instr[31]}}, instr[30:25],instr[11:7]};
+ wire [31:0] Bimm = {{20{instr[31]}}, instr[7],instr[30:25],instr[11:8],1'b0};
+ wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12],instr[20],instr[30:21],1'b0};
+ /* verilator lint_on UNUSED */
 
    // Base RISC-V (RV32I) has only 10 different instructions !
-   // We do not test for erroneous opcodes (and the two LSBs are ignored)
    wire isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
    wire isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
    wire isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
@@ -173,39 +88,100 @@ module FemtoRV32(
    /***************************************************************************/
    // The register file.
    /***************************************************************************/
-
-   reg [31:0] rs1Data;
-   reg [31:0] rs2Data;
+   
+   reg [31:0] rs1;
+   reg [31:0] rs2;
    reg [31:0] registerFile [31:0];
 
    always @(posedge clk) begin
      if (writeBack)
-       if (rd != 0)
-         registerFile[rd] <= writeBackData;
+       if (rdId != 0)
+         registerFile[rdId] <= writeBackData;
    end
 
    /***************************************************************************/
-   // The ALU.
+   // The ALU. Does operations and tests combinatorially, except shifts.
    /***************************************************************************/
 
-   wire aluWr;
-   wire [31:0] aluOut;
-   wire        predicate;
-   wire        aluBusy;
+   // First ALU source, always rs1
+   wire [31:0] aluIn1 = rs1;
+
+   // Second ALU source, depends on opcode:
+   //    ALUreg, Branch:     rs2
+   //    ALUimm, Load, JALR: Iimm
+   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2 : Iimm;
+
+   reg  [31:0] aluReg;       // The internal register of the ALU, used by shift.
+   reg  [4:0]  aluShamt;     // Current shift amount.
+
+   wire aluBusy = |aluShamt; // ALU is busy if shift amount is non-zero.
+   wire aluWr;               // ALU write strobe, starts shifting.
+
+   // The adder is used by both arithmetic instructions and JALR.
+   wire [31:0] aluPlus = aluIn1 + aluIn2;
+
+   // Use a single 33 bits subtract to do subtraction and all comparisons
+   // (trick borrowed from swapforth/J1)
+   wire [32:0] aluMinus = {1'b1, ~aluIn2} + {1'b0,aluIn1} + 33'b1;
+   wire        LT  = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : aluMinus[32];
+   wire        LTU = aluMinus[32];
+   wire        EQ  = (aluMinus[31:0] == 0);
+
+   // Notes:
+   // - instr[30] is 1 for SUB and 0 for ADD
+   // - for SUB, need to test also instr[5] to discriminate ADDI:
+   //    (1 for ADD/SUB, 0 for ADDI, and Iimm used by ADDI overlaps bit 30 !)
+   // - instr[30] is 1 for SRA (do sign extension) and 0 for SRL
    
-   ALU alu(
-     .clk(clk),
-     .wr(aluWr),
-     .isALU(isALU),	   
-     .in1(rs1Data),
-     .in2(isALUreg | isBranch ? rs2Data : Iimm),
-     .out(aluOut),
-     .predicate(predicate),
-     .busy(aluBusy),
-     .funct3(funct3),
-     .add_sub(instr[30] & instr[5]), // instr[30] is 1 for SUB and 0 for ADD, need to test also instr[5] because ADDI imm uses bit 30 !
-     .srl_sra(instr[30]),	   
-   );
+   wire [31:0] aluOut = aluReg;
+
+   wire funct3IsShift = funct3Is[1] | funct3Is[5];
+
+   always @(posedge clk) begin
+      if(aluWr) begin
+	 aluShamt <= funct3IsShift ? aluIn2[4:0] : 5'b0;
+	 aluReg <=
+	 (funct3IsShift ? aluIn1 : 32'b0                                        ) |
+	 (funct3Is[0]  ? instr[30] & instr[5] ? aluMinus[31:0] : aluPlus : 32'b0) | 
+	 (funct3Is[2]  ? {31'b0, LT}                                     : 32'b0) | 
+         (funct3Is[3]  ? {31'b0, LTU}                                    : 32'b0) | 
+         (funct3Is[4]  ? aluIn1 ^ aluIn2                                 : 32'b0) | 
+         (funct3Is[6]  ? aluIn1 | aluIn2                                 : 32'b0) | 
+	 (funct3Is[7]  ? aluIn1 & aluIn2                                 : 32'b0) ;
+      end 
+
+`ifdef NRV_TWOLEVEL_SHIFTER
+      else if(|aluShamt[3:2]) begin // Shift by 4
+         aluShamt <= aluShamt - 4;
+	 aluReg <= funct3Is[1] ? aluReg << 4 : 
+		   {{4{instr[30] & aluReg[31]}}, aluReg[31:4]};	    
+      end  else
+`endif
+      // Compact form of:
+      // funct3=001              -> SLL  (aluReg <= aluReg << 1)      
+      // funct3=101 &  instr[30] -> SRA  (aluReg <= {aluReg[31], aluReg[31:1]})
+      // funct3=101 & !instr[30] -> SRL  (aluReg <= {1'b0,       aluReg[31:1]})
+
+      if (|aluShamt) begin
+         aluShamt <= aluShamt - 1;
+	 aluReg <= funct3Is[1] ? aluReg << 1 :              // SLL
+		   {instr[30] & aluReg[31], aluReg[31:1]};  // SRA,SRL
+      end
+   end
+
+   /***************************************************************************/
+   // The predicate for conditional branches.
+   /***************************************************************************/
+
+   wire predicate_ =
+        funct3Is[0] &  EQ  | // BEQ
+        funct3Is[1] & !EQ  | // BNE
+        funct3Is[4] &  LT  | // BLT
+        funct3Is[5] & !LT  | // BGE
+        funct3Is[6] &  LTU | // BLTU
+        funct3Is[7] & !LTU ; // BGEU
+
+   reg 	predicate;
    
    /***************************************************************************/
    // Program counter and branch target computation.
@@ -213,22 +189,29 @@ module FemtoRV32(
 
    reg  [ADDR_WIDTH-1:0] PC; // The program counter.
    reg  [31:2] instr;        // Latched instruction. Note that bits 0 and 1 are
-                             // ignored (not used in RV32I base instruction set).
+                             // ignored (not used in RV32I base instr set).
 
    wire [ADDR_WIDTH-1:0] PCplus4 = PC + 4;
 
    // An adder used to compute branch address, JAL address and AUIPC.
    // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
    // Equivalent to PCplusImm = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
-   // wire [ADDR_WIDTH-1:0] PCplusImm = PC + (instr[3] ? Jimm[ADDR_WIDTH-1:0] : instr[4] ? Uimm[ADDR_WIDTH-1:0] : Bimm[ADDR_WIDTH-1:0]);
+   wire [ADDR_WIDTH-1:0] PCplusImm_ = PC + ( instr[3] ? Jimm[ADDR_WIDTH-1:0] : 
+					    instr[4] ? Uimm[ADDR_WIDTH-1:0] : 
+					               Bimm[ADDR_WIDTH-1:0] );
 
-   wire [ADDR_WIDTH-1:0] rs1_or_PC = (isLoad | isStore | isJALR) ? rs1Data[ADDR_WIDTH-1:0] : PC;
-   wire [ADDR_WIDTH-1:0] addrImm = isJAL    ? Jimm[ADDR_WIDTH-1:0] :
-			           isAUIPC  ? Uimm[ADDR_WIDTH-1:0] :
-			           isStore  ? Simm[ADDR_WIDTH-1:0] :
-			           isBranch ? Bimm[ADDR_WIDTH-1:0] :
-			                      Iimm[ADDR_WIDTH-1:0] ; // LOAD and JALR
-   reg [ADDR_WIDTH-1:0]  computedAddr;
+   // A separate adder to compute the destination of load/store.
+   wire [ADDR_WIDTH-1:0] loadstore_addr_ = rs1[ADDR_WIDTH-1:0] + 
+		   (isStore ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
+
+
+   reg [ADDR_WIDTH-1:0]  PCplusImm;
+   reg [ADDR_WIDTH-1:0]  loadstore_addr;
+   
+   assign mem_addr = {ADDR_PAD, 
+		       state[WAIT_INSTR_bit] | state[FETCH_INSTR_bit] ? 
+		       PC : loadstore_addr
+		     };
 
    /***************************************************************************/
    // The value written back to the register file.
@@ -239,8 +222,8 @@ module FemtoRV32(
       (isSYSTEM            ? cycles               : 32'b0) |  // SYSTEM
       /* verilator lint_on WIDTH */	       	       	       
       (isLUI               ? Uimm                 : 32'b0) |  // LUI
-      (isALU               ? aluOut               : 32'b0) |  // ALU reg reg and ALU reg imm
-      (isAUIPC             ? {ADDR_PAD,computedAddr} : 32'b0) |  // AUIPC
+      (isALU               ? aluOut               : 32'b0) |  // ALUreg, ALUimm
+      (isAUIPC             ? {ADDR_PAD,PCplusImm} : 32'b0) |  // AUIPC
       (isJALR   | isJAL    ? {ADDR_PAD,PCplus4  } : 32'b0) |  // JAL, JALR
       (isLoad              ? LOAD_data            : 32'b0);   // Load
 
@@ -249,66 +232,73 @@ module FemtoRV32(
    /***************************************************************************/
 
    // All memory accesses are aligned on 32 bits boundary. For this
-   // reason, we need some circuitry that does unaligned word
+   // reason, we need some circuitry that does unaligned halfword
    // and byte load/store, based on:
-   // - funct3[1:0]:   00->byte 01->halfword 10->word
-   // - addr_reg[1:0]: indicates which byte/halfword is accessed
+   // - funct3[1:0]:  00->byte 01->halfword 10->word
+   // - mem_addr[1:0]: indicates which byte/halfword is accessed
 
-   wire mem_byteAccess     = instr[13:12] == 2'b00; // funct3[0] | funct3[4]; // funct3[1:0] == 2'b00;
-   wire mem_halfwordAccess = instr[13:12] == 2'b01; // funct3[1] | funct3[5]; // funct3[1:0] == 2'b01;
+   wire mem_byteAccess     = instr[13:12] == 2'b00; // funct3[1:0] == 2'b00;
+   wire mem_halfwordAccess = instr[13:12] == 2'b01; // funct3[1:0] == 2'b01;
 
    // LOAD, in addition to funct3[1:0], LOAD depends on:
-   // - funct3[2]:        0->sign expansion   1->no sign expansion
+   // - funct3[2] (instr[14]): 0->do sign expansion   1->no sign expansion
 
-   wire LOAD_sign = !instr[14] & (mem_byteAccess ? LOAD_byte[7] : LOAD_halfword[15]);
+   wire LOAD_sign = 
+	!instr[14] & (mem_byteAccess ? LOAD_byte[7] : LOAD_halfword[15]);
 
    wire [31:0] LOAD_data =
          mem_byteAccess ? {{24{LOAD_sign}},     LOAD_byte} :
      mem_halfwordAccess ? {{16{LOAD_sign}}, LOAD_halfword} :
                           mem_rdata ;
 
-   wire [15:0] LOAD_halfword = addr_reg[1] ? mem_rdata[31:16]    : mem_rdata[15:0];
-   wire  [7:0] LOAD_byte     = addr_reg[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
+   wire [15:0] LOAD_halfword = 
+	       loadstore_addr[1] ? mem_rdata[31:16] : mem_rdata[15:0];
+   
+   wire  [7:0] LOAD_byte = 
+	       loadstore_addr[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
 
    // STORE
 
-   assign mem_wdata[ 7: 0] =               rs2Data[7:0];
-   assign mem_wdata[15: 8] = addr_reg[0] ? rs2Data[7:0] :                               rs2Data[15: 8];
-   assign mem_wdata[23:16] = addr_reg[1] ? rs2Data[7:0] :                               rs2Data[23:16];
-   assign mem_wdata[31:24] = addr_reg[0] ? rs2Data[7:0] : addr_reg[1] ? rs2Data[15:8] : rs2Data[31:24];
+   assign mem_wdata[ 7: 0] = rs2[7:0];
+   assign mem_wdata[15: 8] = loadstore_addr[0] ? rs2[7:0]  : rs2[15: 8];
+   assign mem_wdata[23:16] = loadstore_addr[1] ? rs2[7:0]  : rs2[23:16];
+   assign mem_wdata[31:24] = loadstore_addr[0] ? rs2[7:0]  : 
+			     loadstore_addr[1] ? rs2[15:8] : rs2[31:24];
 
    // The memory write mask:
    //    1111                     if writing a word
-   //    0011 or 1100             if writing a halfword (depending on addr_reg[1])
-   //    0001, 0010, 0100 or 1000 if writing a byte     (depending on addr_reg[1:0])
+   //    0011 or 1100             if writing a halfword 
+   //                                (depending on loadstore_addr[1])
+   //    0001, 0010, 0100 or 1000 if writing a byte     
+   //                                (depending on loadstore_addr[1:0])
 
    wire [3:0] STORE_wmask =
-       mem_byteAccess ? (addr_reg[1] ? (addr_reg[0] ? 4'b1000 : 4'b0100) :   (addr_reg[0] ? 4'b0010 : 4'b0001) ) :
-   mem_halfwordAccess ? (addr_reg[1] ?                4'b1100            :                  4'b0011            ) :
-                                                      4'b1111;
+	      mem_byteAccess      ? 
+	            (loadstore_addr[1] ? 
+		          (loadstore_addr[0] ? 4'b1000 : 4'b0100) :
+		          (loadstore_addr[0] ? 4'b0010 : 4'b0001) 
+                    ) :
+	      mem_halfwordAccess ? 
+	            (loadstore_addr[1] ? 4'b1100 : 4'b0011) :
+              4'b1111;
 
    /*************************************************************************/
    // And, last but not least, the state machine.
    /*************************************************************************/
-   // The states, using 1-hot encoding (see note [2] at the end of this file).
 
    localparam FETCH_INSTR_bit     = 0;
    localparam WAIT_INSTR_bit      = 1;
    localparam EXECUTE1_bit        = 2;
    localparam EXECUTE2_bit        = 3;   
-   localparam LOAD_bit            = 4;
-   localparam STORE_bit           = 5;   
-   localparam WAIT_ALU_OR_MEM_bit = 6;
-   localparam NB_STATES           = 7;
+   localparam WAIT_ALU_OR_MEM_bit = 4;
+   localparam NB_STATES           = 5;
 
    localparam FETCH_INSTR     = 1 << FETCH_INSTR_bit;
    localparam WAIT_INSTR      = 1 << WAIT_INSTR_bit;
    localparam EXECUTE1        = 1 << EXECUTE1_bit;
    localparam EXECUTE2        = 1 << EXECUTE2_bit;   
-   localparam LOAD            = 1 << LOAD_bit;
    localparam WAIT_ALU_OR_MEM = 1 << WAIT_ALU_OR_MEM_bit;
-   localparam STORE           = 1 << STORE_bit;
-
+   
    (* onehot *)
    reg [NB_STATES-1:0] state;
 
@@ -316,19 +306,27 @@ module FemtoRV32(
    // combinatorially from state and other signals.
 
    // register write-back enable.
-   wire  writeBack = ~(isBranch | isStore ) & (state[EXECUTE2_bit] | state[WAIT_ALU_OR_MEM_bit]);
+   wire writeBack = ~(isBranch | isStore ) & 
+	            (state[EXECUTE2_bit] | state[WAIT_ALU_OR_MEM_bit]);
 
    // The memory-read signal.
-   assign mem_rstrb = state[LOAD_bit] | state[FETCH_INSTR_bit];
+   assign mem_rstrb = state[EXECUTE2_bit] & isLoad | state[FETCH_INSTR_bit];
 
    // The mask for memory-write.
-   assign mem_wmask = {4{state[STORE_bit]}} & STORE_wmask;
+   assign mem_wmask = {4{state[EXECUTE2_bit] & isStore}} & STORE_wmask;
 
-   // aluWr starts computation in the ALU.
-   assign aluWr = state[EXECUTE1_bit]; 
+   // aluWr starts computation (shifts) in the ALU.
+   assign aluWr = state[EXECUTE1_bit] & isALU;
 
-   wire jumpOrTakeBranch = isJAL | isJALR | (isBranch & predicate);
-
+   wire jumpToPCplusImm = isJAL | (isBranch & predicate);
+`ifdef NRV_IS_IO_ADDR  
+   wire needToWait = isLoad | 
+		     isStore  & `NRV_IS_IO_ADDR(mem_addr) | 
+		     aluBusy;
+`else
+   wire needToWait = isLoad | isStore | aluBusy;   
+`endif
+   
    always @(posedge clk) begin
       if(!reset) begin
          state      <= WAIT_ALU_OR_MEM; // Just waiting for !mem_wbusy
@@ -336,71 +334,38 @@ module FemtoRV32(
       end else
 
       // See note [1] at the end of this file.
-      (* parallel_case, full_case *)
+      (* parallel_case *)
       case(1'b1)
 
-        // *********************************************************************	
-	state[FETCH_INSTR_bit]: begin
-	   state <= WAIT_INSTR;
-	end
-	
-        // *********************************************************************
         state[WAIT_INSTR_bit]: begin
-           if(!mem_rbusy) begin // rbusy may be high when executing from SPI flash
-              rs1Data <= registerFile[mem_rdata[19:15]];
-              rs2Data <= registerFile[mem_rdata[24:20]];
-              instr <= mem_rdata[31:2]; // Note that bits 0 and 1 are ignored (see
-              state <= EXECUTE1;        //          also the declaration of instr).
+           if(!mem_rbusy) begin // may be high when executing from SPI flash
+              rs1 <= registerFile[mem_rdata[19:15]];
+              rs2 <= registerFile[mem_rdata[24:20]];
+              instr <= mem_rdata[31:2]; // Bits 0 and 1 are ignored (see
+              state <= EXECUTE1;        // also the declaration of instr).
            end
         end
 
-        // *********************************************************************
         state[EXECUTE1_bit]: begin
-	   computedAddr <= rs1_or_PC + addrImm;
+	   PCplusImm <= PCplusImm_;
+	   loadstore_addr <= loadstore_addr_;
+	   predicate <= predicate_;
 	   state <= EXECUTE2;
 	end
 	
-        // *********************************************************************
         state[EXECUTE2_bit]: begin
-
-           // Prepare next PC
-           PC <= jumpOrTakeBranch ? computedAddr : PCplus4;
-
-           // Prepare address for:
-           //  next instruction fetch: PCplusImm (taken branch, JAL), aluPlus (JALR), PCplus4 (all other instr.)
-           //  load/store: aluPlus
-           addr_reg <= isStore | isLoad | jumpOrTakeBranch ? computedAddr : PCplus4;
-
-           state <= isLoad            ? LOAD             : 
-		    isStore           ? STORE            : 
-		    (isALU & aluBusy) ? WAIT_ALU_OR_MEM  : 
-		                        FETCH_INSTR      ;
-        end 
-	
-        // *********************************************************************
-        state[LOAD_bit]: begin
-	   state <= WAIT_ALU_OR_MEM;
-	end
-	
-        // *********************************************************************
-        state[STORE_bit]: begin
-`ifdef NRV_IS_IO_ADDR
-	   state <= `NRV_IS_IO_ADDR(addr_reg) ? WAIT_ALU_OR_MEM : FETCH_INSTR;
-	   addr_reg <= PC;
-`else
-	   state <= WAIT_ALU_OR_MEM;
-`endif	   
+           PC <= isJALR          ? aluPlus[ADDR_WIDTH-1:0] :
+                 jumpToPCplusImm ? PCplusImm :
+                 PCplus4;
+	   state <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
         end
-	
-        // *********************************************************************
+
         state[WAIT_ALU_OR_MEM_bit]: begin
-           // Used by LOAD,STORE and by multi-cycle ALU instr (shifts and RV32M ops),
-           // writeback from ALU or memory, also waits from data from IO
-           // (listens to mem_rbusy and mem_wbusy)
-           if(!aluBusy & !mem_rbusy & !mem_wbusy) begin
-              addr_reg <= PC;
-              state <= FETCH_INSTR;
-           end
+           if(!aluBusy & !mem_rbusy & !mem_wbusy) state <= FETCH_INSTR;
+        end
+
+        default: begin // FETCH_INSTR
+          state <= WAIT_INSTR;
         end
 	
       endcase
@@ -430,7 +395,8 @@ endmodule
 //       val_2: statement_2
 //   ... val_n: statement_n
 // endcase
-// The first statement_i such that expr == val_i is executed. Now if expr is 1'b1:
+// The first statement_i such that expr == val_i is executed. 
+// Now if expr is 1'b1:
 // case (1'b1)
 //       cond_1: statement_1
 //       cond_2: statement_2
@@ -439,7 +405,8 @@ endmodule
 // It is *exactly the same thing*, the first statement_i such that
 // expr == cond_i is executed (that is, such that 1'b1 == cond_i,
 // in other words, such that cond_i is true)
-// More on this: https://stackoverflow.com/questions/15418636/case-statement-in-verilog
+// More on this: 
+//     https://stackoverflow.com/questions/15418636/case-statement-in-verilog
 //
 // [2] state uses 1-hot encoding (at any time, state has only one bit set to 1).
 // It uses a larger number of bits (one bit per state), but often results in

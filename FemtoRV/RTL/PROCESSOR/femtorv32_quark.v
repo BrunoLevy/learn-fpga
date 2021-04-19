@@ -28,17 +28,17 @@
 /*******************************************************************/
 
 module FemtoRV32(
-   input          clk,
+   input 	 clk,
 
    output [31:0] mem_addr,  // address bus
    output [31:0] mem_wdata, // data to be written
    output [3:0]  mem_wmask, // write mask for the 4 bytes of each word
-   input  [31:0] mem_rdata, // input lines for both data and instr
-   output        mem_rstrb, // active to initiate memory read (used by IO)
-   input         mem_rbusy, // asserted if memory is busy reading value
-   input         mem_wbusy, // asserted if memory is busy writing value
+   input [31:0]  mem_rdata, // input lines for both data and instr
+   output 	 mem_rstrb, // active to initiate memory read (used by IO)
+   input 	 mem_rbusy, // asserted if memory is busy reading value
+   input 	 mem_wbusy, // asserted if memory is busy writing value
 
-   input         reset      // set to 0 to reset the processor
+   input 	 reset      // set to 0 to reset the processor
 );
 
    parameter RESET_ADDR       = 32'h00000000; 
@@ -202,7 +202,7 @@ module FemtoRV32(
 
    // A separate adder to compute the destination of load/store.
    wire [ADDR_WIDTH-1:0] loadstore_addr = rs1[ADDR_WIDTH-1:0] + 
-		   (isStore ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
+		   (instr[5] ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
 
    assign mem_addr = {ADDR_PAD, 
 		       state[WAIT_INSTR_bit] | state[FETCH_INSTR_bit] ? 
