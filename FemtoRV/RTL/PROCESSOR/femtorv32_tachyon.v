@@ -1,8 +1,8 @@
 /*******************************************************************/
-// FemtoRV32, a collection of minimalistic RISC-V RV32I cores.
-// This version: The "Quark", the most elementary version of FemtoRV32.
-//             A single VERILOG file, compact & understandable code.
-//             (200 lines of code, 400 lines counting comments)
+// FemtoRV32, a collection of minimalistic RISC-V RV32 cores.
+// This version: The "Tachyon". It works like the "Quark", with the
+//  difference that EXECUTE is split into two steps. This allows
+//  higher maxfreq.
 //
 // Parameters:
 //  Reset address can be defined using RESET_ADDR (default is 0).

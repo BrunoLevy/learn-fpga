@@ -1,5 +1,5 @@
 /*******************************************************************/
-// FemtoRV32, a collection of minimalistic RISC-V RV32I cores.
+// FemtoRV32, a collection of minimalistic RISC-V RV32 cores.
 // This version: The "Quark", the most elementary version of FemtoRV32.
 //             A single VERILOG file, compact & understandable code.
 //             (200 lines of code, 400 lines counting comments)
