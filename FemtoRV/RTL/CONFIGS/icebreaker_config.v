@@ -15,6 +15,7 @@
 `define NRV_FREQ 30                 // Frequency in MHz. Recomm: 20 MHz   Overclocking: 30 MHz
 `define NRV_RESET_ADDR 32'h00820000 // Jump execution to SPI Flash (800000h, +128k(20000h) for FPGA bitstream)
 `define NRV_RV32M                   // Tell the build system that we support RV32M
+// tinyraytracer: 30 MHz 3:12
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
