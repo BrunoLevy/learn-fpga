@@ -194,19 +194,9 @@ module FemtoRV32(
    wire [ADDR_WIDTH-1:0] PCplus4 = PC + 4;
 
    // An adder used to compute branch address, JAL address and AUIPC.
-   // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
-   // Equivalent to PCplusImm = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
-   wire [ADDR_WIDTH-1:0] PCplusImm_ = PC + ( instr[3] ? Jimm[ADDR_WIDTH-1:0] : 
-					    instr[4] ? Uimm[ADDR_WIDTH-1:0] : 
-					               Bimm[ADDR_WIDTH-1:0] );
-
-   // A separate adder to compute the destination of load/store.
-   // testing instr[5] is equivalent to testing isStore in this context.
-   wire [ADDR_WIDTH-1:0] loadstore_addr_ = rs1[ADDR_WIDTH-1:0] + 
-		   (instr[5] ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
-
-
    reg [ADDR_WIDTH-1:0]  PCplusImm;
+
+   // A separate adder to compute the destination of load/store.   
    reg [ADDR_WIDTH-1:0]  loadstore_addr;
    
    assign mem_addr = {ADDR_PAD, 
@@ -348,8 +338,17 @@ module FemtoRV32(
         end
 
         state[EXECUTE1_bit]: begin
-	   PCplusImm <= PCplusImm_;
-	   loadstore_addr <= loadstore_addr_;
+	   // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
+	   // Equivalent to:
+	   //  PCplusImm <= PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
+	   PCplusImm <= PC + ( instr[3] ? Jimm[ADDR_WIDTH-1:0] : 
+			       instr[4] ? Uimm[ADDR_WIDTH-1:0] : 
+			                  Bimm[ADDR_WIDTH-1:0] );
+
+	   // testing instr[5] is equivalent to testing isStore in this context.
+	   loadstore_addr <= rs1[ADDR_WIDTH-1:0] + 
+ 		     (instr[5] ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
+	   
 	   predicate <= predicate_;
 	   state <= EXECUTE2;
 	end

@@ -131,7 +131,7 @@ module ALU(
               3'b001: A <= leftshift;                    // SLL
 	      3'b101: A <= shifter;                      // SRL/SRA
             endcase 
-	 end
+	 end 
       end else if(div_busy) begin // DIV, REM, DIVU, REMU (iterative algorithm)
          divisor <= divisor >> 1;
          {quotient_msk, div_finished} <= {quotient_msk, div_finished} >> 1;
