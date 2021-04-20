@@ -86,7 +86,6 @@ module ALU(
    reg [31:0] quotient;
    reg [31:0] quotient_msk;
    reg 	      div_finished;
-   
    assign busy = div_busy;
    
    always @(posedge clk) begin
@@ -264,7 +263,7 @@ module FemtoRV32(
      .busy(aluBusy),
      .funct3(funct3),
      .add_sub(instr[30] & instr[5]), // instr[30] is 1 for SUB and 0 for ADD, need to test also instr[5] because ADDI imm uses bit 30 !
-     .srl_sra(instr[30]),	   
+     .srl_sra(instr[30])	   
    );
 
    /***************************************************************************/
@@ -283,7 +282,7 @@ module FemtoRV32(
    wire [ADDR_WIDTH-1:0] PCplusImm = PC + (instr[3] ? Jimm[ADDR_WIDTH-1:0] : instr[4] ? Uimm[ADDR_WIDTH-1:0] : Bimm[ADDR_WIDTH-1:0]);
    
    // An adder used to compute load/store/JALR address
-   wire [ADDR_WIDTH-1:0] rs1plusImm = rs1Data + (isStore ? Simm : Iimm);
+   wire [ADDR_WIDTH-1:0] rs1plusImm = rs1Data[ADDR_WIDTH-1:0] + (isStore ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
   
    /***************************************************************************/
    // The value written back to the register file.

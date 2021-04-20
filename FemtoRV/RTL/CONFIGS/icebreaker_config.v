@@ -11,15 +11,16 @@
 
 /************************* Processor configuration ******************************************************************/
 
-`define NRV_FEMTORV32_ELECTRON            // RV32IM, barrel shifter
-`define NRV_FREQ 30                     // Frequency in MHz. Recomm: 20 MHz   Overclocking: 30 MHz
-`define NRV_RESET_ADDR 32'h00820000       // Jump execution to SPI Flash (800000h, +128k(20000h) for FPGA bitstream)
-`define NRV_RV32M                         // Tell the build system that we support RV32M
+`define NRV_FEMTORV32_ELECTRON      // RV32IM, barrel shifter
+`define NRV_FREQ 30                 // Frequency in MHz. Recomm: 20 MHz   Overclocking: 30 MHz
+`define NRV_RESET_ADDR 32'h00820000 // Jump execution to SPI Flash (800000h, +128k(20000h) for FPGA bitstream)
+`define NRV_RV32M                   // Tell the build system that we support RV32M
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
 // Using the 128 kbytes of single-ported RAM of the ice40-up5k
 // Note: cannot initialize it from .hex file, need to run from SPI Flash
+
 `define ICE40UP5K_SPRAM
 `define NRV_RAM 131072 
 

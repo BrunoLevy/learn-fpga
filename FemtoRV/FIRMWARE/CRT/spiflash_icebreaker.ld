@@ -33,7 +33,7 @@ SECTIONS {
         *(.gcc_except_table*)	
     } >FLASH
 
-    /* The (non fastcode) program code and other data goes into FLASH */
+    /* C runtime initialization code and readonly data goes to the FLASH */
     .text : {
         . = ALIGN(4);
         crt0_spiflash.o(.text)  /* c runtime initialization (code) */

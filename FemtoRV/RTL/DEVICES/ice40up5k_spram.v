@@ -29,6 +29,21 @@ module ice40up5k_spram #(
 	output [31:0] rdata
 );
 
+// [BL 04/2021] added simulation model
+`ifdef BENCH_OR_LINT
+        reg [31:0] RAM[(WORDS/4)-1:0];
+	reg [31:0] rdata_reg;
+	assign rdata = rdata_reg;
+	always @(posedge clk) begin
+	   /* verilator lint_off WIDTH */
+	   if(wen[0]) RAM[addr][ 7:0 ] <= wdata[ 7:0 ];
+	   if(wen[1]) RAM[addr][15:8 ] <= wdata[15:8 ];
+	   if(wen[2]) RAM[addr][23:16] <= wdata[23:16];
+	   if(wen[3]) RAM[addr][31:24] <= wdata[31:24];	 
+	   rdata_reg <= RAM[addr];
+	   /* verilator lint_on WIDTH */	   
+	end
+`else
 	wire cs_0, cs_1;
 	wire [31:0] rdata_0, rdata_1;
 
@@ -87,5 +102,5 @@ module ice40up5k_spram #(
 		.POWEROFF(1'b1),
 		.DATAOUT(rdata_1[31:16])
 	);
-
+`endif
 endmodule
