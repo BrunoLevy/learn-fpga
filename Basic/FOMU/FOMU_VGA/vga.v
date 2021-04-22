@@ -27,8 +27,8 @@ module vga (
 
    wire   pixel_clk;
 
-//`define VGA_MODE_640x480
-`define VGA_MODE_1024x768
+`define VGA_MODE_640x480
+//`define VGA_MODE_1024x768
 //`define VGA_MODE_1280x1024
 
 `ifdef VGA_MODE_640x480
@@ -142,18 +142,34 @@ module vga (
    // Demo 1
    wire signed [11:0] dx = $signed(VGA_X) - VGA_width/2;
    wire signed [11:0] dy = $signed(VGA_Y) - VGA_height/2;
-   wire signed [15:0] R2 = dx*dx + dy*dy - $signed(VGA_frame << 6);
-   wire [1:0] demo_1 = {R2[12],R2[13]};
+   wire signed [23:0] R2 = dx*dx + dy*dy - $signed(VGA_frame << 6);
+   wire [3:0] color_4 = R2[14:11];
+   
+   reg [1:0] threshold;
+   always @(*) begin
+      case({VGA_X[0],VGA_Y[0]})
+      2'b00: threshold = 0;
+      2'b01: threshold = 2;
+      2'b10: threshold = 3;
+      2'b11: threshold = 1;
+      endcase
+   end
+   wire [1:0] demo_1 = (color_4[1:0] <= threshold) | (&color_4[3:2]) ? color_4[3:2] : color_4[3:2]+1;
+
+
+   assign out_color = !VGA_DrawArea ? 2'b00 : demo_1 ;
+
 
    // Demo 2
+   /*
    wire b1 = ((((VGA_Y >> 1) - VGA_frame) ^ VGA_X >> 1)%10'd9 == 1);
    wire b2 = (((VGA_Y - (VGA_frame >> 1))^ VGA_X)%10'd13 == 1);
    wire [1:0] demo_2 = {b1,b2};
-   
+
    assign out_color = !VGA_DrawArea ? 2'b00 :
                        VGA_frame[8] ? demo_1 : demo_2 ;
+   */
 
-   
    assign user_1 = VGA_hSync;
    assign user_2 = VGA_vSync;
    assign user_3 = out_color[0];
