@@ -1,6 +1,12 @@
 # FOMU VGA
 _Generate hypnotic graphics with the FOMU_
 
+Step 0: install development toolchain
+-------------------------------------
+
+See FOMU instructions [here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/TUTORIALS/toolchain.md).
+
+
 Step 1: graft wires to the FOMU
 --------------------------------
 
