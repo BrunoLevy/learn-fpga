@@ -419,6 +419,41 @@ HardwareConfig hwconfig(
 
 /********************** UART ****************************************/
 `ifdef NRV_IO_UART
+
+ // Internal wires to connect IO buffers to UART
+ wire RXD_internal;
+ wire TXD_internal;
+   
+ `ifdef ULX3S
+   `ifndef BENCH_OR_LINT
+     // On the ULX3S, we need to latch RXD, using the latch
+     // embedded in the input buffer. If we do not do that,
+     // then we unpredictably get garbage on the UART.
+     wire RXD_btw;
+     BB RXD_bb(
+       .I(1'b0), 
+       .O(RXD_btw), 
+       .B(RXD), 
+       .T(1'b1)
+     );
+     IFS1P3BX RXD_pin(
+       .SCLK(clk),		    
+       .D(RXD_btw),
+       .Q(RXD_internal),
+       .PD(1'b0)		    
+     );
+     assign TXD = TXD_internal; // For now, do not latch output (but we may need to)
+     `define UART_IO_BUFFER
+   `endif
+ `endif
+ 
+ // For other boards, we directly connect RXD and TXD to the UART (but we may need
+ // to latch).
+ `ifndef UART_IO_BUFFER
+   assign RXD_internal = RXD;
+   assign TXD = TXD_internal;
+ `endif
+
    wire [31:0] uart_rdata;
    UART uart(
       .clk(clk),
@@ -428,8 +463,8 @@ HardwareConfig hwconfig(
       .sel_cntl(io_word_address[IO_UART_CNTL_bit]),	     
       .wdata(io_wdata),
       .rdata(uart_rdata),
-      .RXD(RXD),
-      .TXD(TXD)	     
+      .RXD(RXD_internal),
+      .TXD(TXD_internal)	     
    );
 `endif 
 
