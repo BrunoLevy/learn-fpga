@@ -73,7 +73,7 @@ to the device, but there is something you need to know:
 you need to unplug / replug the FOMU before re-programing
 it, so that it is reset in DFU mode.
 
-Let us take a look at `vga.v`. First the interface of the module:
+Let us take a look at [`vga.v`](vga.v). First the interface of the module:
 ```
 module vga (
    input  clki,     // ->48 Mhz clock input
@@ -107,7 +107,7 @@ utility. For instance, for 640x480, you need a 25 MHz pixel clock, then
 `icepll -i 48 -o 25` will give you the parameters to configure the
 `SB_PLL40_CORE`.
 
-The generic part of the VGA generator, that will scan all `VGA_X` and
+Then there is the generic part of the VGA generator, that will scan all `VGA_X` and
 `VGA_Y` positions in the screen. In fact, it scans an area that is larger than
 the screen (what's outside the screen corresponds to the hsync and vsync
 signals). The `VGA_DrawArea` signals tells you whether you are in the
@@ -130,8 +130,8 @@ effects are implemented: animated concentric circles and XOR-modulo
      different "parallax planes" to have a more interesting effect. Note
      that it eats-up most of the LUTs because of the modulo operator !
 
-Finally, there is a special `SB_IO` block, that uses the flipflops
-associated with the IO pins:
+Finally, there is a vector of four special `SB_IO` blocks, 
+that use the flipflops associated with the IO pins:
 ```
    SB_IO #(
       .PIN_TYPE(5'b0101_00) // 0101: latched output  00: no input
