@@ -95,7 +95,7 @@ the four pads `user_1`,...`user_4` that we will use to generate our VGA signal,
 the three wires that control the multicolor LED,
 and three wires for the USB that should be set to 0 if not used. 
 
-![](Images/vga_mode.jpg)
+![](Images/vga_mode.png)
 
 Next section of the file is a VGA generator. I have implemented three different
 modes (640x480, 1024x768, 1280x1024). Each mode defines some parameters
