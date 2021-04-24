@@ -109,7 +109,7 @@ front porch), then a pulse of the hsync signal, then another blanking
 period (horizontal back proch), and same thing after each frame (
 vertical front porch, pulse of vsync, then vertical back porch). The
 widths of the front/back porch and sync pulses are all given in 'pixels'.
-_some authors start each pixel row with the back porch, then pixel
+_Note: some authors start each pixel row with the back porch, then pixel
 data, then front porch and sync, which I find less natural_.
 The timings are standard, and can be found for instance
 [here](http://martin.hinner.info/vga/timing.html). To generate the pixel clock, 
@@ -123,8 +123,10 @@ utility. For instance, for 640x480, you need a 25.175 MHz pixel clock, then
 
 Then there is the generic part of the VGA generator, that will scan all `VGA_X` and
 `VGA_Y` positions in the screen. In fact, it scans an area that is larger than
-the screen (what's outside the screen corresponds to the hsync and vsync
-signals). The `VGA_DrawArea` signals tells you whether you are in the
+the screen: what's outside the screen corresponds to the hsync and vsync
+signals. This encompasses the entire rectangle drawn in the figure,
+with h/v front porch/sync/back porch. 
+The `VGA_DrawArea` signals tells you whether you are in the
 screen (1) or generating sync signals (0). There is also a `VGA_Frame`
 counter used to display animations. Finally, there is a two-bits `out_color`
 register that stores the color of the current pixel (remember, we can
