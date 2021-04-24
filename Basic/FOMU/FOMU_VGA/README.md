@@ -40,7 +40,7 @@ tester to find which wire is connected to which pin. I'm also using
 a breadboard here for other experiments, such as using a resistor 
 ladder to generate 4 levels of grayscale (coming next).
 
-Step 4: Plug the FOMU to the computer
+Step 3: Plug the FOMU to the computer
 -------------------------------------
 
 ![](Images/FOMU_in_USB.jpg)
@@ -52,7 +52,7 @@ LED of the FOMU will beat slowly.
 
 Now you can plug your screen to the VGA connector.
 
-Step 3: Program
+Step 4: Program
 ---------------
 ```
 $ cd learn-fpga/Basic/FOMU/FOMU_VGA
@@ -62,7 +62,7 @@ $ ./make_it.sh
 If everything goes well, hypnotic circles and something that
 ressembles a scrolling circuit will be displayed on the screen.
 
-Step 4: How it works / playing with the program
+Step 5: How it works / playing with the program
 -----------------------------------------------
 
 Now it is time to write your own designs. To do so, you can modify

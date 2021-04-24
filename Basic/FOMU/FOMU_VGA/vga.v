@@ -173,7 +173,8 @@ module vga (
    end
 
    // Four latched IO pins: fixes the tiny differences of signal propagation
-   // time that would result in a blurry / glitchy image.
+   // time that would result in a blurry / glitchy image (it sort of works
+   // without it, but it is much better with it).
    SB_IO #(
       .PIN_TYPE(5'b0101_00) // 0101: latched output  00: no input
    ) user_IO[3:0] (         // Yes, in Verilog you can declare 4 pins in 1 decl
@@ -182,7 +183,7 @@ module vga (
        .OUTPUT_CLK({4{pixel_clk}})
    );
    
-   // LED driver: generate a blinky to show whether the design is active
+   // LED driver: generate a blinky to show whether the design is active.
    // Note: the LED driver is more intelligent than I wish, it changes color
    // at the same frequency whatever the bit of frame I'm using, I need to 
    // understand what's going on here (supposed to be a PWM, maybe I should
