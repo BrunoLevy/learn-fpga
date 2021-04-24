@@ -98,15 +98,27 @@ and three wires for the USB that should be set to 0 if not used.
 ![](Images/vga_mode.png)
 
 Next section of the file is a VGA generator. I have implemented three different
-modes (640x480, 1024x768, 1280x1024). Each mode defines some parameters
-(width, height of course, plus some timings for horizontal and
-vertical sync, plus the frequency of the pixel clock). To generate the
-pixel clock, you will need to transform the 48 MHz clock of the FOMU
+modes (640x480, 1024x768, 1280x1024). Each mode defines some parameters:
+  - resolution in pixels: width, height 
+  - horizontal sync: h_front_porch, hsync_width, h_back_porch
+  - vertical sync: v_front_porch, vsync_width, v_back_porch
+  - pixel clock
+
+After each line of pixels, there is a blanking period (horizontal
+front porch), then a pulse of the hsync signal, then another blanking
+period (horizontal back proch), and same thing after each frame (
+vertical front porch, pulse of vsync, then vertical back porch). The
+widths of the front/back porch and sync pulses are all given in 'pixels'.
+_some authors start each pixel row with the back porch, then pixel
+data, then front porch and sync, which I find less natural_.
+The timings are standard, and can be found for instance
+[here](http://martin.hinner.info/vga/timing.html). To generate the pixel clock, 
+you will need to transform the 48 MHz clock of the FOMU
 into another frequency (for instance, 25 MHz for 640x480). This is done
 by a special FPGA primitive (`SB_PLL40_CORE` for the ICE40UP5k used by
 the FOMU). To find the correct parameters, you can use the `icepll`
-utility. For instance, for 640x480, you need a 25 MHz pixel clock, then
-`icepll -i 48 -o 25` will give you the parameters to configure the
+utility. For instance, for 640x480, you need a 25.175 MHz pixel clock, then
+`icepll -i 48 -o 25.175` will give you the parameters to configure the
 `SB_PLL40_CORE`.
 
 Then there is the generic part of the VGA generator, that will scan all `VGA_X` and
