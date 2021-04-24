@@ -17,8 +17,22 @@ Step 2: VGA connector
 
 ![](Images/VGA.jpg)
 
-Connect to the VGA connector as shown on the image. Pick the two colors
-you prefer among R,G,B and connect them to `user_3` and `user_4`. 
+Connect to the VGA connector as shown on the image:
+  - connect the mass to pins 5,6,7,8,9,10
+  - connect `user_1` (HSync) to pin 13
+  - connect `user_2` (VSync) to pin 14
+  - pick the two colors you prefer among R (pin 1),G (pin 2),B (pin 3) 
+    and connect them to `user_3` and `user_4`. 
+
+Here I'm using a VGA connector with easy-to-use connections,
+alternatively you can sacrify an old VGA wire, and use a continuity
+tester to find which wire is connected to which pin. I'm also using 
+a breadboard here for other experiments, such as using a resistor 
+ladder to generate 4 levels of grayscale (coming next).
+
+
+
+
 
 
 
