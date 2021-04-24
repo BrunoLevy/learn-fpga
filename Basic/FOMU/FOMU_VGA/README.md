@@ -25,7 +25,7 @@ magnifying glass that there is no shortcircuit.
 Step 2: VGA connector
 ---------------------
 
-![](Images/VGA.jpg)
+![](Images/FOMU_in_USB.jpg)
 
 Connect to the VGA connector as shown on the image:
   - connect the mass to pins 5,6,7,8,9,10
