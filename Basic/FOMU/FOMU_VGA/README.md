@@ -1,6 +1,8 @@
 # FOMU VGA
 _Generate hypnotic graphics with the FOMU_
 
+![](Images/FOMU_VGA.gif)
+
 Step 0: install development toolchain
 -------------------------------------
 
