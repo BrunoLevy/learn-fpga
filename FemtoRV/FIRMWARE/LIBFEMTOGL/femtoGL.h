@@ -96,9 +96,9 @@ void FGA_setmode(int mode);
 #define FGA_BASEMEM (void*)(1 << 21)
 
 static inline void FGA_setpalette(int index, uint8_t R, uint8_t G, uint8_t B) {
-   IO_OUT(IO_FGA_CNTL, 1 | (index << 8) | (R << 16));
-   IO_OUT(IO_FGA_CNTL, 2 | (index << 8) | (G << 16));
-   IO_OUT(IO_FGA_CNTL, 3 | (index << 8) | (B << 16));   
+  FGA_CMD2(FGA_CMD_SET_PALETTE_R, index, R);
+  FGA_CMD2(FGA_CMD_SET_PALETTE_G, index, G);
+  FGA_CMD2(FGA_CMD_SET_PALETTE_B, index, B);  
 }
 
 /* Simple "GUI" functions */

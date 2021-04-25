@@ -10,19 +10,32 @@ void FGA_setmode(int mode) {
    }
    FGA_mode = mode;
    mode = MAX(mode,0); // mode -1 = OLED, emulate with mode 0
-   IO_OUT(IO_FGA_CNTL, FGA_SET_MODE   | (mode << 8));
-   IO_OUT(IO_FGA_CNTL, FGA_SET_ORIGIN | (0 << 8));
    memset(FGA_BASEMEM,0,128000);
    switch(mode) {
    case FGA_MODE_320x200x16bpp:
-     FGA_width = 320;
+     FGA_SET_REG(FGA_REG_RESOLUTION, 320 | (200 << 12));
+     FGA_SET_REG(FGA_REG_COLORMODE, FGA_MODE_16bpp);
+     FGA_SET_REG(FGA_REG_DISPLAYMODE, FGA_MAGNIFY); 
+     FGA_SET_REG(FGA_REG_ORIGIN, 0);
+     FGA_SET_REG(FGA_REG_WRAP, 320*200);
+     FGA_width  = 320;
      FGA_height = 200;
      break;
    case FGA_MODE_320x200x8bpp:
+     FGA_SET_REG(FGA_REG_RESOLUTION, 320 | (200 << 12));
+     FGA_SET_REG(FGA_REG_COLORMODE, FGA_MODE_8bpp | FGA_COLORMAPPED);
+     FGA_SET_REG(FGA_REG_DISPLAYMODE, FGA_MAGNIFY); 
+     FGA_SET_REG(FGA_REG_ORIGIN, 0);
+     FGA_SET_REG(FGA_REG_WRAP, 320*200);
      FGA_width = 320;
      FGA_height = 200;
      break;
    case FGA_MODE_640x400x4bpp:
+     FGA_SET_REG(FGA_REG_RESOLUTION, 640 | (400 << 12));
+     FGA_SET_REG(FGA_REG_COLORMODE, FGA_MODE_4bpp | FGA_COLORMAPPED);
+     FGA_SET_REG(FGA_REG_DISPLAYMODE, 0); 
+     FGA_SET_REG(FGA_REG_ORIGIN, 0);
+     FGA_SET_REG(FGA_REG_WRAP, 640*400);
      FGA_width =  640;
      FGA_height = 400;
      break;
@@ -36,8 +49,8 @@ void FGA_setmode(int mode) {
 }
 
 void FGA_write_window(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2) {
-  IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_X | x1 << 8 | x2 << 20);
-  IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_Y | y1 << 8 | y2 << 20);  
+  FGA_CMD2(FGA_CMD_SET_WWINDOW_X, x1, x2);
+  FGA_CMD2(FGA_CMD_SET_WWINDOW_Y, y1, y2);  
 }
 
 int FGA_bpp() {

@@ -16,9 +16,9 @@ static inline void FGA_fill_rect_fast(
    if(x2 < x1) {
       return;
    }
-   IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_X | (x1 << 8) | (x2 << 20));
-   IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_Y | (y1 << 8) | (y2 << 20));
-   IO_OUT(IO_FGA_CNTL, FGA_FILLRECT | (color << 8));
+   FGA_CMD2(FGA_CMD_SET_WWINDOW_X, x1, x2);
+   FGA_CMD2(FGA_CMD_SET_WWINDOW_Y, y1, y2);
+   FGA_CMD1(FGA_CMD_FILLRECT, color);
 }
 
 static inline FGA_wait_GPU() {
@@ -59,9 +59,9 @@ void FGA_wait_vbl() {
 // do not benefit from mode-independent abstraction and need to do
 // that on our own).
 static inline void FGA_setpixel_fast(int x, int y, uint16_t color) {
-   IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_X | x << 8 | x << 20);
-   IO_OUT(IO_FGA_CNTL, FGA_SET_WWINDOW_Y | y << 8 | y << 20);  
-   IO_OUT(IO_FGA_DAT,color);
+  FGA_CMD2(FGA_CMD_SET_WWINDOW_X, x, x);
+  FGA_CMD2(FGA_CMD_SET_WWINDOW_Y, y, y);
+  IO_OUT(IO_FGA_DAT,color);
 }
 
 void FGA_setpixel(int x, int y, uint16_t color) {

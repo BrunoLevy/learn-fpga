@@ -113,7 +113,7 @@ void GL_tty_init(int mode) {
     scrolling = 0;
     display_start_line = 0;
     oled1(0xA1, 0); /* reset display start line. */
-    IO_OUT(IO_FGA_CNTL,FGA_SET_ORIGIN | (0 << 8));
+    FGA_SET_REG(FGA_REG_ORIGIN, 0);
     GL_set_font(&Font5x6);
 }
 
@@ -141,7 +141,7 @@ void GL_tty_scroll() {
        display_start_line = 0;
     }
     oled1(0xA1, display_start_line);
-    IO_OUT(IO_FGA_CNTL,FGA_SET_ORIGIN | ((display_start_line * FGA_width * FGA_bpp() / 8) << 8));    
+    FGA_SET_REG(FGA_REG_ORIGIN, (display_start_line * FGA_width));
 }
 
 int GL_putchar(int c) {
