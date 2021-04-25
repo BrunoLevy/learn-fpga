@@ -429,6 +429,9 @@ HardwareConfig hwconfig(
      // On the ULX3S, we need to latch RXD, using the latch
      // embedded in the input buffer. If we do not do that,
      // then we unpredictably get garbage on the UART.
+     // The two primitives BB (bidirectional three-state buffer)
+     // and IFS1P3BX (latch in IO pin) are interpreted by the
+     // synthesis tool as an IO cell.
      wire RXD_btw;
      BB RXD_bb(
        .I(1'b0), 

@@ -161,7 +161,7 @@ void shell() {
 	 }
 	 ptr = cmdline;
 	 if(!shell_exec(argc, argv)) {
-	    break;
+	   break;
 	 }
 	 putchar('\n');
 	 putchar(']');
