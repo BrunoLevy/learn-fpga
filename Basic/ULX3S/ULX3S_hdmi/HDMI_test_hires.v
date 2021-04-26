@@ -9,7 +9,10 @@ module HDMI_test_hires(
 			// (D=Differential)
 );
 
-/******** Video mode constants **************************************************/
+/******** Video mode constants and clocks ****************************************/
+
+wire pixclk;        // pixel clock
+wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
 
 // Select mode by uncommenting one of the lines below
 `define MODE_640x480
@@ -17,88 +20,135 @@ module HDMI_test_hires(
 //`define MODE_1280x1024
 
 `ifdef MODE_640x480
-// 640x480, pixclk=25 MHz
-localparam GFX_width         = 640;
-localparam GFX_height        = 480;
-localparam GFX_h_front_porch = 16;
-localparam GFX_h_sync_width  = 96;
-localparam GFX_h_back_porch  = 48;
-localparam GFX_v_front_porch = 10;
-localparam GFX_v_sync_width  = 2;
-localparam GFX_v_back_porch  = 32;
-localparam CLKFB_DIV  = 10;
-localparam CLKI_DIV   = 1;
-localparam CLKOP_DIV  = 2;
-localparam CLKOS_DIV  = 4;
-localparam CLKOS2_DIV = 20;
+
+   wire pixclk_;
+
+   // 640x480, pixclk=25 MHz
+   localparam GFX_width         = 640;
+   localparam GFX_height        = 480;
+   localparam GFX_h_front_porch = 16;
+   localparam GFX_h_sync_width  = 96;
+   localparam GFX_h_back_porch  = 48;
+   localparam GFX_v_front_porch = 10;
+   localparam GFX_v_sync_width  = 2;
+   localparam GFX_v_back_porch  = 32;
+   
+   // The PLL
+   (* FREQUENCY_PIN_CLKI="25" *)
+   (* FREQUENCY_PIN_CLKOP="125" *)
+   (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
+    EHXPLLL #(
+        .CLKI_DIV(1),
+        .CLKOP_DIV(5),
+        .CLKOP_CPHASE(2),
+        .CLKOP_FPHASE(0),
+	.CLKOS_ENABLE("ENABLED"),
+	.CLKOS_DIV(25),
+	.CLKOS_CPHASE(2),
+	.CLKOS_FPHASE(0),
+        .CLKFB_DIV(5)
+    ) pll_i (
+        .CLKI(pclk),
+        .CLKOP(half_clk_TMDS),
+        .CLKFB(half_clk_TMDS),
+	.CLKOS(pixclk_),
+        .PHASESEL0(1'b0),
+        .PHASESEL1(1'b0),
+        .PHASEDIR(1'b1),
+        .PHASESTEP(1'b1),
+        .PHASELOADREG(1'b1),
+        .PLLWAKESYNC(1'b0),
+        .ENCLKOP(1'b0)
+     );
+
 `endif
 
 `ifdef MODE_1024x768
-// 1024x768, pixel clock=65Mhz
-localparam GFX_width         = 1024;
-localparam GFX_height        = 768;
-localparam GFX_h_front_porch = 24;
-localparam GFX_h_sync_width  = 136;
-localparam GFX_h_back_porch  = 160;
-localparam GFX_v_front_porch = 3;
-localparam GFX_v_sync_width  = 6;
-localparam GFX_v_back_porch  = 29;
-localparam CLKI_DIV   = 1;   
-localparam CLKFB_DIV  = 26;
-localparam CLKOP_DIV  = 2;
-localparam CLKOS_DIV  = 4;
-localparam CLKOS2_DIV = 20;
+   wire pixclk_;
+
+   // 1024x768, pixel clock=65Mhz
+   localparam GFX_width         = 1024;
+   localparam GFX_height        = 768;
+   localparam GFX_h_front_porch = 24;
+   localparam GFX_h_sync_width  = 136;
+   localparam GFX_h_back_porch  = 160;
+   localparam GFX_v_front_porch = 3;
+   localparam GFX_v_sync_width  = 6;
+   localparam GFX_v_back_porch  = 29;
+   
+   // The PLL
+   (* FREQUENCY_PIN_CLKI="25" *)
+   (* FREQUENCY_PIN_CLKOP="325" *)
+   (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
+   EHXPLLL #(
+      .CLKI_DIV(1),
+      .CLKOP_DIV(2),
+      .CLKOP_CPHASE(1),
+      .CLKOP_FPHASE(0),
+      .CLKOS_ENABLE("ENABLED"),
+      .CLKOS_DIV(10),
+      .CLKOS_CPHASE(1),
+      .CLKOS_FPHASE(0),
+      .CLKFB_DIV(13)
+   ) pll_i (
+      .CLKI(pclk),
+      .CLKOP(half_clk_TMDS),
+      .CLKFB(half_clk_TMDS),
+      .CLKOS(pixclk_),
+      .PHASESEL0(1'b0),
+      .PHASESEL1(1'b0),
+      .PHASEDIR(1'b1),
+      .PHASESTEP(1'b1),
+      .PHASELOADREG(1'b1),
+      .PLLWAKESYNC(1'b0),
+      .ENCLKOP(1'b0)
+    );
 `endif
 
 `ifdef MODE_1280x1024
-localparam GFX_width         = 1280;
-localparam GFX_height        = 1024;
-localparam GFX_h_front_porch = 48;
-localparam GFX_h_sync_width  = 112;
-localparam GFX_h_back_porch  = 248;
-localparam GFX_v_front_porch = 1;
-localparam GFX_v_sync_width  = 3;
-localparam GFX_v_back_porch  = 38;
-localparam CLKI_DIV   = 1;   
-localparam CLKFB_DIV  = 43;
-localparam CLKOP_DIV  = 2;
-localparam CLKOS_DIV  = 4;
-localparam CLKOS2_DIV = 20;
+   wire pixclk_;
+
+   // 1280x1024, pixel clock=108MHz
+   localparam GFX_width         = 1280;
+   localparam GFX_height        = 1024;
+   localparam GFX_h_front_porch = 48;
+   localparam GFX_h_sync_width  = 112;
+   localparam GFX_h_back_porch  = 248;
+   localparam GFX_v_front_porch = 1;
+   localparam GFX_v_sync_width  = 3;
+   localparam GFX_v_back_porch  = 38;
+
+   // The PLL
+   (* FREQUENCY_PIN_CLKI="25" *)
+   (* FREQUENCY_PIN_CLKOP="541.667" *)
+   (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
+   EHXPLLL #(
+        .CLKI_DIV(3),
+        .CLKOP_DIV(1),
+        .CLKOP_CPHASE(0),
+        .CLKOP_FPHASE(0),
+        .CLKOS_ENABLE("ENABLED"),
+        .CLKOS_DIV(5),
+        .CLKOS_CPHASE(0),
+        .CLKOS_FPHASE(0),
+        .CLKFB_DIV(65)
+    ) pll_i (
+        .CLKI(pclk),
+        .CLKOP(half_clk_TMDS),
+        .CLKFB(half_clk_TMDS),
+	.CLKOS(pixclk_),
+        .PHASESEL0(1'b0),
+        .PHASESEL1(1'b0),
+        .PHASEDIR(1'b1),
+        .PHASESTEP(1'b1),
+        .PHASELOADREG(1'b1),
+        .PLLWAKESYNC(1'b0),
+        .ENCLKOP(1'b0)
+    );
 `endif
 
 localparam GFX_line_width = GFX_width  + GFX_h_front_porch + GFX_h_sync_width + GFX_h_back_porch;
 localparam GFX_lines      = GFX_height + GFX_v_front_porch + GFX_v_sync_width + GFX_v_back_porch;
-
-/******** Pixel clock and TMDS clock *********************************************/
-
-wire pixclk;        // pixel clock
-wire clk_TMDS;      // TMDS clock (10*pixclk)
-wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
-
-(* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
-EHXPLLL #(
-  .CLKOP_FPHASE(0),
-  .CLKOP_CPHASE(0),
-  .OUTDIVIDER_MUXA("DIVA"),
-  .CLKOP_ENABLE("ENABLED"),
-  .CLKOP_DIV(CLKOP_DIV),
-  .CLKOS_ENABLE("ENABLED"),
-  .CLKOS_DIV(CLKOS_DIV),
-  .CLKOS_CPHASE(0),
-  .CLKOS_FPHASE(0),
-  .CLKOS2_ENABLE("ENABLED"),
-  .CLKOS2_DIV(CLKOS2_DIV),
-  .CLKOS2_CPHASE(0),
-  .CLKOS2_FPHASE(0),
-  .CLKFB_DIV(CLKFB_DIV),
-  .CLKI_DIV(CLKI_DIV),
-  .FEEDBK_PATH("INT_OP")
-) pll_i (
-  .CLKI(pclk),
-  .CLKOP(clk_TMDS),      // 250
-  .CLKOS(half_clk_TMDS), // 125
-  .CLKOS2(pixclk)        // 25
-);
 
 /******** X,Y,hSync,vSync,DrawArea ***********************************************/
 
@@ -145,15 +195,15 @@ TMDS_encoder encode_B(.clk(pixclk), .VD(blue ), .CD({vSync,hSync}), .VDE(DrawAre
 // The counter counts modulo 5 instead of modulo 10 (because we shift two
 // bits at each clock)
 reg [4:0] TMDS_mod5=1;
-wire TMDS_shift_load = TMDS_mod5[4];
 always @(posedge half_clk_TMDS) TMDS_mod5 <= {TMDS_mod5[3:0],TMDS_mod5[4]};
+assign pixclk = TMDS_mod5[4];
 
 // Shifter now shifts two bits at each clock
 reg [9:0] TMDS_shift_red=0, TMDS_shift_green=0, TMDS_shift_blue=0;
 always @(posedge half_clk_TMDS) begin
-   TMDS_shift_red   <= TMDS_shift_load ? TMDS_red   : TMDS_shift_red  [9:2];
-   TMDS_shift_green <= TMDS_shift_load ? TMDS_green : TMDS_shift_green[9:2];
-   TMDS_shift_blue  <= TMDS_shift_load ? TMDS_blue  : TMDS_shift_blue [9:2];
+   TMDS_shift_red   <= pixclk ? TMDS_red   : TMDS_shift_red  [9:2];
+   TMDS_shift_green <= pixclk ? TMDS_green : TMDS_shift_green[9:2];
+   TMDS_shift_blue  <= pixclk ? TMDS_blue  : TMDS_shift_blue [9:2];
 end
    
 // DDR serializers: they send D0 at the rising edge and D1 at the falling edge.
