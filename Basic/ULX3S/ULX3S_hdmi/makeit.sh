@@ -9,7 +9,7 @@ if [ $1 == "clean" ]; then
 fi
 
 yosys -p "synth_ecp5 -abc9 -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS || exit
-nextpnr-ecp5 --json $PROJECTNAME.json --lpf ulx3s.lpf --textcfg $PROJECTNAME.config --85k --freq 25 --package CABGA381 || exit
+nextpnr-ecp5 --force --timing-allow-fail --json $PROJECTNAME.json --lpf ulx3s.lpf --textcfg $PROJECTNAME.config --85k --freq 25 --package CABGA381 || exit
 ecppack --compress --svf-rowsize 100000 --svf $PROJECTNAME.svf $PROJECTNAME.config $PROJECTNAME.bit || exit
 ujprog $PROJECTNAME.bit || exit
 # To flash permanently, use instead:

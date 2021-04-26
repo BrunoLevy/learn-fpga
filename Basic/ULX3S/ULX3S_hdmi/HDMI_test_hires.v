@@ -11,6 +11,13 @@ module HDMI_test_hires(
 
 /******** Video mode constants **************************************************/
 
+// Select mode by uncommenting one of the lines below
+`define MODE_640x480
+//`define MODE_1024x768
+//`define MODE_1280x1024
+
+`ifdef MODE_640x480
+// 640x480, pixclk=25 MHz
 localparam GFX_width         = 640;
 localparam GFX_height        = 480;
 localparam GFX_h_front_porch = 16;
@@ -19,13 +26,45 @@ localparam GFX_h_back_porch  = 48;
 localparam GFX_v_front_porch = 10;
 localparam GFX_v_sync_width  = 2;
 localparam GFX_v_back_porch  = 32;
-
 localparam CLKFB_DIV  = 10;
 localparam CLKI_DIV   = 1;
-
 localparam CLKOP_DIV  = 2;
 localparam CLKOS_DIV  = 4;
 localparam CLKOS2_DIV = 20;
+`endif
+
+`ifdef MODE_1024x768
+// 1024x768, pixel clock=65Mhz
+localparam GFX_width         = 1024;
+localparam GFX_height        = 768;
+localparam GFX_h_front_porch = 24;
+localparam GFX_h_sync_width  = 136;
+localparam GFX_h_back_porch  = 160;
+localparam GFX_v_front_porch = 3;
+localparam GFX_v_sync_width  = 6;
+localparam GFX_v_back_porch  = 29;
+localparam CLKI_DIV   = 1;   
+localparam CLKFB_DIV  = 26;
+localparam CLKOP_DIV  = 2;
+localparam CLKOS_DIV  = 4;
+localparam CLKOS2_DIV = 20;
+`endif
+
+`ifdef MODE_1280x1024
+localparam GFX_width         = 1280;
+localparam GFX_height        = 1024;
+localparam GFX_h_front_porch = 48;
+localparam GFX_h_sync_width  = 112;
+localparam GFX_h_back_porch  = 248;
+localparam GFX_v_front_porch = 1;
+localparam GFX_v_sync_width  = 3;
+localparam GFX_v_back_porch  = 38;
+localparam CLKI_DIV   = 1;   
+localparam CLKFB_DIV  = 43;
+localparam CLKOP_DIV  = 2;
+localparam CLKOS_DIV  = 4;
+localparam CLKOS2_DIV = 20;
+`endif
 
 localparam GFX_line_width = GFX_width  + GFX_h_front_porch + GFX_h_sync_width + GFX_h_back_porch;
 localparam GFX_lines      = GFX_height + GFX_v_front_porch + GFX_v_sync_width + GFX_v_back_porch;
