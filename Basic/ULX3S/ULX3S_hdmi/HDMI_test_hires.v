@@ -21,8 +21,6 @@ wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
 
 `ifdef MODE_640x480
 
-   wire pixclk_;
-
    // 640x480, pixclk=25 MHz
    localparam GFX_width         = 640;
    localparam GFX_height        = 480;
@@ -51,7 +49,7 @@ wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
         .CLKI(pclk),
         .CLKOP(half_clk_TMDS),
         .CLKFB(half_clk_TMDS),
-	.CLKOS(pixclk_),
+	.CLKOS(pixclk),
         .PHASESEL0(1'b0),
         .PHASESEL1(1'b0),
         .PHASEDIR(1'b1),
@@ -64,8 +62,6 @@ wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
 `endif
 
 `ifdef MODE_1024x768
-   wire pixclk_;
-
    // 1024x768, pixel clock=65Mhz
    localparam GFX_width         = 1024;
    localparam GFX_height        = 768;
@@ -94,7 +90,7 @@ wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
       .CLKI(pclk),
       .CLKOP(half_clk_TMDS),
       .CLKFB(half_clk_TMDS),
-      .CLKOS(pixclk_),
+      .CLKOS(pixclk),
       .PHASESEL0(1'b0),
       .PHASESEL1(1'b0),
       .PHASEDIR(1'b1),
@@ -106,7 +102,6 @@ wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
 `endif
 
 `ifdef MODE_1280x1024
-   wire pixclk_;
 
    // 1280x1024, pixel clock=108MHz
    localparam GFX_width         = 1280;
@@ -136,7 +131,7 @@ wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
         .CLKI(pclk),
         .CLKOP(half_clk_TMDS),
         .CLKFB(half_clk_TMDS),
-	.CLKOS(pixclk_),
+	.CLKOS(pixclk),
         .PHASESEL0(1'b0),
         .PHASESEL1(1'b0),
         .PHASEDIR(1'b1),
@@ -196,14 +191,14 @@ TMDS_encoder encode_B(.clk(pixclk), .VD(blue ), .CD({vSync,hSync}), .VDE(DrawAre
 // bits at each clock)
 reg [4:0] TMDS_mod5=1;
 always @(posedge half_clk_TMDS) TMDS_mod5 <= {TMDS_mod5[3:0],TMDS_mod5[4]};
-assign pixclk = TMDS_mod5[4];
+wire TMDS_shift_load = TMDS_mod5[4];
 
 // Shifter now shifts two bits at each clock
 reg [9:0] TMDS_shift_red=0, TMDS_shift_green=0, TMDS_shift_blue=0;
 always @(posedge half_clk_TMDS) begin
-   TMDS_shift_red   <= pixclk ? TMDS_red   : TMDS_shift_red  [9:2];
-   TMDS_shift_green <= pixclk ? TMDS_green : TMDS_shift_green[9:2];
-   TMDS_shift_blue  <= pixclk ? TMDS_blue  : TMDS_shift_blue [9:2];
+   TMDS_shift_red   <= TMDS_shift_load ? TMDS_red   : TMDS_shift_red  [9:2];
+   TMDS_shift_green <= TMDS_shift_load ? TMDS_green : TMDS_shift_green[9:2];
+   TMDS_shift_blue  <= TMDS_shift_load ? TMDS_blue  : TMDS_shift_blue [9:2];
 end
    
 // DDR serializers: they send D0 at the rising edge and D1 at the falling edge.
