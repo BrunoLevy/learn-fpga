@@ -60,22 +60,22 @@ the pixel clock _not the signal that goes high every 10 ticks of the
 
 OK, so it is rather clear, to summarize we have:
  1) something like a VGA signal generator, written in portable verilog 
-     [here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S_hdmi/HDMI_test.v)
+     [here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S/ULX3S_hdmi/HDMI_test.v)
      (using FPGA4fun's one)
  2) TMDS encoder, also written in portable verilog, that take the red, green and blue signals, and encodes them in 10 bits
-     [here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S_hdmi/TMDS_encoder.v)
+     [here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S/ULX3S_hdmi/TMDS_encoder.v)
      (using FPGA4fun's one)
  3) a 250 MHz clock, using special primitives
-     [here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S_hdmi/HDMI_clock.v)
+     [here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S/ULX3S_hdmi/HDMI_clock.v)
      (ECP5-specific, using Lawrie's one)
  4) shift-registers, written in portable verilog
-     [here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S_hdmi/HDMI_test.v)
+     [here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S/ULX3S_hdmi/HDMI_test.v)
      (using FPGA4fun's one)      
  5) finally, specialized blocs to generate the TMDS pairs from the
     serialized red,green,blue signals and from the pixel clock. It is
     also ECP5-specific. I'm using the `LVCMOS33D` mode for the HDMI
     pins, specified in the `.lpf` file
-    [here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S_hdmi/ulx3s.lpf).
+    [here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S/ULX3S_hdmi/ulx3s.lpf).
     It does exactly what I need:
     generate the negative pins from the positive ones. When it is
     active, negative pins should not be driven ! 
@@ -201,3 +201,4 @@ References
 - [HDMI with audio](https://github.com/hdl-util/hdmi/)
 - [HDMI tutorial (solder own socket)](https://purisa.me/blog/hdmi-on-fpga/)
 - [HDMI software bigbanging beamracer](https://github.com/Wren6991/picodvi)
+- [Project F](https://projectf.io/posts/video-timings-vga-720p-1080p/)
