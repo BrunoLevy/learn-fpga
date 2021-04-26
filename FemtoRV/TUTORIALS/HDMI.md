@@ -117,8 +117,78 @@ changing the clocks and resolutions of course (not tested yet):
 
 ```
 
-- [Complete sources for ULX3S](https://github.com/BrunoLevy/learn-fpga/tree/master/Basic/ULX3S_hdmi)
-- [Version with DDR](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S_hdmi/HDMI_test_DDR.v)
+- [Complete sources for ULX3S](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S/ULX3S_hdmi/HDMI_test.v)
+- [Version with DDR](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S/ULX3S_hdmi/HDMI_test_DDR.v)
+
+Now we are ready to implement arbitrary modes. Timings can be found [here](http://tinyvga.com/vga-timing).
+
+![](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/FOMU/FOMU_VGA/Images/vga_mode.png)
+
+For each mode, you will need to know:
+- pixel clock frequency
+- `GFX_width`: width in pixels
+- `GFX_height`: height in pixels
+- horizontal sync: front porch, pulse width and back porch
+- vertical sync: front porch, pulse width and back porch
+
+Based on these parameters, you can implement the scanner as follows:
+```
+localparam GFX_line_width = GFX_width  + GFX_h_front_porch + GFX_h_sync_width + GFX_h_back_porch;
+localparam GFX_lines      = GFX_height + GFX_v_front_porch + GFX_v_sync_width + GFX_v_back_porch;
+
+reg [10:0] GFX_X, GFX_Y;
+reg hSync, vSync, DrawArea;
+
+always @(posedge pixclk) DrawArea <= (GFX_X<GFX_width) && (GFX_Y<GFX_height);
+
+always @(posedge pixclk) GFX_X <= (GFX_X==GFX_line_width-1) ? 0 : GFX_X+1;
+always @(posedge pixclk) if(GFX_X==GFX_line_width-1) GFX_Y <= (GFX_Y==GFX_lines-1) ? 0 : GFX_Y+1;
+
+always @(posedge pixclk) hSync <= 
+   (GFX_X>=GFX_width+GFX_h_front_porch) && (GFX_X<GFX_width+GFX_h_front_porch+GFX_h_sync_width);
+   
+always @(posedge pixclk) vSync <= 
+   (GFX_Y>=GFX_height+GFX_v_front_porch) && (GFX_Y<GFX_height+GFX_v_front_porch+GFX_v_sync_width);
+```
+
+
+Then, from the 25 MHz clock of the ULX3S, we will need to generate:
+- the pixel clock `pixclk`
+- the TMDS clock, 5 times as fast as the pixel clock (at each cycles
+  of the pixel clock, it serializes 10 bits of TMDS data, using DDR,
+  hence 5 times the freq).
+
+It can be done using a PLL. On the ECP5 that equips the ULX3S, the
+specialized block is called `EHXPLLL`. There is a `ecppll` command-line 
+tool that configures the correct parameters for you. It is used as
+follows:
+
+```
+$ ecppll -i 25 -o <tmds_clock_freq> -f tmp.v
+```
+where `<tmds_clock_freq>` corresponds to 5 times the pixel clock. Then
+you can edit tmp.v. In addition, you can modify the generated PLL to
+make it generate the pixel clock, using the `CLKOS` pin. To do so,
+it is configured as follows:
+```
+ #(
+  ...
+  .CLKOS_ENABLE("ENABLED"),
+  .CLKOS_DIV(5*CLKOP_DIV),
+  .CLKOS_CPHASE(CLKOP_CPHASE),
+  .CLKOS_FPHASE(CLKOP_FPHASE),
+  ...
+ ) pll_i(
+  ...
+  .CLKOS(pixclk),  
+  ...
+ );
+```
+It uses the same parameters as `CLKOP`, except the divisor that is 5
+times the one of `CLKOP` (hence 5 times slower).
+
+Now we are equipped to implemement different modes, as shown in 
+[this file](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S/ULX3S_hdmi/HDMI_test_hires.v).
 
 References
 ----------
