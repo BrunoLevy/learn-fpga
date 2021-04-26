@@ -122,6 +122,9 @@ int shell_exec(int argc, char* argv[]) {
        case 3:
 	 GL_set_font(&Font8x16);
 	 break;
+       default:
+	 printf("Invalid argument\n");
+	 break;
        }
      }
   } else {

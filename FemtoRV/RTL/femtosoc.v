@@ -302,8 +302,8 @@ module femtosoc(
       .mem_wmask(mem_wmask),
       .mem_address(mem_address[16:0]),
       .mem_wdata(mem_wdata),
-      .pixel_clk(pclk),
-      .gpdi_dp(gpdi_dp),
+      .pixel_clk(pclk),      // On the ULX3S, clock is 25 Mhz, can be used as is for 640x480
+      .gpdi_dp(gpdi_dp),     //   (need a PLL if different clock / different resolution)
 
       .io_rstrb(io_rstrb),		  
       .io_wstrb(io_wstrb),			

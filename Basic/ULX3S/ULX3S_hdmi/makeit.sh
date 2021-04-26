@@ -1,4 +1,5 @@
-PROJECTNAME=HDMI_test
+PROJECTNAME=HDMI_test_hires
+#PROJECTNAME=HDMI_test
 #PROJECTNAME=HDMI_test_DDR # This one uses DDR primitives for higher freq, ready for higher res (to be tested)
 VERILOGS="$PROJECTNAME.v HDMI_clock.v TMDS_encoder.v"
 

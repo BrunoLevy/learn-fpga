@@ -26,16 +26,6 @@ int exec_elf(const char* filename) {
     return errcode;
   }
 
-  // Clear memory (normally it should not be necessary, but if I don't do that,
-  // sometimes it gets stuck). Maybe it is because I do not setup the stack
-  // properly (we need to push argc, argv, envp etc...), but maybe it is something
-  // else because the stack is not there...
-  if(0) {
-    void* start = (void*)0x10000;
-    int memsize = IO_IN(IO_HW_CONFIG_RAM);
-    memset(start, 0, memsize - 0x10000 - 1024); // -1024 to avoid touching the stack
-  }
-
   errcode = elf32_load(filename, &info);
 
   if(errcode != ELF32_OK) {
