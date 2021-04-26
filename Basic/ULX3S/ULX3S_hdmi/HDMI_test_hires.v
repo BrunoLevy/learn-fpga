@@ -29,15 +29,8 @@ wire pixclk;        // pixel clock
 wire clk_TMDS;      // TMDS clock (10*pixclk)
 wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
 
-wire clkfb;
-wire locked;
-
 (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
 EHXPLLL #(
-  .PLLRST_ENA("DISABLED"),
-  .INTFB_WAKE("DISABLED"),
-  .STDBY_ENABLE("DISABLED"),
-  .DPHASE_SOURCE("DISABLED"),
   .CLKOP_FPHASE(0),
   .CLKOP_CPHASE(0),
   .OUTDIVIDER_MUXA("DIVA"),
@@ -56,20 +49,9 @@ EHXPLLL #(
   .FEEDBK_PATH("INT_OP")
 ) pll_i (
   .CLKI(pclk),
-  .CLKFB(clkfb),
-  .CLKINTFB(clkfb),
   .CLKOP(clk_TMDS),      // 250
   .CLKOS(half_clk_TMDS), // 125
-  .CLKOS2(pixclk),       // 25
-  .RST(1'b0),
-  .STDBY(1'b0),
-  .PHASESEL0(1'b0),
-  .PHASESEL1(1'b0),
-  .PHASEDIR(1'b0),
-  .PHASESTEP(1'b0),
-  .PLLWAKESYNC(1'b0),
-  .ENCLKOP(1'b0),
-  .LOCK(locked)
+  .CLKOS2(pixclk)        // 25
 );
 
 /******** X,Y,hSync,vSync,DrawArea ***********************************************/
