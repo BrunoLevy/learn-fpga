@@ -3,8 +3,10 @@ HDMI
 
 ![](Images/HDMI.jpg)
 
-_TL;DR_ self-contained easy example for the ULX3S is 
+_TL;DR_ self-contained easy example for the ULX3S in 640x480 is 
 [here](https://github.com/BrunoLevy/learn-fpga/tree/master/Basic/ULX3S_hdmi).
+Generic version with different resolutions is 
+[here](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S/ULX3S_hdmi/HDMI_test_hires.v).
 The graphic board for FemtoRV32 is 
 [here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/RTL/DEVICES/FGA.v).
 
