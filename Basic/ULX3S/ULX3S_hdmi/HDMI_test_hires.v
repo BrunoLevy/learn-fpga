@@ -15,9 +15,9 @@ wire pixclk;        // pixel clock
 wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
 
 // Select mode by uncommenting one of the lines below
-`define MODE_640x480
+//`define MODE_640x480
 //`define MODE_1024x768
-//`define MODE_1280x1024
+`define MODE_1280x1024
 
 `ifdef MODE_640x480
 
@@ -31,33 +31,12 @@ wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
    localparam GFX_v_sync_width  = 2;
    localparam GFX_v_back_porch  = 32;
    
-   // The PLL
-   (* FREQUENCY_PIN_CLKI="25" *)
-   (* FREQUENCY_PIN_CLKOP="125" *)
-   (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
-    EHXPLLL #(
-        .CLKI_DIV(1),
-        .CLKOP_DIV(5),
-        .CLKOP_CPHASE(2),
-        .CLKOP_FPHASE(0),
-	.CLKOS_ENABLE("ENABLED"),
-	.CLKOS_DIV(25),
-	.CLKOS_CPHASE(2),
-	.CLKOS_FPHASE(0),
-        .CLKFB_DIV(5)
-    ) pll_i (
-        .CLKI(pclk),
-        .CLKOP(half_clk_TMDS),
-        .CLKFB(half_clk_TMDS),
-	.CLKOS(pixclk),
-        .PHASESEL0(1'b0),
-        .PHASESEL1(1'b0),
-        .PHASEDIR(1'b1),
-        .PHASESTEP(1'b1),
-        .PHASELOADREG(1'b1),
-        .PLLWAKESYNC(1'b0),
-        .ENCLKOP(1'b0)
-     );
+   // Parameters of the PLL, found using: ecppll -i 25 -o 125 -f foobar.v
+   localparam CLKI_DIV = 1;
+   localparam CLKOP_DIV = 5;
+   localparam CLKOP_CPHASE = 2;
+   localparam CLKOP_FPHASE = 0;
+   localparam CLKFB_DIV = 5;
 
 `endif
 
@@ -71,34 +50,13 @@ wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
    localparam GFX_v_front_porch = 3;
    localparam GFX_v_sync_width  = 6;
    localparam GFX_v_back_porch  = 29;
-   
-   // The PLL
-   (* FREQUENCY_PIN_CLKI="25" *)
-   (* FREQUENCY_PIN_CLKOP="325" *)
-   (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
-   EHXPLLL #(
-      .CLKI_DIV(1),
-      .CLKOP_DIV(2),
-      .CLKOP_CPHASE(1),
-      .CLKOP_FPHASE(0),
-      .CLKOS_ENABLE("ENABLED"),
-      .CLKOS_DIV(10),
-      .CLKOS_CPHASE(1),
-      .CLKOS_FPHASE(0),
-      .CLKFB_DIV(13)
-   ) pll_i (
-      .CLKI(pclk),
-      .CLKOP(half_clk_TMDS),
-      .CLKFB(half_clk_TMDS),
-      .CLKOS(pixclk),
-      .PHASESEL0(1'b0),
-      .PHASESEL1(1'b0),
-      .PHASEDIR(1'b1),
-      .PHASESTEP(1'b1),
-      .PHASELOADREG(1'b1),
-      .PLLWAKESYNC(1'b0),
-      .ENCLKOP(1'b0)
-    );
+
+   // Parameters of the PLL, found using: ecppll -i 25 -o 325 -f foobar.v
+   localparam CLKI_DIV = 1;
+   localparam CLKOP_DIV = 2;
+   localparam CLKOP_CPHASE = 1;
+   localparam CLKOP_FPHASE = 0;
+   localparam CLKFB_DIV = 13;
 `endif
 
 `ifdef MODE_1280x1024
@@ -113,20 +71,33 @@ wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
    localparam GFX_v_sync_width  = 3;
    localparam GFX_v_back_porch  = 38;
 
-   // The PLL
-   (* FREQUENCY_PIN_CLKI="25" *)
-   (* FREQUENCY_PIN_CLKOP="541.667" *)
+   // Parameters of the PLL, found using: ecppll -i 25 -o 540 -f foobar.v
+   localparam CLKI_DIV = 3;
+   localparam CLKOP_DIV = 1;
+   localparam CLKOP_CPHASE = 0;
+   localparam CLKOP_FPHASE = 0;
+   localparam CLKFB_DIV = 65;
+`endif
+
+/******** The PLL ************************************************************/
+
+   // The PLL converts a 25 MHz clock into a (pixel_clock_freq * 5) clock
+   // The TMDS serializers operate at (pixel_clock_freq * 10), but we use
+   // DDR mode, hence (pixel_clock_freq * 5).
+   // The (half) TMDS serializer clock is generated on pin CLKOP. 
+   // In addition, the pixel clock (at TMDS freq/5) is generated on 
+   // pin CLKOS (hence CLKOS_DIV = 5*CLKOP_DIV).
    (* ICP_CURRENT="12" *) (* LPF_RESISTOR="8" *) (* MFG_ENABLE_FILTEROPAMP="1" *) (* MFG_GMCREF_SEL="2" *)
-   EHXPLLL #(
-        .CLKI_DIV(3),
-        .CLKOP_DIV(1),
-        .CLKOP_CPHASE(0),
-        .CLKOP_FPHASE(0),
-        .CLKOS_ENABLE("ENABLED"),
-        .CLKOS_DIV(5),
-        .CLKOS_CPHASE(0),
-        .CLKOS_FPHASE(0),
-        .CLKFB_DIV(65)
+    EHXPLLL #(
+        .CLKI_DIV(CLKI_DIV),
+        .CLKOP_DIV(CLKOP_DIV),
+        .CLKOP_CPHASE(CLKOP_CPHASE),
+        .CLKOP_FPHASE(CLKOP_FPHASE),
+	.CLKOS_ENABLE("ENABLED"),
+	.CLKOS_DIV(5*CLKOP_DIV),
+	.CLKOS_CPHASE(CLKOP_CPHASE),
+	.CLKOS_FPHASE(CLKOP_FPHASE),
+        .CLKFB_DIV(CLKFB_DIV)
     ) pll_i (
         .CLKI(pclk),
         .CLKOP(half_clk_TMDS),
@@ -139,13 +110,12 @@ wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
         .PHASELOADREG(1'b1),
         .PLLWAKESYNC(1'b0),
         .ENCLKOP(1'b0)
-    );
-`endif
+     );
+
+/******** X,Y,hSync,vSync,DrawArea ***********************************************/
 
 localparam GFX_line_width = GFX_width  + GFX_h_front_porch + GFX_h_sync_width + GFX_h_back_porch;
 localparam GFX_lines      = GFX_height + GFX_v_front_porch + GFX_v_sync_width + GFX_v_back_porch;
-
-/******** X,Y,hSync,vSync,DrawArea ***********************************************/
 
 reg [10:0] GFX_X, GFX_Y;
 reg hSync, vSync, DrawArea;
