@@ -20,6 +20,13 @@ localparam GFX_v_front_porch = 10;
 localparam GFX_v_sync_width  = 2;
 localparam GFX_v_back_porch  = 32;
 
+localparam CLKFB_DIV  = 10;
+localparam CLKI_DIV   = 1;
+
+localparam CLKOP_DIV  = 2;
+localparam CLKOS_DIV  = 4;
+localparam CLKOS2_DIV = 20;
+
 localparam GFX_line_width = GFX_width  + GFX_h_front_porch + GFX_h_sync_width + GFX_h_back_porch;
 localparam GFX_lines      = GFX_height + GFX_v_front_porch + GFX_v_sync_width + GFX_v_back_porch;
 
@@ -35,17 +42,17 @@ EHXPLLL #(
   .CLKOP_CPHASE(0),
   .OUTDIVIDER_MUXA("DIVA"),
   .CLKOP_ENABLE("ENABLED"),
-  .CLKOP_DIV(2),
+  .CLKOP_DIV(CLKOP_DIV),
   .CLKOS_ENABLE("ENABLED"),
-  .CLKOS_DIV(4),
+  .CLKOS_DIV(CLKOS_DIV),
   .CLKOS_CPHASE(0),
   .CLKOS_FPHASE(0),
   .CLKOS2_ENABLE("ENABLED"),
-  .CLKOS2_DIV(20),
+  .CLKOS2_DIV(CLKOS2_DIV),
   .CLKOS2_CPHASE(0),
   .CLKOS2_FPHASE(0),
-  .CLKFB_DIV(10),
-  .CLKI_DIV(1),
+  .CLKFB_DIV(CLKFB_DIV),
+  .CLKI_DIV(CLKI_DIV),
   .FEEDBK_PATH("INT_OP")
 ) pll_i (
   .CLKI(pclk),
