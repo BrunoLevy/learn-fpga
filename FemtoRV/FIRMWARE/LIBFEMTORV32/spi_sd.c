@@ -49,7 +49,12 @@ static inline int MISO() {
 }
 
 static inline void CLK_DELAY() {
-  microwait(0);
+ // Place holder to limit bigbanging
+ // frequency. 
+ // Since FemtoRV runs at 80 MHz 
+ // with 3 to 4 CPIs, there is very 
+ // little chance that we reach 
+ // SDCard maxfreq.
 }
 
 static inline void DLY_US(int t) {
@@ -312,7 +317,7 @@ int sd_readsector(uint32_t start_block, uint8_t *buffer, uint32_t sector_count) 
         while(spi_receive() != CMD_START_OF_BLOCK) {
             // Timeout
 	    if(retries > 5000) {
-                printf("sd_readsector: Timeout waiting for data ready\n");
+                printf("sd_readsector: Timeout\n");
                 return 0;
             }
 	    ++retries;
@@ -369,7 +374,7 @@ int sd_writesector(uint32_t start_block, uint8_t *buffer, uint32_t sector_count)
         while(spi_sendrecv(0xFF) == 0) {
             // Timeout
 	    if(retries > 5000) {
-                printf("sd_writesector: Timeout waiting for data write complete\n");
+                printf("sd_writesector: Timeout\n");
                 return 0;
             }
 	    ++retries;
@@ -384,7 +389,7 @@ int sd_writesector(uint32_t start_block, uint8_t *buffer, uint32_t sector_count)
         while(spi_sendrecv(0xFF) == 0) {
             // Timeout
 	    if(retries > 5000) {
-                printf("sd_writesector: Timeout waiting for return to idle\n");
+                printf("sd_writesector: Timeout\n");
                 return 0;
             }
 	    ++retries;

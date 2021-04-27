@@ -20,11 +20,12 @@ typedef void (*funptr)();
 
 int exec_elf(const char* filename) {
   Elf32Info info;
-  int errcode = filesystem_init();
+  int errcode;
    
-  if(errcode) {
-    return errcode;
-  }
+  // int errcode = filesystem_init();
+  // if(errcode) {
+  //    return errcode;
+  // }
 
   errcode = elf32_load(filename, &info);
 
