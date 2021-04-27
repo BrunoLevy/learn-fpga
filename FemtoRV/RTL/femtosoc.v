@@ -297,13 +297,15 @@ module femtosoc(
 `ifdef NRV_IO_FGA
    wire [31:0] FGA_rdata;
    FGA graphic_adapter(
-      .clk(clk),
-      .sel(mem_address_is_ram && mem_address_is_vram), // HERE
+      .pclk(pclk), // board clock		       
+      .clk(clk),   // femtorv32 clock
+		       
+      .sel(mem_address_is_ram && mem_address_is_vram), 
       .mem_wmask(mem_wmask),
       .mem_address(mem_address[16:0]),
       .mem_wdata(mem_wdata),
-      .pixel_clk(pclk),      // On the ULX3S, clock is 25 Mhz, can be used as is for 640x480
-      .gpdi_dp(gpdi_dp),     //   (need a PLL if different clock / different resolution)
+		       
+      .gpdi_dp(gpdi_dp), 
 
       .io_rstrb(io_rstrb),		  
       .io_wstrb(io_wstrb),			

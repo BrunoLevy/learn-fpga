@@ -6,7 +6,7 @@
  *  WIP: IceFeather
  */ 
 
-`ifdef BENCH
+`ifdef BENCH_OR_LINT
  `define PASSTHROUGH_PLL
 `endif
 

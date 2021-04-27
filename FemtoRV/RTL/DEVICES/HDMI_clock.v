@@ -9,11 +9,14 @@
 
 module HDMI_clock (
         input  clk,            //  25 MHz
-	output hdmi_clk        // 250 MHz
+	output hdmi_clk,       // 250 MHz
+        output half_hdmi_clk,  // 125 MHz
+        output pixel_clk       //  25 MHz		   
     );
 
 `ifdef BENCH_OR_LINT
    assign hdmi_clk = clk;
+   assign half_hdmi_clk = clk;
 `else
    
 wire clkfb;
@@ -46,8 +49,8 @@ EHXPLLL #(
         .CLKFB(clkfb),
         .CLKINTFB(clkfb),
         .CLKOP(hdmi_clk),      // 250 MHz
-//      .CLKOS(half_hdmi_clk), // 125 MHz
-//      .CLKOS2(out_clk),      // 25  MHz
+        .CLKOS(half_hdmi_clk), // 125 MHz
+	.CLKOS2(pixel_clk),    // 25  MHz
         .RST(1'b0),
         .STDBY(1'b0),
         .PHASESEL0(1'b0),
