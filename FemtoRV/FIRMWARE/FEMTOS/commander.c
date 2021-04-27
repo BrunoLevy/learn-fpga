@@ -6,6 +6,8 @@
 #define LINES OLED_HEIGHT / FONT_HEIGHT
 #define PATH_LEN 255
 
+const char* INVALID_ARGUMENTS = "Invalid arguments";
+
 /*
  * TODO: support browsing subdirectories.
  */ 
@@ -98,14 +100,18 @@ int shell_exec(int argc, char* argv[]) {
      printf("\n%s\n",cwd);
   } else if(!strcmp(argv[0],"mode")) {
      if(argc != 2) {
-       printf("invalid number of arguments");
+       printf(INVALID_ARGUMENTS);
      } else {
        int mode = atoi(argv[1]);
-       GL_tty_init(mode);
+       if(mode < 0 || mode >= FGA_NB_MODES) {
+	 printf(INVALID_ARGUMENTS);
+       } else {
+	 GL_tty_init(mode);
+       }
      }
   } else if(!strcmp(argv[0],"font")) {
      if(argc != 2) {
-       printf("invalid number of arguments");
+       printf(INVALID_ARGUMENTS);
      } else {
        GL_tty_init(FGA_mode);
        int font = atoi(argv[1]);
@@ -123,7 +129,7 @@ int shell_exec(int argc, char* argv[]) {
 	 GL_set_font(&Font8x16);
 	 break;
        default:
-	 printf("Invalid argument\n");
+	 printf(INVALID_ARGUMENTS);
 	 break;
        }
      }
@@ -143,7 +149,7 @@ void shell() {
    int argc;
    char* argv[100];
    
-   GL_tty_init(FGA_MODE_640x400x4bpp);
+   GL_tty_init(FGA_MODE_1024x768x1bpp);
    GL_set_font(&Font8x16);
    printf("FemtOS v. 0.0\n");
    putchar(']');

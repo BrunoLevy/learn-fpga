@@ -2,6 +2,9 @@
 #define FGA_MODE_320x200x16bpp  0
 #define FGA_MODE_320x200x8bpp   1
 #define FGA_MODE_640x400x4bpp   2
+#define FGA_MODE_800x600x2bpp   3
+#define FGA_MODE_1024x768x1bpp  4
+#define FGA_NB_MODES            5
 
 /**************************************/
 

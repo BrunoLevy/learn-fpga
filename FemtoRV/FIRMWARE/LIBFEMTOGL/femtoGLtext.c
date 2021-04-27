@@ -89,7 +89,6 @@ const GLFont Font3x5 = {
    4,6 /* yes, 4x6 for 3x5, additional space. */
 };
 
-
 static GLFont* gl_current_font = &Font5x6;
 
 void GL_set_font(GLFont* font) {

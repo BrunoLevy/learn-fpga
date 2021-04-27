@@ -41,8 +41,11 @@
 //
 // See FIRMWARE/LIBFEMTOGL/FGA.h, FGA.c and FGA_mode.c
 
+// Choose one of the modes (1280x1024 may make timings fail)
+//`define MODE_640x480
+`define MODE_1024x768
+//`define MODE_1280x1024
 
-`define MODE_640x480
 `include "GFX_hdmi.v"
 
 module FGA(
@@ -63,6 +66,8 @@ module FGA(
     output wire [31:0] rdata     // data read 
 );
 
+`include "GFX_modes.v"
+   
    wire pixel_clk;
    
    reg [31:0] VRAM[32767:0];
@@ -124,13 +129,19 @@ module FGA(
    
    // Stage 0: X,Y,vsync,hsync generation
    always @(posedge pixel_clk) begin
-      draw_area <= (X<640) && (Y<480);
-      X        <= (X==799) ? 0 : X+1;
-      if(X==799) Y <= (Y==524) ? 0 : Y+1;
-      hsync <= (X>=656) && (X<752);
-      vsync <= (Y>=490) && (Y<492);
+      if(X == GFX_line_width-1) begin
+	 X <= 0;
+	 Y <= (Y == GFX_lines-1) ? 0 : Y+1;
+      end else begin
+	 X <= X+1;
+      end
+      hsync <= (X>=GFX_width+GFX_h_front_porch) && 
+		(X<GFX_width+GFX_h_front_porch+GFX_h_sync_width);
+      vsync <= (Y>=GFX_height+GFX_v_front_porch) && 
+		(Y<GFX_height+GFX_v_front_porch+GFX_v_sync_width);
+      draw_area <= (X<GFX_width) && (Y<GFX_height);
    end
-
+   
    // Stage 1: pixel address generation
    reg  [23:0] pix_address;
    reg  [23:0] row_start_pix_address;
@@ -209,6 +220,14 @@ module FGA(
       endcase
    end 
    /* verilator lint_on WIDTH */      
+
+   reg [11:0] maxX;
+   reg [11:0] maxY;
+
+   always @(posedge clk) begin
+      maxX <= mode_magnify ? (mode_width  << 1) : mode_width;
+      maxY <= mode_magnify ? (mode_height << 1) : mode_height;
+   end
    
    reg [7:0]  R,G,B;
    always @(posedge pixel_clk) begin
@@ -225,10 +244,10 @@ module FGA(
 	    B <= {pix_word_data_2[ 4:0 ],3'b000};
 	 end
       end
-      // Hide the lower rows.
+      // Hide what's outside the display zone.
       // Hide the first two columns (I was too lazy to properly handle my
       //  pixel pipeline latency).
-      if(X == 0 || X == 1 || Y >= (mode_magnify ? (mode_height << 1) : mode_height)) {R,G,B} <= 24'b0;
+      if(X == 0 || X == 1 || X >= maxX || Y >= maxY) {R,G,B} <= 24'b0;
    end
 
    // Video signal generation and HDMI

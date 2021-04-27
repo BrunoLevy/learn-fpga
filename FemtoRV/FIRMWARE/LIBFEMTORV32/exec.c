@@ -34,7 +34,7 @@ int exec_elf(const char* filename) {
       printf("File not found\n");
       break;
     case ELF32_HEADER_SIZE_MISMATCH:
-      printf("ELF header size mismatch\n");
+      printf("ELF hdr mismatch\n");
       break;
     case ELF32_READ_ERROR:
       printf("Read error\n");
