@@ -526,3 +526,12 @@ LUT golfing experiments, trying to reduce LUT count.
 #Rule to convert a raw hex file into an executable (flat binary file), loadable by femtos exec function
 %.bin: %.rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
 	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc_config.v -bin $@ -bin_start_addr 0x10000
+
+
+Keys:
+  up:    27 65
+  down:  27 66
+  right: 27 67  
+  left:  27 68
+  backspace: 8
+  

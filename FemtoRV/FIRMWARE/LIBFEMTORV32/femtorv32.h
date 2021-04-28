@@ -39,7 +39,8 @@ extern int filesystem_init(); /*
 			       * returns 0 on success, non-zero on error.
 			       */
 
-extern int exec(const char* filename); /* 
+extern int exec(const char* filename, int argc, char** argv);
+                                       /* 
 					* Executes a program from the SDCard. 
 					* Returns a non-zero number on error.
 					* does not return on success !

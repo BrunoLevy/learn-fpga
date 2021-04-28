@@ -78,6 +78,8 @@ extern const GLFont Font8x8;
 extern const GLFont Font5x6;
 extern const GLFont Font3x5;
 
+extern GLFont* GL_current_font;
+
 void GL_set_font(GLFont* font);
 void GL_tty_init(int mode); /* Initializes OLED screen and redirects output to it.    */
 void GL_tty_goto_xy(int X, int Y);

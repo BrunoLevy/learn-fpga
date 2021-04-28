@@ -16,7 +16,7 @@
 
 // Max filename Length
 #ifndef FATFS_MAX_LONG_FILENAME
-    #define FATFS_MAX_LONG_FILENAME         260
+   #define FATFS_MAX_LONG_FILENAME         100 // 260
 #endif
 
 // Max open files (reduce to lower memory requirements)

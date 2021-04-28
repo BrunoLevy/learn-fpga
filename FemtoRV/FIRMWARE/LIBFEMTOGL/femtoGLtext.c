@@ -89,10 +89,10 @@ const GLFont Font3x5 = {
    4,6 /* yes, 4x6 for 3x5, additional space. */
 };
 
-static GLFont* gl_current_font = &Font5x6;
+GLFont* GL_current_font = &Font5x6;
 
 void GL_set_font(GLFont* font) {
-   gl_current_font = font;
+   GL_current_font = font;
 }
 
 /*****************************************************************************/
@@ -134,8 +134,8 @@ void GL_tty_scroll() {
     if(!scrolling) {
 	return;
     }
-    GL_fill_rect(0,cursor_Y,GL_width-1,cursor_Y+gl_current_font->height-1, GL_bg);
-    display_start_line += gl_current_font->height;
+    GL_fill_rect(0,cursor_Y,GL_width-1,cursor_Y+GL_current_font->height-1, GL_bg);
+    display_start_line += GL_current_font->height;
     if(display_start_line >= GL_height) {
        display_start_line = 0;
     }
@@ -151,8 +151,8 @@ int GL_putchar(int c) {
    }
    
    if(c == '\r') {
-      if(cursor_X >= gl_current_font->width) {
-	 cursor_X -= gl_current_font->width;
+      if(cursor_X >= GL_current_font->width) {
+	 cursor_X -= GL_current_font->width;
       }
       return c;
    }
@@ -160,12 +160,12 @@ int GL_putchar(int c) {
    if(c == '\n') {
       last_char_was_CR = 1; 
       cursor_X = 0;
-      cursor_Y += gl_current_font->height;
+      cursor_Y += GL_current_font->height;
       return c;
    }
    
    GL_putchar_xy(cursor_X, cursor_Y, (char)c); 
-   cursor_X += gl_current_font->width;
+   cursor_X += GL_current_font->width;
    if(cursor_X >= GL_width) {
       GL_putchar('\n');
    }
@@ -173,6 +173,6 @@ int GL_putchar(int c) {
 }
 
 void GL_putchar_xy(int X, int Y, char c) {
-   gl_current_font->func(X,Y,c);
+   GL_current_font->func(X,Y,c);
 }
 		

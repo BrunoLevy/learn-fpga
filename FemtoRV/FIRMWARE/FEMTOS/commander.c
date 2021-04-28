@@ -1,12 +1,32 @@
 #include <femtoGL.h>
 #include <femtostdlib.h>
 #include <fat_io_lib/fat_filelib.h>
+#include <femto_elf.h>
 
 #define FONT_HEIGHT 8
 #define LINES OLED_HEIGHT / FONT_HEIGHT
-#define PATH_LEN 255
+#define PATH_LEN 150
 
 const char* INVALID_ARGUMENTS = "Invalid arguments";
+
+void print_elf_error(int errcode) {
+  if(errcode != ELF32_OK) {
+    switch(errcode) {
+    case ELF32_FILE_NOT_FOUND:
+      printf("\nNot found\n");
+      break;
+    case ELF32_HEADER_SIZE_MISMATCH:
+      printf("\nELF hdr mismatch\n");
+      break;
+    case ELF32_READ_ERROR:
+      printf("\nRead err\n");
+      break;
+    default:
+      printf("\nUnknown err\n");
+      break;
+    }
+  }
+}
 
 /*
  * TODO: support browsing subdirectories.
@@ -66,6 +86,7 @@ void call_exec(int sel) {
     char buff[PATH_LEN];
     FL_DIR dirstat;
     int cur = 0;
+    int errcode;
     if (fl_opendir(cwd, &dirstat)) {
         struct fs_dir_ent dirent;
         while (fl_readdir(&dirstat, &dirent) == 0) {
@@ -73,7 +94,8 @@ void call_exec(int sel) {
 		if(cur == sel && is_executable(dirent.filename)) {
 		    strcpy(buff, cwd);
 		    strcpy(buff+strlen(buff), dirent.filename);
-		    exec(buff);
+		    errcode = exec(buff, 0, NULL);
+		    print_elf_error(errcode);
 		    exit(0); // workaround for executables that do not call exit().
 		}
 		++cur;
@@ -106,7 +128,9 @@ int shell_exec(int argc, char* argv[]) {
        if(mode < 0 || mode >= FGA_NB_MODES) {
 	 printf(INVALID_ARGUMENTS);
        } else {
+	 GLFont* font = GL_current_font;
 	 GL_tty_init(mode);
+	 GL_set_font(font); 
        }
      }
   } else if(!strcmp(argv[0],"font")) {
@@ -138,7 +162,8 @@ int shell_exec(int argc, char* argv[]) {
      strcpy(buff,cwd);
      strcpy(buff+strlen(buff),argv[0]);
      strcpy(buff+strlen(buff),".elf");     
-     exec(buff);
+     int errcode = exec(buff, argc, argv);
+     print_elf_error(errcode);
   }
   return 1; 
 }
@@ -155,13 +180,21 @@ void shell() {
    putchar(']');
    for(;;) {
       int c = getchar();
-      if(c != 10 && c !=13) {
+      if(c == 8) {
+	if(ptr > cmdline) {
+	  putchar('\r');
+	  putchar(' ');
+	  putchar('\r');
+	  *ptr = '\0';
+	  --ptr;
+	}
+      } else if(c != 10 && c !=13) {
 	 putchar(c);
 	 if(ptr < cmdline + PATH_LEN-2) {
 	   *ptr = c;
 	   ptr++;
 	 }
-      } else {
+      } else if(c == 13) {
 	 *ptr = '\0';
 	 argc = 0;
 	 for(ptr=strtok(cmdline," "); ptr; ptr=strtok(NULL," ")) { 
