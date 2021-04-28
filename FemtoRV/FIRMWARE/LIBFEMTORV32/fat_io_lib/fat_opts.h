@@ -16,7 +16,7 @@
 
 // Max filename Length
 #ifndef FATFS_MAX_LONG_FILENAME
-   #define FATFS_MAX_LONG_FILENAME         100 // 260
+   #define FATFS_MAX_LONG_FILENAME          260
 #endif
 
 // Max open files (reduce to lower memory requirements)
@@ -42,7 +42,7 @@
 
 // Include support for writing files (1 / 0)?
 #ifndef FATFS_INC_WRITE_SUPPORT
-    #define FATFS_INC_WRITE_SUPPORT         1
+#define FATFS_INC_WRITE_SUPPORT             0 // 1
 #endif
 
 // Support long filenames (1 / 0)?
@@ -63,7 +63,7 @@
 
 // Include support for formatting disks (1 / 0)?
 #ifndef FATFS_INC_FORMAT_SUPPORT
-    #define FATFS_INC_FORMAT_SUPPORT        1
+    #define FATFS_INC_FORMAT_SUPPORT        0 // 1
 #endif
 
 // Sector size used

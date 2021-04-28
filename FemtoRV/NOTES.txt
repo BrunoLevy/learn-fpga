@@ -534,4 +534,5 @@ Keys:
   right: 27 67  
   left:  27 68
   backspace: 8
+  return: 13
   

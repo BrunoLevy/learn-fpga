@@ -1,4 +1,5 @@
 #include <femtoGL.h>
+#include <keyboard.h>
 
 static int show_list(char* title, char** options, int sel) {
     GL_tty_goto_xy(0,0);
@@ -22,6 +23,7 @@ static int show_list(char* title, char** options, int sel) {
 }
 
 int GUI_button() {
+    int key;
     int result = -1;
     static uint32_t btn_state = 0;
     uint32_t new_state = IO_IN(IO_BUTTONS);
@@ -36,25 +38,29 @@ int GUI_button() {
 	}
 	btn_state = new_state;
     }
+    key = UART_pollkey();
+    switch(key) {
+    case KEY_UP:
+      result = 2;
+      break;
+    case KEY_DOWN:
+      result = 3;
+      break;
+    case KEY_RIGHT:
+    case KEY_ENTER:
+    case ' ':
+      result = 5;
+      break;
+    case KEY_LEFT:
+      result = 4;
+      break;
+    }
+    
     return result;
 }
 
 int GUI_prompt(char* title, char** options) {
    GL_tty_init(GL_MODE_OLED);
-#ifdef FGAXXX   
-   // Set hires mode so that it does not look
-   // too bad on HDMI.
-   FGA_setmode(FGA_MODE_640x400x4bpp);
-   // Make color 0 black and all other colors 
-   // white so that mirror OLED->HDMI will work
-   // for menus.
-   FGA_setpalette(0, 0, 0, 0);
-   for(int i=1; i<255; ++i) {
-      FGA_setpalette(i, 255, 255, 255);
-   }
-   GL_width = OLED_WIDTH;
-   GL_height = OLED_HEIGHT;
-#endif   
    int sel = 0;
    int nb_options = show_list(title, options, sel);   
    for(;;) {
