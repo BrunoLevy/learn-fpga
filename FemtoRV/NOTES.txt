@@ -535,4 +535,4 @@ Keys:
   left:  27 68
   backspace: 8
   return: 13
-  
+  <ctrl><c>: 3  

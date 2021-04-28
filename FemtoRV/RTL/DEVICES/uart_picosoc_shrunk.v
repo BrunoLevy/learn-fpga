@@ -69,6 +69,8 @@ module buart #(
     always @(posedge clk) begin
 
        if (rd) recv_buf_valid <= 0;
+ 
+//     if (!resetq) recv_buf_valid <= 0;
 
        case (recv_state)
 

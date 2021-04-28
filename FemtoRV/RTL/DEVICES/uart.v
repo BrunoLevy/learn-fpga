@@ -17,7 +17,9 @@ module UART(
     output wire [31:0] rdata,    // data read
 
     input wire 	       RXD, // UART pins
-    output wire        TXD	    
+    output wire        TXD,
+
+    output reg         brk  // goes high one cycle when <ctrl><C> is pressed. 	    
 );
 
 wire [7:0] rx_data;
@@ -38,12 +40,16 @@ buart #(
    .busy(serial_tx_busy),
    .valid(serial_valid),
    .wr(sel_dat && wstrb),
-   .rd(sel_dat && rstrb)
+   .rd(sel_dat && rstrb) 
 );
 
 assign rdata =   sel_dat  ? {22'b0, serial_tx_busy, serial_valid, rx_data} 
                : sel_cntl ? {22'b0, serial_tx_busy, serial_valid, 8'b0   } 
                : 32'b0;   
-   
+
+always @(posedge clk) begin
+   brk <= serial_valid && (rx_data == 7'd3);
+end
+
 endmodule
 

@@ -7,7 +7,7 @@
 #define LINES OLED_HEIGHT / FONT_HEIGHT
 #define PATH_LEN 150
 
-const char* INVALID_ARGUMENTS = "Invalid arguments";
+const char* INVALID_ARGUMENTS = "\nInvalid arguments\n";
 
 void print_elf_error(int errcode) {
   if(errcode != ELF32_OK) {
@@ -174,12 +174,32 @@ void shell() {
    int argc;
    char* argv[100];
    
+   char blink = 0;
+   uint64_t t0 = cycles();
+   uint64_t t1;
+   uint64_t nb_cycles = 250 * 1000 * FEMTORV32_FREQ;
+
+   
    GL_tty_init(FGA_MODE_1024x768x1bpp);
    GL_set_font(&Font8x16);
    printf("FemtOS v. 0.0\n");
    putchar(']');
    for(;;) {
-      int c = getchar();
+      char cursor = (GL_current_font == &Font8x16) ? 178 : '_';
+      int c = UART_pollkey();
+      if(c == 0) {
+	 t1 = cycles();
+	 if(t1 - t0 > nb_cycles) {
+	    t0 = t1;
+	    blink = !blink;
+	    putchar(blink ? cursor : ' ');
+	    putchar('\r');
+	 }
+	 continue;
+      } else {
+	 putchar(' ');
+	 putchar('\r');
+      }
       if(c == 8) {
 	if(ptr > cmdline) {
 	  putchar('\r');

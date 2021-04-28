@@ -26,6 +26,8 @@ static const char* modes[] = {
    "FGA  320x200 16",
    "FGA  320x200 8",
    "FGA  640x400 4",
+   "FGA  800x600 2",
+   "FGA 1024x768 1",   
    NULL
 };
 

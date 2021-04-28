@@ -459,6 +459,7 @@ HardwareConfig hwconfig(
    assign TXD = TXD_internal;
  `endif
 
+   wire        uart_brk;
    wire [31:0] uart_rdata;
    UART uart(
       .clk(clk),
@@ -469,8 +470,11 @@ HardwareConfig hwconfig(
       .wdata(io_wdata),
       .rdata(uart_rdata),
       .RXD(RXD_internal),
-      .TXD(TXD_internal)	     
+      .TXD(TXD_internal),
+      .brk(uart_brk)
    );
+`else
+   wire uart_brk = 1'b0;
 `endif 
 
 /********** MAX7219 led matrix driver *******************************/
@@ -588,7 +592,7 @@ end
     .mem_rstrb(mem_rstrb),
     .mem_rbusy(mem_rbusy),
     .mem_wbusy(mem_wbusy),	      
-    .reset(reset)
+    .reset(reset && !uart_brk)
   );
 
 `ifdef NRV_IO_LEDS  
