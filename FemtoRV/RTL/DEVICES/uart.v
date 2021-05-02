@@ -48,7 +48,7 @@ assign rdata =   sel_dat  ? {22'b0, serial_tx_busy, serial_valid, rx_data}
                : 32'b0;   
 
 always @(posedge clk) begin
-   brk <= serial_valid && (rx_data == 7'd3);
+   brk <= serial_valid && (rx_data == 8'd3);
 end
 
 endmodule

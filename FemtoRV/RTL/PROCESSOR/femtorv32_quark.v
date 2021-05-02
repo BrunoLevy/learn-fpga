@@ -342,7 +342,7 @@ module FemtoRV32(
         end
 
         state[EXECUTE_bit]: begin
-           PC <= isJALR          ? aluPlus[ADDR_WIDTH-1:0] :
+           PC <= isJALR          ? {aluPlus[ADDR_WIDTH-1:1],1'b0} :
                  jumpToPCplusImm ? PCplusImm :
                  PCplus4;
 	   state <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
