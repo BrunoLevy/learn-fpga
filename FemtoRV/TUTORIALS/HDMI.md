@@ -97,7 +97,7 @@ primitive (`ODDRX1F`) that can shift and send two bits per clock (then using a
 Without it, I think that my design can work up to 800x600 (but this will require
 changing the frequencies, resolution etc...). For higher resolution,
 it will require changing the shifter part as follows, as well as
-changing the clocks and resolutions of course (not tested yet):
+changing the clocks and resolutions of course:
 ```
    // Counter now counts modulo 5 instead of modulo 10
    reg [4:0] TMDS_mod5=1;
