@@ -1,4 +1,4 @@
-/*******************************************************************/
+/******************************************************************************/
 // FemtoRV32, a collection of minimalistic RISC-V RV32 cores.
 //
 // This version: The "Gracilis", with full interrupt and
@@ -14,7 +14,7 @@
 //  address bus (and address computation logic).
 //
 // Bruno Levy, Matthias Koch, 2020-2021
-/*******************************************************************/
+/******************************************************************************/
 
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32imac"
@@ -57,13 +57,13 @@ module FemtoRV32(
    (* onehot *)
    wire [7:0] funct3Is = 8'b00000001 << instr[14:12];
 
-   // The five immediate formats, see RiscV reference (link above), Fig. 2.4 p. 12
-   wire [31:0] Uimm = {    instr[31],   instr[30:12], {12{1'b0}}};
-   wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
-   /* verilator lint_off UNUSED */ // MSBs of SBJimms are not used by addr adder.
-   wire [31:0] Simm = {{21{instr[31]}}, instr[30:25],instr[11:7]};
-   wire [31:0] Bimm = {{20{instr[31]}}, instr[7],instr[30:25],instr[11:8],1'b0};
-   wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12],instr[20],instr[30:21],1'b0};
+   // The five imm formats, see RiscV reference (link above), Fig. 2.4 p. 12
+   wire [31:0] Uimm={    instr[31],   instr[30:12], {12{1'b0}}};
+   wire [31:0] Iimm={{21{instr[31]}}, instr[30:20]};
+   /* verilator lint_off UNUSED */ // MSBs of SBJimms not used by addr adder.
+   wire [31:0] Simm={{21{instr[31]}}, instr[30:25],instr[11:7]};
+   wire [31:0] Bimm={{20{instr[31]}}, instr[7],instr[30:25],instr[11:8],1'b0};
+   wire [31:0] Jimm={{12{instr[31]}}, instr[19:12],instr[20],instr[30:21],1'b0};
    /* verilator lint_on UNUSED */
 
    // Base RISC-V (RV32I) has only 10 different instructions !
@@ -118,35 +118,42 @@ module FemtoRV32(
    wire        LTU = aluMinus[32];
    wire        EQ  = (aluMinus[31:0] == 0);
 
-   /**********************************************************/
+   /***************************************************************************/
 
-   // Use the same shifter both for left and right shifts by applying bit reversal
+   // Use the same shifter both for left and right shifts by 
+   // applying bit reversal
 
    wire [31:0] shifter_in = funct3Is[1] ?
-                           {aluIn1[ 0], aluIn1[ 1], aluIn1[ 2], aluIn1[ 3], aluIn1[ 4], aluIn1[ 5], aluIn1[ 6], aluIn1[ 7],
-                            aluIn1[ 8], aluIn1[ 9], aluIn1[10], aluIn1[11], aluIn1[12], aluIn1[13], aluIn1[14], aluIn1[15],
-                            aluIn1[16], aluIn1[17], aluIn1[18], aluIn1[19], aluIn1[20], aluIn1[21], aluIn1[22], aluIn1[23],
-                            aluIn1[24], aluIn1[25], aluIn1[26], aluIn1[27], aluIn1[28], aluIn1[29], aluIn1[30], aluIn1[31]} : aluIn1;
+     {aluIn1[ 0], aluIn1[ 1], aluIn1[ 2], aluIn1[ 3], aluIn1[ 4], aluIn1[ 5], 
+      aluIn1[ 6], aluIn1[ 7], aluIn1[ 8], aluIn1[ 9], aluIn1[10], aluIn1[11], 
+      aluIn1[12], aluIn1[13], aluIn1[14], aluIn1[15], aluIn1[16], aluIn1[17], 
+      aluIn1[18], aluIn1[19], aluIn1[20], aluIn1[21], aluIn1[22], aluIn1[23],
+      aluIn1[24], aluIn1[25], aluIn1[26], aluIn1[27], aluIn1[28], aluIn1[29], 
+      aluIn1[30], aluIn1[31]} : aluIn1;
 
    /* verilator lint_off WIDTH */
-   wire [31:0] shifter   = $signed({instr[30] & aluIn1[31], shifter_in}) >>> aluIn2[4:0];
+   wire [31:0] shifter = 
+               $signed({instr[30] & aluIn1[31], shifter_in}) >>> aluIn2[4:0];
    /* verilator lint_on WIDTH */
 
-   wire [31:0] leftshift = {shifter[ 0], shifter[ 1], shifter[ 2], shifter[ 3], shifter[ 4], shifter[ 5], shifter[ 6], shifter[ 7],
-                            shifter[ 8], shifter[ 9], shifter[10], shifter[11], shifter[12], shifter[13], shifter[14], shifter[15],
-                            shifter[16], shifter[17], shifter[18], shifter[19], shifter[20], shifter[21], shifter[22], shifter[23],
-                            shifter[24], shifter[25], shifter[26], shifter[27], shifter[28], shifter[29], shifter[30], shifter[31]};
+   wire [31:0] leftshift = {
+     shifter[ 0], shifter[ 1], shifter[ 2], shifter[ 3], shifter[ 4], 
+     shifter[ 5], shifter[ 6], shifter[ 7], shifter[ 8], shifter[ 9], 
+     shifter[10], shifter[11], shifter[12], shifter[13], shifter[14], 
+     shifter[15], shifter[16], shifter[17], shifter[18], shifter[19], 
+     shifter[20], shifter[21], shifter[22], shifter[23], shifter[24], 
+     shifter[25], shifter[26], shifter[27], shifter[28], shifter[29], 
+     shifter[30], shifter[31]};
 
    /**********************************************************/
 
    wire funcM     = instr[25];
-   wire isDivider = isALUreg & funcM & instr[14]; // |funct3Is[7:4];
-// wire aluBusy   = isALUreg & funcM & |quotient_msk; // ALU is busy if division is in progress.
-   wire aluBusy   =                    |quotient_msk; // ALU is busy if division is in progress.
+   wire isDivider = isALUreg & funcM & instr[14];
+   wire aluBusy   = |quotient_msk; // ALU is busy if division is in progress.
 
+   // funct3: 1->MULH, 2->MULHSU  3->MULHU
    wire isMULH   = funct3Is[1];
    wire isMULHSU = funct3Is[2];
-// wire isMULHU  = funct3Is[3];
 
    wire sign1 = aluIn1[31] &  isMULH;
    wire sign2 = aluIn2[31] & (isMULH | isMULHSU);
@@ -164,7 +171,6 @@ module FemtoRV32(
    // - instr[30] is 1 for SRA (do sign extension) and 0 for SRL
 
    wire [31:0] aluOut_base =
-
      (funct3Is[0]  ? instr[30] & instr[5] ? aluMinus[31:0] : aluPlus : 32'b0) |
      (funct3Is[1]  ? leftshift                                       : 32'b0) |
      (funct3Is[2]  ? {31'b0, LT}                                     : 32'b0) |
@@ -175,14 +181,14 @@ module FemtoRV32(
      (funct3Is[7]  ? aluIn1 & aluIn2                                 : 32'b0) ;
 
    wire [31:0] aluOut_muldiv =
-
-     (  funct3Is[0]   ?  multiply[31: 0]                             : 32'b0) | // 0:MUL
-     ( |funct3Is[3:1] ?  multiply[63:32]                             : 32'b0) | // 1:MULH, 2:MULHSU, 3:MULHU
-     (  instr[14]     ?  div_sign ? -divResult : divResult           : 32'b0) ; // 4:DIV, 5:DIVU, 6:REM, 7:REMU
+     (  funct3Is[0]   ?  multiply[31: 0] : 32'b0) | // 0:MUL
+     ( |funct3Is[3:1] ?  multiply[63:32] : 32'b0) | // 1:MULH, 2:MULHSU, 3:MULHU
+     (  instr[14]     ?  div_sign ? -divResult : divResult : 32'b0) ; 
+                                                 // 4:DIV, 5:DIVU, 6:REM, 7:REMU
 
    wire [31:0] aluOut = isALUreg & funcM ? aluOut_muldiv : aluOut_base;
 
-   /**********************************************************/
+   /***************************************************************************/
    // Implementation of DIV/REM instructions, highly inspired by PicoRV32
 
    reg [31:0] dividend;
@@ -190,33 +196,32 @@ module FemtoRV32(
    reg [31:0] quotient;
    reg [31:0] quotient_msk;
 
-   wire divstep_do = divisor <= {31'b0, dividend};
+   wire divstep_do = (divisor <= {31'b0, dividend});
 
    wire [31:0] dividendN     = divstep_do ? dividend - divisor[31:0] : dividend;
    wire [31:0] quotientN     = divstep_do ? quotient | quotient_msk  : quotient;
 
-   wire div_sign = ~instr[12] & (instr[13] ? aluIn1[31] : (aluIn1[31] != aluIn2[31]) & |aluIn2);
+   wire div_sign = ~instr[12] & (instr[13] ? aluIn1[31] : 
+                   (aluIn1[31] != aluIn2[31]) & |aluIn2);
 
-   always @(posedge clk)
-   if (isDivider & aluWr)
-   begin
-
-      dividend <=   ~instr[12] & aluIn1[31] ? -aluIn1 : aluIn1;
-      divisor  <= {(~instr[12] & aluIn2[31] ? -aluIn2 : aluIn2), 31'b0};
-      quotient <= 0;
-      quotient_msk <= 1 << 31;
-
-   end else begin
-
-      dividend     <= dividendN;
-      divisor      <= divisor >> 1;
-      quotient     <= quotientN;
-      quotient_msk <= quotient_msk >> 1;
-
-   end
-
+   always @(posedge clk) begin
+      if (isDivider & aluWr) begin
+         dividend <=   ~instr[12] & aluIn1[31] ? -aluIn1 : aluIn1;
+         divisor  <= {(~instr[12] & aluIn2[31] ? -aluIn2 : aluIn2), 31'b0};
+         quotient <= 0;
+         quotient_msk <= 1 << 31;
+      end else begin
+         dividend     <= dividendN;
+         divisor      <= divisor >> 1;
+         quotient     <= quotientN;
+         quotient_msk <= quotient_msk >> 1;
+      end
+   end 
+   
    reg  [31:0] divResult;
-   always @(posedge clk) divResult <= instr[13] ? dividendN : quotientN;
+   always @(posedge clk) begin
+      divResult <= instr[13] ? dividendN : quotientN;
+   end
 
    /***************************************************************************/
    // The predicate for conditional branches.
@@ -549,32 +554,6 @@ module FemtoRV32(
 endmodule
 
 /*****************************************************************************/
-// Notes:
-//
-// [1] About the "reverse case" statement, also used in Claire Wolf's picorv32:
-// It is just a cleaner way of writing a series of cascaded if() statements,
-// To understand it, think about the case statement *in general* as follows:
-// case (expr)
-//       val_1: statement_1
-//       val_2: statement_2
-//   ... val_n: statement_n
-// endcase
-// The first statement_i such that expr == val_i is executed.
-// Now if expr is 1'b1:
-// case (1'b1)
-//       cond_1: statement_1
-//       cond_2: statement_2
-//   ... cond_n: statement_n
-// endcase
-// It is *exactly the same thing*, the first statement_i such that
-// expr == cond_i is executed (that is, such that 1'b1 == cond_i,
-// in other words, such that cond_i is true)
-// More on this:
-//     https://stackoverflow.com/questions/15418636/case-statement-in-verilog
-//
-// [2] state uses 1-hot encoding (at any time, state has only one bit set to 1).
-// It uses a larger number of bits (one bit per state), but often results in
-// a both more compact (fewer LUTs) and faster state machine.
 
 module decompressor(
    input  wire [31:0] c,
@@ -654,3 +633,31 @@ module decompressor(
       default:                    decompressed =                                                                       unknown ; // Unknown opcode
    endcase
 endmodule
+
+/*****************************************************************************/
+// Notes:
+//
+// [1] About the "reverse case" statement, also used in Claire Wolf's picorv32:
+// It is just a cleaner way of writing a series of cascaded if() statements,
+// To understand it, think about the case statement *in general* as follows:
+// case (expr)
+//       val_1: statement_1
+//       val_2: statement_2
+//   ... val_n: statement_n
+// endcase
+// The first statement_i such that expr == val_i is executed.
+// Now if expr is 1'b1:
+// case (1'b1)
+//       cond_1: statement_1
+//       cond_2: statement_2
+//   ... cond_n: statement_n
+// endcase
+// It is *exactly the same thing*, the first statement_i such that
+// expr == cond_i is executed (that is, such that 1'b1 == cond_i,
+// in other words, such that cond_i is true)
+// More on this:
+//     https://stackoverflow.com/questions/15418636/case-statement-in-verilog
+//
+// [2] state uses 1-hot encoding (at any time, state has only one bit set to 1).
+// It uses a larger number of bits (one bit per state), but often results in
+// a both more compact (fewer LUTs) and faster state machine.
