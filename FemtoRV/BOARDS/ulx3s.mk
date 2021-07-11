@@ -29,7 +29,7 @@ ULX3S.firmware_config:
 	BOARD=ulx3s TOOLS/make_config.sh -DULX3S
 	(cd FIRMWARE; make libs)	
 	(cd FIRMWARE/FEMTOS; make clean commander.hex)
-
+	
 ULX3S.lint:
 	verilator -DULX3S -DBENCH --lint-only --top-module $(PROJECTNAME) \
          -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL $(VERILOGS)

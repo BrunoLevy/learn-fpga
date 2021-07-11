@@ -1,6 +1,7 @@
 
 // Define one of:
-// MODE_640x480, MODE_1024x768, MODE_1280x1024.
+// MODE_640x480, MODE_800x600, MODE_1024x768, MODE_1280x1024.
+// ("physical mode" sent to the HDMI)
 
 `include "TMDS_encoder.v"
 
@@ -94,6 +95,14 @@ module GFX_PLL(
    localparam CLKFB_DIV = 5;
  `endif
 
+ `ifdef MODE_800x600
+   localparam CLKI_DIV = 1;
+   localparam CLKOP_DIV = 3;
+   localparam CLKOP_CPHASE = 1;
+   localparam CLKOP_FPHASE = 0;
+   localparam CLKFB_DIV = 8;
+ `endif
+   
  `ifdef MODE_1024x768
    localparam CLKI_DIV = 1;
    localparam CLKOP_DIV = 2;

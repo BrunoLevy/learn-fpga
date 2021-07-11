@@ -41,9 +41,11 @@
 //
 // See FIRMWARE/LIBFEMTOGL/FGA.h, FGA.c and FGA_mode.c
 
-// Choose one of the modes (1280x1024 may make timings fail)
+// "Physical mode" sent to the HDMI (choose one of them)
+// Note: > 640x480 may make timings fail
 //`define MODE_640x480
-`define MODE_1024x768
+`define MODE_800x600
+//`define MODE_1024x768
 //`define MODE_1280x1024
 
 `include "GFX_hdmi.v"

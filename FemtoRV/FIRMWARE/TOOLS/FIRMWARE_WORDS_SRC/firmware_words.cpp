@@ -235,8 +235,9 @@ int main(int argc, char** argv) {
   std::string out_hex_filename;
   std::string out_bin_filename;
   int bin_start_addr = 0;
-  int RAM_SIZE = 0;
-  
+  int RAM_SIZE    = 0;
+  int MAX_ADDR    = 0;
+   
   if(argc < 2) {
     cmdline_error = true;
   } else {
@@ -258,6 +259,8 @@ int main(int argc, char** argv) {
       sscanf(argv[i+1],"%x",&bin_start_addr);
     } else if (!strcmp(argv[i],"-ram")) {
       sscanf(argv[i+1],"%d",&RAM_SIZE);
+    } else if (!strcmp(argv[i],"-max_addr")) {
+      sscanf(argv[i+1],"%d",&MAX_ADDR);
     } else {
       cmdline_error = true;
       break;
@@ -266,7 +269,7 @@ int main(int argc, char** argv) {
 
   if(cmdline_error) {
     std::cerr << "usage: " << argv[0]
-	      << " input.rawhex|input.elf <-verilog femtosoc.v> <-hex out.hex> <-bin out.bin> <-bin_start_addr addr> <-ram ram_amount>"
+	      << " input.rawhex|input.elf <-verilog femtosoc.v> <-hex out.hex> <-bin out.bin> <-bin_start_addr addr> <-ram ram_amount> <-max_addr max_address>"
 	      << std::endl;
     return 1;
   }
@@ -296,14 +299,6 @@ int main(int argc, char** argv) {
     return 1;
   }
   
-  if(out_hex_filename != "") {
-    save_RAM_hex(out_hex_filename.c_str(), RAM);
-  }
-
-  if(out_bin_filename != "") {
-    save_RAM_bin(out_bin_filename.c_str(), RAM, bin_start_addr, max_addr);
-  }
-    
   std::cout << "Code size: "
 	    << (max_addr-bin_start_addr)/4 << " words"
 	    << " ( total RAM size: "
@@ -312,5 +307,26 @@ int main(int argc, char** argv) {
 	    << std::endl;
   std::cout << "Occupancy: " << ((max_addr-bin_start_addr)*100) / RAM_SIZE
 	    << "%" << std::endl;
+
+   
+  if(MAX_ADDR != 0) {
+     std::cout << "testing MAX_ADDR limit: " << MAX_ADDR << std::endl;
+     if(max_addr > MAX_ADDR) {
+	std::cerr << "   max_addr overflow, MAX_ADDR exceeded" << std::endl;
+	return 1;
+     } else {
+	std::cout << "   max_addr OK" << std::endl;
+     }
+  }
+   
+  if(out_hex_filename != "") {
+    save_RAM_hex(out_hex_filename.c_str(), RAM);
+  }
+
+  if(out_bin_filename != "") {
+    save_RAM_bin(out_bin_filename.c_str(), RAM, bin_start_addr, max_addr);
+  }
+    
+
   return 0;
 }

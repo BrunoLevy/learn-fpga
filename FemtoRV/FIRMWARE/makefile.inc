@@ -147,11 +147,12 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 # command, using my 'firmware_words' utility to parse the .elf executable.
 # It is used for "bare metal" executables, compiled with linker script,
 # starting at address 0 (firmware for IceStick, or femtOS commander.c for ULX3S)
-# The rules to generate standard (.elf) or bare metal (.bm_elf) executables
-# are in EXAMPLES/Makefile
+# max_addr is set to 64k, because standard elf are meant to be run from 64k offset
+# (then on the ULX3S, there is room for both femtOS in the first 64ks and the loaded
+#  user executable)
 
 %.hex: %.baremetal.elf $(FIRMWARE_DIR)/TOOLS/firmware_words 
-	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram $(RAM_SIZE) -hex $@
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram $(RAM_SIZE) -max_addr 65535 -hex $@
 	cp $@ $(FIRMWARE_DIR)/firmware.hex
 	echo $@ > $(FIRMWARE_DIR)/firmware.txt
 

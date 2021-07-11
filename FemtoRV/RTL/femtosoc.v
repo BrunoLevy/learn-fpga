@@ -10,22 +10,6 @@
 `default_nettype none // Makes it easier to detect typos !
 
 `include "femtosoc_config.v"        // User configuration of processor and SOC.
-`include "PROCESSOR/utils.v"
-
-`define NRV_IS_IO_ADDR(addr) |addr[23:22] // Asserted if address is in IO space (then it needs additional wait states)
-
-`ifdef NRV_FEMTORV32_QUARK
- `include "PROCESSOR/femtorv32_quark.v" // Minimalistic version of the processor for IceStick (RV32I)
-`endif
-
-`ifdef NRV_FEMTORV32_TACHYON
- `include "PROCESSOR/femtorv32_tachyon.v" // Version for the IceStick with higher maxfreq (RV32I)
-`endif
-
-`ifdef NRV_FEMTORV32_ELECTRON
- `include "PROCESSOR/femtorv32_electron.v" // RV32IM with barrel shifter
-`endif
-
 `include "PLL/femtopll.v"           // The PLL (generates clock at NRV_FREQ)
 
 `include "DEVICES/uart.v"           // The UART (serial port over USB)

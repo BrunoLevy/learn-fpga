@@ -3,6 +3,8 @@
 // This version: The "Electron". 
 // Implements RV32IM and has a barrel shifter.
 //
+// Instruction set: RV32IM + RDCYCLES
+//
 // Parameters:
 //  Reset address can be defined using RESET_ADDR (default is 0).
 //
@@ -18,6 +20,9 @@
 //
 // Bruno Levy, Matthias Koch, 2020-2021
 /*******************************************************************/
+
+`define NRV_ARCH     "rv32im"
+`define NRV_OPTIMIZE "-O3"
 
 // The ALU, used for reg-reg, reg-imm and branch tests
 module ALU(
@@ -58,7 +63,7 @@ module ALU(
               x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15],
               x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
               x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]} ;
-   endfunction; 
+   endfunction
    
    wire [31:0] shifter_in = funct3[2] ? in1 : flip(in1);
    /* verilator lint_off WIDTH */

@@ -42,7 +42,7 @@
 
 // Include support for writing files (1 / 0)?
 #ifndef FATFS_INC_WRITE_SUPPORT
-#define FATFS_INC_WRITE_SUPPORT             0 // 1
+#define FATFS_INC_WRITE_SUPPORT             1
 #endif
 
 // Support long filenames (1 / 0)?

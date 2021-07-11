@@ -1,23 +1,18 @@
 /*
- * A dummy IVERILOG module to get some configured variables
+ * A dummy IVERILOG module to get some configured variables from
+ * verilog sources and output them to FIRMWARE/config.mk.
+ * (see TOOLS/make_config.sh)
  */
 
 `include "femtosoc_config.v"
 
 module dummy();
 initial begin
-   
- `ifdef NRV_RV32M
-   $display("ARCH=rv32im");
-   $display("OPTIMIZE=-O3");      
- `else   
-   $display("ARCH=rv32i");
-   $display("OPTIMIZE=-Os");         
- `endif
-   
-   $display("ABI=ilp32");
-   
-   $display("RAM_SIZE=%d",`NRV_RAM);
+
+  $display("ARCH=",`NRV_ARCH);
+  $display("OPTIMIZE=",`NRV_OPTIMIZE);
+  $display("ABI=ilp32");
+  $display("RAM_SIZE=%d",`NRV_RAM);
 
 //   Note1: for now we only need FGA here for conditional
 // compilation of OLED->FGA emulation (that pulls too

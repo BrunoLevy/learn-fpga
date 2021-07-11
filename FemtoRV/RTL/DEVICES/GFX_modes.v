@@ -1,6 +1,6 @@
 
 // Define one of:
-// MODE_650x480, MODE_1024x768, MODE_1280x1024.
+// MODE_640x480, MODE_800x600, MODE_1024x768, MODE_1280x1024.
 
 /********************** Modes ****************************/
 
@@ -14,6 +14,18 @@
    localparam GFX_v_front_porch = 10;
    localparam GFX_v_sync_width  = 2;
    localparam GFX_v_back_porch  = 32;
+`endif
+
+`ifdef MODE_800x600
+   localparam GFX_pixel_clock   = 40;
+   localparam GFX_width         = 800;
+   localparam GFX_height        = 600;
+   localparam GFX_h_front_porch = 40;
+   localparam GFX_h_sync_width  = 128;
+   localparam GFX_h_back_porch  = 88;
+   localparam GFX_v_front_porch = 1;
+   localparam GFX_v_sync_width  = 4;
+   localparam GFX_v_back_porch  = 23;
 `endif
 
 `ifdef MODE_1024x768

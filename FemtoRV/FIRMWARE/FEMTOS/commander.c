@@ -180,7 +180,7 @@ void shell() {
    uint64_t nb_cycles = 250 * 1000 * FEMTORV32_FREQ;
 
    
-   GL_tty_init(FGA_MODE_1024x768x1bpp);
+   GL_tty_init(FGA_MODE_800x600x2bpp);
    GL_set_font(&Font8x16);
    printf("FemtOS v. 0.0\n");
    putchar(']');

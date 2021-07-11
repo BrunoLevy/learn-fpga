@@ -56,8 +56,7 @@ void spi_reset() {
 }
 
 /**
- * Reads one byte from the SPI flash, using either the IO
- * interface or the mapped memory interface.
+ * Reads one byte from the SPI flash, using the mapped SPI flash interface.
  */
 #define SPI_FLASH_BASE ((uint32_t*)(1 << 23))
 uint8_t next_spi_byte() {
@@ -147,7 +146,7 @@ int read_frame() {
     } else {
 	if(frame_flags & CLEAR_BIT) {
 	    // GL_clear(); // Commented out, too much flickering,
-	                   // cannot VSynch on the OLED display.
+	                   // cannot VSync on the OLED display.
 	}
     }
 

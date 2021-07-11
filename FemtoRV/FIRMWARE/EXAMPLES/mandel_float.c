@@ -21,6 +21,7 @@
 #define dy (ymax-ymin)/(float)H
 
 void mandel() {
+   uint32_t total_ticks = 0;
    GL_write_window(0,0,W-1,H-1);
    float Ci = ymin;
    for(int Y=0; Y<H; ++Y) {
@@ -48,24 +49,25 @@ void mandel() {
 }
 
 int main() {
-   GL_init(GL_MODE_CHOOSE);
-#ifdef FGA
-   FGA_setpalette(0, 0, 0, 0);
-   for(int i=1; i<255; ++i) {
-      FGA_setpalette(i, random(), random(), random());
-   }
-#endif   
    for(;;) {
-       GL_clear();
-       mandel();
-       GL_tty_goto_xy(0,0);
-       printf("Mandelbrot Demo.\n");
-       delay(1000);       
-       GL_tty_goto_xy(0,GL_height-1);
-       printf("\n");
-       printf("FemtoRV32 %d MHz\n", FEMTORV32_FREQ);   
-       printf("FemtOS 1.0\n");
-       delay(2000);
+      GL_init(GL_MODE_CHOOSE);
+      GL_tty_init(FGA_mode);   
+#ifdef FGA
+      FGA_setpalette(0, 0, 0, 0);
+      for(int i=1; i<255; ++i) {
+	 FGA_setpalette(i, random(), random(), random());
+      }
+#endif   
+      GL_clear();
+      mandel();
+      GL_tty_goto_xy(0,0);
+      printf("Mandelbrot Demo.\n");
+      delay(1000);       
+      GL_tty_goto_xy(0,GL_height-1);
+      printf("\n");
+      printf("FemtoRV32 %d MHz\n", FEMTORV32_FREQ);   
+      printf("FemtOS 1.0\n");
+      delay(2000);
    }
    return 0;   
 }

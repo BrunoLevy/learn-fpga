@@ -88,3 +88,30 @@
 `endif
 
 /******************************************************************************************************************/
+/* Processor */
+
+`define NRV_IS_IO_ADDR(addr) |addr[23:22] // Asserted if address is in IO space (then it needs additional wait states)
+
+`include "PROCESSOR/utils.v"
+
+`ifdef NRV_FEMTORV32_QUARK
+ `include "PROCESSOR/femtorv32_quark.v" // Minimalistic version of the processor for IceStick (RV32I)
+`endif
+
+`ifdef NRV_FEMTORV32_TACHYON
+ `include "PROCESSOR/femtorv32_tachyon.v" // Version for the IceStick with higher maxfreq (RV32I)
+`endif
+
+`ifdef NRV_FEMTORV32_ELECTRON
+ `include "PROCESSOR/femtorv32_electron.v" // RV32IM with barrel shifter
+`endif
+
+`ifdef NRV_FEMTORV32_INTERMISSUM
+ `include "PROCESSOR/femtorv32_intermissum.v" // RV32IM with barrel shifter and interrupts
+`endif
+
+`ifdef NRV_FEMTORV32_GRACILIS
+ `include "PROCESSOR/femtorv32_gracilis.v" // RV32IMC with barrel shifter and interrupts
+`endif
+
+/******************************************************************************************************************/

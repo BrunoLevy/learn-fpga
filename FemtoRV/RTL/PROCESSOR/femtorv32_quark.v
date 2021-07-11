@@ -4,6 +4,8 @@
 //             A single VERILOG file, compact & understandable code.
 //             (200 lines of code, 400 lines counting comments)
 //
+// Instruction set: RV32I + RDCYCLES
+//
 // Parameters:
 //  Reset address can be defined using RESET_ADDR (default is 0).
 //
@@ -26,6 +28,10 @@
 //
 // Bruno Levy, Matthias Koch, 2020-2021
 /*******************************************************************/
+
+// Firmware generation flags for this processor
+`define NRV_ARCH     "rv32i"
+`define NRV_OPTIMIZE "-Os"
 
 module FemtoRV32(
    input 	 clk,

@@ -15,9 +15,9 @@ wire pixclk;        // pixel clock
 wire half_clk_TMDS; // TMDS clock at half freq (5*pixclk)
 
 // Select mode by uncommenting one of the lines below
-//`define MODE_640x480
+`define MODE_640x480
 //`define MODE_1024x768
-`define MODE_1280x1024
+//`define MODE_1280x1024
 
 `ifdef MODE_640x480
 

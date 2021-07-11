@@ -134,6 +134,9 @@ RISC-V notes:
 		     can understand.
 
   DebugLog:
+             - plus de sortie vidéo sur l'ULX3S, qu'est-ce qu'il se passe ?
+	         --> il n'arrivait plus à avoir les bons timings en mode 1024x768
+	       (ça dépend de la seed ... je suis descendu à 800x600)
   
              - Compiler des programmes pour l'ULX3S et les envoyer sur 
 	       l'ICESTICK, c'est pas une bonne idee (faire un truc pour 
