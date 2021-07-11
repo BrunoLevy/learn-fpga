@@ -18,6 +18,7 @@
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32im"
 `define NRV_OPTIMIZE "-O3"
+`define NRV_INTERRUPTS
 
 module FemtoRV32(
    input          clk,

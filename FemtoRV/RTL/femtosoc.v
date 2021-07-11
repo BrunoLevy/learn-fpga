@@ -575,7 +575,10 @@ end
     .mem_rdata(mem_rdata),
     .mem_rstrb(mem_rstrb),
     .mem_rbusy(mem_rbusy),
-    .mem_wbusy(mem_wbusy),	      
+    .mem_wbusy(mem_wbusy),
+`ifdef NRV_INTERRUPTS
+    .interrupt_request(1'b0),	      
+`endif     
     .reset(reset && !uart_brk)
   );
 

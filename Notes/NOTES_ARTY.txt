@@ -1,0 +1,43 @@
+1) git clone https://github.com/merledu/symbiflow-magic.git
+
+2) edit Makefile, insert:
+
+INSTALL_DIR = /home/blevy/opt/symbiflow
+FPGA_FAM    = xc7
+
+replace line:
+"$(INSTALL_DIR)/$(FPGA_FAM)/conda/bin/"conda env create -f $(FPGA_FAM)/environment.yml
+
+3) ~/opt/symbiflow/xc7/conda/bin/conda init $SHELL
+   export PATH=/home/blevy/opt/symbiflow/xc7/install/bin/:$PATH
+
+4) git clone https://github.com/SymbiFlow/symbiflow-examples.git
+   cd symbiflow-examples/xc7
+   TARGET="arty_35" make -C counter_test
+
+Note: 
+/home/blevy/opt/symbiflow/xc7/conda/envs/xc7/lib/python3.7/site-packages/fasm/parser/__init__.py:33:
+RuntimeWarning: Unable to import fast Antlr4 parser implementation.
+  ImportError: cannot import name 'antlr_to_tuple' from 'fasm.parser'
+(/home/blevy/opt/symbiflow/xc7/conda/envs/xc7/lib/python3.7/site-packages/fasm/parser/__init__.py)
+
+  Falling back to the much slower pure Python textX based parser   implementation.
+    
+      Getting the faster antlr parser can normally be done byinstalling the required dependencies and then reinstalling the fasm package with:
+      pip uninstall
+          pip install -v fasm
+	  
+	    """.format(e), RuntimeWarning)
+	    
+====================	    
+conda activate xc7
+cd symbiflow-examples/xc7/linux_litex_demo
+openocd -f ~/opt/symbiflow/xc7/conda/envs/xc7/share/openocd/scripts/board/digilent_arty.cfg -c "transport select jtag; init; pld load 0 top.bit; exit"
+picocom -b 460800 /dev/ttyUSB1 (ou 115200 suivant les demos)
+
+Boot linux through serial:
+lxterm --no-crc --images=images.json  /dev/ttyUSB1 --speed=1e6
+
+
+Notes on slow lxterm upload:
+https://github.com/enjoy-digital/litex/issues/561

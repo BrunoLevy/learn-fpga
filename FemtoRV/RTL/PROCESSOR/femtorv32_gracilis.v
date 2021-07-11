@@ -19,6 +19,7 @@
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32imac"
 `define NRV_OPTIMIZE "-O3"
+`define NRV_INTERRUPTS
 
 module FemtoRV32(
    input          clk,
@@ -270,20 +271,26 @@ module FemtoRV32(
    // Interrupt logic, CSR registers and opcodes.
    /***************************************************************************/
 
-   // Interrupt logic:
+   // Remember interrupt requests as they are not checked for every cycle
+   reg  interrupt_request_sticky;
+   
+   // Interrupt enable and lock logic
+   wire interrupt = interrupt_request_sticky & mstatus & ~mcause;
 
-   reg  interrupt_request_sticky;                                   // Remember interrupt requests as they are not checked for every cycle
-   wire interrupt = interrupt_request_sticky & mstatus & ~mcause;   // Interrupt enable and lock logic
-   wire interrupt_accepted = interrupt & state[EXECUTE_bit];        // Processor accepts interrupts in EXECUTE state.
+   // Processor accepts interrupts in EXECUTE state.   
+   wire interrupt_accepted = interrupt & state[EXECUTE_bit];        
 
-   // If current interrupt is accepted, there already might be the next one, which should not be missed:
-   always @(posedge clk)
-     interrupt_request_sticky <= interrupt_request | (interrupt_request_sticky & ~interrupt_accepted);
+   // If current interrupt is accepted, there already might be the next one,
+   //  which should not be missed:
+   always @(posedge clk) begin
+     interrupt_request_sticky <= 
+         interrupt_request | (interrupt_request_sticky & ~interrupt_accepted);
+   end
 
-   wire interrupt_return = isSYSTEM & funct3Is[0]; // & (instr[31:20] == 12'h302); // Decoder for mret opcode
+   // Decoder for mret opcode
+   wire interrupt_return = isSYSTEM & funct3Is[0]; // & (instr[31:20]==12'h302);
 
    // CSRs:
-
    reg  [ADDR_WIDTH-1:0] mepc;    // The saved program counter.
    reg  [ADDR_WIDTH-1:0] mtvec;   // The address of the interrupt handler.
    reg                   mstatus; // Interrupt enable
@@ -299,10 +306,8 @@ module FemtoRV32(
    wire sel_cycles  = (instr[31:20] == 12'hC00);
    wire sel_cyclesh = (instr[31:20] == 12'hC80);
 
-   // Read CSRs:
-
+   // Read CSRs
    wire [31:0] CSR_read =
-
      (sel_mstatus ?    {28'b0, mstatus, 3'b0}  : 32'b0) |
      (sel_mtvec   ? {ADDR_PAD, mtvec}          : 32'b0) |
      (sel_mepc    ? {ADDR_PAD, mepc }          : 32'b0) |
@@ -311,23 +316,23 @@ module FemtoRV32(
      (sel_cyclesh ?            cycles[63:32]   : 32'b0) ;
 
 
-   // Write CSRs:
+   // Write CSRs: 5 bit unsigned immediate or content of RS1
+   wire [31:0] CSR_modifier = instr[14] ? {27'd0, instr[19:15]} : rs1; 
 
-   wire [31:0] CSR_modifier = instr[14] ? {27'd0, instr[19:15]} : rs1; // 5 bit unsigned immediate or content of RS1
-
-   wire [31:0] CSR_write = (instr[13:12] == 2'b10) ?     CSR_modifier | CSR_read :
-                           (instr[13:12] == 2'b11) ?    ~CSR_modifier & CSR_read :
+   wire [31:0] CSR_write = (instr[13:12] == 2'b10) ? CSR_modifier | CSR_read :
+                           (instr[13:12] == 2'b11) ? ~CSR_modifier & CSR_read :
                         /* (instr[13:12] == 2'b01) ? */  CSR_modifier ;
 
-
-   always @(posedge clk)
-   if(!reset) mstatus <= 0;
-   else begin
-     if (isSYSTEM & (instr[14:12] != 0) & state[EXECUTE_bit]) // Execute a CSR opcode
-     begin
-       if (sel_mstatus) mstatus <= CSR_write[3];
-       if (sel_mtvec  ) mtvec   <= CSR_write[ADDR_WIDTH-1:0];
-     end
+   always @(posedge clk) begin
+      if(!reset) begin
+	 mstatus <= 0;
+      end else begin
+	 // Execute a CSR opcode
+	 if (isSYSTEM & (instr[14:12] != 0) & state[EXECUTE_bit]) begin
+	    if (sel_mstatus) mstatus <= CSR_write[3];
+	    if (sel_mtvec  ) mtvec   <= CSR_write[ADDR_WIDTH-1:0];
+	 end
+      end
    end
 
    /***************************************************************************/
@@ -414,7 +419,8 @@ module FemtoRV32(
    reg long_instr;
 
    wire [31:0] cached_mem   = current_cache_hit ? cached_data : mem_rdata;
-   wire [31:0] decomp_input = PC[1] ? {mem_rdata[15:0], cached_mem[31:16]} : cached_mem;
+   wire [31:0] decomp_input = PC[1] ? {mem_rdata[15:0], cached_mem[31:16]} 
+                                    : cached_mem;
    wire [31:0] decompressed;
 
    decompressor _decomp ( .c(decomp_input), .decompressed(decompressed) );
@@ -444,8 +450,10 @@ module FemtoRV32(
    // combinatorially from state and other signals.
 
    // register write-back enable.
-   wire writeBack = ~(isBranch | isStore ) &
-                    (state[EXECUTE_bit] | state[WAIT_ALU_OR_MEM_bit] | state[WAIT_ALU_OR_MEM_SKIP_bit]);
+   wire writeBack = ~(isBranch | isStore ) & (
+            state[EXECUTE_bit] | state[WAIT_ALU_OR_MEM_bit] | 
+            state[WAIT_ALU_OR_MEM_SKIP_bit]
+  );
 
    // The memory-read signal.
    assign mem_rstrb = state[EXECUTE_bit] & isLoad | state[FETCH_INSTR_bit];
@@ -453,102 +461,89 @@ module FemtoRV32(
    // The mask for memory-write.
    assign mem_wmask = {4{state[EXECUTE_bit] & isStore}} & STORE_wmask;
 
-   // aluWr starts computation (shifts) in the ALU.
+   // aluWr starts computation (divide) in the ALU.
    assign aluWr = state[EXECUTE_bit] & isALU;
 
    wire jumpToPCplusImm = isJAL | (isBranch & predicate);
 
    wire needToWait = isLoad | isStore | isDivider;
 
-   wire [ADDR_WIDTH-1:0] PC_new = isJALR           ? {aluPlus[ADDR_WIDTH-1:1],1'b0} :
-                                  jumpToPCplusImm  ? PCplusImm :
-                                  interrupt_return ? mepc :
-                                  PCinc;
+   wire [ADDR_WIDTH-1:0] PC_new = 
+           isJALR           ? {aluPlus[ADDR_WIDTH-1:1],1'b0} :
+           jumpToPCplusImm  ? PCplusImm :
+           interrupt_return ? mepc :
+                              PCinc;
 
    always @(posedge clk) begin
       if(!reset) begin
-         state             <= WAIT_ALU_OR_MEM; // Just waiting for !mem_wbusy
+         state             <= WAIT_ALU_OR_MEM;     //Just waiting for !mem_wbusy
          PC                <= RESET_ADDR[ADDR_WIDTH-1:0];
          mcause            <= 0;
-         cached_addr       <= {ADDR_WIDTH-2{1'b1}}; // This needs to be an invalid address.
+         cached_addr       <= {ADDR_WIDTH-2{1'b1}};//Needs to be an invalid addr
          fetch_second_half <= 0;
-      end else
+      end else begin
 
-      // See note [1] at the end of this file.
-      (* parallel_case *)
-      case(1'b1)
+	 // See note [1] at the end of this file.
+	 (* parallel_case *)
+	 case(1'b1)
 
-        state[WAIT_INSTR_bit]: begin
-           if(!mem_rbusy) begin // may be high when executing from SPI flash
+           state[WAIT_INSTR_bit]: begin
+              if(!mem_rbusy) begin // may be high when executing from SPI flash
+		 // Update cache
+		 if (~current_cache_hit | fetch_second_half) begin
+                    cached_addr <= mem_addr[ADDR_WIDTH-1:2];
+                    cached_data <= mem_rdata;
+		 end;
 
-              // Update cache
+		 // Decode instruction
+		 rs1 <= registerFile[decompressed[19:15]];
+		 rs2 <= registerFile[decompressed[24:20]];
+		 instr      <= decompressed[31:2];
+		 long_instr <= &decomp_input[1:0];
 
-              if (~current_cache_hit | fetch_second_half)
-              begin
-                 cached_addr <= mem_addr[ADDR_WIDTH-1:2];
-                 cached_data <= mem_rdata;
-              end;
-
-              // Decode instruction
-
-              rs1 <= registerFile[decompressed[19:15]];
-              rs2 <= registerFile[decompressed[24:20]];
-
-              instr      <= decompressed[31:2];
-              long_instr <= &decomp_input[1:0];
-
-              // Long opcode, unaligned, first part fetched, happens in non-linear code
-
-              if (current_unaligned_long & ~fetch_second_half)
-              begin
-                fetch_second_half <= 1;
-                state <= FETCH_INSTR;
+		 // Long opcode, unaligned, first part fetched, 
+		 // happens in non-linear code
+		 if (current_unaligned_long & ~fetch_second_half) begin
+                    fetch_second_half <= 1;
+                    state <= FETCH_INSTR;
+		 end else begin
+                    fetch_second_half <= 0;
+                    state <= EXECUTE;
+		 end
               end
-              else
-              begin
-                fetch_second_half <= 0;
-                state <= EXECUTE;
+           end
+
+           state[EXECUTE_bit]: begin
+              if (interrupt) begin
+		 PC     <= mtvec;
+		 mepc   <= PC_new;
+		 mcause <= 1;
+		 state  <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
+              end else begin
+		 PC <= PC_new;
+		 if (interrupt_return) mcause <= 0;
+
+		 state <= next_cache_hit & ~next_unaligned_long
+			  ? needToWait ? WAIT_ALU_OR_MEM_SKIP : WAIT_INSTR
+			  : needToWait ? WAIT_ALU_OR_MEM      : FETCH_INSTR;
+
+		 fetch_second_half <= next_cache_hit & next_unaligned_long;
               end
-
-           end
-        end
-
-        state[EXECUTE_bit]: begin
-
-           if (interrupt)
-           begin
-             PC     <= mtvec;
-             mepc   <= PC_new;
-             mcause <= 1;
-             state  <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
-           end
-           else
-           begin
-             PC <= PC_new;
-             if (interrupt_return) mcause <= 0;
-
-             state <= next_cache_hit & ~next_unaligned_long
-                ? needToWait ? WAIT_ALU_OR_MEM_SKIP : WAIT_INSTR
-                : needToWait ? WAIT_ALU_OR_MEM      : FETCH_INSTR;
-
-             fetch_second_half <= next_cache_hit & next_unaligned_long;
            end
 
-        end
+           state[WAIT_ALU_OR_MEM_bit]: begin
+              if(!aluBusy & !mem_rbusy & !mem_wbusy) state <= FETCH_INSTR;
+           end
 
-        state[WAIT_ALU_OR_MEM_bit]: begin
-           if(!aluBusy & !mem_rbusy & !mem_wbusy) state <= FETCH_INSTR;
-        end
+           state[WAIT_ALU_OR_MEM_SKIP_bit]: begin
+              if(!aluBusy & !mem_rbusy & !mem_wbusy) state <= WAIT_INSTR;
+           end
 
-        state[WAIT_ALU_OR_MEM_SKIP_bit]: begin
-           if(!aluBusy & !mem_rbusy & !mem_wbusy) state <= WAIT_INSTR;
-        end
-
-        default: begin // FETCH_INSTR
-          state <= WAIT_INSTR;
-        end
-
-      endcase
+           default: begin // FETCH_INSTR
+              state <= WAIT_INSTR;
+           end
+	 endcase 
+      end
    end
 
 endmodule
