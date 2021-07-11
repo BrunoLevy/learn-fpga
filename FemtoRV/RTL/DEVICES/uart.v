@@ -32,7 +32,7 @@ buart #(
   .BAUDS(115200)
 ) the_buart (
    .clk(clk),
-   .resetq(1'b1),
+   .resetq(!brk),
    .tx(TXD),
    .rx(RXD),
    .tx_data(wdata[7:0]),

@@ -149,7 +149,7 @@ module FemtoRV32(
    /**********************************************************/
 
    wire funcM     = instr[25];
-   wire isDivider = isALUreg & funcM & instr[14];
+   wire isDivide = isALUreg & funcM & instr[14];
    wire aluBusy   = |quotient_msk; // ALU is busy if division is in progress.
 
    // funct3: 1->MULH, 2->MULHSU  3->MULHU
@@ -206,7 +206,7 @@ module FemtoRV32(
                    (aluIn1[31] != aluIn2[31]) & |aluIn2);
 
    always @(posedge clk) begin
-      if (isDivider & aluWr) begin
+      if (isDivide & aluWr) begin
          dividend <=   ~instr[12] & aluIn1[31] ? -aluIn1 : aluIn1;
          divisor  <= {(~instr[12] & aluIn2[31] ? -aluIn2 : aluIn2), 31'b0};
          quotient <= 0;
@@ -451,9 +451,10 @@ module FemtoRV32(
 
    // register write-back enable.
    wire writeBack = ~(isBranch | isStore ) & (
-            state[EXECUTE_bit] | state[WAIT_ALU_OR_MEM_bit] | 
+            state[EXECUTE_bit] | 
+	    state[WAIT_ALU_OR_MEM_bit] | 
             state[WAIT_ALU_OR_MEM_SKIP_bit]
-  );
+   );
 
    // The memory-read signal.
    assign mem_rstrb = state[EXECUTE_bit] & isLoad | state[FETCH_INSTR_bit];
@@ -466,7 +467,7 @@ module FemtoRV32(
 
    wire jumpToPCplusImm = isJAL | (isBranch & predicate);
 
-   wire needToWait = isLoad | isStore | isDivider;
+   wire needToWait = isLoad | isStore | isDivide;
 
    wire [ADDR_WIDTH-1:0] PC_new = 
            isJALR           ? {aluPlus[ADDR_WIDTH-1:1],1'b0} :
@@ -524,8 +525,8 @@ module FemtoRV32(
 		 if (interrupt_return) mcause <= 0;
 
 		 state <= next_cache_hit & ~next_unaligned_long
-			  ? needToWait ? WAIT_ALU_OR_MEM_SKIP : WAIT_INSTR
-			  : needToWait ? WAIT_ALU_OR_MEM      : FETCH_INSTR;
+  		        ? (needToWait ? WAIT_ALU_OR_MEM_SKIP : WAIT_INSTR)
+			: (needToWait ? WAIT_ALU_OR_MEM      : FETCH_INSTR);
 
 		 fetch_second_half <= next_cache_hit & next_unaligned_long;
               end
