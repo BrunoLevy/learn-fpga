@@ -376,6 +376,14 @@ module FemtoRV32(
 `endif   
    always @(posedge clk) cycles <= cycles + 1;
 
+`ifdef BENCH
+   initial begin
+      cycles = 0;
+      aluShamt = 0;
+      registerFile[0] = 0;
+   end
+`endif
+
 endmodule
 
 /*****************************************************************************/
