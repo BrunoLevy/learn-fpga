@@ -96,7 +96,7 @@ module FemtoRV32(
    end
 
    /***************************************************************************/
-   // The ALU. Does operations and tests combinatorially, except shifts.
+   // The ALU. Does operations and tests combinatorially, except divisions.
    /***************************************************************************/
 
    // First ALU source, always rs1
@@ -146,7 +146,7 @@ module FemtoRV32(
      shifter[25], shifter[26], shifter[27], shifter[28], shifter[29], 
      shifter[30], shifter[31]};
 
-   /**********************************************************/
+   /***************************************************************************/
 
    wire funcM     = instr[25];
    wire isDivide = isALUreg & funcM & instr[14];
@@ -163,7 +163,7 @@ module FemtoRV32(
    wire signed [32:0] signed2 = {sign2, aluIn2};
    wire signed [63:0] multiply = signed1 * signed2;
 
-   /**********************************************************/
+   /***************************************************************************/
 
    // Notes:
    // - instr[30] is 1 for SUB and 0 for ADD
@@ -319,7 +319,7 @@ module FemtoRV32(
    // Write CSRs: 5 bit unsigned immediate or content of RS1
    wire [31:0] CSR_modifier = instr[14] ? {27'd0, instr[19:15]} : rs1; 
 
-   wire [31:0] CSR_write = (instr[13:12] == 2'b10) ? CSR_modifier | CSR_read :
+   wire [31:0] CSR_write = (instr[13:12] == 2'b10) ? CSR_modifier | CSR_read  :
                            (instr[13:12] == 2'b11) ? ~CSR_modifier & CSR_read :
                         /* (instr[13:12] == 2'b01) ? */  CSR_modifier ;
 

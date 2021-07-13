@@ -11,8 +11,9 @@
 
 /************************* Processor configuration ******************************************************************/
 
-//`define NRV_FEMTORV32_ELECTRON      // RV32IM, barrel shifter
-`define NRV_FEMTORV32_GRACILIS      // RV32IMC, barrel shifter
+`define NRV_FEMTORV32_ELECTRON      // RV32IM, barrel shifter
+//`define NRV_FEMTORV32_GRACILIS      // RV32IMC, barrel shifter
+//`define NRV_FEMTORV32_INTERMISSUM      // RV32IMC, barrel shifter
 `define NRV_FREQ 25                 // Frequency in MHz. Recomm: 15 MHz   Overclocking: 20-25 MHz
 `define NRV_RESET_ADDR 32'h00820000 // Jump execution to SPI Flash (800000h, +128k(20000h) for FPGA bitstream)
 // tinyraytracer: 30 MHz RV32IM  electron 3:12
