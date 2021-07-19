@@ -1,12 +1,22 @@
 IceStick Tutorial
 =================
 
-![](Images/IceStick.jpg)
+![](Images/IceBreaker.jpg)
 
 This tutorial will show you how to install FPGA development tools,
 synthesize a RISC-V core, compile and install programs and run them
-on a IceStick. This lets you experience FPGA design and RISC-V using 
-one of the cheapest FPGA devices (around $40).
+on a IceBreaker. The IceBreaker is equipped with a small FPGA
+(Ice40UP5k). With its 5K logic elements. It supports lower maxfreq 
+than the Ice40HX1K of the IceStick, but it has many advantages:
+- it has enough space to fit a RISC-V RV32IMC core (femtorv32-gracilis)
+- it has built-in DSPs, that can do multiplies in one cycle (used by
+  femtorv32-gracilis to implement RV32M)
+- it has 128 kB of built-in single ported RAM
+
+If you want to connect stuff (small OLED screen, VGA, HDMI...), you
+will need to solder a couple of PMOD connectors (PMOD1A and PMOD1B,
+as on the photograph). Note that PMOD2 is shared with the buttons 
+and LEDs of the separable right part of the board.
 
 Install open-source FPGA development toolchain
 ==============================================
@@ -17,16 +27,12 @@ do so are given [here](toolchain.md).
 
 (Optional) configure femtosoc and femtorv32
 ============================================
-Edit `learn-fpga/FemtoRV/RTL/CONFIGS/icestick_config.v`
+Edit `learn-fpga/FemtoRV/RTL/CONFIGS/icebreaker_config.v`
 
 This file lets you define what type of RISC-V processor you will
-create. For IceStick, we use the `femtorv32-quark`, that has a minimal LUT
-count and that can run code from the SPI flash. It is best suited for
-the IceStick that has a small number of LUTs (1380) and very little
-BRAM (8 kB, but only 6 kB available as RAM, because two kB are used by
-the registers).
+create. For IceBreaker, we use the `femtorv32-gracilis` (RV32IMC).
 
-The file `learn-fpga/FemtoRV/RTL/CONFIGS/icestick_config.v`
+The file `learn-fpga/FemtoRV/RTL/CONFIGS/icebreaker_config.v`
 also lets you select the device drivers present in the associated system-on-chip:
 
 | Device                 | description                    | comment                           |
@@ -40,10 +46,8 @@ also lets you select the device drivers present in the associated system-on-chip
 
 We activate the LEDs (for visual
 debugging) and the UART (to talk with the system through a
-terminal-over-USB connection). We use 6144 bytes of RAM. It is not 
-very much, but we cannot do more on the IceStick. You will see that
-with 6k of RAM, you can still program nice and interesting RISC-V
-demos. If you do not have an OLED screen or a led matrix screen, you
+terminal-over-USB connection). We use the 128 kbytes of single-ported RAM
+available in the Ice40up5K. If you do not have an OLED screen or a led matrix screen, you
 can comment out the corresponding lines in the file.
 
 There are other options in the file. Normally you will not need to change them. If you want to know, they
@@ -52,28 +56,23 @@ are listed below:
 | Option                   | Description                                                                          |
 |--------------------------|--------------------------------------------------------------------------------------|
 | `NRV_FREQ`               | Frequency of the processor in MHz                                                    |
-| `NRV_RAM`                | Amount of RAM (6KB max)                                                              |
+| `NRV_RAM`                | Amount of RAM (128KB max)                                                            |
 | `NRV_RESET_ADDR`         | Address where to jump at startup and reset (SPI flash + 64KB offset)                 |
 | `NRV_IO_HARDWARE_CONFIG` | Hardware register that can be queried by code to see configured devices              |
 | `NRV_RUN_FROM_SPI_FLASH` | Do not initialize BRAM with firmware (firmware will be read from SPI flash)          |
 
-The default value (66 MHz) corresponds to what is validated by Yosys/NextPNR. If you want you can try overclocking
-a bit, up to 80 - 90 MHz (but you may experience stability problems then).
+The default value (25 MHz) corresponds to what is validated by Yosys/NextPNR. If you want you can try overclocking
+a bit, up to 20 - 25 MHz (but you may experience stability problems then).
 Note that frequency can only take some predefined values, listed in `RTL/PLL/frequencies.txt`. You can add your own
 value there if need be, but then you will need to use `RTL/PLL/gen_pll.sh` to re-generate the board-specific Verilog
 for the PLL.
-
-On the IceStick, we use the `femtorv32-quark` configuration. It deactivates some functionalities (hardware mul, counters),
-and it is a bit slower (simplified state machine at a cost of a higher CPI), but it has the ability of running the
-code directly from the SPI flash. It is very useful on the IceStick, because we got 2 MBs of SPI flash, that can be
-used to store large programs. 
 
 Synthethize and program
 =======================
 You can now synthesize the design and send it to
 the device. Plug the device in a USB port, then:
 ```
-$make ICESTICK
+$make ICEBREAKER
 ```
 The first time you run it, it will download RISC-V development tools (takes a while).
 
@@ -137,7 +136,7 @@ Examples with the LED matrix
 For more fun, you can add an 8x8 led matrix. It is cheap (less than
 $1) and easy to find (just google search `max7219 8x8 led matrix`).
 Make sure pin labels (CLK,CS,DIN,GND,VCC) correspond to the image, then
-insert it in the J2 connector of the IceStik as shown on the image.
+insert it in the PMOD1A connector of the IceStik as shown on the image.
 
 FemtoSOC configuration
 ----------------------
@@ -151,7 +150,7 @@ deactivate the UART). To do that, configure devices in `FemtoRV/RTL/CONFIGS/ices
 
 Then you need to re-synthethize and send the bitstream to the IceStick:
 ```
-$make ICESTICK
+$make ICEBREAKER
 ```
 
 ![](Images/IceStick_hello.gif)
@@ -206,7 +205,7 @@ connect the wires as shown to the connector, then the connector to the
 IceStick. If the colors of the wires do not match, use the schematic
 on the right to know wich wire goes where. 
 
-Now you need to reconfigure `icestick_config.v` as follows:
+Now you need to reconfigure `icebreaker_config.v` as follows:
 ```
 ...
 `define NRV_IO_SSD1351    // Mapped IO, 128x128x64K OLed screen
@@ -215,7 +214,7 @@ Now you need to reconfigure `icestick_config.v` as follows:
 
 Then you need to re-synthethize and send the bitstream to the IceStick:
 ```
-$make ICESTICK
+$make ICEBREAKER
 ```
 
 
@@ -293,29 +292,7 @@ $ make tinyraytracer.prog
 ```
 
 It will display the classical shiny spheres and checkboard scene. It
-takes around 20 minutes to do so, be patient ! This is because not only
-our processor is not super fast, but also it does not have hardware
-multiplication, and it executes floating point software routines from
-the SPI Flash ! It would be faster to copy them in RAM, but they do
-not fit (remember, we only have 6 KB of RAM).
+takes around 3 minutes to do so, be patient ! Our processor does not
+have a FPU yet (it is probably possible to fit one on the IceBreaker,
+we'll try to do that in the future). 
 
-For smaller programs, it is possible to fit a part of the routines in
-RAM, take a look at `FIRMWARE/EXAMPLES/riscv_logo_2.c` (if you have both
-the led matrix and SSD screen, it will tell you what it is doing). It
-shows the effect of the magic keyword `RV32_FASTCODE`: this keyword is
-expanded as an annotation, indicating to the linker that the
-corresponding function should be copied in RAM instead of SPI Flash.
-Since RAM is much faster to access than SPI Flash, you can do that for
-some small functions that are called often. It is for instance the case
-of some graphic functions, used by our version of the `ST_NICCC` demo.
-
-However, the limits of our tiny system are quicky reached. If you want
-to go further, an easy way is to get an ULX3S. It costs a bit more
-($130) but it is worth the price (the on-board ECP5 FPGA is HUGE as
-compared to the one of the IceStick). Now time to read the
-[ULX3S tutorial](ULX3S.md) !
-
-![](Images/ICE40HX1K_and_ECP5.png)
-_To give you an idea, this image shows our core, installed on a
-ICE40HX1K (that equips the IceStick) and on an ECP5 85K (that equips
-the ULX3S). Plenty of room on the ULX3S !_
