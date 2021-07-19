@@ -52,6 +52,7 @@ it multiple times (without having to connect all wires one by one).
 Step 5
 ------
 ![](Images/OysterPMOD_demo.gif)
+
 FemtoRV32 support libraries can redirect `printf()` to the led matrix,
 to the OLED screen or to the UART. It has also some basic drawing
 functions for the OLED screen. 
