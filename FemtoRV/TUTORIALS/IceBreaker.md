@@ -1,5 +1,5 @@
-IceStick Tutorial
-=================
+IceBreaker Tutorial
+===================
 
 ![](Images/IceBreaker.jpg)
 
@@ -136,7 +136,9 @@ Examples with the LED matrix
 For more fun, you can add an 8x8 led matrix. It is cheap (less than
 $1) and easy to find (just google search `max7219 8x8 led matrix`).
 Make sure pin labels (CLK,CS,DIN,GND,VCC) correspond to the image, then
-insert it in the PMOD1A connector of the IceStik as shown on the image.
+insert it in the PMOD1A connector of the IceStik as shown on the image
+(the image shows an IceStick instead of an IceBreaker, refer to the 
+pin numbers that are the same for all PMODs).
 
 FemtoSOC configuration
 ----------------------
@@ -203,7 +205,10 @@ These little screens need 7 wires. The good news is that no soldering
 is needed, just get a 2x6 pins connector such as the one on the image,
 connect the wires as shown to the connector, then the connector to the
 IceStick. If the colors of the wires do not match, use the schematic
-on the right to know wich wire goes where. 
+on the right to know wich wire goes where (the image shows an IceStick
+instead of an IceBreaker, refer to the pin numbers that are the same
+for all PMODs).
+
 
 Now you need to reconfigure `icebreaker_config.v` as follows:
 ```

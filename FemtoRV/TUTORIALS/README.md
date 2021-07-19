@@ -2,9 +2,11 @@ FemtoRV32 Tutorials
 ===================
 
 - [IceSTICK tutorial](IceStick.md)
+- [IceBreaker tutorial](IceBreaker.md)
 - [ULX3S tutorial](ULX3S.md)
 - [ECP5 evaluation board tutorial](ECP5_EVN.md) _(WIP)_
-- [FOMU tutorial](FOMU.md) _(WIP)_
+- [FOMU tutorial](FOMU.md) _(WIP)
+- [Oyster PMOD](OysterPMOD.md)
 - [Adding a new board](newboard.md)
 - [Mecrisp-quintus on the IceStick (Forth)](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/FIRMWARE/MECRISP_QUINTUS/README.md)
 

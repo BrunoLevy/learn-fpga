@@ -15,6 +15,7 @@ processor design and RISC-V programming.
 Quick links:
   - [FemtoRV](FemtoRV/README.md)
   - [IceStick tutorial](FemtoRV/TUTORIALS/IceStick.md)
+  - [IceBreaker tutorial](FemtoRV/TUTORIALS/IceBreaker.md)
   - [ULX3S tutorial](FemtoRV/TUTORIALS/ULX3S.md)
   - [ECP5 eval board tutorial](FemtoRV/TUTORIALS/ECP5_EVN.md)
   - [FOMU tutorial](FemtoRV/TUTORIALS/FOMU.md)  
