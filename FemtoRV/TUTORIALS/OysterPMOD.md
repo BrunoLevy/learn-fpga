@@ -17,6 +17,7 @@ You will need:
 - connecting wires for the OLED display (most of the time they are
   shipped with it)
 - small screws
+- a 2x6 pins header (or two 1x6 headers)
 
 Step 1
 ------
@@ -26,13 +27,25 @@ Step 1
 
 Step 2
 ------
+![](Images/OysterPMOD_4.jpg)
+Insert the 2x6 pins header in the PMOD. The image shows what it looks
+like on the IceBreaker (left) and IceStick (right). On the IceStick, 
+I like to stick a tiny rectangle of red adhesive tape to indicate where 
+the number 1 pin is.
 
+Step 3
+------
 ![](Images/OysterPMOD_1.jpg)
+Connect the wires of OLED screen to the headers as indicated on the
+diagram. Use 5 female-female dupont wires to connect the led matrix. 
+Wonderful ! Both exactly fit in a single PMOD connector.
 
-
-![](Images/OysterPMOD_2.jpg)
-
-
+Step 4
+------
 ![](Images/OysterPMOD_3.jpg)
-
+Use adhesive tape to fix the 12 wires together. Add a tiny rectangle of
+red tape to indicate number 1 pin. Your Oyster PMOD is ready to be
+used ! If you have multiple FPGA boards, with a bit of care, it is
+quite easy to have a single Oyster PMOD and connect it / disconnect
+it multiple times (without having to connect all wires one by one). 
 
