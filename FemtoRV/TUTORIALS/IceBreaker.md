@@ -140,6 +140,9 @@ insert it in the PMOD1A connector of the IceStik as shown on the image
 (the image shows an IceStick instead of an IceBreaker, refer to the 
 pin numbers that are the same for all PMODs).
 
+You can also build a [OysterPMOD](OysterPMOD.md) (with both a led
+matrix and OLED screen using a single PMOD connector).
+
 FemtoSOC configuration
 ----------------------
 Now we need to activate hardware support for the led matrix (and
@@ -208,6 +211,9 @@ IceStick. If the colors of the wires do not match, use the schematic
 on the right to know wich wire goes where (the image shows an IceStick
 instead of an IceBreaker, refer to the pin numbers that are the same
 for all PMODs).
+
+You can also build a [OysterPMOD](OysterPMOD.md) (with both a led
+matrix and OLED screen using a single PMOD connector).
 
 
 Now you need to reconfigure `icebreaker_config.v` as follows:

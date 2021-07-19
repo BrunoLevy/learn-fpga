@@ -138,6 +138,8 @@ For more fun, you can add an 8x8 led matrix. It is cheap (less than
 $1) and easy to find (just google search `max7219 8x8 led matrix`).
 Make sure pin labels (CLK,CS,DIN,GND,VCC) correspond to the image, then
 insert it in the J2 connector of the IceStik as shown on the image.
+You can also build a [OysterPMOD](OysterPMOD.md) (with both a led
+matrix and OLED screen using a single PMOD connector).
 
 FemtoSOC configuration
 ----------------------
@@ -205,6 +207,9 @@ is needed, just get a 2x6 pins connector such as the one on the image,
 connect the wires as shown to the connector, then the connector to the
 IceStick. If the colors of the wires do not match, use the schematic
 on the right to know wich wire goes where. 
+
+You can also build a [OysterPMOD](OysterPMOD.md) (with both a led
+matrix and OLED screen using a single PMOD connector).
 
 Now you need to reconfigure `icestick_config.v` as follows:
 ```
