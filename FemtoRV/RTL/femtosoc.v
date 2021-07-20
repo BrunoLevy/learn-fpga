@@ -7,6 +7,7 @@
 
 /*************************************************************************************/
 
+
 `default_nettype none // Makes it easier to detect typos !
 
 `include "femtosoc_config.v"        // User configuration of processor and SOC.

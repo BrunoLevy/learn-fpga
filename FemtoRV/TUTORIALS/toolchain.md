@@ -20,16 +20,16 @@ instructions to get and install the latest versions of the tools.
 Some steps depend on the type of FPGA installed on your board, refer to
 the following table:
 
-| Board     | FPGA family |
-|-----------|-------------|
-|IceStick   | Ice40       |
-|IceBreaker | Ice40       |
-|IceFeather | Ice40       |
-|FOMU       | Ice40       |
-|ULX3S      | ECP5        |
-|OrangeCrab | ECP5        |
-|ECP5-EVN   | ECP5        |
-
+| Board     | FPGA family   |
+|-----------|---------------|
+|IceStick   | Ice40         |
+|IceBreaker | Ice40         |
+|IceFeather | Ice40         |
+|FOMU       | Ice40         |
+|ULX3S      | ECP5          |
+|OrangeCrab | ECP5          |
+|ECP5-EVN   | ECP5          |
+|ARTY       | artix-7 (xc7) |
 
 Step 1: FemtoRV
 ===============
@@ -37,9 +37,12 @@ Step 1: FemtoRV
 $ git clone https://github.com/BrunoLevy/learn-fpga.git
 ```
 
+- For the ARTY FPGA family, follow [this link](arty.md).
+- For other FPGA families, follow the steps below:
 
 Step 2: Yosys and companions
 ============================
+
 
 Follow setup instructions from [yosys website](https://github.com/YosysHQ/yosys)
 

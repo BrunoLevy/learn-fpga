@@ -16,6 +16,10 @@
 `include "CONFIGS/ecp5evn_config.v"
 `endif
 
+`ifdef ARTY
+`include "CONFIGS/arty_config.v"
+`endif
+
 `ifndef NRV_CONFIGURED
 `include "CONFIGS/generic_config.v"
 `endif

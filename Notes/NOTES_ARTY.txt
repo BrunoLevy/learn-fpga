@@ -41,3 +41,10 @@ lxterm --no-crc --images=images.json  /dev/ttyUSB1 --speed=1e6
 
 Notes on slow lxterm upload:
 https://github.com/enjoy-digital/litex/issues/561
+
+=====================
+
+https://reference.digilentinc.com/programmable-logic/arty/reference-manual
+https://reference.digilentinc.com/programmable-logic/arty-a7/reference-manual
+
+https://github.com/Digilent/digilent-xdc/blob/master/Arty-A7-35-Master.xdc
