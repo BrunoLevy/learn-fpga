@@ -7,6 +7,8 @@
 
 /*******************************************************************/
 
+int __errno;
+
 typedef int BOOL;
 
 static inline float max(float x, float y) { return x>y?x:y; }

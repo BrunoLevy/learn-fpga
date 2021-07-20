@@ -15,7 +15,7 @@ set_property IOSTANDARD LVCMOS33 [get_ports {D4}]
 # Clock constraints
 create_clock -period 10.0 [get_ports {pclk}]
 
-## Pmod Header JA
+# Pmod Header JA
 set_property -dict { PACKAGE_PIN G13   IOSTANDARD LVCMOS33 } [get_ports { oled_RST   }]; #IO_0_15 Sch=ja[1]
 set_property -dict { PACKAGE_PIN B11   IOSTANDARD LVCMOS33 } [get_ports { ledmtx_CLK }]; #IO_L4P_T0_15 Sch=ja[2]
 set_property -dict { PACKAGE_PIN A11   IOSTANDARD LVCMOS33 } [get_ports { ledmtx_CS  }]; #IO_L4N_T0_15 Sch=ja[3]
@@ -24,3 +24,10 @@ set_property -dict { PACKAGE_PIN D13   IOSTANDARD LVCMOS33 } [get_ports { oled_D
 set_property -dict { PACKAGE_PIN B18   IOSTANDARD LVCMOS33 } [get_ports { oled_CS    }]; #IO_L10P_T1_AD11P_15 Sch=ja[8]
 set_property -dict { PACKAGE_PIN A18   IOSTANDARD LVCMOS33 } [get_ports { oled_CLK   }]; #IO_L10N_T1_AD11N_15 Sch=ja[9]
 set_property -dict { PACKAGE_PIN K16   IOSTANDARD LVCMOS33 } [get_ports { oled_DIN   }]; #IO_25_15 Sch=ja[10]
+
+# UART
+#set_property LOC D10 [get_ports TXD]
+#set_property IOSTANDARD LVCMOS33 [get_ports TXD]
+#set_property LOC A9 [get_ports RXD]
+#set_property IOSTANDARD LVCMOS33 [get_ports RXD]
+

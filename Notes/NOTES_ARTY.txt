@@ -48,3 +48,5 @@ https://reference.digilentinc.com/programmable-logic/arty/reference-manual
 https://reference.digilentinc.com/programmable-logic/arty-a7/reference-manual
 
 https://github.com/Digilent/digilent-xdc/blob/master/Arty-A7-35-Master.xdc
+
+https://forum.digilentinc.com/topic/2438-pll-clocks-on-arty/

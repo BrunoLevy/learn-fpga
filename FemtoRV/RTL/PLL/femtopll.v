@@ -36,6 +36,8 @@ endmodule
   `include "pll_ecp5_evn.v"
  `elsif FOMU
   `include "pll_fomu.v"
+ `elsif ARTY
+  `include "pll_arty.v"
  `endif
 `endif
 
