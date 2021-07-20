@@ -1,4 +1,4 @@
-// Default femtosoc configuration file for IceStick
+// Default femtosoc configuration file for ARTY
 
 /************************* Devices **********************************************************************************/
 
