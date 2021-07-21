@@ -2,7 +2,7 @@
 set -o nounset
 set -o errexit
 
-# Based on fomu-workshop/hdl/board.mk:
+# Based on https://github.com/im-tomu/fomu-workshop/blob/master/hdl/board.mk
 PCF_PATH="../../../FemtoRV/BOARDS"
 test -v FOMU_REV || { echo 'error Unrecognized FOMU_REV value. must be "evt1", "evt2", "evt3", "pvt", or "hacker"'; exit 1; }
 case "$FOMU_REV" in
@@ -36,12 +36,6 @@ case "$FOMU_REV" in
     exit 1
     ;;
 esac
-
-echo "$YOSYSFLAGS"
-echo "$PNRFLAGS"
-echo "$PCF"
-ls -l "$PCF"
-exit 0
 
 # shellcheck disable=SC2086   # Double quote to prevent globbing and word splitting.
 yosys $YOSYSFLAGS -p 'synth_ice40 -top top -json blink.json' blink.v
