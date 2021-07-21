@@ -3,7 +3,7 @@ set -o nounset
 set -o errexit
 
 # Based on fomu-workshop/hdl/board.mk:
-PCF_PATH="../../../pcf"
+PCF_PATH="../../../FemtoRV/BOARDS"
 test -v FOMU_REV || { echo 'error Unrecognized FOMU_REV value. must be "evt1", "evt2", "evt3", "pvt", or "hacker"'; exit 1; }
 case "$FOMU_REV" in
   evt1)
@@ -40,10 +40,13 @@ esac
 echo "$YOSYSFLAGS"
 echo "$PNRFLAGS"
 echo "$PCF"
+ls -l "$PCF"
 exit 0
 
-yosys -DPVT -p 'synth_ice40 -top top -json blink.json' blink.v
-nextpnr-ice40 --up5k --package uwg30 --pcf fomu-pvt.pcf --json blink.json --asc blink.asc
+# shellcheck disable=SC2086   # Double quote to prevent globbing and word splitting.
+yosys $YOSYSFLAGS -p 'synth_ice40 -top top -json blink.json' blink.v
+# shellcheck disable=SC2086   # Double quote to prevent globbing and word splitting.
+nextpnr-ice40 $PNRFLAGS --pcf "$PCF" --json blink.json --asc blink.asc
 icepack blink.asc blink.bit
 cp blink.bit blink.dfu
 dfu-suffix -v 1209 -p 70b1 -a blink.dfu
