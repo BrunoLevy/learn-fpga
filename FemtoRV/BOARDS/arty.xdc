@@ -26,8 +26,8 @@ create_clock -period 10.0 [get_ports {pclk}]
 #set_property -dict { PACKAGE_PIN K16   IOSTANDARD LVCMOS33 } [get_ports { oled_DIN   }]; #IO_25_15 Sch=ja[10]
 
 # UART
-#set_property LOC D10 [get_ports TXD]
-#set_property IOSTANDARD LVCMOS33 [get_ports TXD]
-#set_property LOC A9 [get_ports RXD]
-#set_property IOSTANDARD LVCMOS33 [get_ports RXD]
+set_property LOC D10 [get_ports TXD]
+set_property IOSTANDARD LVCMOS33 [get_ports TXD]
+set_property LOC A9 [get_ports RXD]
+set_property IOSTANDARD LVCMOS33 [get_ports RXD]
 

@@ -5,8 +5,10 @@ ARTY Tutorial
 
 This tutorial will show you how to install FPGA development tools,
 synthesize a RISC-V core, compile and install programs and run them
-on a IceStick. This lets you experience FPGA design and RISC-V using 
-one of the cheapest FPGA devices (around $40).
+on a ARTY. Note that ARTY support is work in progress: the UART does 
+not work properly (displays garbage sometimes), and frequency with 
+the RV32IM cores is limited to 50 MHz (because we do not know for now
+how to configure a toolchain that infers DSPs on the ARTY).
 
 Install open-source FPGA development toolchain
 ==============================================
@@ -50,6 +52,7 @@ are listed below:
 | `NRV_IO_HARDWARE_CONFIG` | Hardware register that can be queried by code to see configured devices              |
 | `NRV_RUN_FROM_SPI_FLASH` | Not supported for now on ARTY                                                        |
 
+NOTE: you will need also to edit `BOARDS/arty.xdc` and comment-out all the pins that you do not use.
 
 Compile firmware
 ================
@@ -70,6 +73,10 @@ the device. Plug the device in a USB port, then:
 $make ARTY
 ```
 
+If you have the OLED screen or the led matrix plugged in, you will see
+the message. If you don't, it will be sent to the UART, but support is
+currently broken (displays garbage). What follows is an explanation on
+how to connect to the UART (but again, it will display garbage).
 
 Now, install a terminal emulator:
 ```
@@ -91,7 +98,7 @@ To exit, press `<ctrl> ]` (python-3-serial/miniterm), or `<ctrl> a` then '\\' (s
 Examples with the serial terminal (UART)
 ========================================
 The directories `FIRMWARE/EXAMPLES` and `FIRMWARE/ASM_EXAMPLES` contain programs in C and assembly
-that you can run on the device. On the IceStick, only those that use 6K or less will work (list below).
+that you can run on the device. 
 
 To compile a program:
 ```
@@ -139,12 +146,15 @@ matrix and OLED screen using a single PMOD connector).
 FemtoSOC configuration
 ----------------------
 Now we need to activate hardware support for the led matrix (and
-deactivate the UART). To do that, configure devices in `FemtoRV/RTL/CONFIGS/icestick_config.v` as follows:
+deactivate the UART). To do that, configure devices in `FemtoRV/RTL/CONFIGS/arty_config.v` as follows:
 ```
 ...
 `define NRV_IO_MAX7219    // Mapped IO, 8x8 led matrix
 ...
 ```
+
+NOTE: you will need also to edit `BOARDS/arty.xdc` and uncomment there
+the pins used by the led matrix.
 
 Then you need to re-synthethize and send the bitstream to the ARTY:
 ```
@@ -200,22 +210,25 @@ from Adafruit were reported to work as well.
 These little screens need 7 wires. The good news is that no soldering
 is needed, just get a 2x6 pins connector such as the one on the image,
 connect the wires as shown to the connector, then the connector to the
-IceStick. If the colors of the wires do not match, use the schematic
+ARTY. If the colors of the wires do not match, use the schematic
 on the right to know wich wire goes where. 
 
 You can also build a [OysterPMOD](OysterPMOD.md) (with both a led
 matrix and OLED screen using a single PMOD connector).
 
-Now you need to reconfigure `icestick_config.v` as follows:
+Now you need to reconfigure `arty_config.v` as follows:
 ```
 ...
 `define NRV_IO_SSD1351    // Mapped IO, 128x128x64K OLed screen
 ...
 ```
 
-Then you need to re-synthethize and send the bitstream to the IceStick:
+NOTE: you will need also to edit `BOARDS/arty.xdc` and uncomment there
+the pins used by the OLED screen.
+
+Then you need to re-synthethize and send the bitstream to the ARTY:
 ```
-$make ICESTICK
+$make ARTY
 ```
 
 
@@ -248,74 +261,11 @@ _(The black diagonal stripes are due to display refresh, they are not visible no
 The LIBFEMTORV32 library includes some basic font rendering, 2D polygon clipping and 2D polygon filling routines. 
 Everything fits in the available 6kbytes of memory ! 
 
-Storing stuff on the SPI Flash
-------------------------------
-
-Is it all we can do with an IceStick ? No we can do more !
-Let us see how to port a [Y2K demo called
-ST-NICCC](http://www.pouet.net/prod.php?which=1251). Such 3D graphics
-cannot be rendered in real time by our femto-machine 
-(and the 8 MHz 68000 of the Atari ST could not either !), 
-so it does render a precomputed stream of 2D
-polygons stored in a file. The file weights 640Kb, and remember, we only
-have 6Kb, so what can we do ? It would be possible to wire a SDCard
-adapter and store the file there, but there is a much easier solution:
-the IceStick stores the configuration of the FPGA in a flash memory, and
-there is plenty of unused room in it: _if it does not fit in one chip,
-we can overflow in the neighborhing chip !_. This flash memory is a tiny 8-legged
-chip, that talks to the external world using a serial protocol (SPI).
-In fact we are already using it ! It is where our programs are stored,
-and FemtoRV32 directly executes them from there. We are also going to store
-some data there.
-
-Let us copy the data to the SPI flash:
-```
-$ iceprog -o 1M FIRMWARE/EXAMPLES/DATA/scene1.bin
-```
-This copies the data starting from a 1Mbytes offset (the lower
-addresses are used to store the configuration of the FPGA and to store
-our programs, so do not
-overwrite them). The data file `scene1.bin` is the original one, taken
-from the ST_NICCC demo.
-
-Now you can compile the demo program and send it to the IceStick:
-```
-$ cd FIRMWARE/EXAMPLES
-$ make ST_NICCC_spi_flash.prog
-```
-
-![](Images/ST_NICCC_on_IceStick.gif)
-
 Can we do more with this tiny system ? Yes, we can do _raytracing_ !
 ```
 $ cd FIRMWARE/EXAMPLES
-$ make tinyraytracer.prog
+$ make tinyraytracer.hex
+$ cd ../..
+$ make ARTY
 ```
 
-It will display the classical shiny spheres and checkboard scene. It
-takes around 20 minutes to do so, be patient ! This is because not only
-our processor is not super fast, but also it does not have hardware
-multiplication, and it executes floating point software routines from
-the SPI Flash ! It would be faster to copy them in RAM, but they do
-not fit (remember, we only have 6 KB of RAM).
-
-For smaller programs, it is possible to fit a part of the routines in
-RAM, take a look at `FIRMWARE/EXAMPLES/riscv_logo_2.c` (if you have both
-the led matrix and SSD screen, it will tell you what it is doing). It
-shows the effect of the magic keyword `RV32_FASTCODE`: this keyword is
-expanded as an annotation, indicating to the linker that the
-corresponding function should be copied in RAM instead of SPI Flash.
-Since RAM is much faster to access than SPI Flash, you can do that for
-some small functions that are called often. It is for instance the case
-of some graphic functions, used by our version of the `ST_NICCC` demo.
-
-However, the limits of our tiny system are quicky reached. If you want
-to go further, an easy way is to get an ULX3S. It costs a bit more
-($130) but it is worth the price (the on-board ECP5 FPGA is HUGE as
-compared to the one of the IceStick). Now time to read the
-[ULX3S tutorial](ULX3S.md) !
-
-![](Images/ICE40HX1K_and_ECP5.png)
-_To give you an idea, this image shows our core, installed on a
-ICE40HX1K (that equips the IceStick) and on an ECP5 85K (that equips
-the ULX3S). Plenty of room on the ULX3S !_
