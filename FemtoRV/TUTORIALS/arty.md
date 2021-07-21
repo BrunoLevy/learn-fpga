@@ -1,4 +1,4 @@
-IceStick Tutorial
+ARTY Tutorial
 =================
 
 ![](Images/arty.jpg)
@@ -146,9 +146,9 @@ deactivate the UART). To do that, configure devices in `FemtoRV/RTL/CONFIGS/ices
 ...
 ```
 
-Then you need to re-synthethize and send the bitstream to the IceStick:
+Then you need to re-synthethize and send the bitstream to the ARTY:
 ```
-$make ICESTICK
+$make ARTY
 ```
 
 ![](Images/IceStick_hello.gif)

@@ -37,7 +37,10 @@ Step 1: FemtoRV
 $ git clone https://github.com/BrunoLevy/learn-fpga.git
 ```
 
-- For the ARTY FPGA family, follow [this link](arty.md).
+For ARTY only
+=============
+
+- For the ARTY FPGA family, follow [this link](toolchain_arty.md).
 - For other FPGA families, follow the steps below:
 
 Step 2: Yosys and companions
