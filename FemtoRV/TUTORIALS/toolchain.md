@@ -168,7 +168,11 @@ Step 5: Tool to send bitstream to FPGA
 
 We need to let normal users program the IceStick through USB. This can be done by
 creating a file in `/etc/udev/rules.d`. Instructions are different for different
-FPGAs:
+FPGAs. Then you need a tool to flash the FPGA (see instructions below
+to install it). Note: openFPGALoader is a quickly evolving tool that
+seems to support most of the FPGAs (TODO: update this tutorial and
+instructions with systematic use of openFPGALoader, seems to be the
+way to go...).
 
 Ice40 FPGAs (iceprog)
 ---------------------
@@ -227,6 +231,38 @@ Now install `ujprog` (the tool to send the bitstream to the FPGA):
 git clone https://github.com/emard/ulx3s-bin
 sudo cp ulx3s-bin/usb-jtag/linux-amd64/ujprog /usr/local/bin
 ```
+
+All FPGAs
+---------
+The [OpenFPGALoader](https://github.com/trabucayre/openFPGALoader) supports many FPGAs and is easy to use.
+To install it, follow [the documentation](https://github.com/trabucayre/openFPGALoader#compile-and-install),
+or (TL;DR):
+```
+$ git clone https://github.com/trabucayre/openFPGALoader.git
+$ apt-get install libftdi1-2 libftdi1-dev libhidapi-libusb0 libhidapi-dev libudev-dev cmake pkg-config make g++
+$ cd openFPGALoader
+$ mkdir build
+$ cd build
+$ cmake ../ 
+$ make
+$ sudo make install
+```
+
+To see the list of supported boards:
+```
+$ openFLGALoader --list-boards
+```
+To flash to SRAM
+```
+$ openFLGALoader --board my_board my_design.bit
+```
+
+To flash to FLASH
+```
+$ openFLGALoader --board my_board -f my_design.bit
+```
+
+Wow, super simple ! Love it !
 
 All set !!!
 ===========
