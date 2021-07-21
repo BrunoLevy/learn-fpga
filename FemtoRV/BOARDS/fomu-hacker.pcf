@@ -1,0 +1,16 @@
+# Configuration for the Fomu hacker board.
+set_io rgb0 A5		# Blue LED
+set_io rgb1 B5		# Green LED
+set_io rgb2 C5		# Red LED
+set_io clki F5		# Clock input from 48MHz Oscillator
+set_io spi_mosi F1	# SPI Master Out, Slave In Pin
+set_io spi_miso E1	# SPI Master In, Slave Out Pin
+set_io spi_clk D1	# SPI Master Clock Output Pin
+set_io spi_cs C1	# SPI Chip Select
+set_io user_1 F4	# User touch pad 1
+set_io user_2 E5	# User touch pad 2
+set_io user_3 E4	# User touch pad 3
+set_io user_4 F2	# User touch pad 4
+set_io usb_dn A2	# USB D- pad
+set_io usb_dp A4	# USB D+ pad
+set_io usb_dp_pu D5	# USB D+ pull up (indicates device connected)
