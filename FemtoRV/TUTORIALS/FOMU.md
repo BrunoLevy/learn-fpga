@@ -12,8 +12,8 @@ Test a simple FOMU design (optional)
 ====================================
 
 ```
-$ cd learn_fpga/Basic/FomuBlink
-$ ./make_it.sh
+$ cd learn-fpga/Basic/FOMU/FOMU_blink
+$ ./makeit.sh
 ```
 
 The FOMU should nicely glow in blue while downloading the
