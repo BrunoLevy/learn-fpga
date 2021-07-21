@@ -30,4 +30,6 @@
 
 /********************************************************************************************************************/
 
+`define NRV_NEGATIVE_RESET // reset button active low
+
 `define NRV_CONFIGURED

@@ -17,9 +17,14 @@ ARTY.synth:
 	cd build/arty_35 && symbiflow_write_fasm -e $(PROJECTNAME).eblif -d $(DEVICE) 
 	cd build/arty_35 && symbiflow_write_bitstream -dsp -d $(BITSTREAM_DEVICE) -f $(PROJECTNAME).fasm -p $(PARTNAME) -b $(PROJECTNAME).bit
 
+ARTY.prog_fast:
+	openFPGALoader --board arty build/arty_35/femtosoc.bit
+# Alternative if you do not have openFPGALoader installed	
+#	cd build/arty_35 && openocd -f $(HOME)/opt/symbiflow/xc7/conda/envs/xc7/share/openocd/scripts/board/digilent_arty.cfg -c "transport select jtag; init; pld load 0 $(PROJECTNAME).bit; exit"
+
 ARTY.prog:
-	cd build/arty_35 && openocd -f $(HOME)/opt/symbiflow/xc7/conda/envs/xc7/share/openocd/scripts/board/digilent_arty.cfg \
-                                    -c "transport select jtag; init; pld load 0 $(PROJECTNAME).bit; exit"
+	openFPGALoader --board arty -f build/arty_35/femtosoc.bit
+
 
 ARTY.firmware_config:
 	BOARD=arty TOOLS/make_config.sh -DARTY

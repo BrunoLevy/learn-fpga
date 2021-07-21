@@ -31,3 +31,6 @@ set_property IOSTANDARD LVCMOS33 [get_ports TXD]
 set_property LOC A9 [get_ports RXD]
 set_property IOSTANDARD LVCMOS33 [get_ports RXD]
 
+# reset button
+set_property LOC C2 [get_ports RESET]
+set_property IOSTANDARD LVCMOS33 [get_ports RESET]
