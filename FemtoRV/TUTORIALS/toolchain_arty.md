@@ -38,8 +38,8 @@ conda activate xc7
 
 Start a new terminal window. If everything went well, the prompt should start with `(xc7)`.
 
-Yosys/NextPNR/ProjectXRay
-=========================
+Other alternative: Yosys/NextPNR/ProjectXRay
+============================================
 
 Step 1: yosys
 -------------
