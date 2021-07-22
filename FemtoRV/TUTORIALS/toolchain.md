@@ -252,12 +252,12 @@ To see the list of supported boards:
 ```
 $ openFLGALoader --list-boards
 ```
-To flash to SRAM
+To send bitstream to SRAM (program temporarily)
 ```
 $ openFLGALoader --board my_board my_design.bit
 ```
 
-To flash to FLASH
+To send bitstream to FLASH (program permanently)
 ```
 $ openFLGALoader --board my_board -f my_design.bit
 ```

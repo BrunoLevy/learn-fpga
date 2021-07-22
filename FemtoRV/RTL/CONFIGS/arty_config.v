@@ -6,7 +6,7 @@
 `define NRV_IO_UART          // Mapped IO, virtual UART (USB)
 `define NRV_IO_SSD1351       // Mapped IO, 128x128x64K OLED screen
 `define NRV_IO_MAX7219       // Mapped IO, 8x8 led matrix
-//`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. 
+`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. 
 
 /************************* Processor configuration *******************************************************************/
 

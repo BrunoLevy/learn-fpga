@@ -34,3 +34,17 @@ set_property IOSTANDARD LVCMOS33 [get_ports RXD]
 # reset button
 set_property LOC C2 [get_ports RESET]
 set_property IOSTANDARD LVCMOS33 [get_ports RESET]
+
+# SPI flash
+set_property LOC L13 [get_ports spi_cs_n]
+set_property IOSTANDARD LVCMOS33 [get_ports spi_cs_n]
+set_property LOC K17 [get_ports spi_mosi]
+set_property IOSTANDARD LVCMOS33 [get_ports spi_mosi]
+set_property LOC K18 [get_ports spi_miso]
+set_property IOSTANDARD LVCMOS33 [get_ports spi_miso]
+set_property LOC L16 [get_ports spi_clk]
+set_property IOSTANDARD LVCMOS33 [get_ports spi_clk]
+
+
+
+

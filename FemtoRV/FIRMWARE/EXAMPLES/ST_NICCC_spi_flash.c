@@ -47,11 +47,15 @@ union {
   uint8_t spi_bytes[4];
 } spi_u;
 
+
+#define ADDR_OFFSET 1024*1024
+// #define ADDR_OFFSET 3000000
+
 /*
  * Restarts reading from the beginning of the stream.
  */
 void spi_reset() {
-  spi_addr = 1024*1024;
+  spi_addr = ADDR_OFFSET;
   spi_word_addr = (uint32_t)(-1);
 }
 
@@ -171,8 +175,10 @@ int read_frame() {
 	}
 	if(poly_desc == 0xfe) {
 	    // Go to next 64kb block
+	    spi_addr -= ADDR_OFFSET;
 	    spi_addr &= ~65535;
 	    spi_addr +=  65536;
+	    spi_addr += ADDR_OFFSET;
 	    return 1; 
 	}
 	if(poly_desc == 0xfd) {
