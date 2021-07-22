@@ -13,6 +13,7 @@ Test a simple FOMU design (optional)
 
 ```
 $ cd learn-fpga/Basic/FOMU/FOMU_blink
+$ export FOMU_REV=pvt
 $ ./makeit.sh
 ```
 
