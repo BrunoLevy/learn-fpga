@@ -72,7 +72,7 @@ Step 2: prjxray
 Either generate the database (but you need Vivado) or use a
 pre-generated one. OK, let's use the pre-generated one.
 
-Follow the README from [prjwray](https://github.com/SymbiFlow/prjxray).
+Follow the README from [prjxray](https://github.com/SymbiFlow/prjxray).
 
 *TL;DR*
 
@@ -117,7 +117,7 @@ $ sudo cp xilinx/xc7a35t.bin /usr/share/nextpnr/xilinx-chipdb/
 ```
 
 Here we go ! Now time to
-- install openFPGALoader (see [the general toolchain tutorial](toolchain.md))
+- install openFPGALoader (at the end of [the general toolchain tutorial](toolchain.md))
 - plug your ARTY
-- run `makeit.sh` in `basic/ARTY/ARTY_blink`
+- run `makeit.sh` in [`basic/ARTY/ARTY_blink`](https://github.com/BrunoLevy/learn-fpga/tree/master/Basic/ARTY/ARTY_blink).
 If everything went well, you will see a colorful blinky !
