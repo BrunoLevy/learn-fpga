@@ -2,6 +2,8 @@ PARTNAME=xc7a35tcsg324-1
 DB_DIR=/usr/share/nextpnr/prjxray-db
 CHIPDB_DIR=/usr/share/nextpnr/xilinx-chipdb
 PART=xc7a35tcsg324-1
+
+# cascading DSPs not supported yet by yosys on arty ------v
 YOSYS_ARTY_OPT=-DARTY -q -p "scratchpad -set xilinx_dsp.multonly 1" \
                          -p "synth_xilinx -flatten -nowidelut -abc9 -arch xc7 -top $(PROJECTNAME); write_json $(PROJECTNAME).json"
 

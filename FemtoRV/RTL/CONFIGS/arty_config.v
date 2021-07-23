@@ -16,6 +16,7 @@
 //`define NRV_FEMTORV32_QUARK // RV32I (for now, use this one, because my version of symbiflow cannot uses DSPs on ARTY)
 //`define NRV_FEMTORV32_TACHYON // RV32I
 //`define NRV_FEMTORV32_ELECTRON // RV32IM
+//`define NRV_FEMTORV32_INTERMISSUM // RV32IM, IRQ
 `define NRV_FEMTORV32_GRACILIS // RV32IMC, IRQ
 
 `define NRV_RESET_ADDR 0       // The address the processor jumps to on reset 
