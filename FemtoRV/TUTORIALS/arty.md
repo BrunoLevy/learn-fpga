@@ -6,9 +6,9 @@ ARTY Tutorial
 This tutorial will show you how to install FPGA development tools,
 synthesize a RISC-V core, compile and install programs and run them
 on a ARTY. Note that ARTY support is work in progress: the UART does 
-not work properly (displays garbage sometimes), and frequency with 
-the RV32IM cores is limited to 50 MHz (because we do not know for now
-how to configure a toolchain that infers DSPs on the ARTY).
+not work properly (displays garbage sometimes). The OLED display and
+led matrix work fine. Framebuffer (FGA: Femto Graphic Adapter) and 
+VGA output will be added soon.
 
 Install open-source FPGA development toolchain
 ==============================================
