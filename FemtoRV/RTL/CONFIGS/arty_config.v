@@ -10,7 +10,7 @@
 
 /************************* Processor configuration *******************************************************************/
 
-`define NRV_FREQ 50           // Frequency in MHz, needs to be a divider or a multiple of 100
+`define NRV_FREQ 80           // Frequency in MHz, needs to be a multiple of 5
 //`define PASSTHROUGH_PLL
 //`define NRV_FREQ 100
 

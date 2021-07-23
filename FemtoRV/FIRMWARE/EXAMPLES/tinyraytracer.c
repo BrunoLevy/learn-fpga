@@ -7,7 +7,7 @@
 
 /*******************************************************************/
 
-int __errno;
+int __errno; // needed when compiling to hex, not needed otherwise.
 
 typedef int BOOL;
 
@@ -309,6 +309,6 @@ int main() {
     }
     GL_clear();
     render(spheres, nb_spheres, lights, nb_lights);
-    
+
     return 0;
 }

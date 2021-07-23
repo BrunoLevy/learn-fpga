@@ -8,12 +8,15 @@
  wire clk_feedback;
  wire clk_internal;
 
+// .CLKFBOUT_MULT(8)
+// .CLKOUT0_DIVIDE(8*100/freq)
+
  PLLE2_ADV #(
     .BANDWIDTH("OPTIMIZED"), // OPTIMIZED, HIGH, LOW
-    .CLKFBOUT_MULT(8),       // Multiply value for all CLKOUT (2-64)
+    .CLKFBOUT_MULT(freq/5),  // Multiply value for all CLKOUT (2-64)
     .CLKFBOUT_PHASE("0.0"),  // Phase offset in degrees of CLKFB, (-360-360)
     .CLKIN1_PERIOD("10.0"),  // Input clock period in ns to ps resolution
-    .CLKOUT0_DIVIDE(8*100/freq),  
+    .CLKOUT0_DIVIDE(20),
     .CLKOUT0_DUTY_CYCLE("0.5"),
     .CLKOUT0_PHASE("0.0"),
     .DIVCLK_DIVIDE(1),      // Master division value , (1-56)
