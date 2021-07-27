@@ -10,10 +10,10 @@
 
 /************************* Processor configuration *******************************************************************/
 
-`define NRV_FREQ 60           // Frequency in MHz, needs to be a multiple of 5
+`define NRV_FREQ 80          // Frequency in MHz, needs to be a multiple of 5
                               // Validated at 60 MHz, can overclock to 80 MHz
 
-//`define NRV_FEMTORV32_QUARK // RV32I (for now, use this one, because my version of symbiflow cannot uses DSPs on ARTY)
+//`define NRV_FEMTORV32_QUARK // RV32I 
 //`define NRV_FEMTORV32_TACHYON // RV32I
 //`define NRV_FEMTORV32_ELECTRON // RV32IM
 //`define NRV_FEMTORV32_INTERMISSUM // RV32IM, IRQ

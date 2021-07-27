@@ -93,6 +93,8 @@ If everything went well, you will see a colorful blinky !
 ALTERNATIVE: SYMBIFLOW 
 ======================
 
+Symbiflow documentation is [here](https://symbiflow-examples.readthedocs.io/en/latest/getting-symbiflow.html).
+
 Step 1: Install symbiflow
 -------------------------
 
