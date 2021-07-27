@@ -5,7 +5,14 @@
 // This file: driver for UART (serial over USB)
 // Wrapper around modified Claire Wolf's UART
 
+// For some reasons, our 'compressed' version of
+// the UART does not work on the ARTY, there is
+// probably a couple of bugs there... 
+`ifdef ARTY
+`include "uart_picosoc.v.orig"
+`else
 `include "uart_picosoc_shrunk.v"
+`endif
 
 module UART(
     input wire 	       clk,      // system clock
