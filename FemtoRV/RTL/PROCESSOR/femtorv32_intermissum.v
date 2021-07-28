@@ -482,6 +482,13 @@ module FemtoRV32(
       endcase
    end
 
+`ifdef BENCH
+   initial begin
+      cycles = 0;
+      registerFile[0] = 0;
+   end
+`endif
+
 endmodule
 
 /*****************************************************************************/

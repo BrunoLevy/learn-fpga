@@ -70,7 +70,7 @@ module GFX_PLL(
 );
    assign pixel_clk = pclk;
    assign pixel_clk_x5 = pclk;
-endmodule; 
+endmodule
 
 `else 
 

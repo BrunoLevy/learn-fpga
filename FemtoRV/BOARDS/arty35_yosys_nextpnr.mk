@@ -15,6 +15,13 @@ ARTY.synth:
 	fasm2frames --part ${PART} --db-root ${DB_DIR}/artix7 ${PROJECTNAME}.fasm > ${PROJECTNAME}.frames
 	xc7frames2bit --part_file ${DB_DIR}/artix7/${PART}/part.yaml --part_name ${PART} --frm_file ${PROJECTNAME}.frames --output_file ${PROJECTNAME}.bit
 
+# Display "floorplan", does not work for now (seems that floorplan
+# display is implemented, but menu entries "assign budget" and "route"
+# are grayed out.
+ARTY.show:
+#	yosys ${YOSYS_ARTY_OPT} ${VERILOGS}
+	nextpnr-xilinx --gui --chipdb ${CHIPDB_DIR}/xc7a35t.bin --xdc BOARDS/arty.xdc --json ${PROJECTNAME}.json 
+
 ARTY.prog_fast:
 	openFPGALoader --freq 30e6 --board arty femtosoc.bit
 

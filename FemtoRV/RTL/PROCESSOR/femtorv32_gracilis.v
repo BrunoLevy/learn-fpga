@@ -547,10 +547,19 @@ module FemtoRV32(
       end
    end
 
+`ifdef BENCH
+   initial begin
+      cycles = 0;
+      registerFile[0] = 0;
+   end
+`endif
+
 endmodule
 
 /*****************************************************************************/
 
+// if c[15:0] is a compressed instrution, decompresses it in d
+// else copies c to d
 module decompressor(
    input  wire [31:0] c,
    output reg  [31:0] d

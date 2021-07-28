@@ -23,6 +23,12 @@ $ sudo apt-get install build-essential clang bison flex \
   graphviz xdot pkg-config python3 libboost-system-dev \
   libboost-python-dev libboost-filesystem-dev zlib1g-dev
 ```
+
+If you want the GUI, you will need also to install:
+```
+$ sudo apt-get install libboost-python1.67.0-py38 
+```
+
 Get the sources:
 ```
 $ git clone https://github.com/YosysHQ/yosys.git

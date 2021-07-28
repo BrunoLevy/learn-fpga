@@ -15,15 +15,16 @@
 
 //`define NRV_FEMTORV32_QUARK       // RV32I  experimental fmax = 110 MHz
 //`define NRV_FEMTORV32_TACHYON       // RV32I  experimental fmax = 135 MHz
-`define NRV_FEMTORV32_ELECTRON    // RV32IM experimental fmax = 90 MHz
+//`define NRV_FEMTORV32_ELECTRON    // RV32IM experimental fmax = 90 MHz
 //`define NRV_FEMTORV32_INTERMISSUM // RV32IM, IRQ
-//`define NRV_FEMTORV32_GRACILIS    // RV32IMC, IRQ experimental fmax = 80 MHz
+`define NRV_FEMTORV32_GRACILIS    // RV32IMC, IRQ experimental fmax = 80 MHz
 
 `define NRV_RESET_ADDR 0       // The address the processor jumps to on reset 
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
-`define NRV_RAM 65536 
+`define NRV_RAM 65536
+//`define NRV_RAM 250000
 
 /************************* Advanced devices configuration ***********************************************************/
 
