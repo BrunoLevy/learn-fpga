@@ -31,7 +31,7 @@ module UART(
 	    $display("<end of simulation> (EOT sent to UART)");
 	    $finish();
 	 end
-         $write("%c",wdata);
+         $write("%c",wdata[7:0]);
 	 $fflush();
       end
    end

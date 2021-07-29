@@ -52,4 +52,9 @@ testbench:
          -o ../femtosoc_bench.vvp)
 	vvp femtosoc_bench.vvp
 
+
+verilator:
+	verilator -DBENCH --lint-only --top-module femtoRV32_bench \
+         -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL RTL/femtosoc_bench.v
+
 ################################################################################
