@@ -52,7 +52,7 @@ module femtosoc(
 `ifdef NRV_IO_SSD1351_1331	      
    output oled_DIN, oled_CLK, oled_CS, oled_DC, oled_RST,
 `endif
-`ifdef NRV_IO_UART	      
+`ifdef NRV_IO_UART
    input  RXD,
    output TXD,
 `endif	      
@@ -253,7 +253,7 @@ module femtosoc(
 
 `else // Synthethizing BRAM
    
-   reg [31:0] RAM[(`NRV_RAM/4)-1:0];
+   reg [31:0] RAM[0:(`NRV_RAM/4)-1];
    reg [31:0] ram_rdata;
 
    // Initialize the RAM with the generated firmware hex file.

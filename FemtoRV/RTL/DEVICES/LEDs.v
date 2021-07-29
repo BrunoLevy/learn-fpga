@@ -45,8 +45,9 @@ module LEDDriver(
 `else
 	 led_state <= wdata[3:0];	 
 `endif	 
-	 `bench($display("****************** LEDs = %b  0x%h %d |%c|", wdata[3:0],wdata,$signed(wdata),wdata));
+`ifdef BENCH
+         $display("****************** LEDs = %b", wdata[3:0]);
+`endif	 
       end
    end
-   
 endmodule

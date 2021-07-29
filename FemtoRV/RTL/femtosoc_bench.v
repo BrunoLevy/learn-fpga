@@ -11,7 +11,8 @@
  */ 
 
 `define NRV_IO_LEDS
-`define NRV_FREQ 60
+`define NRV_IO_UART
+`define NRV_FREQ 1
 
 //`define NRV_FEMTORV32_QUARK
 //`define NRV_FEMTORV32_ELECTRON
@@ -32,7 +33,8 @@ module femtoRV32_bench();
    reg pclk;
    wire [4:0] LEDs;
    femtosoc uut(
-      .pclk(pclk),		 				
+      .pclk(pclk),
+      .RXD(1'b0),		
       .D1(LEDs[0]),
       .D2(LEDs[1]),		 
       .D3(LEDs[2]),		 
@@ -40,9 +42,8 @@ module femtoRV32_bench();
       .D5(LEDs[4])
    );
 
-   integer i;
    initial begin
-      for(i=0; i<5000000; i++) begin
+      while(1) begin
 	 #10 pclk = 0;
 	 #10 pclk = 1;
       end

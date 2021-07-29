@@ -72,8 +72,8 @@ module FGA(
    
    wire pixel_clk;
    
-   reg [31:0] VRAM[32767:0];
-   reg [23:0] PALETTE[255:0];
+   reg [31:0] VRAM[0:32767];
+   reg [23:0] PALETTE[0:255];
    
    /************************* HDMI signal generation ***************************/
 
