@@ -15,6 +15,8 @@
  * Uncomment VERBOSE for extensive information (states ...)
  */ 
 
+`timescale 1ns/1ns
+
 `define NRV_IO_LEDS
 `define NRV_IO_UART
 `define NRV_FREQ 1
@@ -33,9 +35,13 @@
 `define VERBOSE // Uncomment to have detailed log traces of all states
 `include "femtosoc.v"
 
+`ifdef VERILATOR
+module femtoRV32_bench(input pclk);
+`else
 module femtoRV32_bench();
-   
    reg pclk;
+`endif
+
    wire [4:0] LEDs;
    wire TXD;
    femtosoc uut(
@@ -50,12 +56,13 @@ module femtoRV32_bench();
       .D5(LEDs[4])
    );
 
+`ifndef VERILATOR
    initial begin
-      while(1) begin
-	 #10 pclk = 1;
-	 #10 pclk = 0;	 
+      pclk = 0;
+      forever begin
+	 #1 pclk = ~pclk;
       end
    end
-
+`endif
 
 endmodule

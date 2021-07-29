@@ -32,7 +32,7 @@ module UART(
 	    $finish();
 	 end
          $write("%c",wdata[7:0]);
-	 $fflush();
+	 $fflush(32'h8000_0001);
       end
    end
 endmodule

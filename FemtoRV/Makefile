@@ -47,14 +47,17 @@ terminal_screen:
 terminal_picocom:
 	for i in $(TERMS); do picocom -b 115200 $$i --imap lfcrlf,crcrlf --omap delbs,crlf --send-cmd "ascii-xfr -s -l 30 -n"; done
 
-testbench:
+TEST.icarus:
 	(cd RTL; iverilog -IPROCESSOR -IDEVICES femtosoc_bench.v \
          -o ../femtosoc_bench.vvp)
 	vvp femtosoc_bench.vvp
 
 
-verilator:
-	verilator -DBENCH --lint-only --top-module femtoRV32_bench \
-         -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL RTL/femtosoc_bench.v
-
+TEST.verilator:
+	verilator -DBENCH --top-module femtoRV32_bench \
+         -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL  \
+	 --cc --exe RTL/sim_main.cpp RTL/femtosoc_bench.v
+	(cd obj_dir; make -f VfemtoRV32_bench.mk)	 
+	obj_dir/VfemtoRV32_bench
+	
 ################################################################################
