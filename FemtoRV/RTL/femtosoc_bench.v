@@ -19,6 +19,7 @@
 
 `define NRV_IO_LEDS
 `define NRV_IO_UART
+`define NRV_IO_SSD1351
 `define NRV_FREQ 1
 
 //`define NRV_FEMTORV32_QUARK
@@ -36,7 +37,10 @@
 `include "femtosoc.v"
 
 `ifdef VERILATOR
-module femtoRV32_bench(input pclk);
+module femtoRV32_bench(
+    input pclk, 
+    output oled_DIN, oled_CLK, oled_CS, oled_DC, oled_RST
+);
 `else
 module femtoRV32_bench();
    reg pclk;
@@ -49,6 +53,14 @@ module femtoRV32_bench();
       .TXD(TXD),
       .RXD(1'b0),
       .RESET(1'b0),
+
+`ifdef NRV_IO_SSD1351_1331
+      .oled_DIN(oled_DIN),
+      .oled_CLK(oled_CLK),
+      .oled_CS(oled_CS),
+      .oled_DC(oled_DC),      
+      .oled_RST(oled_RST),
+`endif
       .D1(LEDs[0]),
       .D2(LEDs[1]),		 
       .D3(LEDs[2]),		 

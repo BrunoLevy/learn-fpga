@@ -56,6 +56,7 @@ TEST.icarus:
 TEST.verilator:
 	verilator -DBENCH --top-module femtoRV32_bench \
          -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL  \
+	 -LDFLAGS '-lglfw -lGL' \
 	 --cc --exe RTL/sim_main.cpp RTL/femtosoc_bench.v
 	(cd obj_dir; make -f VfemtoRV32_bench.mk)	 
 	obj_dir/VfemtoRV32_bench
