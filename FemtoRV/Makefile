@@ -25,7 +25,7 @@ clean:
 	rm -f *.timings *.asc *.bin *.bit *config *.json *.svf \
               *~ *.vvp *.dfu *.rpt *.blif femtosoc.txt FIRMWARE/config.mk
 
-TERMS=/dev/ttyUSB0 /dev/ttyUSB1 
+TERMS=/dev/ttyUSB1 /dev/ttyUSB0 
 
 # Uncomment one of the following lines (pick your favorite term emulator)
 terminal: terminal_miniterm
