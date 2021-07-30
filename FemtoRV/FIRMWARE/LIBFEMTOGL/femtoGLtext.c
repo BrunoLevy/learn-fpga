@@ -134,7 +134,9 @@ void GL_tty_scroll() {
     if(!scrolling) {
 	return;
     }
-    GL_fill_rect(0,cursor_Y,GL_width-1,cursor_Y+GL_current_font->height-1, GL_bg);
+    GL_fill_rect(
+	 0,cursor_Y,GL_width-1,cursor_Y+GL_current_font->height-1, GL_bg
+    );
     display_start_line += GL_current_font->height;
     if(display_start_line >= GL_height) {
        display_start_line = 0;

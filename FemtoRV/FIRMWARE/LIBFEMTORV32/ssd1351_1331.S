@@ -3,7 +3,7 @@
 	
 ##############################################################
 
-# Oled window a0=x1 a1=y1 a2=x1 a3=y2
+# Oled window a0=x1 a1=y1 a2=x2 a3=y2
 .global	oled_write_window
 .type	oled_write_window, @function
 oled_write_window:
