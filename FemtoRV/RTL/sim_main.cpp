@@ -10,10 +10,12 @@ class SSD1351 {
       CData& DIN, CData& CLK, CData& CS, CData& DC, CData& RST
    ) : DIN_(DIN), CLK_(CLK), CS_(CS), DC_(DC), RST_(RST) {
       cur_word_ = 0;
+      prev_word_ = 0;
       cur_bit_ = 0;
       cur_command_ = 0;
       prev_CLK_ = 0;
       prev_CS_  = 1;
+      fetch_next_half_ = false;
       x1_ = 0; x2_ = 127;
       y1_ = 0; y2_ = 127;
       start_line_ = 0;
@@ -65,10 +67,26 @@ class SSD1351 {
 	     start_line_ = cur_arg_[0];
 	     redraw();
 	   }
-	   
+
 	   // draw pixels
 	   if(cur_command_ == 0x5c) {
-	     framebuffer_[(127-y_)*128+x_] = flip(cur_word_,16);
+
+	     if(cur_bit_ == 9) {
+	       if(fetch_next_half_) {
+		 fetch_next_half_ = false;
+		 cur_word_ = (cur_word_ << 8) | prev_word_;
+	       } else {
+		 prev_word_ = cur_word_;
+		 fetch_next_half_ = true;
+		 goto discard;
+	       }
+	     }
+	   
+	     if(x_ < 128 && y_ < 128) {
+	       framebuffer_[(127-y_)*128+x_] = flip(cur_word_,16);
+	     } else {
+	       printf("OOB pixel: x=%d  y=%d\n",x_, y_);
+	     }
 	     ++x_;
 	     if(x_ > x2_) {
 	       ++y_;
@@ -80,7 +98,8 @@ class SSD1351 {
 	   } 
 	 }
       }
-   
+
+   discard:
       prev_CLK_ = CLK_;
       prev_CS_  = CS_;
    }
@@ -122,6 +141,7 @@ class SSD1351 {
 
    CData prev_CLK_;
    CData prev_CS_;
+   unsigned int prev_word_;
    unsigned int cur_word_;
    unsigned int cur_bit_;
    unsigned int cur_command_;
@@ -135,6 +155,8 @@ class SSD1351 {
    unsigned int x_, x1_, x2_;
    unsigned int y_, y1_, y2_;
    unsigned int start_line_;
+
+   bool fetch_next_half_;
 };
 
 int main(int argc, char** argv, char** env) {
