@@ -20,6 +20,10 @@
 `include "CONFIGS/arty_config.v"
 `endif
 
+`ifdef BENCH
+`include "CONFIGS/bench_config.v"
+`endif
+
 `ifndef NRV_CONFIGURED
 `include "CONFIGS/generic_config.v"
 `endif

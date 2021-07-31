@@ -11,7 +11,7 @@ initial begin
 
   $display("ARCH=",`NRV_ARCH);
   $display("OPTIMIZE=",`NRV_OPTIMIZE);
-  $display("ABI=ilp32");
+  $display("ABI=",`NRV_ABI);
   $display("RAM_SIZE=%d",`NRV_RAM);
 
 //   Note1: for now we only need FGA here for conditional

@@ -17,22 +17,12 @@
 
 `timescale 1ns/1ns
 
-`define NRV_IO_LEDS
-`define NRV_IO_UART
-`define NRV_IO_SSD1351
-`define NRV_FREQ 1
+//`include "femtosoc_config.v"
+//
+//`ifndef BENCH
+//`define BENCH
+//`endif
 
-//`define NRV_FEMTORV32_QUARK
-//`define NRV_FEMTORV32_ELECTRON
-//`define NRV_FEMTORV32_INTERMISSUM
-`define NRV_FEMTORV32_GRACILIS
-
-`define NRV_RESET_ADDR 0
-`define NRV_RAM 65536
-`define NRV_IO_HARDWARE_CONFIG
-`define NRV_CONFIGURED
-
-`define BENCH
 `define VERBOSE // Uncomment to have detailed log traces of all states
 `include "femtosoc.v"
 

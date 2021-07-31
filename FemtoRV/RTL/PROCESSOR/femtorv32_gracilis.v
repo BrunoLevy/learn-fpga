@@ -18,6 +18,7 @@
 
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32imac"
+`define NRV_ABI      "ilp32"
 `define NRV_OPTIMIZE "-O3"
 `define NRV_INTERRUPTS
 

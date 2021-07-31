@@ -31,6 +31,7 @@
 
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32i"
+`define NRV_ABI      "ilp32"
 `define NRV_OPTIMIZE "-Os"
 
 module FemtoRV32(
