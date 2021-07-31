@@ -122,4 +122,8 @@
  `include "PROCESSOR/femtorv32_gracilis.v" // RV32IMC with barrel shifter and interrupts
 `endif
 
+`ifdef NRV_FEMTORV32_PETITBATEAU
+ `include "PROCESSOR/femtorv32_petitbateau.v" // under development, RV32F
+`endif
+
 /******************************************************************************************************************/
