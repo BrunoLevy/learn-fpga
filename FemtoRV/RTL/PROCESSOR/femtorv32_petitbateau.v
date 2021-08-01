@@ -261,6 +261,11 @@ module FemtoRV32(
 
    reg [31:0] fpuOut;
 
+   // Rem: on pourrait faire un gros casez(instr) a la place, ca sera bcp plus
+   // clair..., ou encore on fait des signaux isFMADD, isFMSUB etc.. avec ==~
+   // (mais verifier que YOSYS supporte bien ==~, ce qui n'est pas le cas
+   // d'icarus par exemple, il semblerait).
+   
    always @(posedge clk) begin
       if(isFPU && state[EXECUTE_bit]) begin
 	 // $display("FPU, PC=%x",PC);
@@ -284,15 +289,13 @@ module FemtoRV32(
 		     default: fpuOut <= 32'b0;
 		   endcase 
 		end
-		7'b0010100: begin
-		   case(funct3)
-		     3'b000:  fpuOut <= $c32("FMIN(",rs1,",",rs2,")");
-		     3'b001:  fpuOut <= $c32("FMAX(",rs1,",",rs2,")");
-		     default: fpuOut <= 32'b0;
-		   endcase 
-		end
+		
+		7'b0010100: fpuOut <= funct3[0] ? $c32("FMAX(",rs1,",",rs2,")")
+		                                : $c32("FMIN(",rs1,",",rs2,")");
+		
 		7'b1100000: fpuOut <= instr[20] ? $c32("FCVTWUS(",rs1,")") 
                                                 : $c32("FCVTWS(",rs1,")") ;
+		
 		7'b1110000: fpuOut <= (funct3 == 3'b000) 
                                                 ? rs1 // FMV.X.W
 				                : $c32("FCLASS(",rs1,")") ;
@@ -306,7 +309,7 @@ module FemtoRV32(
 		end
 
 		7'b1101000: fpuOut <= instr[20] ? $c32("FCVTSWU(",rs1,")")
-		                                 : $c32("FCVTSW(",rs1,")");
+		                                : $c32("FCVTSW(",rs1,")");
 
 		7'b1111000: fpuOut <= rs1; // FMV.W.X
 		
