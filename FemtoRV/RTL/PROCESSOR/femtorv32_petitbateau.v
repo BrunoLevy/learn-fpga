@@ -21,7 +21,7 @@
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32imaf"
 `define NRV_ABI      "ilp32f"
-`define NRV_OPTIMIZE "-O0"
+`define NRV_OPTIMIZE "-O3"
 `define NRV_INTERRUPTS
 
 module FemtoRV32(
@@ -67,6 +67,7 @@ module FemtoRV32(
    
    wire [5:0] rdId = {rdIsFP,instr[11:7]};
 
+   wire [2:0] funct3 = instr[14:12];
    // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
    // It is used as follows: funct3Is[val] <=> funct3 == val
    (* onehot *)
@@ -102,6 +103,7 @@ module FemtoRV32(
 
    reg [31:0] rs1;
    reg [31:0] rs2;
+   reg [31:0] rs3;
    reg [31:0] registerFile [63:0]; //  0..31 : integer registers
                                    // 32..63 : floating-point registers
 
@@ -262,38 +264,56 @@ module FemtoRV32(
    always @(posedge clk) begin
       if(isFPU && state[EXECUTE_bit]) begin
 	 // $display("FPU, PC=%x",PC);
-	 case(instr[31:25])
-	   7'b0000000: begin
-	      fpuOut <= $c32("FADD(",rs1,",",rs2,")");
-	   end
-	   7'b0000100: begin
-	      fpuOut <= $c32("FSUB(",rs1,",",rs2,")");
-	   end
-	   7'b0001000: begin
-	      fpuOut <= $c32("FMUL(",rs1,",",rs2,")");
-	   end
-	   7'b0001100: begin
-	      fpuOut <= $c32("FDIV(",rs1,",",rs2,")");
-	   end
-	   7'b1010000: begin
-	      case(instr[14:12]) // funct3
-		3'b010: begin
-		   fpuOut <= $c32("FEQ(",rs1,",",rs2,")");
+	 case(instr[6:2])
+	   5'b10000: fpuOut <= $c32("FMADD(",rs1,",",rs2,",",rs3,")");
+	   5'b10001: fpuOut <= $c32("FMSUB(",rs1,",",rs2,",",rs3,")");
+	   5'b10010: fpuOut <= $c32("FNMSUB(",rs1,",",rs2,",",rs3,")");
+	   5'b10011: fpuOut <= $c32("FNMADD(",rs1,",",rs2,",",rs3,")");
+	   5'b10100: begin
+	      case(instr[31:25])
+		7'b0000000: fpuOut <= $c32("FADD(",rs1,",",rs2,")");
+		7'b0000100: fpuOut <= $c32("FSUB(",rs1,",",rs2,")");
+		7'b0001000: fpuOut <= $c32("FMUL(",rs1,",",rs2,")");
+		7'b0001100: fpuOut <= $c32("FDIV(",rs1,",",rs2,")");
+		7'b0101100: fpuOut <= $c32("FSQRT(",rs1,")");
+		7'b0010000: begin
+		   case(funct3)
+		     3'b000:  fpuOut <= $c32("FSGNJ(",rs1,",",rs2,")");
+		     3'b001:  fpuOut <= $c32("FSGNJN(",rs1,",",rs2,")");
+		     3'b010:  fpuOut <= $c32("FSGNJX(",rs1,",",rs2,")");
+		     default: fpuOut <= 32'b0;
+		   endcase 
 		end
-		3'b001: begin
-		   fpuOut <= $c32("FLT(",rs1,",",rs2,")");
+		7'b0010100: begin
+		   case(funct3)
+		     3'b000:  fpuOut <= $c32("FMIN(",rs1,",",rs2,")");
+		     3'b001:  fpuOut <= $c32("FMAX(",rs1,",",rs2,")");
+		     default: fpuOut <= 32'b0;
+		   endcase 
 		end
-		3'b000: begin
-		   fpuOut <= $c32("FLE(",rs1,",",rs2,")");
+		7'b1100000: fpuOut <= instr[20] ? $c32("FCVTWUS(",rs1,")") 
+                                                : $c32("FCVTWS(",rs1,")") ;
+		7'b1110000: fpuOut <= (funct3 == 3'b000) 
+                                                ? rs1 // FMV.X.W
+				                : $c32("FCLASS(",rs1,")") ;
+		7'b1010000: begin
+		   case(funct3)
+		     3'b010:  fpuOut <= $c32("FEQ(",rs1,",",rs2,")");
+		     3'b001:  fpuOut <= $c32("FLT(",rs1,",",rs2,")");
+		     3'b000:  fpuOut <= $c32("FLE(",rs1,",",rs2,")");
+		     default: fpuOut <= 32'b0;
+		   endcase 
 		end
-		default: begin
-		   fpuOut <= 32'b0;
-		end
+
+		7'b1101000: fpuOut <= instr[20] ? $c32("FCVTSWU(",rs1,")")
+		                                 : $c32("FCVTSW(",rs1,")");
+
+		7'b1111000: fpuOut <= rs1; // FMV.W.X
+		
+   	        default: fpuOut <= 32'b0;
 	      endcase
 	   end
-	   default: begin
-	      fpuOut <= 32'b0;
-	   end
+	   default: fpuOut <= 32'b0;
 	 endcase
       end
    end
@@ -584,6 +604,7 @@ module FemtoRV32(
 		 // Decode instruction
 		 rs1 <= registerFile[{rs1IsFP,decompressed[19:15]}];
 		 rs2 <= registerFile[{rs2IsFP,decompressed[24:20]}];
+		 rs3 <= registerFile[{1'b1,   decompressed[31:27]}]; // TODO: read at different state.
 		 instr      <= decompressed[31:2];
 		 long_instr <= &decomp_input[1:0];
 

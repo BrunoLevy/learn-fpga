@@ -31,18 +31,22 @@ void print_float(uint32_t x) {
 }
 
 uint32_t FMADD(uint32_t x, uint32_t y, uint32_t z) {
+  printf("FMADD\n");
   return float_to_int(int_to_float(x)*int_to_float(y)+int_to_float(z));
 }
 
 uint32_t FMSUB(uint32_t x, uint32_t y, uint32_t z) {
+  printf("FMSUB\n");  
   return float_to_int(int_to_float(x)*int_to_float(y)-int_to_float(z));  
 }
 
 uint32_t FNMADD(uint32_t x, uint32_t y, uint32_t z) {
+  printf("FNMADD\n");    
   return float_to_int(-int_to_float(x)*int_to_float(y)+int_to_float(z));
 }
 
 uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
+  printf("FNMSUB\n");      
   return float_to_int(-int_to_float(x)*int_to_float(y)-int_to_float(z));  
 }
 
