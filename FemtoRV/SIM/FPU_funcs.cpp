@@ -73,7 +73,9 @@ uint32_t FSQRT(uint32_t x) {
 uint32_t FSGNJ(uint32_t x, uint32_t y) {
   IEEE754 xx,yy;
   xx.i = x; yy.i=y;
+  //  printf("FSGNJ(%f %f)",xx.f,yy.f);
   xx.bits.sign = yy.bits.sign;
+  //  printf("===> %f\n",xx.f);
   return xx.i;
 }
 

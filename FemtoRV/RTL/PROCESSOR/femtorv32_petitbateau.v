@@ -93,7 +93,7 @@ module FemtoRV32(
    wire isJALR    =  (instr[6:2] ==  5'b11001); // rd <- PC+4; PC<-rs1+Iimm
    wire isJAL     =  (instr[6:2] ==  5'b11011); // rd <- PC+4; PC<-PC+Jimm
    wire isSYSTEM  =  (instr[6:2] ==  5'b11100); // rd <- CSR <- rs1/uimm5
-   wire isFPU     =  (instr[6:2] ==  5'b10100); // rd <- rs1 OP rs2
+   wire isFPU     =  (instr[6:5] ==  2'b10);    // all FPU instr except FLW/FSW
    
    wire isALU = isALUimm | isALUreg;
 
