@@ -140,7 +140,7 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 	iceprog -o 128k $<
 
 # Generate a disassembly (for inspection if need be)
-%.list: %.elf
+%.list: %.baremetal.elf
 	$(RVOBJDUMP) -Mnumeric -D $< > $@
 
 #Rule to convert a .elf executable into a .hex file for verilog 'readmemh()'

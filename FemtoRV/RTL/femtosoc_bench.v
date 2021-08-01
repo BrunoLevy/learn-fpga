@@ -37,6 +37,7 @@ module femtoRV32_bench();
 `endif
 
    wire [4:0] LEDs;
+
    wire TXD;
    femtosoc uut(
       .pclk(pclk),
@@ -57,6 +58,7 @@ module femtoRV32_bench();
       .D4(LEDs[3]),		 
       .D5(LEDs[4])
    );
+
 
 `ifndef VERILATOR
    initial begin

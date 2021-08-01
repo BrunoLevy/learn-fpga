@@ -53,7 +53,10 @@ module FemtoRV32(
    // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
 
    // The destination register
-   wire [4:0] rdId = instr[11:7];
+   // TODO: determine when rd is FP register... FMA
+   // rd_is_FP =     (FPU instr except tests)  || (FLW)
+   wire rd_is_FP = (instr[6:5] == 2'b10 && instr[31:25] !=  7'b1010000) || instr[6:2] == 5'b00001;
+   wire [5:0] rdId = {rd_is_FP,instr[11:7]};
 
    // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
    // It is used as follows: funct3Is[val] <=> funct3 == val
@@ -70,17 +73,18 @@ module FemtoRV32(
    /* verilator lint_on UNUSED */
 
    // Base RISC-V (RV32I) has only 10 different instructions !
-   wire isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
-   wire isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
-   wire isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
-   wire isStore   =  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
-   wire isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
-   wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
-   wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
-   wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
-   wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
-   wire isSYSTEM  =  (instr[6:2] == 5'b11100); // rd <- CSR <- rs1/uimm5
-
+   wire isLoad    =  (instr[6:2] ==? 5'b0000?); // rd <- mem[rs1+Iimm]  (?:FLW)
+   wire isALUimm  =  (instr[6:2] ==  5'b00100); // rd <- rs1 OP Iimm   
+   wire isAUIPC   =  (instr[6:2] ==  5'b00101); // rd <- PC + Uimm
+   wire isStore   =  (instr[6:2] ==? 5'b0100?); // mem[rs1+Simm] <- rs2 (?:FSW)
+   wire isALUreg  =  (instr[6:2] ==  5'b01100); // rd <- rs1 OP rs2
+   wire isLUI     =  (instr[6:2] ==  5'b01101); // rd <- Uimm
+   wire isBranch  =  (instr[6:2] ==  5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
+   wire isJALR    =  (instr[6:2] ==  5'b11001); // rd <- PC+4; PC<-rs1+Iimm
+   wire isJAL     =  (instr[6:2] ==  5'b11011); // rd <- PC+4; PC<-PC+Jimm
+   wire isSYSTEM  =  (instr[6:2] ==  5'b11100); // rd <- CSR <- rs1/uimm5
+   wire isFPU     =  (instr[6:2] ==  5'b10100); // rd <- rs1 OP rs2
+   
    wire isALU = isALUimm | isALUreg;
 
    /***************************************************************************/
@@ -89,12 +93,14 @@ module FemtoRV32(
 
    reg [31:0] rs1;
    reg [31:0] rs2;
-   reg [31:0] registerFile [31:0];
+   reg [31:0] registerFile [63:0]; //  0..31 : integer registers
+                                   // 32..63 : floating-point registers
 
    always @(posedge clk) begin
      if (writeBack)
-       if (rdId != 0)
+       if (rdId != 0) begin
          registerFile[rdId] <= writeBackData;
+       end
    end
 
    /***************************************************************************/
@@ -239,6 +245,59 @@ module FemtoRV32(
         funct3Is[7] & !LTU ; // BGEU
 
    /***************************************************************************/
+   // FPU (for now, simulated)
+   /***************************************************************************/
+
+   reg [31:0] fpuOut;
+
+   always @(posedge clk) begin
+      if(isFPU && state[EXECUTE_bit]) begin
+	 // $display("FPU, PC=%x",PC);
+	 $c("unsigned int FADD(unsigned int x, unsigned int y);");
+	 $c("unsigned int FSUB(unsigned int x, unsigned int y);");
+	 $c("unsigned int FMUL(unsigned int x, unsigned int y);");
+	 $c("unsigned int FDIV(unsigned int x, unsigned int y);");
+	 $c("unsigned int FEQ(unsigned int x, unsigned int y);");	 
+	 $c("unsigned int FLT(unsigned int x, unsigned int y);");
+	 $c("unsigned int FLE(unsigned int x, unsigned int y);");	 	 
+	 case(instr[31:25])
+	   7'b0000000: begin
+	      fpuOut <= $c32("FADD(",rs1,",",rs2,")");
+	   end
+	   7'b0000100: begin
+	      fpuOut <= $c32("FSUB(",rs1,",",rs2,")");
+	   end
+	   7'b0001000: begin
+	      fpuOut <= $c32("FMUL(",rs1,",",rs2,")");
+	   end
+	   7'b0001100: begin
+	      fpuOut <= $c32("FDIV(",rs1,",",rs2,")");
+	   end
+	   7'b1010000: begin
+	      case(instr[14:12]) // funct3
+		3'b010: begin
+		   fpuOut <= $c32("FEQ(",rs1,",",rs2,")");
+		end
+		3'b001: begin
+		   fpuOut <= $c32("FLT(",rs1,",",rs2,")");
+		end
+		3'b000: begin
+		   fpuOut <= $c32("FLE(",rs1,",",rs2,")");
+		end
+		default: begin
+		   fpuOut <= 32'b0;
+		end
+	      endcase
+	   end
+	   default: begin
+	      fpuOut <= 32'b0;
+	   end
+	 endcase
+      end
+   end
+
+   
+   /***************************************************************************/
    // Program counter and branch target computation.
    /***************************************************************************/
 
@@ -345,6 +404,7 @@ module FemtoRV32(
       (isSYSTEM            ? CSR_read             : 32'b0) |  // SYSTEM
       (isLUI               ? Uimm                 : 32'b0) |  // LUI
       (isALU               ? aluOut               : 32'b0) |  // ALUreg, ALUimm
+      (isFPU               ? fpuOut               : 32'b0) |  // FPU
       (isAUIPC             ? {ADDR_PAD,PCplusImm} : 32'b0) |  // AUIPC
       (isJALR   | isJAL    ? {ADDR_PAD,PCinc    } : 32'b0) |  // JAL, JALR
       (isLoad              ? LOAD_data            : 32'b0);   // Load
@@ -359,8 +419,11 @@ module FemtoRV32(
    // - funct3[1:0]:  00->byte 01->halfword 10->word
    // - mem_addr[1:0]: indicates which byte/halfword is accessed
 
-   wire mem_byteAccess     = instr[13:12] == 2'b00; // funct3[1:0] == 2'b00;
-   wire mem_halfwordAccess = instr[13:12] == 2'b01; // funct3[1:0] == 2'b01;
+   // TODO: support unaligned accesses for FLW and FSW 
+   
+   // instr[2] is set for FLW and FSW. instr[13:12] = func3[1:0]
+   wire mem_byteAccess     = !instr[2] && (instr[13:12] == 2'b00); 
+   wire mem_halfwordAccess = !instr[2] && (instr[13:12] == 2'b01); 
 
    // LOAD, in addition to funct3[1:0], LOAD depends on:
    // - funct3[2] (instr[14]): 0->do sign expansion   1->no sign expansion
@@ -453,7 +516,7 @@ module FemtoRV32(
 
    // register write-back enable.
    wire writeBack = ~(isBranch | isStore ) & (
-            state[EXECUTE_bit] | 
+            (state[EXECUTE_bit] && !isLoad && !isFPU) |  // HERE
 	    state[WAIT_ALU_OR_MEM_bit] | 
             state[WAIT_ALU_OR_MEM_SKIP_bit]
    );
@@ -469,7 +532,7 @@ module FemtoRV32(
 
    wire jumpToPCplusImm = isJAL | (isBranch & predicate);
 
-   wire needToWait = isLoad | isStore | isDivide;
+   wire needToWait = isLoad | isStore | isDivide | isFPU;
 
    wire [ADDR_WIDTH-1:0] PC_new = 
            isJALR           ? {aluPlus[ADDR_WIDTH-1:1],1'b0} :
@@ -477,6 +540,12 @@ module FemtoRV32(
            interrupt_return ? mepc :
                               PCinc;
 
+   // TODO: determine when rs1 and rs2 are FP registers
+   wire rs1_is_FP = (decompressed[6:5] == 2'b10);
+
+   //                                                FSW---v
+   wire rs2_is_FP = (decompressed[6:5] == 2'b10) || (decompressed[6:2]==5'b01001);		     
+   
    always @(posedge clk) begin
       if(!reset) begin
          state             <= WAIT_ALU_OR_MEM;     //Just waiting for !mem_wbusy
@@ -499,8 +568,8 @@ module FemtoRV32(
 		 end;
 
 		 // Decode instruction
-		 rs1 <= registerFile[decompressed[19:15]];
-		 rs2 <= registerFile[decompressed[24:20]];
+		 rs1 <= registerFile[{rs1_is_FP,decompressed[19:15]}];
+		 rs2 <= registerFile[{rs2_is_FP,decompressed[24:20]}];
 		 instr      <= decompressed[31:2];
 		 long_instr <= &decomp_input[1:0];
 
@@ -517,6 +586,7 @@ module FemtoRV32(
            end
 
            state[EXECUTE_bit]: begin
+	      
               if (interrupt) begin
 		 PC     <= mtvec;
 		 mepc   <= PC_new;
@@ -535,11 +605,15 @@ module FemtoRV32(
            end
 
            state[WAIT_ALU_OR_MEM_bit]: begin
-              if(!aluBusy & !mem_rbusy & !mem_wbusy) state <= FETCH_INSTR;
+              if(!aluBusy & !mem_rbusy & !mem_wbusy) begin
+                 state <= FETCH_INSTR;
+	      end
            end
 
            state[WAIT_ALU_OR_MEM_SKIP_bit]: begin
-              if(!aluBusy & !mem_rbusy & !mem_wbusy) state <= WAIT_INSTR;
+              if(!aluBusy & !mem_rbusy & !mem_wbusy) begin
+                 state <= WAIT_INSTR;
+	      end
            end
 
            default: begin // FETCH_INSTR
@@ -562,6 +636,8 @@ endmodule
 
 // if c[15:0] is a compressed instrution, decompresses it in d
 // else copies c to d
+// TODO: decompress RV32F instructions
+
 module decompressor(
    input  wire [31:0] c,
    output reg  [31:0] d
