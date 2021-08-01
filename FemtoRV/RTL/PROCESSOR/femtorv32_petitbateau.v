@@ -68,9 +68,9 @@ module FemtoRV32(
    wire rdIsFP = (instr[6:2] == 5'b00001)            || // FLW
 	         (instr[6:4] == 3'b100  )            || // F{N}MADD,F{N}MSUB
 	         (instr[6:4] == 3'b101 && (
-                            (instr[31]    == 1'b0)   || // R-Type FPU
-			    (instr[31:28] == 4'b100) || // FCVT.W{U}.S
-			    (instr[31:28] == 4'b111)    // FMV.W.X					   
+                            (instr[31]    == 1'b0)    || // R-Type FPU
+			    (instr[31:28] == 4'b1101) || // FCVT.S.W{U}
+			    (instr[31:28] == 4'b1111)    // FMV.W.X					   
 			 )
                  );
    
@@ -119,7 +119,7 @@ module FemtoRV32(
    always @(posedge clk) begin
      if (writeBack)
        if (rdId != 0) begin
-         registerFile[rdId] <= writeBackData;
+          registerFile[rdId] <= writeBackData;
        end
    end
 
@@ -571,8 +571,8 @@ module FemtoRV32(
    //   FMV.W.X    :  instr[6:2] = 5'b10100 and instr[30:28] = 3'b111
    wire rs1IsFP = (decompressed[6:5]   == 2'b10 ) &&  
                   !((decompressed[4:2]  == 3'b100) && (
-                      (decompressed[30:28] == 3'b101) || // FCVT.S.W{U}
-     	              (decompressed[30:28] == 3'b111)    // FMV.W.X
+                      (decompressed[31:28] == 4'b1101) || // FCVT.S.W{U}
+     	              (decompressed[31:28] == 4'b1111)    // FMV.W.X
                     )						    
 		  );
    

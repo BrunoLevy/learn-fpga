@@ -14,60 +14,60 @@ union IEEE754 {
 };
 
 
-inline float int_to_float(uint32_t x) {
+inline float decodef(uint32_t x) {
   IEEE754 xx;
   xx.i = x;
   return xx.f;
 }
 
-inline uint32_t float_to_int(float x) {
+inline uint32_t encodef(float x) {
   IEEE754 xx;
   xx.f = x;
   return xx.i;
 }
 
 void print_float(uint32_t x) {
-  printf("%f\n",int_to_float(x));
+  printf("%f\n",decodef(x));
 }
 
 uint32_t FMADD(uint32_t x, uint32_t y, uint32_t z) {
   printf("FMADD\n");
-  return float_to_int(int_to_float(x)*int_to_float(y)+int_to_float(z));
+  return encodef(decodef(x)*decodef(y)+decodef(z));
 }
 
 uint32_t FMSUB(uint32_t x, uint32_t y, uint32_t z) {
   printf("FMSUB\n");  
-  return float_to_int(int_to_float(x)*int_to_float(y)-int_to_float(z));  
+  return encodef(decodef(x)*decodef(y)-decodef(z));  
 }
 
 uint32_t FNMADD(uint32_t x, uint32_t y, uint32_t z) {
   printf("FNMADD\n");    
-  return float_to_int(-int_to_float(x)*int_to_float(y)+int_to_float(z));
+  return encodef(-decodef(x)*decodef(y)+decodef(z));
 }
 
 uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
   printf("FNMSUB\n");      
-  return float_to_int(-int_to_float(x)*int_to_float(y)-int_to_float(z));  
+  return encodef(-decodef(x)*decodef(y)-decodef(z));  
 }
 
 uint32_t FADD(uint32_t x, uint32_t y) {
-  return float_to_int(int_to_float(x)+int_to_float(y));
+  return encodef(decodef(x)+decodef(y));
 }
 
 uint32_t FSUB(uint32_t x, uint32_t y) {
-  return float_to_int(int_to_float(x)-int_to_float(y));
+  return encodef(decodef(x)-decodef(y));
 }
 
 uint32_t FMUL(uint32_t x, uint32_t y) {
-  return float_to_int(int_to_float(x)*int_to_float(y));
+  return encodef(decodef(x)*decodef(y));
 }
 
 uint32_t FDIV(uint32_t x, uint32_t y) {
-  return float_to_int(int_to_float(x)/int_to_float(y));
+  return encodef(decodef(x)/decodef(y));
 }
 
 uint32_t FSQRT(uint32_t x) {
-  return float_to_int(sqrtf(int_to_float(x)));
+  return encodef(sqrtf(decodef(x)));
 }
 
 uint32_t FSGNJ(uint32_t x, uint32_t y) {
@@ -94,31 +94,31 @@ uint32_t FSGNJX(uint32_t x, uint32_t y) {
 }
 
 uint32_t FMIN(uint32_t x, uint32_t y) {
-  return float_to_int(fmin(int_to_float(x),int_to_float(y)));
+  return encodef(fmin(decodef(x),decodef(y)));
 }
 
 uint32_t FMAX(uint32_t x, uint32_t y) {
-  return float_to_int(fmax(int_to_float(x),int_to_float(y)));  
+  return encodef(fmax(decodef(x),decodef(y)));  
 }
 
 uint32_t FCVTWS(uint32_t x) {
-  return uint32_t(int32_t(int_to_float(x)));  
+  return uint32_t(int32_t(decodef(x)));  
 }
 
 uint32_t FCVTWUS(uint32_t x) {
-  return uint32_t(int_to_float(x));
+  return uint32_t(decodef(x));
 }
 
 uint32_t FEQ(uint32_t x, uint32_t y) {
-  return (int_to_float(x) == int_to_float(y));
+  return (decodef(x) == decodef(y));
 }
 
 uint32_t FLT(uint32_t x, uint32_t y) {
-  return (int_to_float(x) < int_to_float(y));
+  return (decodef(x) < decodef(y));
 }
 
 uint32_t FLE(uint32_t x, uint32_t y) {
-  return (int_to_float(x) <= int_to_float(y));
+  return (decodef(x) <= decodef(y));
 }
 
 uint32_t FCLASS(uint32_t x) {
@@ -127,9 +127,9 @@ uint32_t FCLASS(uint32_t x) {
 }
 
 uint32_t FCVTSW(uint32_t x) {
-  return int_to_float(float(int32_t(x)));
+  return encodef(float(int32_t(x)));
 }
 
 uint32_t FCVTSWU(uint32_t x) {
-  return int_to_float(float(x));
+  return encodef(float(x));
 }
