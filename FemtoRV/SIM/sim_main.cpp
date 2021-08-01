@@ -1,6 +1,5 @@
 #include "VfemtoRV32_bench.h"
 #include "verilated.h"
-#include <GLFW/glfw3.h>
 #include "FPU_funcs.h"
 #include "SSD1351.h"
 

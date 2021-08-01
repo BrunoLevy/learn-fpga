@@ -12,6 +12,7 @@
 // [TODO] Step 4: FCVT.S.WU
 // [TODO] Step 5: FLT.S
 //
+
 // Project: mandel_float.c RV32IMF -O3 in verilator
 // [TODO] Step 6: FMADD.S/FMSUB.S
 
@@ -261,13 +262,6 @@ module FemtoRV32(
    always @(posedge clk) begin
       if(isFPU && state[EXECUTE_bit]) begin
 	 // $display("FPU, PC=%x",PC);
-	 $c("unsigned int FADD(unsigned int x, unsigned int y);");
-	 $c("unsigned int FSUB(unsigned int x, unsigned int y);");
-	 $c("unsigned int FMUL(unsigned int x, unsigned int y);");
-	 $c("unsigned int FDIV(unsigned int x, unsigned int y);");
-	 $c("unsigned int FEQ(unsigned int x, unsigned int y);");	 
-	 $c("unsigned int FLT(unsigned int x, unsigned int y);");
-	 $c("unsigned int FLE(unsigned int x, unsigned int y);");	 	 
 	 case(instr[31:25])
 	   7'b0000000: begin
 	      fpuOut <= $c32("FADD(",rs1,",",rs2,")");
@@ -554,11 +548,11 @@ module FemtoRV32(
    // stage.
    
    // rs1 is a FP register if instr[6:5] = 2'b10 except for:
-   //   FCVT.W{U}.S:  instr[6:2] = 5'b10100 and instr[30:28] = 3'b100
+   //   FCVT.S.W{U}:  instr[6:2] = 5'b10100 and instr[30:28] = 3'b101
    //   FMV.W.X    :  instr[6:2] = 5'b10100 and instr[30:28] = 3'b111
    wire rs1IsFP = (decompressed[6:5]   == 2'b10 ) &&  
                   !((decompressed[4:2]  == 3'b100) && (
-                      (decompressed[30:28] == 3'b100) || // FCVT.W{U}.S
+                      (decompressed[30:28] == 3'b101) || // FCVT.S.W{U}
      	              (decompressed[30:28] == 3'b111)    // FMV.W.X
                     )						    
 		  );
