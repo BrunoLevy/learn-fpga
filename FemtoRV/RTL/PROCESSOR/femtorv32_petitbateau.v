@@ -6,7 +6,7 @@
 // Project: mandel_float.c RV32IMF -O0 in verilator
 // [DONE] Preparation: compile and inspect RV32F instructions used in asm
 // [TODO] [Step 0: add FPU CSR (and maybe instret)]
-// [TODO] Step 1: FSW/FLW aligned 
+// [DONE] Step 1: FSW/FLW aligned 
 // [TODO] Step 2: FMUL
 // [TODO] Step 3: FADD/FSUB
 // [TODO] Step 4: FCVT.S.WU
@@ -52,11 +52,19 @@ module FemtoRV32(
    // Reference: Table page 104 of:
    // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
 
-   // The destination register
-   // TODO: determine when rd is FP register... FMA
-   // rd_is_FP =     (FPU instr except tests)  || (FLW)
-   wire rd_is_FP = (instr[6:5] == 2'b10 && instr[31:25] !=  7'b1010000) || instr[6:2] == 5'b00001;
-   wire [5:0] rdId = {rd_is_FP,instr[11:7]};
+   // The destination register and 
+   // FP register flag depending on instr[31:25] and instr[6:0]
+   
+   wire rdIsFP = (instr[6:2] == 5'b00001)            || // FLW
+	         (instr[6:4] == 3'b100  )            || // F{N}MADD,F{N}MSUB
+	         (instr[6:4] == 3'b101 && (
+                            (instr[31]    == 1'b0)   || // R-Type FPU
+			    (instr[31:28] == 4'b100) || // FCVT.W{U}.S
+			    (instr[31:28] == 4'b111)    // FMV.W.X					   
+			 )
+                 );
+   
+   wire [5:0] rdId = {rdIsFP,instr[11:7]};
 
    // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
    // It is used as follows: funct3Is[val] <=> funct3 == val
@@ -516,7 +524,7 @@ module FemtoRV32(
 
    // register write-back enable.
    wire writeBack = ~(isBranch | isStore ) & (
-            (state[EXECUTE_bit] && !isLoad && !isFPU) |  // HERE
+            state[EXECUTE_bit] | 
 	    state[WAIT_ALU_OR_MEM_bit] | 
             state[WAIT_ALU_OR_MEM_SKIP_bit]
    );
@@ -540,11 +548,23 @@ module FemtoRV32(
            interrupt_return ? mepc :
                               PCinc;
 
-   // TODO: determine when rs1 and rs2 are FP registers
-   wire rs1_is_FP = (decompressed[6:5] == 2'b10);
 
-   //                                                FSW---v
-   wire rs2_is_FP = (decompressed[6:5] == 2'b10) || (decompressed[6:2]==5'b01001);		     
+   // FP register bit (select register bank 32-63). Computed from
+   // the just-decompressed instruction (not latched yet) at decoding 
+   // stage.
+   
+   // rs1 is a FP register if instr[6:5] = 2'b10 except for:
+   //   FCVT.W{U}.S:  instr[6:2] = 5'b10100 and instr[30:28] = 3'b100
+   //   FMV.W.X    :  instr[6:2] = 5'b10100 and instr[30:28] = 3'b111
+   wire rs1IsFP = (decompressed[6:5]   == 2'b10 ) &&  
+                  !((decompressed[4:2]  == 3'b100) && (
+                      (decompressed[30:28] == 3'b100) || // FCVT.W{U}.S
+     	              (decompressed[30:28] == 3'b111)    // FMV.W.X
+                    )						    
+		  );
+   
+   // rs2 is a FP register if instr[6:5] = 2'b10 or FSW
+   wire rs2IsFP = (decompressed[6:5] == 2'b10) || (decompressed[6:2]==5'b01001);		     
    
    always @(posedge clk) begin
       if(!reset) begin
@@ -568,8 +588,8 @@ module FemtoRV32(
 		 end;
 
 		 // Decode instruction
-		 rs1 <= registerFile[{rs1_is_FP,decompressed[19:15]}];
-		 rs2 <= registerFile[{rs2_is_FP,decompressed[24:20]}];
+		 rs1 <= registerFile[{rs1IsFP,decompressed[19:15]}];
+		 rs2 <= registerFile[{rs2IsFP,decompressed[24:20]}];
 		 instr      <= decompressed[31:2];
 		 long_instr <= &decomp_input[1:0];
 
@@ -586,13 +606,17 @@ module FemtoRV32(
            end
 
            state[EXECUTE_bit]: begin
-	      
               if (interrupt) begin
 		 PC     <= mtvec;
 		 mepc   <= PC_new;
 		 mcause <= 1;
 		 state  <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
               end else begin
+
+		 if((isLoad | isStore) && instr[2] && |loadstore_addr[1:0]) begin
+		    $display("PC=%x UNALIGNED FLW/FSW",PC);
+		 end
+		 
 		 PC <= PC_new;
 		 if (interrupt_return) mcause <= 0;
 
