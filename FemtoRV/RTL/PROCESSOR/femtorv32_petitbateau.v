@@ -40,6 +40,15 @@ module FemtoRV32(
    input         reset      // set to 0 to reset the processor
 );
 
+   function [31:0] flip32;
+      input [31:0] x;
+      flip32 = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7], 
+		x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15], 
+		x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
+		x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
+   endfunction
+
+   
    parameter RESET_ADDR       = 32'h00000000;
    parameter ADDR_WIDTH       = 24;
 
@@ -83,17 +92,17 @@ module FemtoRV32(
    /* verilator lint_on UNUSED */
 
    // Base RISC-V (RV32I) has only 10 different instructions !
-   wire isLoad    =  (instr[6:2] ==? 5'b0000?); // rd <- mem[rs1+Iimm]  (?:FLW)
-   wire isALUimm  =  (instr[6:2] ==  5'b00100); // rd <- rs1 OP Iimm   
-   wire isAUIPC   =  (instr[6:2] ==  5'b00101); // rd <- PC + Uimm
-   wire isStore   =  (instr[6:2] ==? 5'b0100?); // mem[rs1+Simm] <- rs2 (?:FSW)
-   wire isALUreg  =  (instr[6:2] ==  5'b01100); // rd <- rs1 OP rs2
-   wire isLUI     =  (instr[6:2] ==  5'b01101); // rd <- Uimm
-   wire isBranch  =  (instr[6:2] ==  5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
-   wire isJALR    =  (instr[6:2] ==  5'b11001); // rd <- PC+4; PC<-rs1+Iimm
-   wire isJAL     =  (instr[6:2] ==  5'b11011); // rd <- PC+4; PC<-PC+Jimm
-   wire isSYSTEM  =  (instr[6:2] ==  5'b11100); // rd <- CSR <- rs1/uimm5
-   wire isFPU     =  (instr[6:5] ==  2'b10);    // all FPU instr except FLW/FSW
+   wire isLoad    =  (instr[6:3] == 4'b0000 ); // rd <- mem[rs1+Iimm]  (bit 2:FLW)
+   wire isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm   
+   wire isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
+   wire isStore   =  (instr[6:3] == 4'b0100 ); // mem[rs1+Simm] <- rs2 (bit 2:FSW)
+   wire isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
+   wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
+   wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
+   wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
+   wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
+   wire isSYSTEM  =  (instr[6:2] == 5'b11100); // rd <- CSR <- rs1/uimm5
+   wire isFPU     =  (instr[6:5] == 2'b10);    // all FPU instr except FLW/FSW
    
    wire isALU = isALUimm | isALUreg;
 
@@ -143,28 +152,15 @@ module FemtoRV32(
    // Use the same shifter both for left and right shifts by 
    // applying bit reversal
 
-   wire [31:0] shifter_in = funct3Is[1] ?
-     {aluIn1[ 0], aluIn1[ 1], aluIn1[ 2], aluIn1[ 3], aluIn1[ 4], aluIn1[ 5], 
-      aluIn1[ 6], aluIn1[ 7], aluIn1[ 8], aluIn1[ 9], aluIn1[10], aluIn1[11], 
-      aluIn1[12], aluIn1[13], aluIn1[14], aluIn1[15], aluIn1[16], aluIn1[17], 
-      aluIn1[18], aluIn1[19], aluIn1[20], aluIn1[21], aluIn1[22], aluIn1[23],
-      aluIn1[24], aluIn1[25], aluIn1[26], aluIn1[27], aluIn1[28], aluIn1[29], 
-      aluIn1[30], aluIn1[31]} : aluIn1;
-
+   wire [31:0] shifter_in = funct3Is[1] ? flip32(aluIn1) : aluIn1;
+   
    /* verilator lint_off WIDTH */
    wire [31:0] shifter = 
                $signed({instr[30] & aluIn1[31], shifter_in}) >>> aluIn2[4:0];
    /* verilator lint_on WIDTH */
 
-   wire [31:0] leftshift = {
-     shifter[ 0], shifter[ 1], shifter[ 2], shifter[ 3], shifter[ 4], 
-     shifter[ 5], shifter[ 6], shifter[ 7], shifter[ 8], shifter[ 9], 
-     shifter[10], shifter[11], shifter[12], shifter[13], shifter[14], 
-     shifter[15], shifter[16], shifter[17], shifter[18], shifter[19], 
-     shifter[20], shifter[21], shifter[22], shifter[23], shifter[24], 
-     shifter[25], shifter[26], shifter[27], shifter[28], shifter[29], 
-     shifter[30], shifter[31]};
-
+   wire [31:0] leftshift = flip32(shifter);
+   
    /***************************************************************************/
 
    wire funcM     = instr[25];
