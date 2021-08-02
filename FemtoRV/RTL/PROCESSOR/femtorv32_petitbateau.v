@@ -260,7 +260,10 @@ module FemtoRV32(
    // Rem: on pourrait faire un gros casez(instr) a la place, ca sera bcp plus
    // clair..., ou encore on fait des signaux isFMADD, isFMSUB etc.. avec ==~
    // (mais verifier que YOSYS supporte bien ==~, ce qui n'est pas le cas
-   // d'icarus par exemple, il semblerait).
+   // d'icarus par exemple, il semblerait). -> bof, pas sur.
+
+   // Rem: on peut restreindre le deuxieme 
+   // case a instr[31:27] (instr[26:25] = 2'b00 tout le temps)
    
    always @(posedge clk) begin
       if(isFPU && state[EXECUTE_bit]) begin

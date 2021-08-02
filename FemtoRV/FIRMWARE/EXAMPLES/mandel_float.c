@@ -62,6 +62,8 @@ int main() {
 #endif   
       GL_clear();
       mandel();
+      UART_putchar(4); // send <ctrl><D> to UART (exits simulation)
+    
       GL_tty_goto_xy(0,0);
       printf("Mandelbrot Demo.\n");
       delay(1000);       
