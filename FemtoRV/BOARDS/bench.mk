@@ -5,8 +5,8 @@
 BENCH: BENCH.verilator
 
 BENCH.firmware_config:
-#	BOARD=testbench TOOLS/make_config.sh -DBENCH
-	(cd FIRMWARE; cp bench_config.mk config.mk; make libs)
+	BOARD=testbench TOOLS/make_config.sh -DBENCH
+	(cd FIRMWARE; make libs)
 
 BENCH.icarus:
 	(cd RTL; iverilog -IPROCESSOR -IDEVICES femtosoc_bench.v \

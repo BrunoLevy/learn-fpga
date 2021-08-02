@@ -324,7 +324,8 @@ module FemtoRV32(
    wire isFMVWX   = (instr[4] && (instr[31:27] == 5'b11110));
 
    // Implementation of FPU (for now, simulated)
-   
+
+`ifdef VERILATOR   
    always @(posedge clk) begin
       if(isFPU && state[EXECUTE_bit]) begin
 	 case(1'b1)
@@ -354,63 +355,7 @@ module FemtoRV32(
          endcase		     
       end		     
    end		     
-
-/*		     
-   always @(posedge clk) begin
-      if(isFPU && state[EXECUTE_bit]) begin
-	 // $display("FPU, PC=%x",PC);
-	 case(instr[6:2])
-	   5'b10000: fpuOut <= $c32("FMADD(",rs1,",",rs2,",",rs3,")");
-	   5'b10001: fpuOut <= $c32("FMSUB(",rs1,",",rs2,",",rs3,")");
-	   5'b10010: fpuOut <= $c32("FNMSUB(",rs1,",",rs2,",",rs3,")");
-	   5'b10011: fpuOut <= $c32("FNMADD(",rs1,",",rs2,",",rs3,")");
-	   5'b10100: begin
-	      case(instr[31:27])
-		5'b00000: fpuOut <= $c32("FADD(",rs1,",",rs2,")");
-		5'b00001: fpuOut <= $c32("FSUB(",rs1,",",rs2,")");
-		5'b00010: fpuOut <= $c32("FMUL(",rs1,",",rs2,")");
-		5'b00011: fpuOut <= $c32("FDIV(",rs1,",",rs2,")");
-		5'b01011: fpuOut <= $c32("FSQRT(",rs1,")");
-		5'b00100: begin
-		   case(funct3)
-		     3'b000:  fpuOut <= $c32("FSGNJ(",rs1,",",rs2,")");
-		     3'b001:  fpuOut <= $c32("FSGNJN(",rs1,",",rs2,")");
-		     3'b010:  fpuOut <= $c32("FSGNJX(",rs1,",",rs2,")");
-		     default: fpuOut <= 32'b0;
-		   endcase 
-		end
-		
-		5'b00101: fpuOut <= funct3[0] ? $c32("FMAX(",rs1,",",rs2,")")
-		                              : $c32("FMIN(",rs1,",",rs2,")");
-		
-		5'b11000: fpuOut <= instr[20] ? $c32("FCVTWUS(",rs1,")") 
-                                              : $c32("FCVTWS(",rs1,")") ;
-		
-		5'b11100: fpuOut <= (funct3 == 3'b000) 
-                                                ? rs1 // FMV.X.W
-				                : $c32("FCLASS(",rs1,")") ;
-		5'b10100: begin
-		   case(funct3)
-		     3'b010:  fpuOut <= $c32("FEQ(",rs1,",",rs2,")");
-		     3'b001:  fpuOut <= $c32("FLT(",rs1,",",rs2,")");
-		     3'b000:  fpuOut <= $c32("FLE(",rs1,",",rs2,")");
-		     default: fpuOut <= 32'b0;
-		   endcase 
-		end
-
-		5'b11010: fpuOut <= instr[20] ? $c32("FCVTSWU(",rs1,")")
-		                              : $c32("FCVTSW(",rs1,")");
-
-		5'b11110: fpuOut <= rs1; // FMV.W.X
-		
-   	        default: fpuOut <= 32'b0;
-	      endcase
-	   end
-	   default: fpuOut <= 32'b0;
-	 endcase
-      end
-   end
-*/
+`endif
    
    /***************************************************************************/
    // Program counter and branch target computation.
@@ -670,7 +615,7 @@ module FemtoRV32(
                     )						    
 		  );
    
-   // rs2 is a FP register if instr[6:5] = 2'b10 or FSW
+   // rs2 is a FP register if instr[6:5] = 2'b10 or instr is FSW
    wire rs2IsFP = (decompressed[6:5] == 2'b10) || (decompressed[6:2]==5'b01001);		     
    
    always @(posedge clk) begin
