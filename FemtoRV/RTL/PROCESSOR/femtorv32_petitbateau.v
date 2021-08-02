@@ -3,18 +3,41 @@
 //
 // This version: PetitBateau (make it float), under development (RV32F)
 
-// Project: mandel_float.c RV32IMF -O0 in verilator
 // [DONE] Preparation: compile and inspect RV32F instructions used in asm
-// [TODO] [Step 0: add FPU CSR (and maybe instret)]
-// [DONE] Step 1: FSW/FLW aligned 
-// [TODO] Step 2: FMUL
-// [TODO] Step 3: FADD/FSUB
-// [TODO] Step 4: FCVT.S.WU
-// [TODO] Step 5: FLT.S
+// [DONE] simulated FPU + FPU instruction decoder tested in Verilator 
+//             with mandel_float and tinyraytracer
 //
-
-// Project: mandel_float.c RV32IMF -O3 in verilator
-// [TODO] Step 6: FMADD.S/FMSUB.S
+// [TODO] wired FPU, mandel_float -O0
+//    FADD
+//    FCVT.S.WU
+//    FLT
+//    FMUL
+//    FSGNJ
+//    FSUB
+// [TODO] wired FPU, mandel_float -O3
+//    FMADD
+//    FMSUB
+// [TODO] wired FPU, tinyraytracer -O3
+//    FCVT.W.S
+//    FCVT.WU.S
+//    FDIV
+//    FNMSUB
+//    FSGNJN
+//    FSGNJX
+//    FSQRT
+// [TODO] wired FPU, full instr set
+//    FNMADD
+//    FMIN
+//    FMAX
+//    FMV.X.W
+//    FEQ
+//    FLE
+//    FCLASS
+//    FCVT.S.W
+//    FCVT.S.WU
+//    FMV.W.X
+// [TODO] add FPU CSR (and instret for perf stat)]
+// [TODO] FSW/FLW aligned (does not seem to occur, but the norm requires it)
 
 /******************************************************************************/
 
@@ -257,13 +280,7 @@ module FemtoRV32(
 
    reg [31:0] fpuOut;
 
-   // Rem: on pourrait faire un gros casez(instr) a la place, ca sera bcp plus
-   // clair..., ou encore on fait des signaux isFMADD, isFMSUB etc.. avec ==~
-   // (mais verifier que YOSYS supporte bien ==~, ce qui n'est pas le cas
-   // d'icarus par exemple, il semblerait). -> bof, pas sur.
-
-   // Rem: on peut restreindre le deuxieme 
-   // case a instr[31:27] (instr[26:25] = 2'b00 tout le temps)
+   // TODO: signals isFMADD isFMSUB ...
    
    always @(posedge clk) begin
       if(isFPU && state[EXECUTE_bit]) begin
@@ -274,13 +291,13 @@ module FemtoRV32(
 	   5'b10010: fpuOut <= $c32("FNMSUB(",rs1,",",rs2,",",rs3,")");
 	   5'b10011: fpuOut <= $c32("FNMADD(",rs1,",",rs2,",",rs3,")");
 	   5'b10100: begin
-	      case(instr[31:25])
-		7'b0000000: fpuOut <= $c32("FADD(",rs1,",",rs2,")");
-		7'b0000100: fpuOut <= $c32("FSUB(",rs1,",",rs2,")");
-		7'b0001000: fpuOut <= $c32("FMUL(",rs1,",",rs2,")");
-		7'b0001100: fpuOut <= $c32("FDIV(",rs1,",",rs2,")");
-		7'b0101100: fpuOut <= $c32("FSQRT(",rs1,")");
-		7'b0010000: begin
+	      case(instr[31:27])
+		5'b00000: fpuOut <= $c32("FADD(",rs1,",",rs2,")");
+		5'b00001: fpuOut <= $c32("FSUB(",rs1,",",rs2,")");
+		5'b00010: fpuOut <= $c32("FMUL(",rs1,",",rs2,")");
+		5'b00011: fpuOut <= $c32("FDIV(",rs1,",",rs2,")");
+		5'b01011: fpuOut <= $c32("FSQRT(",rs1,")");
+		5'b00100: begin
 		   case(funct3)
 		     3'b000:  fpuOut <= $c32("FSGNJ(",rs1,",",rs2,")");
 		     3'b001:  fpuOut <= $c32("FSGNJN(",rs1,",",rs2,")");
@@ -289,16 +306,16 @@ module FemtoRV32(
 		   endcase 
 		end
 		
-		7'b0010100: fpuOut <= funct3[0] ? $c32("FMAX(",rs1,",",rs2,")")
-		                                : $c32("FMIN(",rs1,",",rs2,")");
+		5'b00101: fpuOut <= funct3[0] ? $c32("FMAX(",rs1,",",rs2,")")
+		                              : $c32("FMIN(",rs1,",",rs2,")");
 		
-		7'b1100000: fpuOut <= instr[20] ? $c32("FCVTWUS(",rs1,")") 
-                                                : $c32("FCVTWS(",rs1,")") ;
+		5'b11000: fpuOut <= instr[20] ? $c32("FCVTWUS(",rs1,")") 
+                                              : $c32("FCVTWS(",rs1,")") ;
 		
-		7'b1110000: fpuOut <= (funct3 == 3'b000) 
+		5'b11100: fpuOut <= (funct3 == 3'b000) 
                                                 ? rs1 // FMV.X.W
 				                : $c32("FCLASS(",rs1,")") ;
-		7'b1010000: begin
+		5'b10100: begin
 		   case(funct3)
 		     3'b010:  fpuOut <= $c32("FEQ(",rs1,",",rs2,")");
 		     3'b001:  fpuOut <= $c32("FLT(",rs1,",",rs2,")");
@@ -307,10 +324,10 @@ module FemtoRV32(
 		   endcase 
 		end
 
-		7'b1101000: fpuOut <= instr[20] ? $c32("FCVTSWU(",rs1,")")
-		                                : $c32("FCVTSW(",rs1,")");
+		5'b11010: fpuOut <= instr[20] ? $c32("FCVTSWU(",rs1,")")
+		                              : $c32("FCVTSW(",rs1,")");
 
-		7'b1111000: fpuOut <= rs1; // FMV.W.X
+		5'b11110: fpuOut <= rs1; // FMV.W.X
 		
    	        default: fpuOut <= 32'b0;
 	      endcase

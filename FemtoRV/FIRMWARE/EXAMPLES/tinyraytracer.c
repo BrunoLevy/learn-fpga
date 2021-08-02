@@ -310,7 +310,7 @@ int main() {
     GL_clear();
     render(spheres, nb_spheres, lights, nb_lights);
 
-//    UART_putchar(4); // send <ctrl><D> to UART (exits simulation)
+    UART_putchar(4); // send <ctrl><D> to UART (exits simulation)
     
     return 0;
 }

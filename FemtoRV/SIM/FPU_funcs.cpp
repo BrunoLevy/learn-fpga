@@ -9,7 +9,7 @@
 
 /*********************************************/
 
-//#define FPU_LOG
+#define FPU_LOG
 
 #ifdef FPU_LOG
 
