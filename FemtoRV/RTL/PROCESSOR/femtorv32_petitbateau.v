@@ -37,7 +37,7 @@
 //    FCVT.S.WU
 //    FMV.W.X
 // [TODO] add FPU CSR (and instret for perf stat)]
-// [TODO] FSW/FLW aligned (does not seem to occur, but the norm requires it)
+// [TODO] FSW/FLW unaligned (does not seem to occur, but the norm requires it)
 
 /******************************************************************************/
 
@@ -275,13 +275,87 @@ module FemtoRV32(
         funct3Is[7] & !LTU ; // BGEU
 
    /***************************************************************************/
-   // FPU (for now, simulated)
+   // FPU 
    /***************************************************************************/
 
    reg [31:0] fpuOut;
 
-   // TODO: signals isFMADD isFMSUB ...
+   // RV32F instruction decoder
+   // See table p133 (RV32G instruction listings)
+   // Notes:
+   //  - FLW/FSW handled by LOAD/STORE (instr[2] set if FLW/FSW)
+   //  - For all other F instructions, instr[6:5] == 2'b10
+   //  - FMADD/FSUB/FNMADD/FNSUB: instr[4] = 1'b0
+   //  - For all remaining F instructions, instr[4] = 1'b1
+   //  - FMV.X.W and FCLASS have same funct7 (7'b1110000),
+   //      (discriminated by instr[12])
    
+   wire isFMADD   = (instr[4:2] == 3'b000); // rd <-  rs1*rs2+rs3
+   wire isFMSUB   = (instr[4:2] == 3'b001); // rd <-  rs1*rs2-rs3
+   wire isFNMSUB  = (instr[4:2] == 3'b010); // rd <- -rs1*rs2+rs3
+   wire isFNMADD  = (instr[4:2] == 3'b011); // rd <- -rs1*rs2-rs3      
+
+   wire isFADD    = (instr[4] && (instr[31:27] == 5'b00000));
+   wire isFSUB    = (instr[4] && (instr[31:27] == 5'b00001));
+   wire isFMUL    = (instr[4] && (instr[31:27] == 5'b00010));
+   wire isFDIV    = (instr[4] && (instr[31:27] == 5'b00011));
+   wire isFSQRT   = (instr[4] && (instr[31:27] == 5'b01011));   
+
+   wire isFSGNJ   = (instr[4] && (instr[31:27] == 5'b00100) && (instr[13:12] == 2'b00));
+   wire isFSGNJN  = (instr[4] && (instr[31:27] == 5'b00100) && (instr[13:12] == 2'b01));      
+   wire isFSGNJX  = (instr[4] && (instr[31:27] == 5'b00100) && (instr[13:12] == 2'b10));   
+
+   wire isFMIN    = (instr[4] && (instr[31:27] == 5'b00101) && !instr[12]);
+   wire isFMAX    = (instr[4] && (instr[31:27] == 5'b00101) &&  instr[12]);      
+
+   wire isFEQ     = (instr[4] && (instr[31:27] == 5'b10100) && (instr[13:12] == 2'b10));
+   wire isFLT     = (instr[4] && (instr[31:27] == 5'b10100) && (instr[13:12] == 2'b01));
+   wire isFLE     = (instr[4] && (instr[31:27] == 5'b10100) && (instr[13:12] == 2'b00));                        
+   
+   wire isFCLASS  = (instr[4] && (instr[31:27] == 5'b11100) &&  instr[12]);               
+   
+   wire isFCVTWS  = (instr[4] && (instr[31:27] == 5'b11000) && !instr[20]);
+   wire isFCVTWUS = (instr[4] && (instr[31:27] == 5'b11000) &&  instr[20]);
+
+   wire isFCVTSW  = (instr[4] && (instr[31:27] == 5'b11010) && !instr[20]);
+   wire isFCVTSWU = (instr[4] && (instr[31:27] == 5'b11010) &&  instr[20]);
+
+   wire isFMVXW   = (instr[4] && (instr[31:27] == 5'b11100) && !instr[12]);
+   wire isFMVWX   = (instr[4] && (instr[31:27] == 5'b11110));
+
+   // Implementation of FPU (for now, simulated)
+   
+   always @(posedge clk) begin
+      if(isFPU && state[EXECUTE_bit]) begin
+	 case(1'b1)
+	     isFMADD  : fpuOut <= $c32("FMADD(",rs1,",",rs2,",",rs3,")");
+	     isFMSUB  : fpuOut <= $c32("FMSUB(",rs1,",",rs2,",",rs3,")");
+	     isFNMSUB : fpuOut <= $c32("FNMSUB(",rs1,",",rs2,",",rs3,")");
+	     isFNMADD : fpuOut <= $c32("FNMADD(",rs1,",",rs2,",",rs3,")");
+	     isFADD   : fpuOut <= $c32("FADD(",rs1,",",rs2,")");
+	     isFSUB   : fpuOut <= $c32("FSUB(",rs1,",",rs2,")");
+	     isFMUL   : fpuOut <= $c32("FMUL(",rs1,",",rs2,")");
+	     isFDIV   : fpuOut <= $c32("FDIV(",rs1,",",rs2,")");
+	     isFSQRT  : fpuOut <= $c32("FSQRT(",rs1,")");
+	     isFSGNJ  : fpuOut <= $c32("FSGNJ(",rs1,",",rs2,")");
+	     isFSGNJN : fpuOut <= $c32("FSGNJN(",rs1,",",rs2,")");
+	     isFSGNJX : fpuOut <= $c32("FSGNJX(",rs1,",",rs2,")");
+	     isFMIN   : fpuOut <= $c32("FMIN(",rs1,",",rs2,")");
+	     isFMAX   : fpuOut <= $c32("FMAX(",rs1,",",rs2,")");
+	     isFEQ    : fpuOut <= $c32("FEQ(",rs1,",",rs2,")");
+	     isFLT    : fpuOut <= $c32("FLT(",rs1,",",rs2,")");
+	     isFLE    : fpuOut <= $c32("FLE(",rs1,",",rs2,")");
+	     isFCLASS : fpuOut <= $c32("FCLASS(",rs1,")") ;
+	     isFCVTWS : fpuOut <= $c32("FCVTWS(",rs1,")");
+	     isFCVTWUS: fpuOut <= $c32("FCVTWUS(",rs1,")");
+	     isFCVTSW : fpuOut <= $c32("FCVTSW(",rs1,")");
+	     isFCVTSWU: fpuOut <= $c32("FCVTSWU(",rs1,")");
+	     isFMVXW | isFMVWX: fpuOut <= rs1;
+         endcase		     
+      end		     
+   end		     
+
+/*		     
    always @(posedge clk) begin
       if(isFPU && state[EXECUTE_bit]) begin
 	 // $display("FPU, PC=%x",PC);
@@ -336,7 +410,7 @@ module FemtoRV32(
 	 endcase
       end
    end
-
+*/
    
    /***************************************************************************/
    // Program counter and branch target computation.
