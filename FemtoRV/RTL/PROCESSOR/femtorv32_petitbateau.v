@@ -9,14 +9,14 @@
 //
 // [TODO] wired FPU, mandel_float -O0
 //    FADD
-//    FCVT.S.WU
 //    FLT
 //    FMUL
-//    FSGNJ
 //    FSUB
+//   (FCVT.S.WU and FSGNJ if dx/dy given by expression instead of by value) 
 // [TODO] wired FPU, mandel_float -O3
 //    FMADD
 //    FMSUB
+//    FSGNJ
 // [TODO] wired FPU, tinyraytracer -O3
 //    FCVT.W.S
 //    FCVT.WU.S
