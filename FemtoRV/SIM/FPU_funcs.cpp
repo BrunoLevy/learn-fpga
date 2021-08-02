@@ -56,6 +56,10 @@ inline int test_bit(uint64_t x, int i) {
   return (x & (1ull << i)) != 0;
 }
 
+inline int test_bit(uint32_t x, int i) {
+  return (x & (1ul << i)) != 0;
+}
+
 inline int first_bit_set(uint64_t x) {
   for(int i=63; i>=0; --i) {
     if(test_bit(x, i)) {
@@ -65,7 +69,22 @@ inline int first_bit_set(uint64_t x) {
   return -1;
 }
 
+inline int first_bit_set(uint32_t x) {
+  for(int i=32; i>=0; --i) {
+    if(test_bit(x, i)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 void printb(uint64_t x, int nb_bits=64) {
+  for(int i=nb_bits-1; i>=0; --i) {
+    printf("%c",test_bit(x,i)?'1':'0');
+  }
+}
+
+void printb(uint32_t x, int nb_bits=32) {
   for(int i=nb_bits-1; i>=0; --i) {
     printf("%c",test_bit(x,i)?'1':'0');
   }
@@ -187,14 +206,78 @@ uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
   return encodef(-decodef(x)*decodef(y)+decodef(z));  
 }
 
+uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
+  
+  IEEE764 X(x), Y(y);
+  if(sub) {
+    Y.sign = !Y.sign;
+  }
+  IEEE764 Z(X.f+Y.f);
+
+  if((Y.exp > X.exp) || ((Y.exp == X.exp) && (Y.mant > X.mant))) {
+    std::swap(X,Y);
+  }
+  uint32_t X32 = uint32_t(X.mant | (1 << 23));
+  uint32_t Y32 = uint32_t(Y.mant | (1 << 23));
+  if(X.exp - Y.exp > 31) {
+    Y32 = 0;
+  } else {
+    Y32 = Y32 >> (X.exp - Y.exp);
+  }
+  uint32_t sum_mant  = (X32+Y32);
+  uint32_t diff_mant = (X32-Y32);
+  uint32_t new_mant  = (X.sign ^ Y.sign) ? diff_mant : sum_mant;
+  int b = first_bit_set(new_mant);
+  if(b > 24) {
+    printf("WTF ? b=%d\n",b);
+    printf("shift=%d\n", X.exp-Y.exp);
+    printf("X="); printb(X32); printf("   "); X.print(); printf("\n");
+    printf("Y="); printb(Y32); printf("   "); Y.print(); printf("\n");
+  }
+  if(b > 23) {
+    new_mant = new_mant >> (b-23); // TODO: rounding
+  } else {
+    new_mant = new_mant << (23-b);
+  }
+  int exp = int(X.exp)+b-23;
+  int sign = X.sign;
+  IEEE764 ZZ(new_mant, exp, sign);
+  if(new_mant == 0 || exp<0) {
+    ZZ.load_zero();
+  } else if(X.is_zero()) {
+    ZZ = Y;
+  } else if(Y.is_zero()) {
+    ZZ = X;
+  }
+  
+  if(
+     false && (
+     ZZ.sign != Z.sign ||
+     ZZ.exp  != Z.exp  ||
+     std::abs(ZZ.mant - Z.mant) > 16)
+  ) {
+    printf("FADD/FSUB ");
+    X.print();
+    printf(" + ");
+    Y.print();
+    printf(" = ");
+    Z.print();
+    printf("\n");
+    printf("                                                                                ");
+    ZZ.print();
+    printf("\n");
+  }
+  return ZZ.i;
+}
+
 uint32_t FADD(uint32_t x, uint32_t y) {
   L("FADD");
-  return encodef(decodef(x)+decodef(y));
+  return F_ADD_SUB(x,y,false);
 }
 
 uint32_t FSUB(uint32_t x, uint32_t y) {
   L("FSUB");  
-  return encodef(decodef(x)-decodef(y));
+  return F_ADD_SUB(x,y,true);
 }
 
 uint32_t FMUL(uint32_t x, uint32_t y) {
@@ -215,8 +298,8 @@ uint32_t FMUL(uint32_t x, uint32_t y) {
       // 127: do not apply bias twice (both exponents are biased)
       //  46: both factors are 2^23 larger than what the exponent says
   
-  if(exp < 0)   { exp = 0; } // Underflow
-  if(exp > 255) { exp = 255; prod_mant = 0; } // Overflow -> infy
+  if(exp < 0)   { exp = 0;   prod_mant = 0; } // Underflow -> zero
+  if(exp > 255) { exp = 255; prod_mant = 0; } // Overflow  -> infy
   
   IEEE764 ZZ(uint32_t(prod_mant), exp, X.sign^Y.sign);
   if(X.is_NaN() || Y.is_NaN()) {
