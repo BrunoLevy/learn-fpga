@@ -44,7 +44,7 @@
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32imaf"
 `define NRV_ABI      "ilp32f"
-`define NRV_OPTIMIZE "-O3"
+`define NRV_OPTIMIZE "-O0"
 `define NRV_INTERRUPTS
 
 module FemtoRV32(
@@ -292,8 +292,8 @@ module FemtoRV32(
    
    wire isFMADD   = (instr[4:2] == 3'b000); // rd <-  rs1*rs2+rs3
    wire isFMSUB   = (instr[4:2] == 3'b001); // rd <-  rs1*rs2-rs3
-   wire isFNMSUB  = (instr[4:2] == 3'b010); // rd <- -rs1*rs2+rs3
-   wire isFNMADD  = (instr[4:2] == 3'b011); // rd <- -rs1*rs2-rs3      
+   wire isFNMSUB  = (instr[4:2] == 3'b010); // rd <- -rs1*rs2+rs3 (yes, *plus  rs3* !!!)
+   wire isFNMADD  = (instr[4:2] == 3'b011); // rd <- -rs1*rs2-rs3 (yes, *minus rs3* !!!)     
 
    wire isFADD    = (instr[4] && (instr[31:27] == 5'b00000));
    wire isFSUB    = (instr[4] && (instr[31:27] == 5'b00001));
