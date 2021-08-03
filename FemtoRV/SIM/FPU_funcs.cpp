@@ -213,7 +213,6 @@ uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
     Y.sign = !Y.sign;
   }
   IEEE754 Z(X.f+Y.f);
-
   if((Y.exp > X.exp) || ((Y.exp == X.exp) && (Y.mant > X.mant))) {
     std::swap(X,Y);
   }
@@ -224,6 +223,7 @@ uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
   } else {
     Y32 = Y32 >> (X.exp - Y.exp);
   }
+
   uint32_t sum_mant  = (X32+Y32);
   uint32_t diff_mant = (X32-Y32);
   uint32_t new_mant  = (X.sign ^ Y.sign) ? diff_mant : sum_mant;
@@ -234,14 +234,23 @@ uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
     printf("X="); printb(X32); printf("   "); X.print(); printf("\n");
     printf("Y="); printb(Y32); printf("   "); Y.print(); printf("\n");
   }
+
+  printf("b=%d\n",b);
+  
   if(b == 24) {
     new_mant = new_mant >> 1; // (b-23); // TODO: rounding
   } else {
     new_mant = new_mant << (23-b);
   }
+  
   int exp = int(X.exp)+b-23;
   int sign = X.sign;
   IEEE754 ZZ(new_mant, exp, sign);
+
+  printf("mant="); printb(new_mant,25); printf("\n");
+  //printf("result=%f\n",ZZ.f);
+  /*
+  // deactivated for now, not needed for mandel_float
   if(new_mant == 0 || exp<0) {
     ZZ.load_zero();
   } else if(X.is_zero()) {
@@ -249,6 +258,7 @@ uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
   } else if(Y.is_zero()) {
     ZZ = X;
   }
+  */
   
   if(
      false && (
