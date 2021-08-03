@@ -410,16 +410,25 @@ module FemtoRV32(
    always @(posedge clk) begin
       case(1'b1)
 	fpu_state[FPU_FADD1_bit]: begin
-	   fpuTemp25 <= |exp_diff[7:5] ? 25'b0 : (fpuTemp25 >> exp_diff[4:0]);
+	   $display("mant0=%b",fpuTemp25);
+	   $display("  exps=%d %d exp_diff=%d",rs1[30:23],rs2[30:23],exp_diff);	   	   
+	   fpuTemp25 <= /* |exp_diff[7:5]*/ (exp_diff > 31) ? 25'b0 : (fpuTemp25 >> exp_diff[4:0]);
 	   fpu_state <= FPU_FADD2;
 	end
 	fpu_state[FPU_FADD2_bit]: begin
+	   $display("mant1=%b",fpuTemp25);
+	   $display("  op1=%b",{2'b01,rs1[22:0]});
+	   $display("    %d",(rs1[31] ^ rs2[31]));
+	   $display("  op2=%b",fpuTemp25);	   	   	   
 	   fpuTemp25 <= (rs1[31] ^ rs2[31]) ? ({2'b01,rs1[22:0]} - fpuTemp25) 
                                             : ({2'b01,rs1[22:0]} + fpuTemp25);
 	   fpu_state <= FPU_FADD3;
 	end
 	fpu_state[FPU_FADD3_bit]: begin
-	   $display("b=%d",first_bit_set);
+	   $display("mant2=%b",fpuTemp25);	   	   
+	   $display("  b=%d",first_bit_set);
+	   $display("  shift_FADD=%d",shift_FADD);
+	   $display("  new exp=%d",$signed(rs1[30:23]) - $signed({{2{shift_FADD[4]}},shift_FADD}));
 	   fpuTemp25     <= fpuTemp25[24] ? (fpuTemp25 >> 1) : (fpuTemp25 << shift_FADD[4:0]);
 	   fpuOut[31]    <= rs1[31];
 	   fpuOut[30:23] <= $signed(rs1[30:23]) - $signed({{2{shift_FADD[4]}},shift_FADD});
@@ -428,9 +437,9 @@ module FemtoRV32(
 	fpu_state[FPU_FADD4_bit]: begin
 	   fpuOut[22:0] <= fpuTemp25[22:0];
 	   fpu_state <= FPU_READY;
-	   $display("mant=%b",fpuTemp25);
-	   //$write("result=");
-	   //$c("print_float(",{fpuOut[31:23],fpuTemp25[22:0]},");");
+	   $display("mant3=%b",fpuTemp25);
+	   $display("**result=%b",(fpuTemp25==0) ? 32'b0 : {fpuOut[31:23],fpuTemp25[22:0]});
+	   $display("");
 	   if(fpuTemp25==0) begin
 	      fpuOut <= 32'b0;
 	   end
@@ -447,7 +456,7 @@ module FemtoRV32(
 	     isFMSUB  : fpuOut <= $c32("FMSUB(",rs1,",",rs2,",",rs3,")");
 	     isFNMSUB : fpuOut <= $c32("FNMSUB(",rs1,",",rs2,",",rs3,")");
 	     isFNMADD : fpuOut <= $c32("FNMADD(",rs1,",",rs2,",",rs3,")");
-
+	   
 //	     isFMUL   : fpuOut <= $c32("FMUL(",rs1,",",rs2,")");
 //	     isFLT    : fpuOut <= $c32("FLT(",rs1,",",rs2,")");
 
@@ -458,7 +467,9 @@ module FemtoRV32(
 	     isFADD   : fpuOut <= $c32("FADD(",rs1,",",rs2,")");
 	     isFSUB   : fpuOut <= $c32("FSUB(",rs1,",",rs2,")");
 `else
-	     (isFADD || isFSUB): begin
+	     ((isFADD || isFSUB) && fpu_state[FPU_READY_bit]): begin
+		$display("**rs1=%b",rs1);
+		$display("**rs2=%b",rs2);
 		rs1       <= FPU_FABS_LT ? {rs2[31] ^ isFSUB,rs2[30:0]} : rs1;
 		rs2       <= FPU_FABS_LT ? rs1 : {rs2[31] ^ isFSUB,rs2[30:0]};
                 fpuTemp25 <= FPU_FABS_LT ? {2'b01, rs1[22:0]} : {2'b01, rs2[22:0]};
@@ -467,7 +478,8 @@ module FemtoRV32(
 `endif
 	   
 	     isFMUL   : begin
-		// since bit 23 is one in both operands, leftmost set bit can be only bit 47 or bit 46,
+		// since bit 23 is one in both operands, 
+		// leftmost set bit can be only bit 47 or bit 46,
 		// then normalization is just a mux driven by bit 47.
 		fpuOut[22:0 ] <= mant_prod[47] ? mant_prod[46:24] : mant_prod[45:23];
 		fpuOut[30:23] <= exp_FMUL[7:0];
@@ -476,6 +488,7 @@ module FemtoRV32(
 		   fpuOut <= 32'd0;
 		end
 	     end
+
 	   
 	     isFDIV   : fpuOut <= $c32("FDIV(",rs1,",",rs2,")");
 	     isFSQRT  : fpuOut <= $c32("FSQRT(",rs1,")");
@@ -491,6 +504,7 @@ module FemtoRV32(
 	     isFCVTWUS: fpuOut <= $c32("FCVTWUS(",rs1,")");
 	     isFCVTSW : fpuOut <= $c32("FCVTSW(",rs1,")");
 	     isFCVTSWU: fpuOut <= $c32("FCVTSWU(",rs1,")");
+
 	     isFMVXW | isFMVWX: fpuOut <= rs1;
          endcase		     
       end		     

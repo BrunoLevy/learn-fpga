@@ -207,6 +207,9 @@ uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
 }
 
 uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
+
+  printf("**rs1="); printb(x); printf("\n");
+  printf("**rs2="); printb(y); printf("\n");  
   
   IEEE754 X(x), Y(y);
   if(sub) {
@@ -218,15 +221,25 @@ uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
   }
   uint32_t X32 = uint32_t(X.mant | (1 << 23));
   uint32_t Y32 = uint32_t(Y.mant | (1 << 23));
+
+  printf("mant0="); printb(Y32,25); printf("\n");
+  
   if(X.exp - Y.exp > 31) {
     Y32 = 0;
   } else {
     Y32 = Y32 >> (X.exp - Y.exp);
   }
 
+  printf("  exps=%d %d exp_diff=%d\n",X.exp, Y.exp, (X.exp - Y.exp));
+  printf("mant1="); printb(Y32,25); printf("\n");
+  printf("  op1="); printb(X32,25); printf("\n");
+  printf("       %d\n",X.sign ^ Y.sign);
+  printf("  op2="); printb(Y32,25); printf("\n");  
+  
   uint32_t sum_mant  = (X32+Y32);
   uint32_t diff_mant = (X32-Y32);
   uint32_t new_mant  = (X.sign ^ Y.sign) ? diff_mant : sum_mant;
+  printf("mant2="); printb(new_mant,25); printf("\n");
   int b = first_bit_set(new_mant);
   if(b > 24) {
     printf("WTF ? b=%d\n",b);
@@ -235,19 +248,27 @@ uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
     printf("Y="); printb(Y32); printf("   "); Y.print(); printf("\n");
   }
 
-  printf("b=%d\n",b);
+  printf("  b=%d\n",b);
+  printf("  shift_FADD=%d\n",23-b);
+  printf("  new exp=%d\n",int(Y.exp)-(23-b));
   
   if(b == 24) {
     new_mant = new_mant >> 1; // (b-23); // TODO: rounding
   } else {
     new_mant = new_mant << (23-b);
   }
-  
+
   int exp = int(X.exp)+b-23;
   int sign = X.sign;
   IEEE754 ZZ(new_mant, exp, sign);
+  if(new_mant == 0) {
+    ZZ.load_zero();
+  }
 
-  printf("mant="); printb(new_mant,25); printf("\n");
+  printf("mant3="); printb(new_mant,25); printf("\n");
+
+  printf("**result="); printb(ZZ.i); printf("\n\n");
+  
   //printf("result=%f\n",ZZ.f);
   /*
   // deactivated for now, not needed for mandel_float
