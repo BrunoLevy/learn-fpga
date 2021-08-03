@@ -344,14 +344,13 @@ module FemtoRV32(
    //                                      and FPU_LT (compare expoment magnitudes) 
    wire signed [8:0]  exp_diff  = $signed({1'b0,rs1[30:23]}) - $signed({1'b0,rs2[30:23]}) ;
 
-   wire FPU_LT = (
-                  (rs1[31] && !rs2[31]) ||                      // rs1 lower than rs2 if rs1 positive and rs2 negative
-		  (rs1[31] ==  rs2[31]) && (                    // or if they have the same sign and ...
-                      rs1[31] ^ (                               //     (then comparision result is inversed if they are both negative)
-                          exp_diff[8] ||                        //   ... rs1 has smaller exponent than rs2
-                          (exp_diff == 9'd0 && mant_diff[24]))  //   ... or they got same exponent and rs1 has smaller mantisse
-                      )
-                 ) ;
+   // |rs1| < |rs2| if rs1 has smaller exp or if they have same exp and rs1 has smaller mantissa
+   // used by comparison functions, and swapping to making rs1 the largest magnitude for FADD/FSUB/...
+   wire FPU_FABS_LT = exp_diff[8] || (exp_diff == 9'd0 && mant_diff[24]);
+   
+   // rs1 < rs2 if rs1 negative and rs2 positive, or they got the same sign, then the result
+   // is given by sign XOR (|rs1| < |rs2|).
+   wire FPU_LT = (rs1[31] && !rs2[31]) || (rs1[31] ==  rs2[31]) && (rs1[31] ^ FPU_FABS_LT);
    
    
 `ifdef VERILATOR   
