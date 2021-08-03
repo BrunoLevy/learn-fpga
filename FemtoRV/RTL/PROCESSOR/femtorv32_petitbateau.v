@@ -323,8 +323,15 @@ module FemtoRV32(
    wire isFMVXW   = (instr[4] && (instr[31:27] == 5'b11100) && !instr[12]);
    wire isFMVWX   = (instr[4] && (instr[31:27] == 5'b11110));
 
-   // Implementation of FPU (for now, simulated)
+   // Implementation of FPU (for now, most of it is simulated except FMUL)
 
+   wire rs1_is_zero             = rs1[30:0] == 31'd0;
+   wire rs2_is_zero             = rs2[30:0] == 31'd0;
+   wire signed [25:0] mant_diff = $signed({2'b01,rs1[22:0]})-$signed({2'b01,rs2[22:0]});
+   wire [47:0]        mant_prod = {1'b1,rs1[22:0]}*{1'b1,rs2[22:0]};
+   wire signed [8:0]  exp_sum   = $signed(rs1[30:23]) + $signed(rs2[30:23]) - (mant_prod[47] ? 126 : 127);
+   wire signed [8:0]  exp_diff  = $signed(rs1[30:23]) - $signed(rs2[30:23]) ;
+   
 `ifdef VERILATOR   
    always @(posedge clk) begin
       if(isFPU && state[EXECUTE_bit]) begin
@@ -335,7 +342,15 @@ module FemtoRV32(
 	     isFNMADD : fpuOut <= $c32("FNMADD(",rs1,",",rs2,",",rs3,")");
 	     isFADD   : fpuOut <= $c32("FADD(",rs1,",",rs2,")");
 	     isFSUB   : fpuOut <= $c32("FSUB(",rs1,",",rs2,")");
-	     isFMUL   : fpuOut <= $c32("FMUL(",rs1,",",rs2,")");
+//	     isFMUL   : fpuOut <= $c32("FMUL(",rs1,",",rs2,")");
+	     isFMUL   : begin
+		fpuOut[22:0 ] <= mant_prod[47] ? mant_prod[46:24] : mant_prod[45:23];
+		fpuOut[30:23] <= exp_sum[7:0];
+		fpuOut[31]    <= rs1[31] ^ rs2[31];
+		if(rs1_is_zero || rs2_is_zero || exp_sum[8]) begin
+		   fpuOut <= 32'd0;
+		end
+	     end
 	     isFDIV   : fpuOut <= $c32("FDIV(",rs1,",",rs2,")");
 	     isFSQRT  : fpuOut <= $c32("FSQRT(",rs1,")");
 	     isFSGNJ  : fpuOut <= $c32("FSGNJ(",rs1,",",rs2,")");
@@ -345,6 +360,11 @@ module FemtoRV32(
 	     isFMAX   : fpuOut <= $c32("FMAX(",rs1,",",rs2,")");
 	     isFEQ    : fpuOut <= $c32("FEQ(",rs1,",",rs2,")");
 	     isFLT    : fpuOut <= $c32("FLT(",rs1,",",rs2,")");
+//	     isFLT    : begin
+//		fpuOut[0] <= ((rs1[31] && !rs2[31]) ||
+//			      (rs1[31] == rs2[31]) && (rs1[31] ^ (exp_diff[8] || (exp_diff == 9'd0 && mant_diff[25]))));
+//		fpuOut[31:1] <= 31'd0;  // FLT to be debugged
+//	     end
 	     isFLE    : fpuOut <= $c32("FLE(",rs1,",",rs2,")");
 	     isFCLASS : fpuOut <= $c32("FCLASS(",rs1,")") ;
 	     isFCVTWS : fpuOut <= $c32("FCVTWS(",rs1,")");

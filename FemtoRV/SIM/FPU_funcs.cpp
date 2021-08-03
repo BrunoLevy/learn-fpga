@@ -70,7 +70,7 @@ inline int first_bit_set(uint64_t x) {
 }
 
 inline int first_bit_set(uint32_t x) {
-  for(int i=32; i>=0; --i) {
+  for(int i=31; i>=0; --i) {
     if(test_bit(x, i)) {
       return i;
     }
@@ -92,22 +92,22 @@ void printb(uint32_t x, int nb_bits=32) {
 
 /*********************************************/
 
-class IEEE764 {
+class IEEE754 {
 public:
   
-  IEEE764(uint32_t i_in) : i(i_in) {
+  IEEE754(uint32_t i_in) : i(i_in) {
   }
 
-  IEEE764(float f_in) : f(f_in) {
+  IEEE754(float f_in) : f(f_in) {
   }
 
-  IEEE764(uint32_t mant_in, uint32_t exp_in, uint32_t sign_in) {
+  IEEE754(uint32_t mant_in, uint32_t exp_in, uint32_t sign_in) {
     mant = mant_in;
     exp  = exp_in;
     sign = sign_in;
   }
 
-  IEEE764() {
+  IEEE754() {
     load_zero();
   }
 
@@ -127,7 +127,7 @@ public:
   }
 
   bool is_zero() const {
-    return i == 0;
+    return (exp==0) && (mant==0);
   }
 
   bool is_denormal() const {
@@ -148,7 +148,7 @@ public:
   
   void print() {
     if(is_zero()) {
-      printf("[----------- ZERO -------------]");
+      printf("[(%c)-------- ZERO -------------]",sign?'-':'+');
       return;
     }
     printf("%c",sign ? '-' : '+');
@@ -170,12 +170,12 @@ public:
 };
 
 inline float decodef(uint32_t x) {
-  IEEE764 X(x);
+  IEEE754 X(x);
   return X.f;
 }
 
 inline uint32_t encodef(float x) {
-  IEEE764 X(x);
+  IEEE754 X(x);
   return X.i;
 }
 
@@ -208,11 +208,11 @@ uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
 
 uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
   
-  IEEE764 X(x), Y(y);
+  IEEE754 X(x), Y(y);
   if(sub) {
     Y.sign = !Y.sign;
   }
-  IEEE764 Z(X.f+Y.f);
+  IEEE754 Z(X.f+Y.f);
 
   if((Y.exp > X.exp) || ((Y.exp == X.exp) && (Y.mant > X.mant))) {
     std::swap(X,Y);
@@ -234,14 +234,14 @@ uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
     printf("X="); printb(X32); printf("   "); X.print(); printf("\n");
     printf("Y="); printb(Y32); printf("   "); Y.print(); printf("\n");
   }
-  if(b > 23) {
-    new_mant = new_mant >> (b-23); // TODO: rounding
+  if(b == 24) {
+    new_mant = new_mant >> 1; // (b-23); // TODO: rounding
   } else {
     new_mant = new_mant << (23-b);
   }
   int exp = int(X.exp)+b-23;
   int sign = X.sign;
-  IEEE764 ZZ(new_mant, exp, sign);
+  IEEE754 ZZ(new_mant, exp, sign);
   if(new_mant == 0 || exp<0) {
     ZZ.load_zero();
   } else if(X.is_zero()) {
@@ -282,36 +282,35 @@ uint32_t FSUB(uint32_t x, uint32_t y) {
 
 uint32_t FMUL(uint32_t x, uint32_t y) {
   L("FMUL");  
-  IEEE764 X(x), Y(y);
-  IEEE764 Z(X.f*Y.f);
-  // return Z.i;
-
-  // Let's try to implement IEEE754 multiplication in C++
-  // (then we'll redo that in VERILOG !!!)
-  
+  IEEE754 X(x), Y(y);
+  IEEE754 Z(X.f*Y.f);
   uint64_t X64 = uint64_t(X.mant | (1 << 23));
   uint64_t Y64 = uint64_t(Y.mant | (1 << 23));  
-  uint64_t prod_mant = (X64*Y64);
-  int b = first_bit_set(prod_mant);
-  prod_mant = prod_mant >> (b-23); // TODO: rounding
-  int exp = int(X.exp) + int(Y.exp) + b - 127 - 46;
-      // 127: do not apply bias twice (both exponents are biased)
-      //  46: both factors are 2^23 larger than what the exponent says
-  
-  if(exp < 0)   { exp = 0;   prod_mant = 0; } // Underflow -> zero
-  if(exp > 255) { exp = 255; prod_mant = 0; } // Overflow  -> infy
-  
-  IEEE764 ZZ(uint32_t(prod_mant), exp, X.sign^Y.sign);
-  if(X.is_NaN() || Y.is_NaN()) {
+  uint64_t multiplier = X64*Y64;
+  // Normalization: first bit set can only be 47 or 46.
+  bool multiplier_47 = test_bit(multiplier,47);
+  uint32_t result_mant;
+  if(multiplier_47) {
+    result_mant = uint32_t(multiplier >> 24);
+  } else {
+    result_mant = uint32_t(multiplier >> 23);    
+  }
+  int result_exp = int(X.exp) + int(Y.exp) - (multiplier_47 ? 126 : 127);
+  IEEE754 ZZ(result_mant, int(result_exp), X.sign ^ Y.sign);
+
+  // For now commented out (not needed for mandel_float).
+  /* if(X.is_NaN() || Y.is_NaN()) {
     ZZ.load_NaN();
   } else if(X.is_infty() || Y.is_infty()) {
     ZZ.load_infty();
-  } else if(exp < 0 || X.is_zero() || Y.is_zero()) {
+  } else */
+  
+  if(X.is_zero() || Y.is_zero() || result_exp < 0) {
     ZZ.load_zero();
   }
-
-  /* 
-  // It *will* bark, because our rounding is a stupid truncation.
+  
+  // It *will* bark, because our rounding is a stupid truncation for now...
+  /*
   if(ZZ.i != Z.i) {
     printf("FMUL ");
     X.print();
@@ -342,21 +341,21 @@ uint32_t FSQRT(uint32_t x) {
 
 uint32_t FSGNJ(uint32_t x, uint32_t y) {
   L("FSGNJ");  
-  IEEE764 X(x), Y(y);
+  IEEE754 X(x), Y(y);
   X.sign = Y.sign;
   return Y.i;
 }
 
 uint32_t FSGNJN(uint32_t x, uint32_t y) {
   L("FSGNJN");    
-  IEEE764 X(x),Y(y);
+  IEEE754 X(x),Y(y);
   X.sign = !Y.sign;
   return X.i;
 }
 
 uint32_t FSGNJX(uint32_t x, uint32_t y) {
   L("FSGNJX");    
-  IEEE764 X(x),Y(y);
+  IEEE754 X(x),Y(y);
   X.sign = X.sign ^ Y.sign;
   return X.i;
 }
@@ -382,13 +381,46 @@ uint32_t FCVTWUS(uint32_t x) {
 }
 
 uint32_t FEQ(uint32_t x, uint32_t y) {
-  L("FEQ");         
-  return (decodef(x) == decodef(y));
+  L("FEQ");
+  uint32_t result = (x == y);
+  uint32_t check = (decodef(x) == decodef(y));
+  if(result != check) {
+    IEEE754 X(x);
+    IEEE754 Y(y);    
+    printf("FEQ ");
+    X.print();
+    printf(" ==? ");
+    Y.print();
+    printf(" -> %d %d\n", result, check);
+  }
+  return result;
 }
 
 uint32_t FLT(uint32_t x, uint32_t y) {
   L("FLT");         
-  return (decodef(x) < decodef(y));
+  uint32_t check = (decodef(x) < decodef(y));
+  IEEE754 X(x), Y(y);
+  int s1 = X.sign;
+  int s2 = Y.sign;
+  X.sign = 0;
+  Y.sign = 0;
+  uint32_t result = (X.i < Y.i);
+  if(s1 && !s2) {
+    result = 1;
+  } else if(!s1 && s2) {
+    result = 0;
+  } else if(s1) {
+    result = !result;
+  } 
+  
+  if(result != check) {
+    printf("FLT ");
+    X.print();
+    printf(" <? ");
+    Y.print();
+    printf(" -> %d %d\n", result, check);
+  }
+  return result;
 }
 
 uint32_t FLE(uint32_t x, uint32_t y) {
