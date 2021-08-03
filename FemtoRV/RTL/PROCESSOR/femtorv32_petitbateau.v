@@ -329,7 +329,7 @@ module FemtoRV32(
    wire rs2_is_zero             = rs2[30:0] == 31'd0;
    wire signed [24:0] mant_diff = $signed({2'b01,rs1[22:0]})-$signed({2'b01,rs2[22:0]});
    wire [47:0]        mant_prod = {1'b1,rs1[22:0]}*{1'b1,rs2[22:0]};
-   wire signed [8:0]  exp_sum   = $signed({1'b0,rs1[30:23]}) + $signed({1'b0,rs2[30:23]}) - (mant_prod[47] ? 126 : 127);
+   wire signed [8:0]  exp_FMUL  = $signed({1'b0,rs1[30:23]}) + $signed({1'b0,rs2[30:23]}) - (mant_prod[47] ? 126 : 127);
    wire signed [8:0]  exp_diff  = $signed({1'b0,rs1[30:23]}) - $signed({1'b0,rs2[30:23]}) ;
 
    wire FPU_LT = (
@@ -354,8 +354,10 @@ module FemtoRV32(
 	     isFSUB   : fpuOut <= $c32("FSUB(",rs1,",",rs2,")");
 //	     isFMUL   : fpuOut <= $c32("FMUL(",rs1,",",rs2,")");
 	     isFMUL   : begin
+		// since bit 23 is one in both operands, leftmost set bit can be only bit 47 or bit 46,
+		// then normalization is just a mux driven by bit 47.
 		fpuOut[22:0 ] <= mant_prod[47] ? mant_prod[46:24] : mant_prod[45:23];
-		fpuOut[30:23] <= exp_sum[7:0];
+		fpuOut[30:23] <= exp_FMUL[7:0];
 		fpuOut[31]    <= rs1[31] ^ rs2[31];
 		if(rs1_is_zero || rs2_is_zero || exp_sum[8]) begin
 		   fpuOut <= 32'd0;
