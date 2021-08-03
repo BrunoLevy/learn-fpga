@@ -331,6 +331,16 @@ module FemtoRV32(
    wire [47:0]        mant_prod = {1'b1,rs1[22:0]}*{1'b1,rs2[22:0]};
    wire signed [8:0]  exp_sum   = $signed({1'b0,rs1[30:23]}) + $signed({1'b0,rs2[30:23]}) - (mant_prod[47] ? 126 : 127);
    wire signed [8:0]  exp_diff  = $signed({1'b0,rs1[30:23]}) - $signed({1'b0,rs2[30:23]}) ;
+
+   wire FPU_LT = (
+                  (rs1[31] && !rs2[31]) ||                      // rs1 lower than rs2 if rs1 positive and rs2 negative
+		  (rs1[31] ==  rs2[31]) && (                    // or if they have the same sign 
+                      rs1[31] ^ (                               //     (then comparision result is inversed if they are both negative)
+                          exp_diff[8] ||                        //   rs1 lower than rs2 if smaller exponent
+                          (exp_diff == 9'd0 && mant_diff[24]))  //   or same exponent and smaller mantisse
+                      )
+                 ) ;
+   
    
 `ifdef VERILATOR   
    always @(posedge clk) begin
@@ -360,11 +370,7 @@ module FemtoRV32(
 	     isFMAX   : fpuOut <= $c32("FMAX(",rs1,",",rs2,")");
 	     isFEQ    : fpuOut <= $c32("FEQ(",rs1,",",rs2,")");
 //	     isFLT    : fpuOut <= $c32("FLT(",rs1,",",rs2,")");
-	     isFLT    : begin
-		fpuOut[0] <= ((rs1[31] && !rs2[31]) ||
-			      (rs1[31] == rs2[31]) && (rs1[31] ^ (exp_diff[8] || (exp_diff == 9'd0 && mant_diff[24]))));
-		fpuOut[31:1] <= 31'd0;  // FLT to be debugged
-	     end
+	     isFLT    : fpuOut <= {31'b0, FPU_LT};
 	     isFLE    : fpuOut <= $c32("FLE(",rs1,",",rs2,")");
 	     isFCLASS : fpuOut <= $c32("FCLASS(",rs1,")") ;
 	     isFCVTWS : fpuOut <= $c32("FCVTWS(",rs1,")");
