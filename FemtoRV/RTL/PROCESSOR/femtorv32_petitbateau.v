@@ -323,21 +323,32 @@ module FemtoRV32(
    wire isFMVXW   = (instr[4] && (instr[31:27] == 5'b11100) && !instr[12]);
    wire isFMVWX   = (instr[4] && (instr[31:27] == 5'b11110));
 
-   // Implementation of FPU (for now, most of it is simulated except FMUL)
+   // Implementation of FPU (for now, most of it is simulated except FMUL and FLT)
 
+   // Classification
    wire rs1_is_zero             = rs1[30:0] == 31'd0;
    wire rs2_is_zero             = rs2[30:0] == 31'd0;
+
+   // Signed difference, used by comparison (sign) and FADD/FSUB/... (does not use sign)
    wire signed [24:0] mant_diff = $signed({2'b01,rs1[22:0]})-$signed({2'b01,rs2[22:0]});
+   
+   // Product (unsigned)
    wire [47:0]        mant_prod = {1'b1,rs1[22:0]}*{1'b1,rs2[22:0]};
-   wire signed [8:0]  exp_FMUL  = $signed({1'b0,rs1[30:23]}) + $signed({1'b0,rs2[30:23]}) - (mant_prod[47] ? 126 : 127);
+
+   // Exponent for FMUL, with bias correction and shift according to leftmost bit
+   wire signed [8:0]  exp_FMUL  =  $signed({1'b0,rs1[30:23]}) + $signed({1'b0,rs2[30:23]}) 
+                                 - (mant_prod[47] ? 126 : 127);
+
+   // Signed exponent difference, used by both FADD/FSUB (to put largest magnitude in rs1)
+   //                                      and FPU_LT (compare expoment magnitudes) 
    wire signed [8:0]  exp_diff  = $signed({1'b0,rs1[30:23]}) - $signed({1'b0,rs2[30:23]}) ;
 
    wire FPU_LT = (
                   (rs1[31] && !rs2[31]) ||                      // rs1 lower than rs2 if rs1 positive and rs2 negative
-		  (rs1[31] ==  rs2[31]) && (                    // or if they have the same sign 
+		  (rs1[31] ==  rs2[31]) && (                    // or if they have the same sign and ...
                       rs1[31] ^ (                               //     (then comparision result is inversed if they are both negative)
-                          exp_diff[8] ||                        //   rs1 lower than rs2 if smaller exponent
-                          (exp_diff == 9'd0 && mant_diff[24]))  //   or same exponent and smaller mantisse
+                          exp_diff[8] ||                        //   ... rs1 has smaller exponent than rs2
+                          (exp_diff == 9'd0 && mant_diff[24]))  //   ... or they got same exponent and rs1 has smaller mantisse
                       )
                  ) ;
    
@@ -359,7 +370,7 @@ module FemtoRV32(
 		fpuOut[22:0 ] <= mant_prod[47] ? mant_prod[46:24] : mant_prod[45:23];
 		fpuOut[30:23] <= exp_FMUL[7:0];
 		fpuOut[31]    <= rs1[31] ^ rs2[31];
-		if(rs1_is_zero || rs2_is_zero || exp_sum[8]) begin
+		if(rs1_is_zero || rs2_is_zero || exp_FMUL[8]) begin
 		   fpuOut <= 32'd0;
 		end
 	     end
