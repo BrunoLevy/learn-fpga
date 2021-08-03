@@ -335,7 +335,8 @@ module FemtoRV32(
    // Product (unsigned)
    wire [47:0]        mant_prod = {1'b1,rs1[22:0]}*{1'b1,rs2[22:0]};
 
-   // Exponent for FMUL, with bias correction and shift according to leftmost bit
+   // Signed exponent for FMUL, with bias correction and shift according to leftmost bit.
+   // Sign bit used to detect underflow.
    wire signed [8:0]  exp_FMUL  =  $signed({1'b0,rs1[30:23]}) + $signed({1'b0,rs2[30:23]}) 
                                  - (mant_prod[47] ? 126 : 127);
 
