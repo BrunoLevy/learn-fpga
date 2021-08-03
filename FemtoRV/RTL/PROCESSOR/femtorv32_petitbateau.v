@@ -327,10 +327,10 @@ module FemtoRV32(
 
    wire rs1_is_zero             = rs1[30:0] == 31'd0;
    wire rs2_is_zero             = rs2[30:0] == 31'd0;
-   wire signed [25:0] mant_diff = $signed({2'b01,rs1[22:0]})-$signed({2'b01,rs2[22:0]});
+   wire signed [24:0] mant_diff = $signed({2'b01,rs1[22:0]})-$signed({2'b01,rs2[22:0]});
    wire [47:0]        mant_prod = {1'b1,rs1[22:0]}*{1'b1,rs2[22:0]};
-   wire signed [8:0]  exp_sum   = $signed(rs1[30:23]) + $signed(rs2[30:23]) - (mant_prod[47] ? 126 : 127);
-   wire signed [8:0]  exp_diff  = $signed(rs1[30:23]) - $signed(rs2[30:23]) ;
+   wire signed [8:0]  exp_sum   = $signed({1'b0,rs1[30:23]}) + $signed({1'b0,rs2[30:23]}) - (mant_prod[47] ? 126 : 127);
+   wire signed [8:0]  exp_diff  = $signed({1'b0,rs1[30:23]}) - $signed({1'b0,rs2[30:23]}) ;
    
 `ifdef VERILATOR   
    always @(posedge clk) begin
@@ -359,12 +359,12 @@ module FemtoRV32(
 	     isFMIN   : fpuOut <= $c32("FMIN(",rs1,",",rs2,")");
 	     isFMAX   : fpuOut <= $c32("FMAX(",rs1,",",rs2,")");
 	     isFEQ    : fpuOut <= $c32("FEQ(",rs1,",",rs2,")");
-	     isFLT    : fpuOut <= $c32("FLT(",rs1,",",rs2,")");
-//	     isFLT    : begin
-//		fpuOut[0] <= ((rs1[31] && !rs2[31]) ||
-//			      (rs1[31] == rs2[31]) && (rs1[31] ^ (exp_diff[8] || (exp_diff == 9'd0 && mant_diff[25]))));
-//		fpuOut[31:1] <= 31'd0;  // FLT to be debugged
-//	     end
+//	     isFLT    : fpuOut <= $c32("FLT(",rs1,",",rs2,")");
+	     isFLT    : begin
+		fpuOut[0] <= ((rs1[31] && !rs2[31]) ||
+			      (rs1[31] == rs2[31]) && (rs1[31] ^ (exp_diff[8] || (exp_diff == 9'd0 && mant_diff[24]))));
+		fpuOut[31:1] <= 31'd0;  // FLT to be debugged
+	     end
 	     isFLE    : fpuOut <= $c32("FLE(",rs1,",",rs2,")");
 	     isFCLASS : fpuOut <= $c32("FCLASS(",rs1,")") ;
 	     isFCVTWS : fpuOut <= $c32("FCVTWS(",rs1,")");
