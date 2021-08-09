@@ -43,6 +43,7 @@ private:
 
 FPULogger logger;
 inline void L(const char* s) {
+  //  printf("%s\n",s);
   logger.log(s);
 }
 
@@ -60,23 +61,30 @@ inline int test_bit(uint32_t x, int i) {
   return (x & (1ul << i)) != 0;
 }
 
-inline int first_bit_set(uint64_t x) {
-  for(int i=63; i>=0; --i) {
-    if(test_bit(x, i)) {
-      return i;
+// Count leading zeroes
+inline int clz(uint32_t x) {
+  int result = 0;
+  for(int i=31; i>=0; --i) {
+    if(test_bit(x,i)) {
+      return result;
     }
+    ++result;
   }
-  return -1;
+  return result;
 }
 
-inline int first_bit_set(uint32_t x) {
-  for(int i=31; i>=0; --i) {
-    if(test_bit(x, i)) {
-      return i;
+// Count leading zeroes
+inline int clz(uint64_t x) {
+  int result = 0;
+  for(int i=63; i>=0; --i) {
+    if(test_bit(x,i)) {
+      return result;
     }
+    ++result;    
   }
-  return -1;
+  return result;
 }
+
 
 void printb(uint64_t x, int nb_bits=64) {
   for(int i=nb_bits-1; i>=0; --i) {
@@ -87,6 +95,12 @@ void printb(uint64_t x, int nb_bits=64) {
 void printb(uint32_t x, int nb_bits=32) {
   for(int i=nb_bits-1; i>=0; --i) {
     printf("%c",test_bit(x,i)?'1':'0');
+  }
+}
+
+void print_spaces(int nb) {
+  for(int i=0; i<nb; ++i) {
+    printf(" ");
   }
 }
 
@@ -186,6 +200,152 @@ void print_float(uint32_t x) {
 
 /*********************************************/
 
+void expand(uint32_t x, uint64_t& mant, int& exp, int& sign) {
+  IEEE754 X(x);
+  exp = X.exp;
+  mant = uint64_t(X.mant);
+  sign = X.sign;
+  if(exp != 0) { mant |= uint64_t(1) << 23; }
+}
+
+int32_t compress(uint32_t mant, int exp, int sign) {
+  IEEE754 X(mant, exp, sign);
+  return X.i;
+}
+
+void normalize(uint64_t& mant, int& exp) {
+  int first_bit_set = 63-clz(mant);
+  if(first_bit_set == -1) {
+    exp = 0;
+  } else {
+    
+    // Note: possible optimization for MUL
+    // without denormals and MUL,
+    // first_bit_set = 46 or 47, always
+    
+    exp += (first_bit_set-23);    
+    if(first_bit_set > 23) {
+      mant = mant >> (first_bit_set-23);
+    } else {
+      mant = mant << (23-first_bit_set);
+    }
+  }
+
+  // Flush all denormals to zero (for now)
+  if(exp <= 0) {
+    exp = 0;
+    mant = 0;
+  }
+}
+
+/*********************************************/
+
+void check(
+     const char* func,
+     uint32_t rs1, uint32_t rs2, uint32_t rs3,
+     uint32_t result,
+     uint32_t chk
+) {
+  IEEE754 RS1(rs1);
+  IEEE754 RS2(rs2);
+  IEEE754 RS3(rs3);
+  IEEE754 RESULT(result);
+  IEEE754 CHECK(chk);      
+  if(result != chk) {
+    printf("%s mismatch\n",func);
+    printf("   RS1="); RS1.print();    printf("\n");
+    printf("   RS2="); RS2.print();    printf("\n");
+    printf("   RS3="); RS3.print();    printf("\n");
+    printf("   Res="); RESULT.print(); printf("\n");
+    printf("   Chk="); CHECK.print();  printf("\n");            
+  }
+}
+
+/*********************************************/
+
+class FPU {
+public:
+  int32_t result() const {
+    return compress(uint32_t(A_mant), A_exp, A_sign);
+  }
+
+  // A <- rs1 * rs2
+  // (does not normalize)
+  void MUL0(uint32_t rs1, uint32_t rs2) {
+    uint64_t rs1_mant;
+    int      rs1_exp; 
+    int      rs1_sign;
+    expand(rs1, rs1_mant, rs1_exp, rs1_sign);
+
+    uint64_t rs2_mant;
+    int      rs2_exp; 
+    int      rs2_sign;
+    expand(rs2, rs2_mant, rs2_exp, rs2_sign);  
+
+    A_mant = rs1_mant*rs2_mant;
+    A_exp  = rs1_exp+rs2_exp-127-23;
+    A_sign = rs1_sign ^ rs2_sign;
+  }
+
+  void NORM() {
+    ::normalize(A_mant, A_exp);
+  }
+
+  // A <= rs1; B <=  rs2 (if !sub)
+  // A <= rs1; B <= -rs2 (if  sub)
+  void ADD0(uint32_t rs1, uint32_t rs2, bool sub) {
+    expand(rs1, A_mant, A_exp, A_sign);
+    expand(rs2, B_mant, B_exp, B_sign);
+    A_mant = A_mant << 24;
+    A_exp -= 24;
+    B_mant = B_mant << 24;
+    B_exp -= 24;
+    if(sub) { B_sign = !B_sign; }
+  }
+
+  // Set largest magnitude in B
+  void ADD1() {
+    if(A_exp > B_exp || (A_exp == B_exp) && (A_mant > B_mant)) {
+      std::swap(A_mant,B_mant);  // largest exp/mantisse kept in B
+      std::swap(A_exp, B_exp);
+    } else {
+      std::swap(A_sign,B_sign);  // sign of largest magnitude nbr kept in A
+    }
+  }
+
+  // Normalize operands magnitude by shifting A
+  void ADD2() {
+    if(B_exp - A_exp > 47) {
+      A_mant=0;
+      A_exp = B_exp;
+    } else {
+      A_mant = A_mant >> (B_exp - A_exp);
+      A_exp  = B_exp;
+    }
+  }
+
+  // A <= A+B
+  void ADD3() {
+    A_mant = (A_sign ^ B_sign) ? (B_mant - A_mant) : (B_mant + A_mant);
+    if(A_mant == 0) A_sign = (A_sign && B_sign);
+  }
+
+  
+private:
+  // Accumulator and shifter
+  uint64_t A_mant;
+  int      A_exp;
+  int      A_sign;
+
+  // Operand
+  uint64_t B_mant;
+  int      B_exp;
+  int      B_sign;
+};
+
+
+/*********************************************/
+
 uint32_t FMADD(uint32_t x, uint32_t y, uint32_t z) {
   L("FMADD");
   return encodef(decodef(x)*decodef(y)+decodef(z));
@@ -207,157 +367,84 @@ uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
 }
 
 uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
+  uint64_t x_mant;
+  int      x_exp; 
+  int      x_sign;
+  expand(x, x_mant, x_exp, x_sign);
 
-  printf("**rs1="); printb(x); printf("\n");
-  printf("**rs2="); printb(y); printf("\n");  
-  
-  IEEE754 X(x), Y(y);
-  if(sub) {
-    Y.sign = !Y.sign;
-  }
-  IEEE754 Z(X.f+Y.f);
-  if((Y.exp > X.exp) || ((Y.exp == X.exp) && (Y.mant > X.mant))) {
-    std::swap(X,Y);
-  }
-  uint32_t X32 = uint32_t(X.mant | (1 << 23));
-  uint32_t Y32 = uint32_t(Y.mant | (1 << 23));
+  uint64_t y_mant;
+  int      y_exp; 
+  int      y_sign;
+  expand(y, y_mant, y_exp, y_sign);  
 
-  printf("mant0="); printb(Y32,25); printf("\n");
+  if(sub) { y_sign = !y_sign; }
+
+  // Step 1: swap to have most significant number in x
+  if(y_exp > x_exp || (y_exp == x_exp) && (y_mant > x_mant)) {
+    std::swap(x_mant,y_mant);
+    std::swap(x_exp,y_exp);
+    std::swap(x_sign,y_sign);
+  }
+
+  // Step 2: adjust y so that it has the same exponent as x
+  x_mant = x_mant << 24;
+  y_mant = y_mant << 24;
+  x_exp -= 24;
+  y_exp -= 24;
   
-  if(X.exp - Y.exp > 31) {
-    Y32 = 0;
+  if(x_exp - y_exp > 47) {
+    y_mant=0;
+    y_exp = x_exp;
   } else {
-    Y32 = Y32 >> (X.exp - Y.exp);
+    y_mant = y_mant >> (x_exp - y_exp);
+    y_exp = x_exp;
   }
 
-  printf("  exps=%d %d exp_diff=%d\n",X.exp, Y.exp, (X.exp - Y.exp));
-  printf("mant1="); printb(Y32,25); printf("\n");
-  printf("  op1="); printb(X32,25); printf("\n");
-  printf("       %d\n",X.sign ^ Y.sign);
-  printf("  op2="); printb(Y32,25); printf("\n");  
+  // Step 3: addition
+  int result_exp = x_exp;
+  int result_sign = x_sign;
+  uint64_t result_mant = (x_sign ^ y_sign) ? x_mant - y_mant : x_mant + y_mant;
   
-  uint32_t sum_mant  = (X32+Y32);
-  uint32_t diff_mant = (X32-Y32);
-  uint32_t new_mant  = (X.sign ^ Y.sign) ? diff_mant : sum_mant;
-  printf("mant2="); printb(new_mant,25); printf("\n");
-  int b = first_bit_set(new_mant);
-  if(b > 24) {
-    printf("WTF ? b=%d\n",b);
-    printf("shift=%d\n", X.exp-Y.exp);
-    printf("X="); printb(X32); printf("   "); X.print(); printf("\n");
-    printf("Y="); printb(Y32); printf("   "); Y.print(); printf("\n");
-  }
-
-  printf("  b=%d\n",b);
-  printf("  shift_FADD=%d\n",23-b);
-  printf("  new exp=%d\n",int(Y.exp)-(23-b));
-  
-  if(b == 24) {
-    new_mant = new_mant >> 1; // (b-23); // TODO: rounding
-  } else {
-    new_mant = new_mant << (23-b);
-  }
-
-  int exp = int(X.exp)+b-23;
-  int sign = X.sign;
-  IEEE754 ZZ(new_mant, exp, sign);
-  if(new_mant == 0) {
-    ZZ.load_zero();
-  }
-
-  printf("mant3="); printb(new_mant,25); printf("\n");
-
-  printf("**result="); printb(ZZ.i); printf("\n\n");
-  
-  //printf("result=%f\n",ZZ.f);
-  /*
-  // deactivated for now, not needed for mandel_float
-  if(new_mant == 0 || exp<0) {
-    ZZ.load_zero();
-  } else if(X.is_zero()) {
-    ZZ = Y;
-  } else if(Y.is_zero()) {
-    ZZ = X;
-  }
-  */
-  
-  if(
-     false && (
-     ZZ.sign != Z.sign ||
-     ZZ.exp  != Z.exp  ||
-     std::abs(ZZ.mant - Z.mant) > 16)
-  ) {
-    printf("FADD/FSUB ");
-    X.print();
-    printf(" + ");
-    Y.print();
-    printf(" = ");
-    Z.print();
-    printf("\n");
-    printf("                                                                                ");
-    ZZ.print();
-    printf("\n");
-  }
-  return ZZ.i;
+  // Step 4: normalize
+  normalize(result_mant, result_exp);
+  if(result_mant == 0) result_sign = (x_sign && y_sign);
+  return compress(uint32_t(result_mant), result_exp, result_sign);
 }
 
 uint32_t FADD(uint32_t x, uint32_t y) {
   L("FADD");
-  return F_ADD_SUB(x,y,false);
+  FPU fpu;
+  fpu.ADD0(x,y,false);
+  fpu.ADD1();
+  fpu.ADD2();
+  fpu.ADD3();
+  fpu.NORM();
+  uint32_t result = fpu.result();
+  check("FADD",x,y,0,result,encodef(decodef(x)+decodef(y)));
+  return result;
 }
 
 uint32_t FSUB(uint32_t x, uint32_t y) {
-  L("FSUB");  
-  return F_ADD_SUB(x,y,true);
+  L("FSUB");
+  FPU fpu;
+  fpu.ADD0(x,y,true);
+  fpu.ADD1();
+  fpu.ADD2();
+  fpu.ADD3();
+  fpu.NORM();
+  uint32_t result = fpu.result();
+  check("FSUB",x,y,0,result,encodef(decodef(x)-decodef(y)));
+  return result;
 }
 
 uint32_t FMUL(uint32_t x, uint32_t y) {
-  L("FMUL");  
-  IEEE754 X(x), Y(y);
-  IEEE754 Z(X.f*Y.f);
-  uint64_t X64 = uint64_t(X.mant | (1 << 23));
-  uint64_t Y64 = uint64_t(Y.mant | (1 << 23));  
-  uint64_t multiplier = X64*Y64;
-  // Normalization: first bit set can only be 47 or 46.
-  bool multiplier_47 = test_bit(multiplier,47);
-  uint32_t result_mant;
-  if(multiplier_47) {
-    result_mant = uint32_t(multiplier >> 24);
-  } else {
-    result_mant = uint32_t(multiplier >> 23);    
-  }
-  int result_exp = int(X.exp) + int(Y.exp) - (multiplier_47 ? 126 : 127);
-  IEEE754 ZZ(result_mant, int(result_exp), X.sign ^ Y.sign);
-
-  // For now commented out (not needed for mandel_float).
-  /* if(X.is_NaN() || Y.is_NaN()) {
-    ZZ.load_NaN();
-  } else if(X.is_infty() || Y.is_infty()) {
-    ZZ.load_infty();
-  } else */
-  
-  if(X.is_zero() || Y.is_zero() || result_exp < 0) {
-    ZZ.load_zero();
-  }
-  
-  // It *will* bark, because our rounding is a stupid truncation for now...
-  /*
-  if(ZZ.i != Z.i) {
-    printf("FMUL ");
-    X.print();
-    printf(" * ");
-    Y.print();
-    printf(" = ");
-    Z.print();
-    printf("\n");
-    printf("                                                                           ");
-    ZZ.print();
-    printf("\n");
-  }
-  */
-  
-  return ZZ.i;
-  
+  L("FMUL");
+  FPU fpu;
+  fpu.MUL0(x,y);
+  fpu.NORM();
+  uint32_t result = fpu.result();
+  check("FMUL",x,y,0,result,encodef(decodef(x)*decodef(y)));    
+  return result;
 }
 
 uint32_t FDIV(uint32_t x, uint32_t y) {

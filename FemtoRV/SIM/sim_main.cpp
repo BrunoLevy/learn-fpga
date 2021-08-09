@@ -3,8 +3,10 @@
 #include "FPU_funcs.h"
 #include "SSD1351.h"
 #include <memory>
+#include <fenv.h>
 
 int main(int argc, char** argv, char** env) {
+   fesetround(FE_TOWARDZERO);
    VfemtoRV32_bench top;
    SSD1351 oled(
       top.oled_DIN, top.oled_CLK, top.oled_CS, top.oled_DC, top.oled_RST
