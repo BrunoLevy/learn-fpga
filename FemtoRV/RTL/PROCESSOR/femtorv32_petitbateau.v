@@ -48,7 +48,7 @@
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32imaf"
 `define NRV_ABI      "ilp32f"
-`define NRV_OPTIMIZE "-O0"
+`define NRV_OPTIMIZE "-O3"
 `define NRV_INTERRUPTS
 
 module FemtoRV32(
@@ -282,21 +282,23 @@ module FemtoRV32(
    reg [31:0] fpuOut;
    reg [31:0] fpuIntOut;
 
-   reg               fp_rs1_sign;
-   reg signed [8:0]  fp_rs1_exp;
-   reg signed [24:0] fp_rs1_frac;
-   wire [31:0] 	     fp_rs1 = {fp_rs1_sign, fp_rs1_exp[7:0], fp_rs1_frac[22:0]};
+   
+   reg [31:0] fp_rs1;
+   reg [31:0] fp_rs2;
+   reg [31:0] fp_rs3;
 
-   reg               fp_rs2_sign;
-   reg signed [8:0]  fp_rs2_exp;
-   reg signed [24:0] fp_rs2_frac;
-   wire [31:0] 	     fp_rs2 = {fp_rs2_sign, fp_rs2_exp[7:0], fp_rs2_frac[22:0]};
+   wire        fp_rs1_sign =  fp_rs1[31];
+   wire [7:0]  fp_rs1_exp  =  fp_rs1[30:23];
+   wire [23:0] fp_rs1_frac = {(fp_rs1_exp == 8'd0 ? 1'b0 : 1'b1), fp_rs1[22:0]};
 
-   reg               fp_rs3_sign;
-   reg signed [8:0]  fp_rs3_exp;
-   reg signed [24:0] fp_rs3_frac;
-   wire [31:0] 	     fp_rs3 = {fp_rs3_sign, fp_rs3_exp[7:0], fp_rs3_frac[22:0]};
+   wire               fp_rs2_sign =  fp_rs2[31];
+   wire [7:0]         fp_rs2_exp  =  fp_rs2[30:23];
+   wire signed [24:0] fp_rs2_frac = {1'b0,(fp_rs2_exp == 8'd0 ? 1'b0 : 1'b1), fp_rs2[22:0]};
 
+   wire               fp_rs3_sign =  fp_rs3[31];
+   wire [7:0]         fp_rs3_exp  =  fp_rs3[30:23];
+   wire signed [24:0] fp_rs3_frac = {1'b0,(fp_rs3_exp == 8'd0 ? 1'b0 : 1'b1), fp_rs3[22:0]};
+   
    reg [31:0] fp_registerFile [31:0]; 
 
    reg 	             fp_A_sign;
@@ -307,27 +309,20 @@ module FemtoRV32(
    reg signed [8:0]  fp_B_exp;
    reg signed [49:0] fp_B_frac;
 
+   wire signed [8:0]  fp_exp_sum   = fp_A_exp + fp_B_exp;
+   wire signed [8:0]  fp_exp_diff  = fp_A_exp - fp_B_exp;
+   wire signed [50:0] fp_frac_sum  = fp_A_frac + fp_B_frac;
+   wire signed [50:0] fp_frac_diff = fp_B_frac - fp_A_frac;
+   wire [5:0] 	     fp_frac_shamt;
+   wire [49:0] 	     fp_frac_rshift = fp_A_frac >> fp_frac_shamt;
+   wire [49:0]       fp_frac_lshigt = fp_A_frac << fp_frac_shamt;
+   
    always @(posedge clk) begin
       if(state[WAIT_INSTR_bit] && !mem_rbusy) begin 
-	 // fp_rs1 <= fp_registerFile[decompressed[19:15]];
-	 // fp_rs2 <= fp_registerFile[decompressed[24:20]];
-	 // fp_rs3 <= fp_registerFile[decompressed[31:27]]; // TODO: read at different state.
-	 
-	 {fp_rs1_sign, fp_rs1_exp[7:0], fp_rs1_frac[22:0]} <= fp_registerFile[decompressed[19:15]];
-	 fp_rs1_exp[8] <= 1'b0;
-	 fp_rs1_frac[24:23] <= 2'b01; // TODO: denormals
-	 
-	 {fp_rs2_sign, fp_rs2_exp[7:0], fp_rs2_frac[22:0]} <= fp_registerFile[decompressed[24:20]];
-	 fp_rs2_exp[8] <= 1'b0;
-	 fp_rs2_frac[24:23] <= 2'b01; // TODO: denormals
-
-	 // TODO: read at different state
-	 {fp_rs3_sign, fp_rs3_exp[7:0], fp_rs3_frac[22:0]} <= fp_registerFile[decompressed[31:27]];
-	 fp_rs3_exp[8] <= 1'b0;
-	 fp_rs3_frac[24:23] <= 2'b01; // TODO: denormals
-      end
-      
-      if (writeBack && rdIsFP) begin
+	 fp_rs1 <= fp_registerFile[decompressed[19:15]];
+	 fp_rs2 <= fp_registerFile[decompressed[24:20]];
+	 fp_rs3 <= fp_registerFile[decompressed[31:27]]; 
+      end else if (writeBack && rdIsFP) begin
 	 fp_registerFile[rdId] <= isLoad ? mem_rdata : fpuOut;
       end
    end

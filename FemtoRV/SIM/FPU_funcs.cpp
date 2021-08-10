@@ -43,7 +43,6 @@ private:
 
 FPULogger logger;
 inline void L(const char* s) {
-  //  printf("%s\n",s);
   logger.log(s);
 }
 
@@ -165,8 +164,16 @@ public:
       printf("[(%c)-------- ZERO -------------]",sign?'-':'+');
       return;
     }
+    if(is_NaN()) {
+      printf("[----------- NaN -------------]");
+      return;
+    }
+    if(is_infty()) {
+      printf("[(%c)-------- INFTY ------------]",sign?'-':'+');
+      return;
+    }
     printf("%c",sign ? '-' : '+');
-    printf("1");
+    printf("%c",is_denormal() ? '0' : '1');
     printb(mant,23);
     printf("E[%4d]",int(exp)-127);
     fflush(stdout);
@@ -213,30 +220,6 @@ int32_t compress(uint32_t mant, int exp, int sign) {
   return X.i;
 }
 
-void normalize(uint64_t& mant, int& exp) {
-  int first_bit_set = 63-clz(mant);
-  if(first_bit_set == -1) {
-    exp = 0;
-  } else {
-    
-    // Note: possible optimization for MUL
-    // without denormals and MUL,
-    // first_bit_set = 46 or 47, always
-    
-    exp += (first_bit_set-23);    
-    if(first_bit_set > 23) {
-      mant = mant >> (first_bit_set-23);
-    } else {
-      mant = mant << (23-first_bit_set);
-    }
-  }
-
-  // Flush all denormals to zero (for now)
-  if(exp <= 0) {
-    exp = 0;
-    mant = 0;
-  }
-}
 
 /*********************************************/
 
@@ -280,20 +263,36 @@ public:
     uint64_t rs2_mant;
     int      rs2_exp; 
     int      rs2_sign;
-    expand(rs2, rs2_mant, rs2_exp, rs2_sign);  
-
+    expand(rs2, rs2_mant, rs2_exp, rs2_sign);
+    
     A_mant = rs1_mant*rs2_mant;
     A_exp  = rs1_exp+rs2_exp-127-23;
     A_sign = rs1_sign ^ rs2_sign;
   }
 
+  // A <- rs1 * rs2
+  // B <- rs3
+  // (does not normalize)
+  void LOAD_B(uint32_t rs3, bool ch_A_sign, bool ch_B_sign) {
+    expand(rs3, B_mant, B_exp, B_sign);
+    B_mant = B_mant << 24;
+    B_exp -= 24;
+    if(ch_A_sign) {
+      A_sign = !A_sign;
+    }
+    if(ch_B_sign) {
+      B_sign = !B_sign;
+    }
+  }
+  
+  // Normalize A 
   void NORM() {
-    ::normalize(A_mant, A_exp);
+    normalize23(A_mant, A_exp);
   }
 
   // A <= rs1; B <=  rs2 (if !sub)
   // A <= rs1; B <= -rs2 (if  sub)
-  void ADD0(uint32_t rs1, uint32_t rs2, bool sub) {
+  void LOAD_A_B(uint32_t rs1, uint32_t rs2, bool sub) {
     expand(rs1, A_mant, A_exp, A_sign);
     expand(rs2, B_mant, B_exp, B_sign);
     A_mant = A_mant << 24;
@@ -303,13 +302,13 @@ public:
     if(sub) { B_sign = !B_sign; }
   }
 
-  // Set largest magnitude in B
+  // Set largest magnitude in B. Keep sign of largest magnitude nbr in A
   void ADD1() {
     if(A_exp > B_exp || (A_exp == B_exp) && (A_mant > B_mant)) {
       std::swap(A_mant,B_mant);  // largest exp/mantisse kept in B
       std::swap(A_exp, B_exp);
     } else {
-      std::swap(A_sign,B_sign);  // sign of largest magnitude nbr kept in A
+      std::swap(A_sign,B_sign);  // sign of largest magnitude nbr kept in A      
     }
   }
 
@@ -322,14 +321,76 @@ public:
       A_mant = A_mant >> (B_exp - A_exp);
       A_exp  = B_exp;
     }
+    A_exp = B_exp;
   }
 
   // A <= A+B
   void ADD3() {
-    A_mant = (A_sign ^ B_sign) ? (B_mant - A_mant) : (B_mant + A_mant);
+    // With FMADD:
+    //    - Once they are shifted, the order between A and B may change.
+    //    - Can it happen with FADD/FSUB ? TODO
+    A_mant = (A_sign ^ B_sign) ? B_mant - A_mant : B_mant + A_mant;
     if(A_mant == 0) A_sign = (A_sign && B_sign);
   }
+  
 
+  // Largest magnitude in B, after shifting
+  //  - Once they are shifted, the order between A and B may change.
+  //  - This does not happen with FADD/FSUB because operands are normalized
+  void FMADD3() {
+    if(A_mant > B_mant) {
+      std::swap(A_mant,B_mant);
+      std::swap(A_exp, B_exp);
+      std::swap(A_sign,B_sign);  
+    }
+  }
+
+  void log(const char* step) {
+    printf("%s A %c",step, A_sign ? '+' : '-'); printb(A_mant); printf(" E[%d]\n",A_exp-127);
+    printf("%s B %c",step, B_sign ? '+' : '-'); printb(B_mant); printf(" E[%d]\n",B_exp-127);    
+  }
+
+
+void normalize23(uint64_t& mant, int& exp) {
+
+  if(exp < -255 || exp > 255) {
+    printf("EXP OVERFLOW !!\n");
+  }
+  
+  int first_bit_set = 63-clz(mant);
+  if(first_bit_set == -1) {
+    exp = 0;
+  } else {
+    
+    // Note: possible optimization for MUL
+    // without denormals and MUL,
+    // first_bit_set = 46 or 47, always
+
+    if(exp+first_bit_set-23 > 0) {
+      exp += (first_bit_set-23);    
+      if(first_bit_set > 23) {
+	mant = mant >> (first_bit_set-23);
+      } else {
+	// Happens sometimes with MADD. TODO: Can it happen with ADD ?
+	mant = mant << (23-first_bit_set);
+      }
+    } else {
+      // Flush all denormals to zero (for now)
+      // See sim_main.cpp
+      mant = 0;
+      exp  = 0;
+      
+      // TODO: handle denormals properly
+      //   (mismatch triggered by tinyraytracer)
+      // log("DENORM1");
+      // mant = mant >> (128-exp); // 128-exp or 129-exp I don't know
+      // exp  = 0;      
+      // log("DENORM2");      
+      // mant = 0;
+    }
+  }
+
+}
   
 private:
   // Accumulator and shifter
@@ -348,73 +409,68 @@ private:
 
 uint32_t FMADD(uint32_t x, uint32_t y, uint32_t z) {
   L("FMADD");
-  return encodef(decodef(x)*decodef(y)+decodef(z));
+  FPU fpu;
+  fpu.MUL0(x,y);
+  fpu.LOAD_B(z,false,false);
+  fpu.ADD1();
+  fpu.ADD2();
+  fpu.FMADD3();
+  fpu.ADD3();
+  fpu.NORM();
+  uint32_t result = fpu.result();
+  check("FMADD",x,y,z,result,encodef(fma(decodef(x),decodef(y),decodef(z))));
+  return result;
 }
 
 uint32_t FMSUB(uint32_t x, uint32_t y, uint32_t z) {
   L("FMSUB");  
-  return encodef(decodef(x)*decodef(y)-decodef(z));  
+  FPU fpu;
+  fpu.MUL0(x,y);  
+  fpu.LOAD_B(z,false,true);
+  fpu.ADD1();
+  fpu.ADD2();
+  fpu.FMADD3();
+  fpu.ADD3();  
+  fpu.NORM();
+  uint32_t result = fpu.result();
+  check("FMSUB",x,y,z,result,encodef(fma(decodef(x),decodef(y),-decodef(z))));
+  return result;
 }
 
 uint32_t FNMADD(uint32_t x, uint32_t y, uint32_t z) {
-  L("FNMADD");    
-  return encodef(-decodef(x)*decodef(y)-decodef(z));
+  L("FNMADD");
+  FPU fpu;
+  fpu.MUL0(x,y);
+  fpu.LOAD_B(z,true,true);
+  fpu.ADD1();
+  fpu.ADD2();
+  fpu.FMADD3();
+  fpu.ADD3();  
+  fpu.NORM();
+  uint32_t result = fpu.result();
+  check("FNMADD",x,y,z,result,encodef(fma(-decodef(x),decodef(y),-decodef(z))));
+  return result;
 }
 
 uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
   L("FNMSUB");      
-  return encodef(-decodef(x)*decodef(y)+decodef(z));  
-}
-
-uint32_t F_ADD_SUB(uint32_t x, uint32_t y, bool sub) {
-  uint64_t x_mant;
-  int      x_exp; 
-  int      x_sign;
-  expand(x, x_mant, x_exp, x_sign);
-
-  uint64_t y_mant;
-  int      y_exp; 
-  int      y_sign;
-  expand(y, y_mant, y_exp, y_sign);  
-
-  if(sub) { y_sign = !y_sign; }
-
-  // Step 1: swap to have most significant number in x
-  if(y_exp > x_exp || (y_exp == x_exp) && (y_mant > x_mant)) {
-    std::swap(x_mant,y_mant);
-    std::swap(x_exp,y_exp);
-    std::swap(x_sign,y_sign);
-  }
-
-  // Step 2: adjust y so that it has the same exponent as x
-  x_mant = x_mant << 24;
-  y_mant = y_mant << 24;
-  x_exp -= 24;
-  y_exp -= 24;
-  
-  if(x_exp - y_exp > 47) {
-    y_mant=0;
-    y_exp = x_exp;
-  } else {
-    y_mant = y_mant >> (x_exp - y_exp);
-    y_exp = x_exp;
-  }
-
-  // Step 3: addition
-  int result_exp = x_exp;
-  int result_sign = x_sign;
-  uint64_t result_mant = (x_sign ^ y_sign) ? x_mant - y_mant : x_mant + y_mant;
-  
-  // Step 4: normalize
-  normalize(result_mant, result_exp);
-  if(result_mant == 0) result_sign = (x_sign && y_sign);
-  return compress(uint32_t(result_mant), result_exp, result_sign);
+  FPU fpu;
+  fpu.MUL0(x,y);
+  fpu.LOAD_B(z,true,false);
+  fpu.ADD1();
+  fpu.ADD2();
+  fpu.FMADD3();
+  fpu.ADD3();  
+  fpu.NORM();
+  uint32_t result = fpu.result();
+  check("FNMSUB",x,y,z,result,encodef(fma(-decodef(x),decodef(y),decodef(z))));
+  return result;
 }
 
 uint32_t FADD(uint32_t x, uint32_t y) {
   L("FADD");
   FPU fpu;
-  fpu.ADD0(x,y,false);
+  fpu.LOAD_A_B(x,y,false);
   fpu.ADD1();
   fpu.ADD2();
   fpu.ADD3();
@@ -427,7 +483,7 @@ uint32_t FADD(uint32_t x, uint32_t y) {
 uint32_t FSUB(uint32_t x, uint32_t y) {
   L("FSUB");
   FPU fpu;
-  fpu.ADD0(x,y,true);
+  fpu.LOAD_A_B(x,y,true);
   fpu.ADD1();
   fpu.ADD2();
   fpu.ADD3();
