@@ -234,7 +234,7 @@ void check(
   IEEE754 RS3(rs3);
   IEEE754 RESULT(result);
   IEEE754 CHECK(chk);      
-  if(result != chk) {
+  if(!(RESULT.is_zero() && CHECK.is_zero()) && result != chk) {
     printf("%s mismatch\n",func);
     printf("   RS1="); RS1.print();    printf("\n");
     printf("   RS2="); RS2.print();    printf("\n");
@@ -254,7 +254,7 @@ public:
 
   // A <- rs1 * rs2
   // (does not normalize)
-  void MUL0(uint32_t rs1, uint32_t rs2) {
+  void MUL(uint32_t rs1, uint32_t rs2) {
     uint64_t rs1_mant;
     int      rs1_exp; 
     int      rs1_sign;
@@ -292,7 +292,7 @@ public:
 
   // A <= rs1; B <=  rs2 (if !sub)
   // A <= rs1; B <= -rs2 (if  sub)
-  void LOAD_A_B(uint32_t rs1, uint32_t rs2, bool sub) {
+  void LOAD_AB(uint32_t rs1, uint32_t rs2, bool sub) {
     expand(rs1, A_mant, A_exp, A_sign);
     expand(rs2, B_mant, B_exp, B_sign);
     A_mant = A_mant << 24;
@@ -302,18 +302,32 @@ public:
     if(sub) { B_sign = !B_sign; }
   }
 
-  // Set largest magnitude in B. Keep sign of largest magnitude nbr in A
-  void ADD1() {
-    if(A_exp > B_exp || (A_exp == B_exp) && (A_mant > B_mant)) {
-      std::swap(A_mant,B_mant);  // largest exp/mantisse kept in B
-      std::swap(A_exp, B_exp);
-    } else {
-      std::swap(A_sign,B_sign);  // sign of largest magnitude nbr kept in A      
+  // Set largest magnitude in B. 
+  // returns false if one of A,B is zero, then the other one is in A
+  bool ADD_SWP_EXP() {
+    
+    if(B_mant == 0) {
+      return false;
     }
+    
+    if(A_mant == 0) {
+      std::swap(A_mant,B_mant); 
+      std::swap(A_exp, B_exp);
+      std::swap(A_sign,B_sign);
+      return false;
+    }
+    
+    if(A_exp > B_exp || (A_exp == B_exp) && (A_mant > B_mant)) {
+      std::swap(A_mant,B_mant);  
+      std::swap(A_exp, B_exp);
+      std::swap(A_sign,B_sign);
+    }
+    
+    return true;
   }
 
   // Normalize operands magnitude by shifting A
-  void ADD2() {
+  void ADD_SHIFT() {
     if(B_exp - A_exp > 47) {
       A_mant=0;
       A_exp = B_exp;
@@ -325,19 +339,20 @@ public:
   }
 
   // A <= A+B
-  void ADD3() {
+  void ADD_FRAC() {
     // With FMADD:
     //    - Once they are shifted, the order between A and B may change.
-    //    - Can it happen with FADD/FSUB ? TODO
+    //    - Can it happen with FADD/FSUB ? 
     A_mant = (A_sign ^ B_sign) ? B_mant - A_mant : B_mant + A_mant;
-    if(A_mant == 0) A_sign = (A_sign && B_sign);
+    // if(A_mant == 0) A_sign = (A_sign && B_sign);
+    A_sign = (A_mant == 0) ? A_sign && B_sign : B_sign;
   }
   
 
   // Largest magnitude in B, after shifting
   //  - Once they are shifted, the order between A and B may change.
-  //  - This does not happen with FADD/FSUB because operands are normalized
-  void FMADD3() {
+  //  - This does not seem to happen with FADD/FSUB (is it true ?)
+  void ADD_SWP_FRAC() {
     if(A_mant > B_mant) {
       std::swap(A_mant,B_mant);
       std::swap(A_exp, B_exp);
@@ -410,12 +425,13 @@ private:
 uint32_t FMADD(uint32_t x, uint32_t y, uint32_t z) {
   L("FMADD");
   FPU fpu;
-  fpu.MUL0(x,y);
+  fpu.MUL(x,y);
   fpu.LOAD_B(z,false,false);
-  fpu.ADD1();
-  fpu.ADD2();
-  fpu.FMADD3();
-  fpu.ADD3();
+  if(fpu.ADD_SWP_EXP()) {
+    fpu.ADD_SHIFT();
+    fpu.ADD_SWP_FRAC();
+    fpu.ADD_FRAC();
+  }
   fpu.NORM();
   uint32_t result = fpu.result();
   check("FMADD",x,y,z,result,encodef(fma(decodef(x),decodef(y),decodef(z))));
@@ -425,12 +441,13 @@ uint32_t FMADD(uint32_t x, uint32_t y, uint32_t z) {
 uint32_t FMSUB(uint32_t x, uint32_t y, uint32_t z) {
   L("FMSUB");  
   FPU fpu;
-  fpu.MUL0(x,y);  
+  fpu.MUL(x,y);  
   fpu.LOAD_B(z,false,true);
-  fpu.ADD1();
-  fpu.ADD2();
-  fpu.FMADD3();
-  fpu.ADD3();  
+  if(fpu.ADD_SWP_EXP()) {
+    fpu.ADD_SHIFT();
+    fpu.ADD_SWP_FRAC();
+    fpu.ADD_FRAC();
+  }
   fpu.NORM();
   uint32_t result = fpu.result();
   check("FMSUB",x,y,z,result,encodef(fma(decodef(x),decodef(y),-decodef(z))));
@@ -440,12 +457,13 @@ uint32_t FMSUB(uint32_t x, uint32_t y, uint32_t z) {
 uint32_t FNMADD(uint32_t x, uint32_t y, uint32_t z) {
   L("FNMADD");
   FPU fpu;
-  fpu.MUL0(x,y);
+  fpu.MUL(x,y);
   fpu.LOAD_B(z,true,true);
-  fpu.ADD1();
-  fpu.ADD2();
-  fpu.FMADD3();
-  fpu.ADD3();  
+  if(fpu.ADD_SWP_EXP()) {  
+    fpu.ADD_SHIFT();
+    fpu.ADD_SWP_FRAC();
+    fpu.ADD_FRAC();
+  }
   fpu.NORM();
   uint32_t result = fpu.result();
   check("FNMADD",x,y,z,result,encodef(fma(-decodef(x),decodef(y),-decodef(z))));
@@ -455,12 +473,13 @@ uint32_t FNMADD(uint32_t x, uint32_t y, uint32_t z) {
 uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
   L("FNMSUB");      
   FPU fpu;
-  fpu.MUL0(x,y);
+  fpu.MUL(x,y);
   fpu.LOAD_B(z,true,false);
-  fpu.ADD1();
-  fpu.ADD2();
-  fpu.FMADD3();
-  fpu.ADD3();  
+  if(fpu.ADD_SWP_EXP()) {  
+    fpu.ADD_SHIFT();
+    fpu.ADD_SWP_FRAC();
+    fpu.ADD_FRAC();
+  }
   fpu.NORM();
   uint32_t result = fpu.result();
   check("FNMSUB",x,y,z,result,encodef(fma(-decodef(x),decodef(y),decodef(z))));
@@ -470,10 +489,11 @@ uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
 uint32_t FADD(uint32_t x, uint32_t y) {
   L("FADD");
   FPU fpu;
-  fpu.LOAD_A_B(x,y,false);
-  fpu.ADD1();
-  fpu.ADD2();
-  fpu.ADD3();
+  fpu.LOAD_AB(x,y,false);
+  if(fpu.ADD_SWP_EXP()) {
+    fpu.ADD_SHIFT();
+    fpu.ADD_FRAC();
+  }
   fpu.NORM();
   uint32_t result = fpu.result();
   check("FADD",x,y,0,result,encodef(decodef(x)+decodef(y)));
@@ -483,10 +503,11 @@ uint32_t FADD(uint32_t x, uint32_t y) {
 uint32_t FSUB(uint32_t x, uint32_t y) {
   L("FSUB");
   FPU fpu;
-  fpu.LOAD_A_B(x,y,true);
-  fpu.ADD1();
-  fpu.ADD2();
-  fpu.ADD3();
+  fpu.LOAD_AB(x,y,true);
+  if(fpu.ADD_SWP_EXP()) {
+    fpu.ADD_SHIFT();
+    fpu.ADD_FRAC();
+  }
   fpu.NORM();
   uint32_t result = fpu.result();
   check("FSUB",x,y,0,result,encodef(decodef(x)-decodef(y)));
@@ -496,7 +517,7 @@ uint32_t FSUB(uint32_t x, uint32_t y) {
 uint32_t FMUL(uint32_t x, uint32_t y) {
   L("FMUL");
   FPU fpu;
-  fpu.MUL0(x,y);
+  fpu.MUL(x,y);
   fpu.NORM();
   uint32_t result = fpu.result();
   check("FMUL",x,y,0,result,encodef(decodef(x)*decodef(y)));    
