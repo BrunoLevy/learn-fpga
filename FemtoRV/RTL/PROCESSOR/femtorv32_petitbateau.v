@@ -389,16 +389,17 @@ module FemtoRV32(
    
    wire               A_EQ_B = fabsA_EQ_fabsB && (fp_A_sign == fp_B_sign);
    
-   localparam FP_READY_bit       = 0, FP_READY       = 1 << FP_READY_bit;
-   localparam FP_MUL_bit         = 1, FP_MUL         = 1 << FP_MUL_bit  ;
-   localparam FP_NORM_bit        = 2, FP_NORM        = 1 << FP_NORM_bit ;
-   localparam FP_ADD_SWP_EXP_bit = 3, FP_ADD_SWP_EXP = 1 << FP_ADD_SWP_EXP_bit;
-   localparam FP_ADD_SHIFT_bit   = 4, FP_ADD_SHIFT   = 1 << FP_ADD_SHIFT_bit;
-   localparam FP_ADD_FRAC_bit    = 5, FP_ADD_FRAC    = 1 << FP_ADD_FRAC_bit;
-   localparam FP_ADD_NORM_bit    = 6, FP_ADD_NORM    = 1 << FP_ADD_NORM_bit;
-   localparam FP_CMP_bit         = 7, FP_CMP         = 1 << FP_CMP_bit;
-   localparam FP_OUT_bit         = 8, FP_OUT         = 1 << FP_OUT_bit;
-   localparam FP_NB_STATES       = 9;
+   localparam FP_READY_bit        = 0, FP_READY        = 1 << FP_READY_bit;
+   localparam FP_MUL_bit          = 1, FP_MUL          = 1 << FP_MUL_bit  ;
+   localparam FP_NORM_bit         = 2, FP_NORM         = 1 << FP_NORM_bit ;
+   localparam FP_ADD_SWP_EXP_bit  = 3, FP_ADD_SWP_EXP  = 1 << FP_ADD_SWP_EXP_bit;
+   localparam FP_ADD_SWP_FRAC_bit = 4, FP_ADD_SWP_FRAC = 1 << FP_ADD_SWP_FRAC_bit;   
+   localparam FP_ADD_SHIFT_bit    = 5, FP_ADD_SHIFT    = 1 << FP_ADD_SHIFT_bit;
+   localparam FP_ADD_FRAC_bit     = 6, FP_ADD_FRAC     = 1 << FP_ADD_FRAC_bit;
+// localparam FP_ADD_NORM_bit     = 7, FP_ADD_NORM     = 1 << FP_ADD_NORM_bit;
+   localparam FP_CMP_bit          = 8, FP_CMP          = 1 << FP_CMP_bit;
+   localparam FP_OUT_bit          = 9, FP_OUT          = 1 << FP_OUT_bit;
+   localparam FP_NB_STATES        = 10;
 
    reg [FP_NB_STATES-1:0] fp_state;
    initial fp_state = FP_READY;
@@ -407,7 +408,7 @@ module FemtoRV32(
       if(state[WAIT_INSTR_bit] && !mem_rbusy) begin 
 	 fp_rs1 <= fp_registerFile[decompressed[19:15]];
 	 fp_rs2 <= fp_registerFile[decompressed[24:20]];
-	 fp_rs3 <= fp_registerFile[decompressed[31:27]]; 
+	 fp_rs3 <= fp_registerFile[decompressed[31:27]]; // TODO: read from other state ?
       end else if(isFPU && state[EXECUTE_bit] && fp_state[FP_READY_bit]) begin
 	 case(1'b1)
 	   isFLT | isFLE | isFEQ | isFADD | isFSUB : begin
@@ -419,11 +420,14 @@ module FemtoRV32(
 	      fp_B_exp  <= fp_rs2_exp - 24;
 	      fp_state <= (isFADD | isFSUB) ? FP_ADD_SWP_EXP : FP_CMP;
 	   end
-	   isFMUL: begin
+	   isFMUL | isFMADD | isFMSUB : begin
 	      fp_A_sign <= fp_rs1_sign ^ fp_rs2_sign;
 	      fp_A_frac <= {26'b0,fp_rs1_frac} * {26'b0,fp_rs2_frac};
 	      fp_A_exp  <= fp_rs1_exp + fp_rs2_exp - 127 - 23; // TODO: check underflow
-	      fp_state <= FP_NORM;
+	      fp_B_sign <= fp_rs3_sign ^ isFMSUB;
+	      fp_B_frac <= {2'b0, fp_rs3_frac, 24'd0};
+	      fp_B_exp  <= fp_rs3_exp - 24;
+	      fp_state <= isFMUL ? FP_NORM : FP_ADD_SWP_EXP;
 	   end
 	 endcase 
       end else if (writeBack && rdIsFP) begin
@@ -460,9 +464,18 @@ module FemtoRV32(
 	      fp_A_frac <= fp_A_frac >> (fp_B_exp - fp_A_exp);
 	   end
 	   fp_A_exp <= fp_B_exp;
+	   fp_state <= (isFADD | isFSUB) ? FP_ADD_FRAC : FP_ADD_SWP_FRAC;
+	end
+
+	fp_state[FP_ADD_SWP_FRAC_bit]: begin
+	   if(fp_A_frac > fp_B_frac) begin
+	      fp_A_frac <= fp_B_frac; fp_B_frac <= fp_A_frac;
+	      fp_A_exp  <= fp_B_exp;  fp_B_exp  <= fp_A_exp;
+	      fp_A_sign <= fp_B_sign; fp_B_sign <= fp_A_sign;
+	   end
 	   fp_state <= FP_ADD_FRAC;
 	end
-	
+ 
 	fp_state[FP_ADD_FRAC_bit]: begin
 	   fp_A_frac <= (fp_A_sign ^ fp_B_sign) ? fp_B_frac - fp_A_frac : fp_B_frac + fp_A_frac;
 	   fp_A_sign <= (fp_A_frac == 0) ? (fp_A_sign && fp_B_sign) : fp_B_sign;
@@ -550,8 +563,8 @@ module FemtoRV32(
    always @(posedge clk) begin
       if(isFPU && state[EXECUTE_bit]) begin
 	 case(1'b1)
-	     isFMADD  : fpuOut <= $c32("FMADD(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
-	     isFMSUB  : fpuOut <= $c32("FMSUB(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	     //isFMADD  : fpuOut <= $c32("FMADD(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	     //isFMSUB  : fpuOut <= $c32("FMSUB(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
 	     isFNMSUB : fpuOut <= $c32("FNMSUB(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
 	     isFNMADD : fpuOut <= $c32("FNMADD(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
 	   
