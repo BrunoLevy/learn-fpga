@@ -215,6 +215,14 @@ void expand(uint32_t x, uint64_t& mant, int& exp, int& sign) {
   if(exp != 0) { mant |= uint64_t(1) << 23; }
 }
 
+void expand(uint32_t x, uint32_t& mant, int& exp, int& sign) {
+  IEEE754 X(x);
+  exp = X.exp;
+  mant = X.mant;
+  sign = X.sign;
+  if(exp != 0) { mant |= uint64_t(1) << 23; }
+}
+
 int32_t compress(uint32_t mant, int exp, int sign) {
   IEEE754 X(mant, exp, sign);
   return X.i;
@@ -242,8 +250,8 @@ uint32_t check(
     if(nb_args >= 2) { printf("   RS2="); RS2.print(); printf("\n"); }
     if(nb_args >= 3) { printf("   RS3="); RS3.print(); printf("\n"); }
     if(int_result) {
-      printf("   Res=0x&lx\n",result); 
-      printf("   Chk=0x%lx\n",chk); 
+      printf("   Res=0x&x\n",result); 
+      printf("   Chk=0x%x\n",chk); 
     } else {
       printf("   Res="); RESULT.print(); printf("\n");
       printf("   Chk="); CHECK.print();  printf("\n");
@@ -432,6 +440,8 @@ private:
 
 uint32_t FMADD(uint32_t x, uint32_t y, uint32_t z) {
   L("FMADD");
+  return encodef(fma(decodef(x),decodef(y),decodef(z)));
+		
   FPU fpu;
   fpu.MUL(x,y);
   fpu.LOAD_B(z,false,false);
@@ -447,7 +457,9 @@ uint32_t FMADD(uint32_t x, uint32_t y, uint32_t z) {
 }
 
 uint32_t FMSUB(uint32_t x, uint32_t y, uint32_t z) {
-  L("FMSUB");  
+  L("FMSUB");
+  return encodef(fma(decodef(x),decodef(y),-decodef(z)));
+  
   FPU fpu;
   fpu.MUL(x,y);  
   fpu.LOAD_B(z,false,true);
@@ -464,6 +476,8 @@ uint32_t FMSUB(uint32_t x, uint32_t y, uint32_t z) {
 
 uint32_t FNMADD(uint32_t x, uint32_t y, uint32_t z) {
   L("FNMADD");
+  return encodef(fma(-decodef(x),decodef(y),-decodef(z)));
+  
   FPU fpu;
   fpu.MUL(x,y);
   fpu.LOAD_B(z,true,true);
@@ -479,7 +493,9 @@ uint32_t FNMADD(uint32_t x, uint32_t y, uint32_t z) {
 }
 
 uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
-  L("FNMSUB");      
+  L("FNMSUB");
+  return encodef(fma(-decodef(x),decodef(y),decodef(z)));
+		
   FPU fpu;
   fpu.MUL(x,y);
   fpu.LOAD_B(z,true,false);
@@ -496,6 +512,8 @@ uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
 
 uint32_t FADD(uint32_t x, uint32_t y) {
   L("FADD");
+  return encodef(decodef(x)+decodef(y));
+  
   FPU fpu;
   fpu.LOAD_AB(x,y,false);
   if(fpu.ADD_SWP_EXP()) {
@@ -510,6 +528,7 @@ uint32_t FADD(uint32_t x, uint32_t y) {
 
 uint32_t FSUB(uint32_t x, uint32_t y) {
   L("FSUB");
+  return encodef(decodef(x)-decodef(y));  
   FPU fpu;
   fpu.LOAD_AB(x,y,true);
   if(fpu.ADD_SWP_EXP()) {
@@ -524,6 +543,7 @@ uint32_t FSUB(uint32_t x, uint32_t y) {
 
 uint32_t FMUL(uint32_t x, uint32_t y) {
   L("FMUL");
+  return encodef(decodef(x)*decodef(y));    
   FPU fpu;
   fpu.MUL(x,y);
   fpu.NORM();
@@ -532,6 +552,7 @@ uint32_t FMUL(uint32_t x, uint32_t y) {
   return result;
 }
 
+// Stack Overflow - Fast 1/X division (reciprocal)
 float DOOM_approx_inv_sqrt(float x) {
   float x2 = x * 0.5f;
   uint32_t i = 0x5f3759df - (encodef(x) >> 1);
@@ -541,10 +562,96 @@ float DOOM_approx_inv_sqrt(float x) {
   return y;
 }
 
+// reciprocal (1/x)
+uint32_t FRCP(uint32_t D_in) {
+
+  // version 0: use simulator's FPU
+  if(0) {
+    return encodef(1.0/decodef(D_in));
+  }
+
+  // version 1: Newton-Raphson implemented with floats
+  if(0) {
+    float D = decodef(D_in);
+    float D_prime = fabs(D);
+    int D_shift = 0;
+    
+    float N_prime = 1.0f;
+  
+    while(D_prime < 0.5f) {
+      D_prime *= 2.0f;
+      N_prime *= 2.0f;
+    }
+  
+    while(D_prime > 1.0f) {
+      D_prime /= 2.0f;
+      N_prime /= 2.0f;    
+    }
+
+    if(D < 0) {
+      N_prime = -N_prime;
+    }
+    
+    float X0 = 48.0f/17.0f - 32.0f/17.0f * D_prime;
+    float X1 = X0 + X0 * (1.0f - D_prime * X0);
+    float X2 = X1 + X1 * (1.0f - D_prime * X1);
+
+    return encodef(N_prime*X2);
+  }
+
+  // version 2: Newton-Raphson implemented with integers
+  // https://en.wikipedia.org/wiki/Division_algorithm#Newton%E2%80%93Raphson_division
+  if(1) {
+    uint32_t D_frac;
+    int D_exp;
+    int D_sign;
+    expand(D_in, D_frac, D_exp, D_sign);
+
+    uint32_t D_prime_ = compress(D_frac, 126, 0);
+    
+    const uint32_t CONST_48_over_17 = 0x4034B4B5;
+    const uint32_t CONST_32_over_17 = 0x3FF0F0F1;
+    const uint32_t CONST_2          = 0x40000000;
+    const uint32_t CONST_1          = 0x3f800000;
+    
+    uint32_t X0_ = FNMSUB(CONST_32_over_17,D_prime_,CONST_48_over_17);
+    
+    // version 1 of iteration, like in Wikipedia page
+    // uint32_t X1_ = FMADD(X0_,FNMSUB(D_prime_,X0_,CONST_1),X0_);
+    // uint32_t X2_ = FMADD(X1_,FNMSUB(D_prime_,X1_,CONST_1),X1_);
+    // uint32_t X3_ = FMADD(X2_,FNMSUB(D_prime_,X2_,CONST_1),X2_);    
+
+    // version 2 of iteration, using one FMA and one MUL per iteration
+    // (faster, but probably not as accurate, to be checked)
+    uint32_t X1_ = FMUL(X0_, FNMSUB(D_prime_,X0_,CONST_2));
+    uint32_t X2_ = FMUL(X1_, FNMSUB(D_prime_,X1_,CONST_2));
+    // uint32_t X3_ = FMUL(X2_, FNMSUB(D_prime_,X2_,CONST_2));
+    // Note: does not pass compliance test yet, and two iters
+    // may not suffice (but not the only reason)
+    // TODO: study rounding modes.
+
+    
+    uint32_t X_frac;
+    int X_exp;
+    int X_sign;
+    expand(X2_, X_frac, X_exp, X_sign);
+    uint32_t result = compress(X_frac, 126-D_exp+X_exp, D_sign);
+      
+    return result;
+  }
+  
+}
+
 uint32_t FDIV(uint32_t x, uint32_t y) {
   L("FDIV");    
-  return encodef(decodef(x)/decodef(y));
 
+  // return encodef(decodef(x)/decodef(y));
+
+  uint32_t result = FMUL(x, FRCP(y));
+  // check("FDIV",x,y,0,result,encodef(decodef(x)/decodef(y))); // Barks often ! (small ulp errors)
+  return result;
+
+  /*
   float fx = decodef(x);
   float fy = decodef(y);
   int sign = (fx < 0) ^ (fy < 0);
@@ -556,20 +663,19 @@ uint32_t FDIV(uint32_t x, uint32_t y) {
 
   float result = fx * inv_y;
   if(sign) result = -result;
-
   return encodef(result);
+  */
 }
 
 uint32_t FSQRT(uint32_t x) {
   L("FSQRT");
 
-  // Stack Overflow - Fast 1/X division (reciprocal)
   //uint32_t inv_sqrt = (0xbe6eb3beU - x) >> 1;
   //uint32_t sqrt = encodef(1.0f / decodef(inv_sqrt));
 
   // DOOM algo:
-  uint32_t sqrt = encodef(1.0f / DOOM_approx_inv_sqrt(decodef(x)));
-
+  uint32_t sqrt = FMUL(x,encodef(DOOM_approx_inv_sqrt(decodef(x))));
+  
   // printf("x=%f sqrt(x)=%f  result=%f\n", decodef(x), sqrtf(decodef(x)), decodef(sqrt));
   
   //  return encodef(sqrtf(decodef(x)));

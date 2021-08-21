@@ -447,7 +447,7 @@ module FemtoRV32(
 	16: fpmi_is = FPMI_ADD_ADD;
 	17: fpmi_is = FPMI_NORM;
 	18: fpmi_is = FPMI_OUT;
-
+	
 	default: fpmi_is = FPMI_READY;
       endcase
    end
@@ -471,13 +471,24 @@ module FemtoRV32(
 	 fp_rs3 <= fp_registerFile[raw_instr[31:27]]; // TODO: read from other state ?
 
       end else if(state[EXECUTE_bit] & isFPU) begin
-	 // map instruction to microprogram
+
+	 (* parallel_case *)
 	 case(1'b1)
+	   // Single-cycle instructions
+	   isFSGNJ  : fpuOut <= {            fp_rs2[31], fp_rs1[30:0]};
+	   isFSGNJN : fpuOut <= {           !fp_rs2[31], fp_rs1[30:0]};	   
+	   isFSGNJX : fpuOut <= { fp_rs1[31]^fp_rs2[31], fp_rs1[30:0]};	   
+
+           isFMVXW  : fpuIntOut <= fp_rs1;
+	   isFMVWX  : fpuOut <= rs1;	   
+	   
+	   // Micro-programmed instructions
 	   isFLT | isFLE | isFEQ                   : fpmi_PC <= FPMPROG_CMP;
 	   isFADD  | isFSUB                        : fpmi_PC <= FPMPROG_ADD;
 	   isFMUL                                  : fpmi_PC <= FPMPROG_MUL;
 	   isFMADD | isFMSUB | isFNMADD | isFNMSUB : fpmi_PC <= FPMPROG_MADD;
-	 endcase 
+	 endcase // case (1'b1)
+	 
       end else if(state[WAIT_ALU_OR_MEM_bit] | state[WAIT_ALU_OR_MEM_SKIP_bit]) begin
 
 	 /*
@@ -648,9 +659,9 @@ module FemtoRV32(
 	     //isFSGNJN : fpuOut <= $c32("FSGNJN(",fp_rs1,",",fp_rs2,")");
 	     //isFSGNJX : fpuOut <= $c32("FSGNJX(",fp_rs1,",",fp_rs2,")");
 
-	     isFSGNJ  : fpuOut <= {            fp_rs2[31], fp_rs1[30:0]};
-	     isFSGNJN : fpuOut <= {           !fp_rs2[31], fp_rs1[30:0]};	   
-	     isFSGNJX : fpuOut <= { fp_rs1[31]^fp_rs2[31], fp_rs1[30:0]};	   
+	     // isFSGNJ  : fpuOut <= {            fp_rs2[31], fp_rs1[30:0]};
+	     // isFSGNJN : fpuOut <= {           !fp_rs2[31], fp_rs1[30:0]};	   
+	     // isFSGNJX : fpuOut <= { fp_rs1[31]^fp_rs2[31], fp_rs1[30:0]};	   
 	   
 	     isFMIN   : fpuOut <= $c32("FMIN(",fp_rs1,",",fp_rs2,")");
 	     isFMAX   : fpuOut <= $c32("FMAX(",fp_rs1,",",fp_rs2,")");
@@ -665,8 +676,8 @@ module FemtoRV32(
 	     isFCVTSW : fpuOut <= $c32("FCVTSW(",rs1,")");
 	     isFCVTSWU: fpuOut <= $c32("FCVTSWU(",rs1,")");
 	     
-             isFMVXW:   fpuIntOut <= fp_rs1;
-	     isFMVWX:   fpuOut <= rs1;	   
+             // isFMVXW:   fpuIntOut <= fp_rs1;
+	     // isFMVWX:   fpuOut <= rs1;	   
          endcase		     
       end		     
    end
