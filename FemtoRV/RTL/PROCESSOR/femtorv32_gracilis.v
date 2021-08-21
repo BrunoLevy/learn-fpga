@@ -568,8 +568,8 @@ module decompressor(
 
    // How to handle illegal and unknown opcodes
 
-   wire [31:0]  illegal = 32'h00000000;
-   wire [31:0]  unknown = 32'h00000000;
+   localparam illegal = 32'h00000000;
+   localparam unknown = 32'h00000000;
 
    // Register decoder
 
@@ -579,9 +579,9 @@ module decompressor(
    wire [4:0] rwl  = c[ 6:2];  // Register wide low
    wire [4:0] rwh  = c[11:7];  // Register wide high
 
-   wire [4:0] x0 = 5'b00000;
-   wire [4:0] x1 = 5'b00001;
-   wire [4:0] x2 = 5'b00010;
+   localparam x0 = 5'b00000;
+   localparam x1 = 5'b00001;
+   localparam x2 = 5'b00010;   
 
    // Immediate decoder
 

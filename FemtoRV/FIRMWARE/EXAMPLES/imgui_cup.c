@@ -95,5 +95,6 @@ void FX(ImVec2 a,ImVec2 b, ImVec2 S,float t) {
     GL_polygon_mode(GL_POLY_LINES);
     addQuad(o->o[0],o->o[1],o->o[2],o->o[3],0);
   }
+  UART_putchar(4); // send <ctrl><D> to UART (exits simulation)
   delay(1000);
 }

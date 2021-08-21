@@ -197,7 +197,7 @@ vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* light
     float abc = max(0.f, vec3_dot(vec3_neg(reflect(vec3_neg(light_dir), N)),dir));
     float def = material.specular_exponent;
     if(abc > 0.0f && def > 0.0f) {
-       specular_light_intensity += my_pow(abc,def)*lights[i].intensity;
+      specular_light_intensity += my_pow(abc,def)*lights[i].intensity;
     }
   }
   vec3 result = vec3_scale(diffuse_light_intensity * material.albedo.x, material.diffuse_color);

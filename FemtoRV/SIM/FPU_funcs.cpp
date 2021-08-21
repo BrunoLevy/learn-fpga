@@ -223,11 +223,13 @@ int32_t compress(uint32_t mant, int exp, int sign) {
 
 /*********************************************/
 
-void check(
+uint32_t check(
      const char* func,
      uint32_t rs1, uint32_t rs2, uint32_t rs3,
      uint32_t result,
-     uint32_t chk
+     uint32_t chk,
+     int nb_args = 3,
+     bool int_result = false
 ) {
   IEEE754 RS1(rs1);
   IEEE754 RS2(rs2);
@@ -237,11 +239,18 @@ void check(
   if(!(RESULT.is_zero() && CHECK.is_zero()) && result != chk) {
     printf("%s mismatch\n",func);
     printf("   RS1="); RS1.print();    printf("\n");
-    printf("   RS2="); RS2.print();    printf("\n");
-    printf("   RS3="); RS3.print();    printf("\n");
-    printf("   Res="); RESULT.print(); printf("\n");
-    printf("   Chk="); CHECK.print();  printf("\n");            
+    if(nb_args >= 2) { printf("   RS2="); RS2.print(); printf("\n"); }
+    if(nb_args >= 3) { printf("   RS3="); RS3.print(); printf("\n"); }
+    if(int_result) {
+      printf("   Res=0x&lx\n",result); 
+      printf("   Chk=0x%lx\n",chk); 
+    } else {
+      printf("   Res="); RESULT.print(); printf("\n");
+      printf("   Chk="); CHECK.print();  printf("\n");
+    }
+    return 0;
   }
+  return 1;
 }
 
 /*********************************************/
@@ -344,7 +353,6 @@ public:
     //    - Once they are shifted, the order between A and B may change.
     //    - Can it happen with FADD/FSUB ? 
     A_mant = (A_sign ^ B_sign) ? B_mant - A_mant : B_mant + A_mant;
-    // if(A_mant == 0) A_sign = (A_sign && B_sign);
     A_sign = (A_mant == 0) ? A_sign && B_sign : B_sign;
   }
   
@@ -524,14 +532,48 @@ uint32_t FMUL(uint32_t x, uint32_t y) {
   return result;
 }
 
+float DOOM_approx_inv_sqrt(float x) {
+  float x2 = x * 0.5f;
+  uint32_t i = 0x5f3759df - (encodef(x) >> 1);
+  float y = decodef(i);
+  y = y * (1.5f - (x2 * y * y));
+  y = y * (1.5f - (x2 * y * y)); // two iterations are needed for tinyraytracer
+  return y;
+}
+
 uint32_t FDIV(uint32_t x, uint32_t y) {
   L("FDIV");    
   return encodef(decodef(x)/decodef(y));
+
+  float fx = decodef(x);
+  float fy = decodef(y);
+  int sign = (fx < 0) ^ (fy < 0);
+  fx = fabs(fx);
+  fy = fabs(fy);
+
+  float inv_y = DOOM_approx_inv_sqrt(fy);
+  inv_y = inv_y * inv_y;
+
+  float result = fx * inv_y;
+  if(sign) result = -result;
+
+  return encodef(result);
 }
 
 uint32_t FSQRT(uint32_t x) {
   L("FSQRT");
-  return encodef(sqrtf(decodef(x)));
+
+  // Stack Overflow - Fast 1/X division (reciprocal)
+  //uint32_t inv_sqrt = (0xbe6eb3beU - x) >> 1;
+  //uint32_t sqrt = encodef(1.0f / decodef(inv_sqrt));
+
+  // DOOM algo:
+  uint32_t sqrt = encodef(1.0f / DOOM_approx_inv_sqrt(decodef(x)));
+
+  // printf("x=%f sqrt(x)=%f  result=%f\n", decodef(x), sqrtf(decodef(x)), decodef(sqrt));
+  
+  //  return encodef(sqrtf(decodef(x)));
+  return sqrt;
 }
 
 uint32_t FSGNJ(uint32_t x, uint32_t y) {
@@ -566,13 +608,46 @@ uint32_t FMAX(uint32_t x, uint32_t y) {
 }
 
 uint32_t FCVTWS(uint32_t x) { 
-  L("FCVTWS");     
-  return uint32_t(int32_t(decodef(x)));  
+  L("FCVTWS");
+  // TODO: overflow detect
+  uint32_t result;
+  IEEE754 X(x);
+  if(X.exp == 0) {
+    result = 0;
+  } else {
+    result = X.mant | (1 << 23);
+    int shift = int(X.exp) - (127 + 23);
+    if(shift > 0) {
+      result = result << shift;
+    } else {
+      result = result >> -shift;
+    }
+  }
+  if(X.sign) {
+    result = uint32_t(-int32_t(result));
+  }
+  check("FCVT.WU.S",x,0,0,result,uint32_t(int32_t(decodef(x))));
+  return result;
 }
 
 uint32_t FCVTWUS(uint32_t x) {
-  L("FCVTWUS");       
-  return uint32_t(decodef(x));
+  // TODO: overflow detect
+  L("FCVTWUS");
+  uint32_t result;
+  IEEE754 X(x);
+  if(X.exp == 0) {
+    result = 0;
+  } else {
+    result = X.mant | (1 << 23);
+    int shift = int(X.exp) - (127 + 23);
+    if(shift > 0) {
+      result = result << shift;
+    } else {
+      result = result >> -shift;
+    }
+  }
+  check("FCVT.WU.S",x,0,0,result,uint32_t(decodef(x)));
+  return result;
 }
 
 uint32_t FEQ(uint32_t x, uint32_t y) {
@@ -638,3 +713,62 @@ uint32_t FCVTSWU(uint32_t x) {
   L("FCVTSWU");               
   return encodef(float(x));
 }
+
+/***********************************************************/
+
+uint32_t CHECK_FADD(uint32_t result, uint32_t x, uint32_t y) { 
+  return check("FADD", x, y, 0, result, encodef(decodef(x) + decodef(y)),2);
+}
+
+uint32_t CHECK_FSUB(uint32_t result, uint32_t x, uint32_t y) {
+  return check("FSUB", x, y, 0, result, encodef(decodef(x) - decodef(y)),2);  
+}
+
+uint32_t CHECK_FMUL(uint32_t result, uint32_t x, uint32_t y) {
+  return check("FMUL", x, y, 0, result, encodef(decodef(x) * decodef(y)),2);  
+}
+
+uint32_t CHECK_FMADD(uint32_t result, uint32_t x, uint32_t y, uint32_t z) {
+  return check("FMADD", x, y, 0, result, encodef(fma(decodef(x),decodef(y),decodef(z))),3);  
+}
+
+uint32_t CHECK_FMSUB(uint32_t result, uint32_t x, uint32_t y, uint32_t z) {
+  return check("FMSUB", x, y, 0, result, encodef(fma(decodef(x),decodef(y),-decodef(z))),3);  
+}
+
+uint32_t CHECK_FNMADD(uint32_t result, uint32_t x, uint32_t y, uint32_t z) {
+  return check("FNMADD", x, y, 0, result, encodef(fma(-decodef(x),decodef(y),-decodef(z))),3);    
+}
+
+uint32_t CHECK_FNMSUB(uint32_t result, uint32_t x, uint32_t y, uint32_t z) {
+  return check("FNMSUB", x, y, 0, result, encodef(fma(-decodef(x),decodef(y),decodef(z))),3);      
+}
+
+uint32_t CHECK_FEQ(uint32_t result, uint32_t x, uint32_t y) {
+  return check("FEQ", x, y, 0, result,(decodef(x)==decodef(y)),2,true);    
+}
+
+uint32_t CHECK_FLT(uint32_t result, uint32_t x, uint32_t y) {
+  return check("FLT", x, y, 0, result,(decodef(x)<decodef(y)),2,true);      
+}
+
+uint32_t CHECK_FLE(uint32_t result, uint32_t x, uint32_t y) {
+  return check("FLE", x, y, 0, result,(decodef(x)<=decodef(y)),2,true);        
+}
+
+uint32_t CHECK_FDIV(uint32_t result, uint32_t x, uint32_t y) { return 1; }
+uint32_t CHECK_FSQRT(uint32_t result, uint32_t x) { return 1; }
+
+uint32_t CHECK_FSGNJ(uint32_t result, uint32_t x, uint32_t y) { return 1; }
+uint32_t CHECK_FSGNJN(uint32_t result, uint32_t x, uint32_t y) { return 1; }
+uint32_t CHECK_FSGNJX(uint32_t result, uint32_t x, uint32_t y) { return 1; }
+uint32_t CHECK_FMIN(uint32_t result, uint32_t x, uint32_t y) { return 1; }
+uint32_t CHECK_FMAX(uint32_t result, uint32_t x, uint32_t y) { return 1; }
+
+uint32_t CHECK_FCVTWS(uint32_t result, uint32_t x) { return 1; }
+uint32_t CHECK_FCVTWUS(uint32_t result, uint32_t x) { return 1; }
+
+
+uint32_t CHECK_FCLASS(uint32_t result, uint32_t x) { return 1; }
+uint32_t CHECK_FCVTSW(uint32_t result, uint32_t x) { return 1; }
+uint32_t CHECK_FCVTSWU(uint32_t result, uint32_t x) { return 1; }

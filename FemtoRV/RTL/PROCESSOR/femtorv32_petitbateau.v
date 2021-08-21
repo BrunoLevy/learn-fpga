@@ -7,13 +7,13 @@
 // [DONE] simulated FPU + FPU instruction decoder tested in Verilator 
 //             with mandel_float and tinyraytracer
 //
-// [TODO] wired FPU, mandel_float -O0
+// [DONE] wired FPU, mandel_float -O0
 //    FADD
 //    FLT
 //    FMUL
 //    FSUB
 //   (FCVT.S.WU and FSGNJ if dx/dy given by expression instead of by value) 
-// [TODO] wired FPU, mandel_float -O3
+// [DONE] wired FPU, mandel_float -O3
 //    FMADD
 //    FMSUB
 //    FSGNJ
@@ -41,7 +41,7 @@
 // [TODO] add FPU CSR (and instret for perf stat)]
 // [TODO] FSW/FLW unaligned (does not seem to occur, but the norm requires it)
 //
-// [TODO] fast leading zero count:
+// [DONE] fast leading zero count:
 // https://electronics.stackexchange.com/questions/196914/verilog-synthesize-high-speed-leading-zero-count
 // (thanks @NickTernovoy)
 
@@ -50,6 +50,10 @@
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32imaf"
 `define NRV_ABI      "ilp32f"
+
+//`define NRV_ARCH     "rv32imac"
+//`define NRV_ABI      "ilp32"
+
 `define NRV_OPTIMIZE "-O3"
 `define NRV_INTERRUPTS
 
@@ -215,7 +219,7 @@ module FemtoRV32(
    /***************************************************************************/
 
    wire funcM     = instr[25];
-   wire isDivide = isALUreg & funcM & instr[14];
+   wire isDivide  = isALUreg & funcM & instr[14];
    wire aluBusy   = |quotient_msk; // ALU is busy if division is in progress.
 
    // funct3: 1->MULH, 2->MULHSU  3->MULHU
@@ -227,8 +231,9 @@ module FemtoRV32(
 
    wire signed [32:0] signed1 = {sign1, aluIn1};
    wire signed [32:0] signed2 = {sign2, aluIn2};
-   wire signed [63:0] multiply = signed1 * signed2;
 
+   reg signed [63:0]  multiply;
+   
    /***************************************************************************/
 
    // Notes:
@@ -247,7 +252,7 @@ module FemtoRV32(
      (funct3Is[6]  ? aluIn1 | aluIn2                                 : 32'b0) |
      (funct3Is[7]  ? aluIn1 & aluIn2                                 : 32'b0) ;
 
-   wire [31:0] aluOut_muldiv =
+   wire [31:0] aluOut_muldiv = // HERE
      (  funct3Is[0]   ?  multiply[31: 0] : 32'b0) | // 0:MUL
      ( |funct3Is[3:1] ?  multiply[63:32] : 32'b0) | // 1:MULH, 2:MULHSU, 3:MULHU
      (  instr[14]     ?  div_sign ? -divResult : divResult : 32'b0) ; 
@@ -272,6 +277,7 @@ module FemtoRV32(
                                           (aluIn1[31] != aluIn2[31]) & |aluIn2);
 
    always @(posedge clk) begin
+      multiply <= signed1 * signed2;
       if (isDivide & aluWr) begin
          dividend <=   ~instr[12] & aluIn1[31] ? -aluIn1 : aluIn1;
          divisor  <= {(~instr[12] & aluIn2[31] ? -aluIn2 : aluIn2), 31'b0};
@@ -306,8 +312,6 @@ module FemtoRV32(
    // The FPU 
    /***************************************************************************/
 
-   wire fpuBusy = !fp_state[FP_READY_bit];
-   
    reg [31:0] fpuOut;
    reg [31:0] fpuIntOut;
    
@@ -316,17 +320,20 @@ module FemtoRV32(
    reg [31:0] fp_rs3;
 
    // For now, flush all denormals to zero
-   wire        fp_rs1_sign =  fp_rs1[31];
-   wire [7:0]  fp_rs1_exp  =  fp_rs1[30:23];
+   wire        fp_rs1_sign = fp_rs1[31];
+   wire [7:0]  fp_rs1_exp  = fp_rs1[30:23];
    wire [23:0] fp_rs1_frac = fp_rs1_exp == 8'd0 ? 24'b0 : {1'b1, fp_rs1[22:0]};
+   //wire        fp_rs1_Z    = (fp_rs1_exp == 0);
    
    wire        fp_rs2_sign =  fp_rs2[31];
    wire [7:0]  fp_rs2_exp  =  fp_rs2[30:23];
    wire [23:0] fp_rs2_frac = fp_rs2_exp == 8'd0 ? 24'b0 : {1'b1, fp_rs2[22:0]};
+   //wire        fp_rs2_Z    = (fp_rs2_exp == 0);
    
    wire        fp_rs3_sign =  fp_rs3[31];
    wire [7:0]  fp_rs3_exp  =  fp_rs3[30:23];
    wire [23:0] fp_rs3_frac = fp_rs3_exp == 8'd0 ? 24'b0 : {1'b1, fp_rs3[22:0]};
+   //wire        fp_rs3_Z    = (fp_rs3_exp == 0);
    
    reg [31:0] fp_registerFile [31:0]; 
 
@@ -388,131 +395,192 @@ module FemtoRV32(
  		                !fp_A_sign && !fp_B_sign && fabsA_LE_fabsB ;
    
    wire               A_EQ_B = fabsA_EQ_fabsB && (fp_A_sign == fp_B_sign);
-   
-   localparam FP_READY_bit        = 0, FP_READY        = 1 << FP_READY_bit;
-   localparam FP_MUL_bit          = 1, FP_MUL          = 1 << FP_MUL_bit  ;
-   localparam FP_NORM_bit         = 2, FP_NORM         = 1 << FP_NORM_bit ;
-   localparam FP_ADD_SWP_EXP_bit  = 3, FP_ADD_SWP_EXP  = 1 << FP_ADD_SWP_EXP_bit;
-   localparam FP_ADD_SWP_FRAC_bit = 4, FP_ADD_SWP_FRAC = 1 << FP_ADD_SWP_FRAC_bit;   
-   localparam FP_ADD_SHIFT_bit    = 5, FP_ADD_SHIFT    = 1 << FP_ADD_SHIFT_bit;
-   localparam FP_ADD_FRAC_bit     = 6, FP_ADD_FRAC     = 1 << FP_ADD_FRAC_bit;
-// localparam FP_ADD_NORM_bit     = 7, FP_ADD_NORM     = 1 << FP_ADD_NORM_bit;
-   localparam FP_CMP_bit          = 8, FP_CMP          = 1 << FP_CMP_bit;
-   localparam FP_OUT_bit          = 9, FP_OUT          = 1 << FP_OUT_bit;
-   localparam FP_NB_STATES        = 10;
 
-   reg [FP_NB_STATES-1:0] fp_state;
-   initial fp_state = FP_READY;
+
+   /** FPU micro-instructions *****************************/
+
+   localparam FPMI_READY_bit       = 0, FPMI_READY = 1 << FPMI_READY_bit;
+   localparam FPMI_LOAD_AB_bit     = 1, FPMI_LOAD_AB = 1 << FPMI_LOAD_AB_bit;
+   localparam FPMI_LOAD_AB_MUL_bit = 2, FPMI_LOAD_AB_MUL = 1 << FPMI_LOAD_AB_MUL_bit;
+   localparam FPMI_NORM_bit        = 3, FPMI_NORM = 1 <<FPMI_NORM_bit;
+   localparam FPMI_ADD_SWAP_bit    = 4, FPMI_ADD_SWAP = 1 << FPMI_ADD_SWAP_bit;
+   localparam FPMI_ADD_SHIFT_bit   = 5, FPMI_ADD_SHIFT = 1 << FPMI_ADD_SHIFT_bit;
+   localparam FPMI_ADD_ADD_bit     = 6, FPMI_ADD_ADD = 1 << FPMI_ADD_ADD_bit;
+   localparam FPMI_CMP_bit         = 7, FPMI_CMP = 1 << FPMI_CMP_bit;
+   localparam FPMI_OUT_bit         = 8, FPMI_OUT = 1 << FPMI_OUT_bit;   
+   localparam FPMI_NB              = 9;
+
+   reg [4:0] 	       fpmi_PC;    // current micro-instruction pointer
+   reg [FPMI_NB-1:0]   fpmi_is; // 1-hot current micro-instruction
+
+   initial fpmi_PC = 0;
+
+   wire fpuBusy = !fpmi_is[FPMI_READY_bit];
+
+   // micro-program ROM
+   always @(*) begin
+      case(fpmi_PC)
+	0: fpmi_is = FPMI_READY;
+	
+	// FLT, FLE, FEQ
+	1: fpmi_is = FPMI_LOAD_AB;
+	2: fpmi_is = FPMI_CMP;
+
+	// FADD, FSUB
+	3: fpmi_is = FPMI_LOAD_AB;
+	4: fpmi_is = FPMI_ADD_SWAP;
+	5: fpmi_is = FPMI_ADD_SHIFT;
+	6: fpmi_is = FPMI_ADD_ADD;
+	7: fpmi_is = FPMI_NORM;
+	8: fpmi_is = FPMI_OUT;
+
+	// FMUL
+	 9: fpmi_is = FPMI_LOAD_AB_MUL;
+	10: fpmi_is = FPMI_NORM;
+	11: fpmi_is = FPMI_OUT;
+
+	// FMADD, FMSUB, FNMADD, FNMSUB
+	12: fpmi_is = FPMI_LOAD_AB_MUL;
+	13: fpmi_is = FPMI_ADD_SWAP;
+ 	14: fpmi_is = FPMI_ADD_SHIFT;
+ 	15: fpmi_is = FPMI_ADD_SWAP;	
+	16: fpmi_is = FPMI_ADD_ADD;
+	17: fpmi_is = FPMI_NORM;
+	18: fpmi_is = FPMI_OUT;
+
+	default: fpmi_is = FPMI_READY;
+      endcase
+   end
+   
+   // micro-program routines
+   localparam FPMPROG_CMP  = 1;
+   localparam FPMPROG_ADD  = 3;
+   localparam FPMPROG_MUL  = 9;
+   localparam FPMPROG_MADD = 12;
+   
+   /*******************************************************/
+
 
    always @(posedge clk) begin
-      if(state[WAIT_INSTR_bit] && !mem_rbusy) begin 
-	 fp_rs1 <= fp_registerFile[decompressed[19:15]];
-	 fp_rs2 <= fp_registerFile[decompressed[24:20]];
-	 fp_rs3 <= fp_registerFile[decompressed[31:27]]; // TODO: read from other state ?
-      end else if(isFPU && state[EXECUTE_bit] && fp_state[FP_READY_bit]) begin
+
+      
+      if(state[WAIT_INSTR_bit] && !mem_rbusy) begin
+	 // TODO: decompression / raw_instr
+	 fp_rs1 <= fp_registerFile[raw_instr[19:15]];
+	 fp_rs2 <= fp_registerFile[raw_instr[24:20]];
+	 fp_rs3 <= fp_registerFile[raw_instr[31:27]]; // TODO: read from other state ?
+
+      end else if(state[EXECUTE_bit] & isFPU) begin
+	 // map instruction to microprogram
 	 case(1'b1)
-	   isFLT | isFLE | isFEQ | isFADD | isFSUB : begin
+	   isFLT | isFLE | isFEQ                   : fpmi_PC <= FPMPROG_CMP;
+	   isFADD  | isFSUB                        : fpmi_PC <= FPMPROG_ADD;
+	   isFMUL                                  : fpmi_PC <= FPMPROG_MUL;
+	   isFMADD | isFMSUB | isFNMADD | isFNMSUB : fpmi_PC <= FPMPROG_MADD;
+	 endcase 
+      end else if(state[WAIT_ALU_OR_MEM_bit] | state[WAIT_ALU_OR_MEM_SKIP_bit]) begin
+
+	 /*
+	 case(1'b1)
+	   // fpmi_is[FPMI_READY_bit]: $display("FPMI_RDY");
+	   fpmi_is[FPMI_LOAD_AB_bit]: $display("FPMI_LOAD_AB");
+	   fpmi_is[FPMI_LOAD_AB_MUL_bit]: $display("FPMI_LOAD_AB_MUL");
+	   fpmi_is[FPMI_NORM_bit]: $display("FPMI_NORM");
+	   fpmi_is[FPMI_ADD_SWAP_bit]: $display("FPMI_ADD_SWAP");
+	   fpmi_is[FPMI_ADD_SHIFT_bit]: $display("FPMI_ADD_SHIFT");
+	   fpmi_is[FPMI_ADD_ADD_bit]: $display("FPMI_ADD_ADD");
+	   fpmi_is[FPMI_CMP_bit]: $display("FPMI_CMP");
+	   fpmi_is[FPMI_OUT_bit]: $display("FPMI_OUT");
+	 endcase
+         */
+	 
+	 fpmi_PC <= fpmi_PC+1;
+
+	 case(1'b1)
+	   fpmi_is[FPMI_READY_bit]: fpmi_PC <= 0;
+	   
+	   fpmi_is[FPMI_LOAD_AB_bit]: begin
 	      fp_A_sign <= fp_rs1_sign;
 	      fp_A_frac <= {2'b0, fp_rs1_frac, 24'd0};
 	      fp_A_exp  <= fp_rs1_exp - 24;
 	      fp_B_sign <= fp_rs2_sign ^ isFSUB;
 	      fp_B_frac <= {2'b0, fp_rs2_frac, 24'd0};
 	      fp_B_exp  <= fp_rs2_exp - 24;
-	      fp_state <= (isFADD | isFSUB) ? FP_ADD_SWP_EXP : FP_CMP;
 	   end
-	   isFMUL | isFMADD | isFMSUB : begin
-	      fp_A_sign <= fp_rs1_sign ^ fp_rs2_sign;
+	   
+	   fpmi_is[FPMI_LOAD_AB_MUL_bit]: begin
+	      fp_A_sign <= fp_rs1_sign ^ fp_rs2_sign ^ (isFNMSUB | isFNMADD);
 	      fp_A_frac <= {26'b0,fp_rs1_frac} * {26'b0,fp_rs2_frac};
 	      fp_A_exp  <= fp_rs1_exp + fp_rs2_exp - 127 - 23; // TODO: check underflow
-	      fp_B_sign <= fp_rs3_sign ^ isFMSUB;
+	      fp_B_sign <= fp_rs3_sign ^ (isFMSUB | isFNMADD);
 	      fp_B_frac <= {2'b0, fp_rs3_frac, 24'd0};
 	      fp_B_exp  <= fp_rs3_exp - 24;
-	      fp_state <= isFMUL ? FP_NORM : FP_ADD_SWP_EXP;
 	   end
-	 endcase 
-      end else if (writeBack && rdIsFP) begin
+	   
+	   fpmi_is[FPMI_NORM_bit]: begin
+	      if(fp_A_exp_norm <= 0 || fp_A_frac == 0) begin
+		 fp_A_frac <= 0;
+		 fp_A_exp <= 0;
+	      end else begin
+		 if(fp_A_first_bit_set >= 23) begin
+		    fp_A_frac <= fp_A_frac >> (fp_A_first_bit_set - 23);
+		 end else begin
+		    fp_A_frac <= fp_A_frac << (23-fp_A_first_bit_set);
+		 end
+		 fp_A_exp  <= fp_A_exp_norm;
+	      end
+	   end
+
+	   fpmi_is[FPMI_ADD_SWAP_bit]: begin
+	      if(
+		 fp_A_frac == 0      || 
+		 (fp_A_exp > fp_B_exp) && (fp_B_frac != 0) || 
+		 (fp_A_exp == fp_B_exp && fp_A_frac > fp_B_frac) // && (fp_B_frac != 0)
+	      ) begin
+		 fp_A_frac <= fp_B_frac; fp_B_frac <= fp_A_frac;
+		 fp_A_exp  <= fp_B_exp;  fp_B_exp  <= fp_A_exp;
+		 fp_A_sign <= fp_B_sign; fp_B_sign <= fp_A_sign;
+	      end
+	   end
+
+	   fpmi_is[FPMI_ADD_SHIFT_bit]: begin
+	      if(fp_A_frac != 0 && fp_B_frac != 0) begin
+		 if(fp_B_exp - fp_A_exp > 47) begin
+		    fp_A_frac <= 0;
+		 end else begin
+		    fp_A_frac <= fp_A_frac >> (fp_B_exp - fp_A_exp);
+		 end
+		 fp_A_exp <= fp_B_exp;
+	      end
+	   end
+
+	   fpmi_is[FPMI_ADD_ADD_bit]: begin
+	      if(fp_B_frac != 0) begin	      
+		 fp_A_frac <= (fp_A_sign ^ fp_B_sign) ? fp_B_frac - fp_A_frac : fp_B_frac + fp_A_frac;
+		 fp_A_sign <= fp_B_sign;
+	      end
+	   end
+
+	   fpmi_is[FPMI_CMP_bit]: begin
+	      fpuIntOut <= {31'b0, 
+			    isFLT && A_LT_B ||
+			    isFLE && A_LE_B ||
+			    isFEQ && A_EQ_B
+			    };
+	      fpmi_PC <= 0;
+	   end
+
+	   fpmi_is[FPMI_OUT_bit]: begin
+	      // TODO: wire fpuOut directly on A register and remove FP_OUT state
+	      fpuOut <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[22:0]};
+	      fpmi_PC <= 0;
+	   end
+	 endcase
+      end 
+
+      if (writeBack && rdIsFP) begin
 	 fp_registerFile[rdId] <= isLoad ? mem_rdata : fpuOut;
       end
-
-      case(1'b1) 
-	fp_state[FP_CMP_bit]: begin
-	   fpuIntOut <= {31'b0, 
-			 isFLT && A_LT_B ||
-			 isFLE && A_LE_B ||
-			 isFEQ && A_EQ_B
-           };
-	   fp_state <= FP_READY;
-	end
-	
-	fp_state[FP_ADD_SWP_EXP_bit]: begin
-	   if(
-	      fp_A_frac == 0      || 
-	      (fp_A_exp > fp_B_exp) && (fp_B_frac != 0) || 
-	      (fp_A_exp == fp_B_exp && fp_A_frac > fp_B_frac) && (fp_B_frac != 0)
-           ) begin
-	      fp_A_frac <= fp_B_frac; fp_B_frac <= fp_A_frac;
-	      fp_A_exp  <= fp_B_exp;  fp_B_exp  <= fp_A_exp;
-	      fp_A_sign <= fp_B_sign; fp_B_sign <= fp_A_sign;
-	   end
-	   fp_state <= (fp_A_frac == 0 || fp_B_frac == 0) ? FP_NORM : FP_ADD_SHIFT;
-	end 
-	
-	fp_state[FP_ADD_SHIFT_bit]: begin
-	   if(fp_B_exp - fp_A_exp > 47) begin
-	      fp_A_frac <= 0;
-	   end else begin
-	      fp_A_frac <= fp_A_frac >> (fp_B_exp - fp_A_exp);
-	   end
-	   fp_A_exp <= fp_B_exp;
-	   fp_state <= (isFADD | isFSUB) ? FP_ADD_FRAC : FP_ADD_SWP_FRAC;
-	end
-
-	fp_state[FP_ADD_SWP_FRAC_bit]: begin
-	   if(fp_A_frac > fp_B_frac) begin
-	      fp_A_frac <= fp_B_frac; fp_B_frac <= fp_A_frac;
-	      fp_A_exp  <= fp_B_exp;  fp_B_exp  <= fp_A_exp;
-	      fp_A_sign <= fp_B_sign; fp_B_sign <= fp_A_sign;
-	   end
-	   fp_state <= FP_ADD_FRAC;
-	end
- 
-	fp_state[FP_ADD_FRAC_bit]: begin
-	   fp_A_frac <= (fp_A_sign ^ fp_B_sign) ? fp_B_frac - fp_A_frac : fp_B_frac + fp_A_frac;
-	   fp_A_sign <= (fp_A_frac == 0) ? (fp_A_sign && fp_B_sign) : fp_B_sign;
-	   fp_state <= FP_NORM;	   	   
-	end
-	
-	fp_state[FP_NORM_bit]: begin
-	   // TODO: denormals
-	   // TODO: overflow / underflow
-
-	   /* // simplified normalization, works only for FMUL
-	   fp_A_frac <= fp_A_frac[47] ? fp_A_frac >> (47 - 23) :
-		        fp_A_frac[46] ? fp_A_frac >> (46 - 23) :
-		        0;
-	   
-	   fp_A_exp <= fp_A_frac == 0 || !|fp_A_frac[47:46] || fp_A_exp + (fp_A_frac[47] ? (47-23): (46-23)) < 0 ? 0 : 
-                       fp_A_exp + (fp_A_frac[47] ? (47-23): (46-23));
-	   */
-
-	   if(fp_A_exp_norm <= 0 || fp_A_frac == 0) begin
-	      fp_A_frac <= 0;
-	      fp_A_exp <= 0;
-	   end else begin
-	      fp_A_frac <= fp_A_frac >> (fp_A_first_bit_set - 23);
-	      // TODO: left shift if first bit set < 23, can happen in MADD
-	      fp_A_exp  <= fp_A_exp_norm;
-	   end
-	   fp_state <= FP_OUT;	   
-	end
-	fp_state[FP_OUT_bit]: begin
-	   // TODO: wire fpuOut directly on A register and remove FP_OUT state
-	   fpuOut <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[22:0]};
-	   fp_state <= FP_READY;
-	end	
-      endcase
-      
-      
       
    end
    
@@ -563,10 +631,10 @@ module FemtoRV32(
    always @(posedge clk) begin
       if(isFPU && state[EXECUTE_bit]) begin
 	 case(1'b1)
-	     //isFMADD  : fpuOut <= $c32("FMADD(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
-	     //isFMSUB  : fpuOut <= $c32("FMSUB(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
-	     isFNMSUB : fpuOut <= $c32("FNMSUB(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
-	     isFNMADD : fpuOut <= $c32("FNMADD(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	     // isFMADD  : fpuOut <= $c32("FMADD(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	     // isFMSUB  : fpuOut <= $c32("FMSUB(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	     // isFNMSUB : fpuOut <= $c32("FNMSUB(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	     // isFNMADD : fpuOut <= $c32("FNMADD(",fp_rs1,",",fp_rs2,",",fp_rs3,")");
 	   
 	     // isFMUL   : fpuOut <= $c32("FMUL(",fp_rs1,",",fp_rs2,")");
 	     // isFADD   : fpuOut <= $c32("FADD(",fp_rs1,",",fp_rs2,")");
@@ -576,9 +644,9 @@ module FemtoRV32(
 	     isFSQRT  : fpuOut <= $c32("FSQRT(",fp_rs1,")");
 
 	   
-	     // isFSGNJ  : fpuOut <= $c32("FSGNJ(",fp_rs1,",",fp_rs2,")");
-	     // isFSGNJN : fpuOut <= $c32("FSGNJN(",fp_rs1,",",fp_rs2,")");
-	     // isFSGNJX : fpuOut <= $c32("FSGNJX(",fp_rs1,",",fp_rs2,")");
+	     //isFSGNJ  : fpuOut <= $c32("FSGNJ(",fp_rs1,",",fp_rs2,")");
+	     //isFSGNJN : fpuOut <= $c32("FSGNJN(",fp_rs1,",",fp_rs2,")");
+	     //isFSGNJX : fpuOut <= $c32("FSGNJX(",fp_rs1,",",fp_rs2,")");
 
 	     isFSGNJ  : fpuOut <= {            fp_rs2[31], fp_rs1[30:0]};
 	     isFSGNJN : fpuOut <= {           !fp_rs2[31], fp_rs1[30:0]};	   
@@ -596,11 +664,35 @@ module FemtoRV32(
 	     isFCVTWUS: fpuIntOut <= $c32("FCVTWUS(",fp_rs1,")");
 	     isFCVTSW : fpuOut <= $c32("FCVTSW(",rs1,")");
 	     isFCVTSWU: fpuOut <= $c32("FCVTSWU(",rs1,")");
-	     isFMVXW:   fpuIntOut <= fp_rs1;
+	     
+             isFMVXW:   fpuIntOut <= fp_rs1;
 	     isFMVWX:   fpuOut <= rs1;	   
          endcase		     
       end		     
-   end		     
+   end
+
+
+   // This block for verifying the result in the simulation.
+   reg [31:0] dummy;
+   always @(posedge clk) begin
+      if(isFPU && (state[WAIT_ALU_OR_MEM_bit] | state[WAIT_ALU_OR_MEM_SKIP_bit]) & fpmi_PC == 0) begin
+	 case(1'b1)
+	   isFMUL   : dummy <= $c32("CHECK_FMUL(",fpuOut,",",fp_rs1,",",fp_rs2,")");
+	   isFADD   : dummy <= $c32("CHECK_FADD(",fpuOut,",",fp_rs1,",",fp_rs2,")");
+	   isFSUB   : dummy <= $c32("CHECK_FSUB(",fpuOut,",",fp_rs1,",",fp_rs2,")");
+
+	   isFMADD  : dummy <= $c32("CHECK_FMADD(",fpuOut,",",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	   isFMSUB  : dummy <= $c32("CHECK_FMSUB(",fpuOut,",",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	   isFNMSUB : dummy <= $c32("CHECK_FNMSUB(",fpuOut,",",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	   isFNMADD : dummy <= $c32("CHECK_FNMADD(",fpuOut,",",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+
+	   isFEQ  : dummy <= $c32("CHECK_FEQ(",fpuIntOut,",",fp_rs1,",",fp_rs2,")");
+	   isFLT  : dummy <= $c32("CHECK_FLT(",fpuIntOut,",",fp_rs1,",",fp_rs2,")");	   
+	   isFLE  : dummy <= $c32("CHECK_FLE(",fpuIntOut,",",fp_rs1,",",fp_rs2,")");	   
+	 endcase
+      end
+   end 
+   
 `endif
    
    /***************************************************************************/
@@ -793,11 +885,11 @@ module FemtoRV32(
    reg long_instr;
 
    wire [31:0] cached_mem   = current_cache_hit ? cached_data : mem_rdata;
-   wire [31:0] decomp_input = PC[1] ? {mem_rdata[15:0], cached_mem[31:16]} 
+   wire [31:0] raw_instr = PC[1] ? {mem_rdata[15:0], cached_mem[31:16]} 
                                     : cached_mem;
    wire [31:0] decompressed;
 
-   decompressor _decomp ( .c(decomp_input), .d(decompressed) );
+   decompressor _decomp ( .c(raw_instr[15:0]), .d(decompressed) );
 
    /*************************************************************************/
    // And, last but not least, the state machine.
@@ -805,14 +897,18 @@ module FemtoRV32(
 
    localparam FETCH_INSTR_bit          = 0;
    localparam WAIT_INSTR_bit           = 1;
-   localparam EXECUTE_bit              = 2;
-   localparam WAIT_ALU_OR_MEM_bit      = 3;
-   localparam WAIT_ALU_OR_MEM_SKIP_bit = 4;
+   localparam DECOMPRESS_bit           = 2;
+   localparam DECOMPRESS_REGS_bit      = 3;   
+   localparam EXECUTE_bit              = 4;
+   localparam WAIT_ALU_OR_MEM_bit      = 5;
+   localparam WAIT_ALU_OR_MEM_SKIP_bit = 6;
 
-   localparam NB_STATES                = 5;
+   localparam NB_STATES                = 7;
 
    localparam FETCH_INSTR          = 1 << FETCH_INSTR_bit;
    localparam WAIT_INSTR           = 1 << WAIT_INSTR_bit;
+   localparam DECOMPRESS           = 1 << DECOMPRESS_bit;
+   localparam DECOMPRESS_REGS      = 1 << DECOMPRESS_REGS_bit;   
    localparam EXECUTE              = 1 << EXECUTE_bit;
    localparam WAIT_ALU_OR_MEM      = 1 << WAIT_ALU_OR_MEM_bit;
    localparam WAIT_ALU_OR_MEM_SKIP = 1 << WAIT_ALU_OR_MEM_SKIP_bit;
@@ -841,7 +937,7 @@ module FemtoRV32(
 
    wire jumpToPCplusImm = isJAL | (isBranch & predicate);
 
-   wire needToWait = isLoad | isStore | isDivide | isFPU;
+   wire needToWait = isLoad | isStore | (isALUreg & funcM) | isFPU;  
 
    wire [ADDR_WIDTH-1:0] PC_new = 
            isJALR           ? {aluPlus[ADDR_WIDTH-1:1],1'b0} :
@@ -873,10 +969,10 @@ module FemtoRV32(
 		 // Decode instruction
 		 // Note: fp_rs1 and fp_rs2 are accessed at the same
 		 // time (see "The FPU" section).
-		 rs1    <= registerFile[decompressed[19:15]];
-		 rs2    <= registerFile[decompressed[24:20]];
-		 instr      <= decompressed[31:2];
-		 long_instr <= &decomp_input[1:0];
+		 rs1    <= registerFile[raw_instr[19:15]];
+		 rs2    <= registerFile[raw_instr[24:20]];
+		 instr      <= raw_instr[31:2];
+		 long_instr <= &raw_instr[1:0];
 
 		 // Long opcode, unaligned, first part fetched, 
 		 // happens in non-linear code
@@ -885,11 +981,22 @@ module FemtoRV32(
                     state <= FETCH_INSTR;
 		 end else begin
                     fetch_second_half <= 0;
-                    state <= EXECUTE;
+                    state <= &raw_instr[1:0] ? EXECUTE : DECOMPRESS;
 		 end
               end
            end
 
+           state[DECOMPRESS_bit]: begin
+	      instr <= decompressed[31:2]; // NOTE: decompressor is a bottleneck
+	      state <= DECOMPRESS_REGS;
+	   end
+
+           state[DECOMPRESS_REGS_bit]: begin
+	      rs1   <= registerFile[instr[19:15]];
+	      rs2   <= registerFile[instr[24:20]];
+	      state <= EXECUTE;
+	   end
+	   
            state[EXECUTE_bit]: begin
               if (interrupt) begin
 		 PC     <= mtvec;
@@ -948,14 +1055,18 @@ endmodule
 // TODO: decompress RV32F instructions
 
 module decompressor(
-   input  wire [31:0] c,
+   input  wire [15:0] c,
    output reg  [31:0] d
 );
 
+   // Notes: * replaced illegal, unknown, x0, x1, x2 with
+   //   'localparam' instead of 'wire='
+   //        * could split decoding into multiple cycles
+   //   if decompressor is a bottleneck
+   
    // How to handle illegal and unknown opcodes
-
-   wire [31:0]  illegal = 32'h00000000;
-   wire [31:0]  unknown = 32'h00000000;
+   localparam illegal = 32'h0;
+   localparam unknown = 32'h0;
 
    // Register decoder
 
@@ -965,10 +1076,10 @@ module decompressor(
    wire [4:0] rwl  = c[ 6:2];  // Register wide low
    wire [4:0] rwh  = c[11:7];  // Register wide high
 
-   wire [4:0] x0 = 5'b00000;
-   wire [4:0] x1 = 5'b00001;
-   wire [4:0] x2 = 5'b00010;
-
+   localparam x0 = 5'b00000;
+   localparam x1 = 5'b00001;
+   localparam x2 = 5'b00010;   
+   
    // Immediate decoder
 
    wire  [4:0]    shiftImm = c[6:2];
@@ -990,7 +1101,7 @@ module decompressor(
    always @*
    casez (c[15:0])
                                                      // imm / funct7   +   rs2  rs1     fn3                   rd    opcode
-      16'b???___????????_???_11 : d =                                                                            c  ; // Long opcode, no need to decompress
+//    16'b???___????????_???_11 : d =                                                                            c  ; // Long opcode, no need to decompress
 
 /* verilator lint_off CASEOVERLAP */
      

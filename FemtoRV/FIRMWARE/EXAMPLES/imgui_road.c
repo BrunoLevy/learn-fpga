@@ -48,5 +48,6 @@ void FX(ImVec2 a, ImVec2 b, ImVec2 d, float t) {
 	 addQuad(tr, vec2(b.x,tr.y), vec2(b.x,br.y), br, 0xff007f00);
       }
    }
+   UART_putchar(4); // send <ctrl><D> to UART (exits simulation)
 }
 
