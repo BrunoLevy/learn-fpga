@@ -250,7 +250,7 @@ uint32_t check(
     if(nb_args >= 2) { printf("   RS2="); RS2.print(); printf("\n"); }
     if(nb_args >= 3) { printf("   RS3="); RS3.print(); printf("\n"); }
     if(int_result) {
-      printf("   Res=0x&x\n",result); 
+      printf("   Res=0x%x\n",result); 
       printf("   Chk=0x%x\n",chk); 
     } else {
       printf("   Res="); RESULT.print(); printf("\n");
@@ -623,8 +623,8 @@ uint32_t FRCP(uint32_t D_in) {
 
     // version 2 of iteration, using one FMA and one MUL per iteration
     // (faster, but probably not as accurate, to be checked)
-    uint32_t X1_ = FMUL(X0_, FNMSUB(D_prime_,X0_,CONST_2));
-    uint32_t X2_ = FMUL(X1_, FNMSUB(D_prime_,X1_,CONST_2));
+    uint32_t X1_ = FMUL(X0_, FNMSUB(X0_,D_prime_,CONST_2));
+    uint32_t X2_ = FMUL(X1_, FNMSUB(X1_,D_prime_,CONST_2));
     // uint32_t X3_ = FMUL(X2_, FNMSUB(D_prime_,X2_,CONST_2));
     // Note: does not pass compliance test yet, and two iters
     // may not suffice (but not the only reason)

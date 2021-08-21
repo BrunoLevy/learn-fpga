@@ -54,7 +54,7 @@
 //`define NRV_ARCH     "rv32imac"
 //`define NRV_ABI      "ilp32"
 
-`define NRV_OPTIMIZE "-O3"
+`define NRV_OPTIMIZE "-O0"
 `define NRV_INTERRUPTS
 
 // StackOverflow: Verilog-Synthesize high speed leading zero count
@@ -319,6 +319,9 @@ module FemtoRV32(
    reg [31:0] fp_rs2;
    reg [31:0] fp_rs3;
 
+   reg [31:0] fp_tmp1;
+   reg [31:0] fp_tmp2;
+   
    // For now, flush all denormals to zero
    wire        fp_rs1_sign = fp_rs1[31];
    wire [7:0]  fp_rs1_exp  = fp_rs1[30:23];
@@ -361,6 +364,8 @@ module FemtoRV32(
    wire signed [8:0]  fp_exp_sum   = fp_B_exp + fp_A_exp;
    wire signed [8:0]  fp_exp_diff  = fp_B_exp - fp_A_exp;
 
+   wire signed [8:0]  frcp_exp  = $signed(9'd126) + fp_A_exp - $signed({1'b0, fp_tmp2[30:23]});
+   
    // fraction adder
    wire signed [50:0] fp_frac_sum  = fp_B_frac + fp_A_frac;
    wire signed [50:0] fp_frac_diff = fp_B_frac - fp_A_frac;
@@ -397,20 +402,24 @@ module FemtoRV32(
    wire               A_EQ_B = fabsA_EQ_fabsB && (fp_A_sign == fp_B_sign);
 
 
-   /** FPU micro-instructions *****************************/
+   /** FPU micro-instructions ******************************************************************/
 
-   localparam FPMI_READY_bit       = 0, FPMI_READY = 1 << FPMI_READY_bit;
-   localparam FPMI_LOAD_AB_bit     = 1, FPMI_LOAD_AB = 1 << FPMI_LOAD_AB_bit;
-   localparam FPMI_LOAD_AB_MUL_bit = 2, FPMI_LOAD_AB_MUL = 1 << FPMI_LOAD_AB_MUL_bit;
-   localparam FPMI_NORM_bit        = 3, FPMI_NORM = 1 <<FPMI_NORM_bit;
-   localparam FPMI_ADD_SWAP_bit    = 4, FPMI_ADD_SWAP = 1 << FPMI_ADD_SWAP_bit;
-   localparam FPMI_ADD_SHIFT_bit   = 5, FPMI_ADD_SHIFT = 1 << FPMI_ADD_SHIFT_bit;
-   localparam FPMI_ADD_ADD_bit     = 6, FPMI_ADD_ADD = 1 << FPMI_ADD_ADD_bit;
-   localparam FPMI_CMP_bit         = 7, FPMI_CMP = 1 << FPMI_CMP_bit;
-   localparam FPMI_OUT_bit         = 8, FPMI_OUT = 1 << FPMI_OUT_bit;   
-   localparam FPMI_NB              = 9;
+   localparam FPMI_READY_bit         = 0,  FPMI_READY         = 1 << FPMI_READY_bit;
+   localparam FPMI_LOAD_AB_bit       = 1,  FPMI_LOAD_AB       = 1 << FPMI_LOAD_AB_bit;
+   localparam FPMI_LOAD_AB_MUL_bit   = 2,  FPMI_LOAD_AB_MUL   = 1 << FPMI_LOAD_AB_MUL_bit;
+   localparam FPMI_NORM_bit          = 3,  FPMI_NORM          = 1 << FPMI_NORM_bit;
+   localparam FPMI_ADD_SWAP_bit      = 4,  FPMI_ADD_SWAP      = 1 << FPMI_ADD_SWAP_bit;
+   localparam FPMI_ADD_SHIFT_bit     = 5,  FPMI_ADD_SHIFT     = 1 << FPMI_ADD_SHIFT_bit;
+   localparam FPMI_ADD_ADD_bit       = 6,  FPMI_ADD_ADD       = 1 << FPMI_ADD_ADD_bit;
+   localparam FPMI_CMP_bit           = 7,  FPMI_CMP           = 1 << FPMI_CMP_bit;
+   localparam FPMI_FRCP_PROLOG_bit   = 8,  FPMI_FRCP_PROLOG   = 1 << FPMI_FRCP_PROLOG_bit;
+   localparam FPMI_FRCP_ITER_bit     = 9,  FPMI_FRCP_ITER     = 1 << FPMI_FRCP_ITER_bit;   
+   localparam FPMI_CP_A_TO_FPRS1_bit = 10, FPMI_CP_A_TO_FPRS1 = 1 << FPMI_CP_A_TO_FPRS1_bit;
+   localparam FPMI_FRCP_EPILOG_bit   = 11, FPMI_FRCP_EPILOG   = 1 << FPMI_FRCP_EPILOG_bit;   
+   localparam FPMI_OUT_bit           = 12, FPMI_OUT           = 1 << FPMI_OUT_bit;
+   localparam FPMI_NB                = 13;
 
-   reg [4:0] 	       fpmi_PC;    // current micro-instruction pointer
+   reg [5:0] 	       fpmi_PC;    // current micro-instruction pointer
    reg [FPMI_NB-1:0]   fpmi_is; // 1-hot current micro-instruction
 
    initial fpmi_PC = 0;
@@ -447,6 +456,39 @@ module FemtoRV32(
 	16: fpmi_is = FPMI_ADD_ADD;
 	17: fpmi_is = FPMI_NORM;
 	18: fpmi_is = FPMI_OUT;
+
+	// FDIV
+	19: fpmi_is = FPMI_FRCP_PROLOG;   // STEP 1: A <- -D'*32/17 + 48/17
+	20: fpmi_is = FPMI_LOAD_AB_MUL;   // ---
+	21: fpmi_is = FPMI_ADD_SWAP;      //    |
+ 	22: fpmi_is = FPMI_ADD_SHIFT;     //  FMADD
+ 	23: fpmi_is = FPMI_ADD_SWAP;	  //    |
+	24: fpmi_is = FPMI_ADD_ADD;       //    |
+	25: fpmi_is = FPMI_NORM;          // ---
+	26: fpmi_is = FPMI_FRCP_ITER;     // STEP 2: A <- A * (-A*D + 2)
+	27: fpmi_is = FPMI_LOAD_AB_MUL;   // ---
+	28: fpmi_is = FPMI_ADD_SWAP;      //    |
+ 	29: fpmi_is = FPMI_ADD_SHIFT;     //  FMADD
+ 	30: fpmi_is = FPMI_ADD_SWAP;	  //    |
+	31: fpmi_is = FPMI_ADD_ADD;       //    |
+	32: fpmi_is = FPMI_NORM;          // ---
+	33: fpmi_is = FPMI_CP_A_TO_FPRS1; // ---
+	34: fpmi_is = FPMI_LOAD_AB_MUL;   //  FMUL
+	35: fpmi_is = FPMI_NORM;          // ---  
+	36: fpmi_is = FPMI_FRCP_ITER;     // STEP 3: A <- A * (-A*D + 2)
+	37: fpmi_is = FPMI_LOAD_AB_MUL;   // ---
+	38: fpmi_is = FPMI_ADD_SWAP;      //    |
+ 	39: fpmi_is = FPMI_ADD_SHIFT;     //  FMADD
+ 	40: fpmi_is = FPMI_ADD_SWAP;	  //    |
+	41: fpmi_is = FPMI_ADD_ADD;       //    |
+	42: fpmi_is = FPMI_NORM;          // ---
+	43: fpmi_is = FPMI_CP_A_TO_FPRS1; // ---
+	44: fpmi_is = FPMI_LOAD_AB_MUL;   //  FMUL
+	45: fpmi_is = FPMI_NORM;          // ---  
+	46: fpmi_is = FPMI_FRCP_EPILOG;   // STEP 4: A <- fprs1^(-1) * fprs2
+	47: fpmi_is = FPMI_LOAD_AB_MUL;   //  FMUL
+	48: fpmi_is = FPMI_NORM;          // ---
+	49: fpmi_is = FPMI_OUT;           // 
 	
 	default: fpmi_is = FPMI_READY;
       endcase
@@ -457,6 +499,7 @@ module FemtoRV32(
    localparam FPMPROG_ADD  = 3;
    localparam FPMPROG_MUL  = 9;
    localparam FPMPROG_MADD = 12;
+   localparam FPMPROG_DIV  = 19;   
    
    /*******************************************************/
 
@@ -487,6 +530,7 @@ module FemtoRV32(
 	   isFADD  | isFSUB                        : fpmi_PC <= FPMPROG_ADD;
 	   isFMUL                                  : fpmi_PC <= FPMPROG_MUL;
 	   isFMADD | isFMSUB | isFNMADD | isFNMSUB : fpmi_PC <= FPMPROG_MADD;
+	   isFDIV                                  : fpmi_PC <= FPMPROG_DIV;
 	 endcase // case (1'b1)
 	 
       end else if(state[WAIT_ALU_OR_MEM_bit] | state[WAIT_ALU_OR_MEM_SKIP_bit]) begin
@@ -581,6 +625,29 @@ module FemtoRV32(
 	      fpmi_PC <= 0;
 	   end
 
+	   fpmi_is[FPMI_FRCP_PROLOG_bit]: begin
+	      fp_tmp1 <= fp_rs1;
+	      fp_tmp2 <= fp_rs2;
+	      fp_rs1  <= {1'b1, 8'd126, fp_rs2_frac[22:0]}; // D'
+	      fp_rs2  <= 32'h3FF0F0F1; // 32/17
+	      fp_rs3  <= 32'h4034B4B5; // 48/17
+	   end
+	   
+	   fpmi_is[FPMI_FRCP_ITER_bit]: begin
+	      fp_rs1  <= {1'b1, 8'd126, fp_tmp2[22:0]}; // -D'
+	      fp_rs2  <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[22:0]}; // A
+	      fp_rs3  <= 32'h40000000; // 2.0
+	   end
+	      
+	   fpmi_is[FPMI_CP_A_TO_FPRS1_bit]: begin
+	      fp_rs1  <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[22:0]}; 
+	   end
+	
+	   fpmi_is[FPMI_FRCP_EPILOG_bit]: begin
+	      fp_rs1 <= {fp_tmp2[31], frcp_exp[7:0], fp_A_frac[22:0]};
+	      fp_rs2 <= fp_tmp1;
+	   end
+	   
 	   fpmi_is[FPMI_OUT_bit]: begin
 	      // TODO: wire fpuOut directly on A register and remove FP_OUT state
 	      fpuOut <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[22:0]};
@@ -651,7 +718,7 @@ module FemtoRV32(
 	     // isFADD   : fpuOut <= $c32("FADD(",fp_rs1,",",fp_rs2,")");
 	     // isFSUB   : fpuOut <= $c32("FSUB(",fp_rs1,",",fp_rs2,")");
 	   
-	     isFDIV   : fpuOut <= $c32("FDIV(",fp_rs1,",",fp_rs2,")");
+	     // isFDIV   : fpuOut <= $c32("FDIV(",fp_rs1,",",fp_rs2,")");
 	     isFSQRT  : fpuOut <= $c32("FSQRT(",fp_rs1,")");
 
 	   
