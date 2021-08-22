@@ -246,15 +246,15 @@ uint32_t check(
   IEEE754 CHECK(chk);      
   if(!(RESULT.is_zero() && CHECK.is_zero()) && result != chk) {
     printf("%s mismatch\n",func);
-    printf("   RS1="); RS1.print();    printf("\n");
-    if(nb_args >= 2) { printf("   RS2="); RS2.print(); printf("\n"); }
-    if(nb_args >= 3) { printf("   RS3="); RS3.print(); printf("\n"); }
+    printf("   RS1="); RS1.print(); printf("   (%f)\n",RS1.f);
+    if(nb_args >= 2) { printf("   RS2="); RS2.print(); printf("   (%f)\n",RS2.f); }
+    if(nb_args >= 3) { printf("   RS3="); RS3.print(); printf("   (%f)\n",RS3.f); }
     if(int_result) {
-      printf("   Res=0x%x\n",result); 
-      printf("   Chk=0x%x\n",chk); 
+      printf("   Res="); printb(result); printf("   (%d)\n",result);
+      printf("   Chk="); printb(chk);    printf("   (%d)\n",chk);
     } else {
-      printf("   Res="); RESULT.print(); printf("\n");
-      printf("   Chk="); CHECK.print();  printf("\n");
+      printf("   Res="); RESULT.print(); printf("   (%f)\n",RESULT.f);
+      printf("   Chk="); CHECK.print();  printf("   (%f)\n",CHECK.f);
     }
     return 0;
   }
@@ -862,6 +862,14 @@ uint32_t CHECK_FLE(uint32_t result, uint32_t x, uint32_t y) {
   return check("FLE", x, y, 0, result,(decodef(x)<=decodef(y)),2,true);        
 }
 
+uint32_t CHECK_FCVTWS(uint32_t result, uint32_t x) {
+  return check("FCVT.W.S", x, 0, 0, result, uint32_t(int32_t(decodef(x))),1,true);
+}
+
+uint32_t CHECK_FCVTWUS(uint32_t result, uint32_t x) {
+  return check("FCVT.WU.S", x, 0, 0, result, int32_t(decodef(x)),1,true);
+}
+
 uint32_t CHECK_FDIV(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 uint32_t CHECK_FSQRT(uint32_t result, uint32_t x) { return 1; }
 
@@ -871,8 +879,6 @@ uint32_t CHECK_FSGNJX(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 uint32_t CHECK_FMIN(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 uint32_t CHECK_FMAX(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 
-uint32_t CHECK_FCVTWS(uint32_t result, uint32_t x) { return 1; }
-uint32_t CHECK_FCVTWUS(uint32_t result, uint32_t x) { return 1; }
 
 
 uint32_t CHECK_FCLASS(uint32_t result, uint32_t x) { return 1; }
