@@ -17,27 +17,27 @@
 //  *  FMADD
 //  *  FMSUB
 //  *  FSGNJ
-// [TODO] wired FPU, tinyraytracer -O0
-//    FCVT.W.S
-//    FCVT.WU.S
+// [DONE] wired FPU, tinyraytracer -O0
+//  *  FCVT.W.S
+//  *  FCVT.WU.S
 //  *  FDIV
 //  *  FSGNJ
 //  *  FSGNJN
 //  *  FSGNJX
-// [TODO] wired FPU, tinyraytracer -O3
-//    FNMSUB
-//    FSQRT
+// [DONE] wired FPU, tinyraytracer -O3
+//  *  FNMSUB
+//  *  FSQRT
 // [TODO] wired FPU, full instr set
-//    FNMADD
+//  *  FNMADD
 //    FMIN
 //    FMAX
-//    FMV.X.W
-//    FEQ
-//    FLE
+//  *  FMV.X.W
+//  *  FEQ
+//  *  FLE
 //    FCLASS
 //    FCVT.S.W
 //    FCVT.S.WU
-//    FMV.W.X
+//  *  FMV.W.X
 // [TODO] add FPU CSR (and instret for perf stat)]
 // [TODO] FSW/FLW unaligned (does not seem to occur, but the norm requires it)
 //
@@ -562,7 +562,7 @@ module FemtoRV32(
       endcase
    end
    
-   // micro-program routines
+   // micro-programs
    localparam FPMPROG_CMP        = 1;
    localparam FPMPROG_ADD        = 3;
    localparam FPMPROG_MUL        = 9;
