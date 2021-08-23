@@ -237,7 +237,8 @@ uint32_t check(
      uint32_t result,
      uint32_t chk,
      int nb_args = 3,
-     bool int_result = false
+     bool int_result = false,
+     bool int_arg    = false
 ) {
   IEEE754 RS1(rs1);
   IEEE754 RS2(rs2);
@@ -246,7 +247,14 @@ uint32_t check(
   IEEE754 CHECK(chk);      
   if(!(RESULT.is_zero() && CHECK.is_zero()) && result != chk) {
     printf("%s mismatch\n",func);
-    printf("   RS1="); RS1.print(); printf("   (%f)\n",RS1.f);
+
+    if(int_arg) {
+      printf("   RS1="); printb(rs1); printf("   (%d)\n",rs1);
+    } else {
+      printf("   RS1="); RS1.print(); printf("   (%f)\n",RS1.f);      
+    }
+
+    
     if(nb_args >= 2) { printf("   RS2="); RS2.print(); printf("   (%f)\n",RS2.f); }
     if(nb_args >= 3) { printf("   RS3="); RS3.print(); printf("   (%f)\n",RS3.f); }
     if(int_result) {
@@ -870,6 +878,14 @@ uint32_t CHECK_FCVTWUS(uint32_t result, uint32_t x) {
   return check("FCVT.WU.S", x, 0, 0, result, int32_t(decodef(x)),1,true);
 }
 
+uint32_t CHECK_FCVTSW(uint32_t result, uint32_t x) {
+  return check("FCVT.S.W", x, 0, 0, result, encodef(float(int32_t(x))),1,false,true);  
+}
+
+uint32_t CHECK_FCVTSWU(uint32_t result, uint32_t x) {
+  return check("FCVT.S.W", x, 0, 0, result, encodef(float(x)),1,false,true);  
+}
+
 uint32_t CHECK_FDIV(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 uint32_t CHECK_FSQRT(uint32_t result, uint32_t x) { return 1; }
 
@@ -878,9 +894,4 @@ uint32_t CHECK_FSGNJN(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 uint32_t CHECK_FSGNJX(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 uint32_t CHECK_FMIN(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 uint32_t CHECK_FMAX(uint32_t result, uint32_t x, uint32_t y) { return 1; }
-
-
-
 uint32_t CHECK_FCLASS(uint32_t result, uint32_t x) { return 1; }
-uint32_t CHECK_FCVTSW(uint32_t result, uint32_t x) { return 1; }
-uint32_t CHECK_FCVTSWU(uint32_t result, uint32_t x) { return 1; }

@@ -369,8 +369,8 @@ module FemtoRV32(
    wire signed [8:0]  fcvt_ftoi_shift     =  fp_rs1_exp - $signed(9'd127 + 9'd23 + 9'd6); // TODO: understand 9'd6
    wire signed [8:0]  neg_fcvt_ftoi_shift = -fcvt_ftoi_shift;
    wire [31:0] 	      A_fcvt_ftoi_shifted =  fcvt_ftoi_shift[8] ? 
-                                             (fp_A_frac[49:18] >> neg_fcvt_ftoi_shift[4:0]) : 
-                                             (fp_A_frac[49:18] << fcvt_ftoi_shift[4:0]) ;
+                                               (|neg_fcvt_ftoi_shift[8:5] ? 0 : (fp_A_frac[49:18] >> neg_fcvt_ftoi_shift[4:0])) : 
+                                               (fp_A_frac[49:18] << fcvt_ftoi_shift[4:0]) ; // TODO: overflow
    
 
    wire [31:0] fp_rsqrt_doom_magic = 32'h5f3759df - {1'b0,fp_rs1[30:1]};
@@ -604,8 +604,8 @@ module FemtoRV32(
 	   isFSQRT                                 : fpmi_PC <= FPMPROG_SQRT;
 	   
 	   isFCVTWS | isFCVTWUS                    : fpmi_PC <= FPMPROG_FP_TO_INT;
-//	   isFCVTSW | isFCVTSWU                    : fpmi_PC <= FPMPROG_INT_TO_FP; // TODO: implement micro-instr
-	 endcase // case (1'b1)
+	   isFCVTSW | isFCVTSWU                    : fpmi_PC <= FPMPROG_INT_TO_FP; 
+	 endcase 
 	 
       end else if(state[WAIT_ALU_OR_MEM_bit] | state[WAIT_ALU_OR_MEM_SKIP_bit]) begin
 
@@ -735,6 +735,20 @@ module FemtoRV32(
 	   fpmi_is[FPMI_FP_TO_INT_bit]: begin
 	      // TODO: check overflow
 	      fpuIntOut <= isFCVTWUS | !fp_A_sign ? A_fcvt_ftoi_shifted : -$signed(A_fcvt_ftoi_shifted);
+
+	      // $display("A_exp=%d shift=%d neg_shift=%d",fp_A_exp, fcvt_ftoi_shift, neg_fcvt_ftoi_shift);
+	      
+	      /*
+	      fpuIntOut <= isFCVTWUS ? (fp_A_sign ? 32'd0 : A_fcvt_ftoi_shifted) :
+			   fp_A_sign ? -$signed(A_fcvt_ftoi_shifted) : A_fcvt_ftoi_shifted ;
+	      */ 
+	   end
+
+	   fpmi_is[FPMI_INT_TO_FP_bit]: begin
+	      // TODO: rounding
+	      fp_A_frac <= isFCVTSWU | !rs1[31] ? {rs1, 18'd0} : {-$signed(rs1), 18'd0}; 
+	      fp_A_sign <= isFCVTSW & rs1[31];
+	      fp_A_exp  <= 132; // TODO: understand 132
 	   end
 	   
 	   fpmi_is[FPMI_OUT_bit]: begin
@@ -832,8 +846,8 @@ module FemtoRV32(
 	     // isFCVTWS : fpuIntOut <= $c32("FCVTWS(",fp_rs1,")");
 	     // isFCVTWUS: fpuIntOut <= $c32("FCVTWUS(",fp_rs1,")");
 	   
-	     isFCVTSW : fpuOut <= $c32("FCVTSW(",rs1,")");
-	     isFCVTSWU: fpuOut <= $c32("FCVTSWU(",rs1,")");
+	     // isFCVTSW : fpuOut <= $c32("FCVTSW(",rs1,")");
+	     // isFCVTSWU: fpuOut <= $c32("FCVTSWU(",rs1,")");
 	     
              // isFMVXW:   fpuIntOut <= fp_rs1;
 	     // isFMVWX:   fpuOut <= rs1;	   
@@ -861,7 +875,11 @@ module FemtoRV32(
 	   isFLE     : dummy <= $c32("CHECK_FLE(",fpuIntOut,",",fp_rs1,",",fp_rs2,")");
 
 	   isFCVTWS  : dummy <= $c32("CHECK_FCVTWS(",fpuIntOut,",",fp_rs1,")");
-	   isFCVTWUS : dummy <= $c32("CHECK_FCVTWUS(",fpuIntOut,",",fp_rs1,")");	   
+	   isFCVTWUS : dummy <= $c32("CHECK_FCVTWUS(",fpuIntOut,",",fp_rs1,")");
+
+	   isFCVTSW  : dummy <= $c32("CHECK_FCVTSW(",fpuOut,",",rs1,")");
+	   isFCVTSWU : dummy <= $c32("CHECK_FCVTSWU(",fpuOut,",",rs1,")");	   
+	   
 	 endcase
       end
    end 
@@ -1171,6 +1189,7 @@ module FemtoRV32(
 	   end
 	   
            state[EXECUTE_bit]: begin
+	      // $display("PC=%x instr=%b",PC,instr);
               if (interrupt) begin
 		 PC     <= mtvec;
 		 mepc   <= PC_new;

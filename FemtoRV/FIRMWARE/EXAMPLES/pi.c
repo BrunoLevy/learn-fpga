@@ -21,8 +21,7 @@
     #include <math.h>
     #include <femtorv32.h>
     #include <femtoGL.h>
-
-int __errno;
+    #include "errno_fix.h"
 
 /* uncomment the following line to use 'long long' integers */
 #define HAS_LONG_LONG 

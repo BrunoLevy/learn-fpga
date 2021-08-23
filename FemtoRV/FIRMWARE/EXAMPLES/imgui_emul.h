@@ -8,9 +8,8 @@
 
 #include <femtoGL.h>
 #include <math.h>
+#include "errno_fix.h"
 
-
-int __errno; // Missing when linking (I don't know why ...)
 
 typedef int bool;
 

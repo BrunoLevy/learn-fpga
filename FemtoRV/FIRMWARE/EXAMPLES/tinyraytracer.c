@@ -4,10 +4,9 @@
 #include <math.h>
 #include <fenv.h>
 #include <femtoGL.h>
+#include "errno_fix.h"
 
 /*******************************************************************/
-
-int __errno; // needed when compiling to hex, not needed otherwise.
 
 typedef int BOOL;
 
@@ -144,25 +143,6 @@ BOOL scene_intersect(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, vec3*
   return min(spheres_dist, checkerboard_dist)<1000;
 }
 
-/* It crashes when I call powf(), because it probably underflows, and I do not know how to disable floating point exceptions. */
-float my_pow(float x, float y) {
-   float result = x;
-   int Y = (int)y;
-   while(Y > 2) {
-      Y /= 2; result *= result;
-      if(result < 1e-100 || result > 1e100) {
-	 return result;
-      }
-   }
-   while(Y > 1) {
-      Y--; result *= x;
-      if(result < 1e-100 || result > 1e100) {
-	 return result;
-      }
-   }
-   return result;
-}
-
 vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* lights, int nb_lights, int depth /* =0 */) {
   vec3 point,N;
   Material material = make_Material_default();
@@ -197,7 +177,7 @@ vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* light
     float abc = max(0.f, vec3_dot(vec3_neg(reflect(vec3_neg(light_dir), N)),dir));
     float def = material.specular_exponent;
     if(abc > 0.0f && def > 0.0f) {
-      specular_light_intensity += my_pow(abc,def)*lights[i].intensity;
+      specular_light_intensity += powf(abc,def)*lights[i].intensity;
     }
   }
   vec3 result = vec3_scale(diffuse_light_intensity * material.albedo.x, material.diffuse_color);
@@ -293,11 +273,11 @@ void init_scene() {
     lights[2] = make_Light(make_vec3( 30, 20,  30), 1.7);
 }
 
-
 int main() {
     init_scene();
     GL_init(GL_MODE_CHOOSE);
     GL_tty_init(FGA_mode);
+    
     if(FGA_mode == FGA_MODE_320x200x8bpp ) {
        for(int i=0; i<256; ++i) {
 	  FGA_setpalette(i,i,i,i);
@@ -309,8 +289,6 @@ int main() {
     }
     GL_clear();
     render(spheres, nb_spheres, lights, nb_lights);
-
     UART_putchar(4); // send <ctrl><D> to UART (exits simulation)
-    
     return 0;
 }
