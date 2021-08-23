@@ -384,7 +384,9 @@ module FemtoRV32(
    // wire [49:0] 	      fp_frac_rshift = fp_A_frac >> fp_frac_shamt;
    // wire [49:0]        fp_frac_lshift = fp_A_frac << fp_frac_shamt;
 
-
+   //wire 	      expA_EQ_expB = (fp_exp_diff == 0);
+   //wire 	      fracA_EQ_fracB = (fp_frac_diff == 0);
+   
    wire 	      fabsA_EQ_fabsB = (fp_exp_diff == 0 && fp_frac_diff == 0);
    
    wire 	      fabsA_LT_fabsB = (!fp_exp_diff[8] && fp_exp_diff != 0) || 
@@ -608,20 +610,6 @@ module FemtoRV32(
 	 endcase 
 	 
       end else if(state[WAIT_ALU_OR_MEM_bit] | state[WAIT_ALU_OR_MEM_SKIP_bit]) begin
-
-	 /*
-	 case(1'b1)
-	   // fpmi_is[FPMI_READY_bit]: $display("FPMI_RDY");
-	   fpmi_is[FPMI_LOAD_AB_bit]: $display("FPMI_LOAD_AB");
-	   fpmi_is[FPMI_LOAD_AB_MUL_bit]: $display("FPMI_LOAD_AB_MUL");
-	   fpmi_is[FPMI_NORM_bit]: $display("FPMI_NORM");
-	   fpmi_is[FPMI_ADD_SWAP_bit]: $display("FPMI_ADD_SWAP");
-	   fpmi_is[FPMI_ADD_SHIFT_bit]: $display("FPMI_ADD_SHIFT");
-	   fpmi_is[FPMI_ADD_ADD_bit]: $display("FPMI_ADD_ADD");
-	   fpmi_is[FPMI_CMP_bit]: $display("FPMI_CMP");
-	   fpmi_is[FPMI_OUT_bit]: $display("FPMI_OUT");
-	 endcase
-         */
 	 
 	 fpmi_PC <= fpmi_PC+1;
 
@@ -685,7 +673,7 @@ module FemtoRV32(
 
 	   fpmi_is[FPMI_ADD_ADD_bit]: begin
 	      if(fp_B_frac != 0) begin	      
-		 fp_A_frac <= (fp_A_sign ^ fp_B_sign) ? fp_B_frac - fp_A_frac : fp_B_frac + fp_A_frac;
+		 fp_A_frac <= (fp_A_sign ^ fp_B_sign) ? fp_frac_diff[49:0] : fp_frac_sum[49:0] ;
 		 fp_A_sign <= fp_B_sign;
 	      end
 	   end
@@ -735,13 +723,6 @@ module FemtoRV32(
 	   fpmi_is[FPMI_FP_TO_INT_bit]: begin
 	      // TODO: check overflow
 	      fpuIntOut <= isFCVTWUS | !fp_A_sign ? A_fcvt_ftoi_shifted : -$signed(A_fcvt_ftoi_shifted);
-
-	      // $display("A_exp=%d shift=%d neg_shift=%d",fp_A_exp, fcvt_ftoi_shift, neg_fcvt_ftoi_shift);
-	      
-	      /*
-	      fpuIntOut <= isFCVTWUS ? (fp_A_sign ? 32'd0 : A_fcvt_ftoi_shifted) :
-			   fp_A_sign ? -$signed(A_fcvt_ftoi_shifted) : A_fcvt_ftoi_shifted ;
-	      */ 
 	   end
 
 	   fpmi_is[FPMI_INT_TO_FP_bit]: begin

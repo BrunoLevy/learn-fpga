@@ -150,7 +150,7 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
     if((gl_culling_mode == GL_BACK_FACE) && (clockwise > 0)) {
 	return;
     }
-    
+   
     if((minx < 0) || (miny < 0) || (maxx >= GL_width) || (maxy >= GL_height)) {
 	nb_pts = GL_clip(nb_pts, &points, 0, 0, GL_width-1, GL_height-1);
 	miny =  256;
@@ -162,7 +162,7 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	    maxy = MAX(maxy,y1);
 	}
     }
-    
+
     /* Determine x_left and x_right for each scaline */
     for(int i1=0; i1<nb_pts; ++i1) {
 	int i2=(i1==nb_pts-1) ? 0 : i1+1;
@@ -197,15 +197,15 @@ void GL_fill_poly(int nb_pts, int* points, uint16_t color) {
 	}
 
 	if(y1 == y2) {
-	   x_left[y1]  = MIN(x1,x2);
-	   x_right[y1] = MAX(x1,x2);
-	   continue;
+	  x_left[y1]  = MIN(x1,x2);
+	  x_right[y1] = MAX(x1,x2);
+	  continue;
 	}
 
 	ex = (dx << 1) - dy;
 
 	for(int u=0; u <= dy; ++u) {
-	    x_buffer[y] = x;
+    	    if(y > 0 && y < 256) x_buffer[y] = x; // HERE
 	    y += sy;
 	    while(ex >= 0) {
 		x += sx;
