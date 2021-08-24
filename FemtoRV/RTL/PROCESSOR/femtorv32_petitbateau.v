@@ -108,18 +108,6 @@ module FemtoRV32(
 		x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
    endfunction
 
-   function [49:0] flip50;
-      input [49:0] x;
-      flip50 = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7], 
-		x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15], 
-		x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
-		x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31],
-		x[32], x[33], x[34], x[35], x[36], x[37], x[38], x[39], 
-                x[40], x[41], x[42], x[43], x[44], x[45], x[46], x[47], 
-                x[48], x[49]		
-               };
-   endfunction
-   
    parameter RESET_ADDR       = 32'h00000000;
    parameter ADDR_WIDTH       = 24;
 
@@ -357,18 +345,16 @@ module FemtoRV32(
    reg signed [49:0] fp_B_frac;
 
    // Count leading zeroes in A
-   // Note: CLZ only work with power of two width
-   // (hence 14'b0).
+   // Note1: CLZ only work with power of two width (hence 14'b0).
+   // Note2: first bit set = 63 - CLZ (of course !)
    wire [5:0] 	     fp_A_clz;
    CLZ clz({14'b0,fp_A_frac}, fp_A_clz);
    
-   // Index of first bit set in A, starting from MSB of A
-   wire [5:0] 	     fp_A_first_bit_set = 63-fp_A_clz;
+   // Exponent of A once normalized = A_exp + first_bit_set - 47
+   //                               = A_exp + 63 - clz - 47 = A_exp + 16 - clz
+   wire signed [8:0] fp_A_exp_norm = fp_A_exp + 16 - {3'b000,fp_A_clz};
    
-   // Exponent of A once normalized.
-   wire signed [8:0] fp_A_exp_norm = fp_A_exp + {3'b000,fp_A_first_bit_set} - 47;
-   
-   // exponent adder
+   // Exponent adder
    wire signed [8:0]  fp_exp_sum   = fp_B_exp + fp_A_exp;
    wire signed [8:0]  fp_exp_diff  = fp_B_exp - fp_A_exp;
 
@@ -641,21 +627,22 @@ module FemtoRV32(
 		 fp_A_frac <= 0;
 		 fp_A_exp <= 0;
 	      end else begin
-		 
-		 /*
-		 if(fp_A_first_bit_set >= 23) begin
-		    fp_A_frac <= fp_A_frac >> (fp_A_first_bit_set - 23);
-		 end else begin
-		    fp_A_frac <= fp_A_frac << (23-fp_A_first_bit_set);
+		 // Note: first_bit_set = 63 - fp_A_clz
+		 //   left shift amount to normalize = 47 - first_bit_set
+		 //                                  = 47 - (63 - fp_A_clz)
+		 //                                  = fp_A_clz - 16
+`ifdef BENCH
+		 // Sanity check, should not bark
+		 if(63 - fp_A_clz > 48) begin
+                    $display("NORM: first bit set = %d\n",63-fp_A_clz);
 		 end
-		 */
-		 
-		 if(fp_A_first_bit_set >= 47) begin
-		    fp_A_frac <= fp_A_frac >> (fp_A_first_bit_set-47);
+`endif		 
+		 if(fp_A_frac[48]) begin
+		    fp_A_frac <= fp_A_frac >> 1;
 		 end else begin
-		    fp_A_frac <= fp_A_frac << (47-fp_A_first_bit_set);
+		    fp_A_frac <= fp_A_frac << (fp_A_clz - 16); 
 		 end
-		 
+		  
 		 fp_A_exp  <= fp_A_exp_norm;
 	      end
 	   end
@@ -676,7 +663,7 @@ module FemtoRV32(
 		 if(fp_exp_diff > 47) begin
 		    fp_A_frac <= 0;
 		 end else begin
-		    fp_A_frac <= fp_A_frac >> fp_exp_diff; 
+		    fp_A_frac <= fp_A_frac >> fp_exp_diff[5:0]; 
 		 end
 		 fp_A_exp <= fp_B_exp;
 	      end
