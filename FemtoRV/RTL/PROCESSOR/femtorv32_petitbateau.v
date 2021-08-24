@@ -35,8 +35,8 @@
 //  *  FEQ
 //  *  FLE
 //    FCLASS
-//    FCVT.S.W
-//    FCVT.S.WU
+//  *  FCVT.S.W
+//  *  FCVT.S.WU
 //  *  FMV.W.X
 // [TODO] add FPU CSR (and instret for perf stat)]
 // [TODO] FSW/FLW unaligned (does not seem to occur, but the norm requires it)
@@ -630,7 +630,7 @@ module FemtoRV32(
 	   fpmi_is[FPMI_LOAD_AB_MUL_bit]: begin
 	      fp_A_sign <= fp_rs1_sign ^ fp_rs2_sign ^ (isFNMSUB | isFNMADD);
 	      fp_A_frac <= {26'b0,fp_rs1_frac} * {26'b0,fp_rs2_frac};
-	      fp_A_exp  <= fp_rs1_exp + fp_rs2_exp - 126; // TODO: why 126 rather than 127 ? // TODO: check underflow // TODO: why +1 ?
+	      fp_A_exp  <= fp_rs1_exp + fp_rs2_exp - 126; // TODO: why 126 rather than 127 ? // TODO: check underflow 
 	      fp_B_sign <= fp_rs3_sign ^ (isFMSUB | isFNMADD);
 	      fp_B_frac <= {2'b0, fp_rs3_frac, 24'd0};
 	      fp_B_exp  <= {1'b0, fp_rs3_exp}; 
@@ -865,7 +865,10 @@ module FemtoRV32(
 	   isFMUL    : dummy <= $c32("CHECK_FMUL(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");
 	   isFADD    : dummy <= $c32("CHECK_FADD(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");
 	   isFSUB    : dummy <= $c32("CHECK_FSUB(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");
-	   // isFDIV    : dummy <= $c32("CHECK_FDIV(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");	   
+	   
+	   // my FFIV and FSQRT are not IEEE754 compliant ! (check commented-out for now)
+	   // isFDIV    : dummy <= $c32("CHECK_FDIV(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");
+	   // isFSQRT   : dummy <= $c32("CHECK_FSQRT(",fpuOut,",",fp_rs1_bkp,")");	   
 
 	   isFMADD   : dummy <= $c32("CHECK_FMADD(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,",",fp_rs3_bkp,")");
 	   isFMSUB   : dummy <= $c32("CHECK_FMSUB(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,",",fp_rs3_bkp,")");
