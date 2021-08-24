@@ -366,16 +366,15 @@ module FemtoRV32(
    wire [5:0] 	     fp_A_first_bit_set = 63-fp_A_clz;
    
    // Exponent of A once normalized.
-// HERE wire signed [8:0] fp_A_exp_norm = fp_A_exp + {3'b000,fp_A_first_bit_set} - 23;
    wire signed [8:0] fp_A_exp_norm = fp_A_exp + {3'b000,fp_A_first_bit_set} - 47;
    
    // exponent adder
    wire signed [8:0]  fp_exp_sum   = fp_B_exp + fp_A_exp;
    wire signed [8:0]  fp_exp_diff  = fp_B_exp - fp_A_exp;
 
-   wire signed [8:0]  frcp_exp  = $signed(9'd126) + fp_A_exp - $signed({1'b0, fp_tmp2[30:23]}); // Why 126 and not 127 ?, HERE ?
+   wire signed [8:0]  frcp_exp  = $signed(9'd126) + fp_A_exp - $signed({1'b0, fp_tmp2[30:23]}); // TODO: why 126 and not 127 ?
  
-   wire signed [8:0]  fcvt_ftoi_shift     =  fp_rs1_exp - $signed(9'd127 + 9'd23 + 9'd6); // TODO: understand 9'd6 // HERE ?
+   wire signed [8:0]  fcvt_ftoi_shift     =  fp_rs1_exp - $signed(9'd127 + 9'd23 + 9'd6); // TODO: understand 9'd6 
    wire signed [8:0]  neg_fcvt_ftoi_shift = -fcvt_ftoi_shift;
    wire [31:0] 	      A_fcvt_ftoi_shifted =  fcvt_ftoi_shift[8] ? 
                                                (|neg_fcvt_ftoi_shift[8:5] ? 0 : (fp_A_frac[49:18] >> neg_fcvt_ftoi_shift[4:0])) : 
@@ -622,19 +621,19 @@ module FemtoRV32(
 	   fpmi_is[FPMI_LOAD_AB_bit]: begin
 	      fp_A_sign <= fp_rs1_sign;
 	      fp_A_frac <= {2'b0, fp_rs1_frac, 24'd0};
-	      fp_A_exp  <= {1'b0, fp_rs1_exp}; // HERE - 24;
+	      fp_A_exp  <= {1'b0, fp_rs1_exp}; 
 	      fp_B_sign <= fp_rs2_sign ^ isFSUB;
 	      fp_B_frac <= {2'b0, fp_rs2_frac, 24'd0};
-	      fp_B_exp  <= {1'b0, fp_rs2_exp}; // HERE - 24;
+	      fp_B_exp  <= {1'b0, fp_rs2_exp}; 
 	   end
 	   
 	   fpmi_is[FPMI_LOAD_AB_MUL_bit]: begin
 	      fp_A_sign <= fp_rs1_sign ^ fp_rs2_sign ^ (isFNMSUB | isFNMADD);
 	      fp_A_frac <= {26'b0,fp_rs1_frac} * {26'b0,fp_rs2_frac};
-	      fp_A_exp  <= fp_rs1_exp + fp_rs2_exp - 127 + 1; // HERE: (added + 1) - 23; // TODO: check underflow // TODO: why +1 ?
+	      fp_A_exp  <= fp_rs1_exp + fp_rs2_exp - 126; // TODO: why 126 rather than 127 ? // TODO: check underflow // TODO: why +1 ?
 	      fp_B_sign <= fp_rs3_sign ^ (isFMSUB | isFNMADD);
 	      fp_B_frac <= {2'b0, fp_rs3_frac, 24'd0};
-	      fp_B_exp  <= {1'b0, fp_rs3_exp}; // HERE - 24;
+	      fp_B_exp  <= {1'b0, fp_rs3_exp}; 
 	   end
 	   
 	   fpmi_is[FPMI_NORM_bit]: begin
@@ -699,11 +698,11 @@ module FemtoRV32(
 	      fpmi_PC <= 0;
 	   end
 
-	   fpmi_is[FPMI_MV_FPRS1_A_bit]     : fp_rs1 <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[46:24]}; // HERE (previously 22:0)
+	   fpmi_is[FPMI_MV_FPRS1_A_bit]     : fp_rs1 <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[46:24]}; 
 	   fpmi_is[FPMI_MV_FPRS2_TMP1_bit]:   fp_rs2 <= fp_tmp1;
 	   fpmi_is[FPMI_MV_FPRS2_MHTMP1_bit]: fp_rs2 <= {1'b1, fp_tmp1[30:23]-8'd1, fp_tmp1[22:0]}; // fp_rs2 <= -fp_tmp1 / 2.0
 	   fpmi_is[FPMI_MV_FPRS2_TMP2_bit]  : fp_rs2 <= fp_tmp2;
-	   fpmi_is[FPMI_MV_TMP2_A_bit]      : fp_tmp2 <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[46:24]}; // HERE (previously 22:0)
+	   fpmi_is[FPMI_MV_TMP2_A_bit]      : fp_tmp2 <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[46:24]}; 
 	   
 	   fpmi_is[FPMI_FRCP_PROLOG_bit]: begin
 	      fp_tmp1 <= fp_rs1;
@@ -715,13 +714,11 @@ module FemtoRV32(
 	   
 	   fpmi_is[FPMI_FRCP_ITER_bit]: begin
 	      fp_rs1  <= {1'b1, 8'd126, fp_tmp2[22:0]}; // -D'
-	      // HERE fp_rs2  <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[22:0]}; // A
 	      fp_rs2  <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[46:24]}; // A
 	      fp_rs3  <= 32'h40000000; // 2.0
 	   end
 	      
 	   fpmi_is[FPMI_FRCP_EPILOG_bit]: begin
-	      // HERE fp_rs1 <= {fp_tmp2[31], frcp_exp[7:0], fp_A_frac[22:0]};
 	      fp_rs1 <= {fp_tmp2[31], frcp_exp[7:0], fp_A_frac[46:24]};
 	      fp_rs2 <= fp_tmp1;
 	   end
@@ -743,13 +740,11 @@ module FemtoRV32(
 	      // TODO: rounding
 	      fp_A_frac <= isFCVTSWU | !rs1[31] ? {rs1, 18'd0} : {-$signed(rs1), 18'd0}; 
 	      fp_A_sign <= isFCVTSW & rs1[31];
-	      fp_A_exp  <= 156; // HERE 132; // TODO: understand 132
+	      fp_A_exp  <= 156; // TODO: understand, why 156 ?
 	   end
 	   
 	   fpmi_is[FPMI_OUT_bit]: begin
 	      // TODO: wire fpuOut directly on A register and remove FP_OUT state
-	      // TODO: for simulation / check, restore rs1 and rs2 for FDIV
-	      // HERE fpuOut <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[22:0]};
 	      fpuOut <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[46:24]};
 	      fpmi_PC <= 0;
 	   end
