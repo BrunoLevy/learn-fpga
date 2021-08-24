@@ -182,8 +182,5 @@ int main() {
     printf("pi = 3.");
     for(int n=1; ;n+=9) {
        printf("%d",digits(n));
-       if(n > 30) {
-	  UART_putchar(4); // send <ctrl><D> to UART (exits simulation)
-       }
     }
 }

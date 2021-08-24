@@ -886,8 +886,13 @@ uint32_t CHECK_FCVTSWU(uint32_t result, uint32_t x) {
   return check("FCVT.S.W", x, 0, 0, result, encodef(float(x)),1,false,true);  
 }
 
-uint32_t CHECK_FDIV(uint32_t result, uint32_t x, uint32_t y) { return 1; }
-uint32_t CHECK_FSQRT(uint32_t result, uint32_t x) { return 1; }
+uint32_t CHECK_FDIV(uint32_t result, uint32_t x, uint32_t y) {
+  printf("FDIV: %f/%f res=%f chk=%f\n", decodef(x), decodef(y), decodef(result), decodef(x)/decodef(y));
+  return check("FDIV", x, y, 0, result, encodef(decodef(x) / decodef(y)),2);  
+}
+
+uint32_t CHECK_FSQRT(uint32_t result, uint32_t x) { return 1;
+}
 
 uint32_t CHECK_FSGNJ(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 uint32_t CHECK_FSGNJN(uint32_t result, uint32_t x, uint32_t y) { return 1; }

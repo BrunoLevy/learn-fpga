@@ -18,11 +18,8 @@
 #define ymin -2.0
 #define xmax  2.0
 
-//#define dx (xmax-xmin)/(float)H
-//#define dy (ymax-ymin)/(float)H
-
-//#define dx 0.03125f
-//#define dy 0.03125f
+// #define dx 0.03125f
+// #define dy 0.03125f
 
 void mandel() {
    
