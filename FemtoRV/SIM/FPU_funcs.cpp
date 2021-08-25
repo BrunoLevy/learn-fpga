@@ -6,7 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
-
+#include <cstring>
 /*********************************************/
 
 #define FPU_LOG
