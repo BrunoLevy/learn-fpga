@@ -1,55 +1,21 @@
 /******************************************************************************/
 // FemtoRV32, a collection of minimalistic RISC-V RV32 cores.
 //
-// This version: PetitBateau (make it float), under development (RV32F)
-
-// [DONE] Preparation: compile and inspect RV32F instructions used in asm
-// [DONE] simulated FPU + FPU instruction decoder tested in Verilator 
-//             with mandel_float and tinyraytracer
+// This version: PetitBateau (make it float), RV32IMFC
+// Rounding works as follows:
+// - all subnormals are flushed to zero
+// - FADD, FSUB, FMUL, FMADD, FMSUB, FNMADD, FNMSUB round to zero
+// - FDIV and FSQRT do not have correct rounding
 //
-// [DONE] wired FPU, mandel_float -O0
-//  *  FADD
-//  *  FLT
-//  *  FMUL
-//  *  FSUB
-//   (FCVT.S.WU and FSGNJ if dx/dy given by expression instead of by value) 
-// [DONE] wired FPU, mandel_float -O3
-//  *  FMADD
-//  *  FMSUB
-//  *  FSGNJ
-// [DONE] wired FPU, tinyraytracer -O0
-//  *  FCVT.W.S
-//  *  FCVT.WU.S
-//  *  FDIV
-//  *  FSGNJ
-//  *  FSGNJN
-//  *  FSGNJX
-// [DONE] wired FPU, tinyraytracer -O3
-//  *  FNMSUB
-//  *  FSQRT
-// [TODO] wired FPU, full instr set
-//  *  FNMADD
-//    FMIN
-//    FMAX
-//  *  FMV.X.W
-//  *  FEQ
-//  *  FLE
-//    FCLASS
-//  *  FCVT.S.W
-//  *  FCVT.S.WU
-//  *  FMV.W.X
 // [TODO] add FPU CSR (and instret for perf stat)]
 // [TODO] FSW/FLW unaligned (does not seem to occur, but the norm requires it)
 //
-// [DONE] fast leading zero count:
-// https://electronics.stackexchange.com/questions/196914/verilog-synthesize-high-speed-leading-zero-count
-// (thanks @NickTernovoy)
-
+// Bruno Levy, Matthias Koch, 2020-2021
 /******************************************************************************/
 
 // Firmware generation flags for this processor
-//`define NRV_ARCH     "rv32imafc" // C supported, but decoding compressed
-                                   // instructions takes two additional cycles
+//`define NRV_ARCH     "rv32imafc" // RV32C supported, but compressed 
+                                   // instrs take one additional cycle.
 `define NRV_ARCH     "rv32imaf"
 `define NRV_ABI      "ilp32f"
 
@@ -64,7 +30,7 @@
 // in the fp_A_frac register. It is easier to count the number of leading 
 // zeroes (CLZ for Count Leading Zeroes).
 // I'm using the (very elegant I think) algorithm and its implementation 
-// indicated here:
+// indicated here (thanks @NickTernovoy and @LukeWren)
 // https://electronics.stackexchange.com/questions/196914/verilog-synthesize-high-speed-leading-zero-count
 // (did you know that recursion is possible in GENERATE blocks ? 
 // Verilog is mode like  modern C++ than I thought !!)
@@ -438,6 +404,11 @@ module FemtoRV32(
                       fp_rs1_exp + fp_rs2_exp - 126 - {7'b0, !fp_prod_frac[47]};
    
    wire fp_prod_Z = (fp_prod_exp_norm <= 0) || !(|fp_prod_frac[47:46]);
+
+   // Classification
+   wire fp_rs1_exp_Z   =   (fp_rs1_exp == 0);
+   wire fp_rs1_exp_255 = (fp_rs1_exp == 255);
+   wire fp_rs1_frac_Z  = (fp_rs1_frac == 0);
    
    /** FPU micro-instructions *************************************************/
 
@@ -612,7 +583,7 @@ module FemtoRV32(
 
    always @(posedge clk) begin
 
-      if(state[DECOMPRESS_REGS_bit]) begin
+      if(state[DECOMPRESS_GETREGS_bit]) begin
       	 fp_rs1 <= fp_registerFile[instr[19:15]];
 	 fp_rs2 <= fp_registerFile[instr[24:20]];
 	 fp_rs3 <= fp_registerFile[instr[31:27]]; 
@@ -630,6 +601,20 @@ module FemtoRV32(
 	   isFSGNJX : fpuOut    <= { fp_rs1[31]^fp_rs2[31], fp_rs1[30:0]};
            isFMVXW  : fpuIntOut <= fp_rs1;
 	   isFMVWX  : fpuOut    <= rs1;	
+	   isFCLASS : fpuIntOut <= {
+               22'b0,				    
+               fp_rs1_exp_255 & fp_rs1_frac[22],                // 9: quiet NaN
+      fp_rs1_exp_255 & !fp_rs1_frac[22] & (|fp_rs1_frac[21:0]), // 8: sig   NaN
+              !fp_rs1_sign &  fp_rs1_exp_255 & fp_rs1_frac_Z,   // 7: +infinity
+              !fp_rs1_sign & !fp_rs1_exp_Z   & !fp_rs1_exp_255, // 6: +normal
+              !fp_rs1_sign &  fp_rs1_exp_Z   & !fp_rs1_frac_Z,  // 5: +subnormal
+              !fp_rs1_sign &  fp_rs1_exp_Z   & fp_rs1_frac_Z,   // 4: +0  
+               fp_rs1_sign &  fp_rs1_exp_Z   & fp_rs1_frac_Z,   // 3: -0
+               fp_rs1_sign &  fp_rs1_exp_Z   & !fp_rs1_frac_Z,  // 2: -subnormal
+               fp_rs1_sign & !fp_rs1_exp_Z   & !fp_rs1_exp_255, // 1: -normal
+               fp_rs1_sign &  fp_rs1_exp_255 & fp_rs1_frac_Z    // 0: -infinity
+	   };
+	   
 	   
 	   // Micro-programmed instructions
 	   isFLT | isFLE | isFEQ                   : fpmi_PC <= FPMPROG_CMP;
@@ -1178,7 +1163,7 @@ module FemtoRV32(
 
    localparam FETCH_INSTR_bit          = 0;
    localparam WAIT_INSTR_bit           = 1;
-   localparam DECOMPRESS_REGS_bit      = 2;   
+   localparam DECOMPRESS_GETREGS_bit      = 2;   
    localparam EXECUTE_bit              = 3;
    localparam WAIT_ALU_OR_MEM_bit      = 4;
    localparam WAIT_ALU_OR_MEM_SKIP_bit = 5;
@@ -1187,7 +1172,7 @@ module FemtoRV32(
 
    localparam FETCH_INSTR          = 1 << FETCH_INSTR_bit;
    localparam WAIT_INSTR           = 1 << WAIT_INSTR_bit;
-   localparam DECOMPRESS_REGS      = 1 << DECOMPRESS_REGS_bit;   
+   localparam DECOMPRESS_GETREGS      = 1 << DECOMPRESS_GETREGS_bit;   
    localparam EXECUTE              = 1 << EXECUTE_bit;
    localparam WAIT_ALU_OR_MEM      = 1 << WAIT_ALU_OR_MEM_bit;
    localparam WAIT_ALU_OR_MEM_SKIP = 1 << WAIT_ALU_OR_MEM_SKIP_bit;
@@ -1250,8 +1235,8 @@ module FemtoRV32(
 		 // time (see "The FPU" section).
 		 rs1    <= registerFile[raw_instr[19:15]];
 		 rs2    <= registerFile[raw_instr[24:20]];
-		 instr      <= &raw_instr[1:0] ? raw_instr[31:2] : decompressed[31:2];
-		 //instr <= raw_instr[31:2];
+		 instr  <= &raw_instr[1:0] ? raw_instr[31:2] 
+                                           : decompressed[31:2];
 		 long_instr <= &raw_instr[1:0];
 
 		 // Long opcode, unaligned, first part fetched, 
@@ -1261,12 +1246,12 @@ module FemtoRV32(
                     state <= FETCH_INSTR;
 		 end else begin
                     fetch_second_half <= 0;
-                    state <= &raw_instr[1:0] ? EXECUTE : DECOMPRESS_REGS;
+                    state <= &raw_instr[1:0] ? EXECUTE : DECOMPRESS_GETREGS;
 		 end
               end
            end
 
-           state[DECOMPRESS_REGS_bit]: begin
+           state[DECOMPRESS_GETREGS_bit]: begin
 	      rs1   <= registerFile[instr[19:15]];
 	      rs2   <= registerFile[instr[24:20]];
 	      state <= EXECUTE;

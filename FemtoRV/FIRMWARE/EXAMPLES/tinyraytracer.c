@@ -199,28 +199,40 @@ void set_pixel(int x, int y, float r, float g, float b) {
    g = max(0.0f, min(1.0f, g));
    b = max(0.0f, min(1.0f, b));
    switch(FGA_mode) {
-   case GL_MODE_OLED: {
-     uint8_t R = (uint8_t)(255.0f * r);
-     uint8_t G = (uint8_t)(255.0f * g);
-     uint8_t B = (uint8_t)(255.0f * b);
-     GL_setpixel(x,y,GL_RGB(R,G,B));
-   } break;
-   case FGA_MODE_320x200x16bpp: {
-     uint8_t R = (uint8_t)(255.0f * r);
-     uint8_t G = (uint8_t)(255.0f * g);
-     uint8_t B = (uint8_t)(255.0f * b);
-     FGA_setpixel(x,y,GL_RGB(R,G,B));     
-   } break;
-   case FGA_MODE_320x200x8bpp: {
-     float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
-     FGA_setpixel(x,y,(uint16_t)(gray*255.0f));
-   } break;
-   case FGA_MODE_640x400x4bpp: {
-     float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
-     uint16_t GRAY = (uint16_t)(gray*255.0f);
-     uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
-     FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15));
-   } break;
+      case GL_MODE_OLED: {
+	uint8_t R = (uint8_t)(255.0f * r);
+	uint8_t G = (uint8_t)(255.0f * g);
+	uint8_t B = (uint8_t)(255.0f * b);
+	GL_setpixel(x,y,GL_RGB(R,G,B));
+      } break;
+      case FGA_MODE_320x200x16bpp: {
+	uint8_t R = (uint8_t)(255.0f * r);
+	uint8_t G = (uint8_t)(255.0f * g);
+	uint8_t B = (uint8_t)(255.0f * b);
+	FGA_setpixel(x,y,GL_RGB(R,G,B));     
+      } break;
+      case FGA_MODE_320x200x8bpp: {
+	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+	FGA_setpixel(x,y,(uint16_t)(gray*255.0f));
+      } break;
+      case FGA_MODE_640x400x4bpp: {
+	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+	uint16_t GRAY = (uint16_t)(gray*255.0f);
+	uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
+	FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15));
+      } break;
+      case FGA_MODE_800x600x2bpp: {
+	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+	uint16_t GRAY = (uint16_t)(gray*255.0f);
+	uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
+	FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15)>>2);
+      } break;
+      case FGA_MODE_1024x768x1bpp: {
+	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+	uint16_t GRAY = (uint16_t)(gray*255.0f);
+	uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
+	FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15)>>3);
+      } break;
    }
 }
 
@@ -277,16 +289,31 @@ int main() {
     init_scene();
     GL_init(GL_MODE_CHOOSE);
     GL_tty_init(FGA_mode);
-    
-    if(FGA_mode == FGA_MODE_320x200x8bpp ) {
+
+    switch(FGA_mode) {
+    case FGA_MODE_320x200x8bpp: {
        for(int i=0; i<256; ++i) {
 	  FGA_setpalette(i,i,i,i);
        }
-    } else if(FGA_mode == FGA_MODE_640x400x4bpp) {
-       for(int i=0; i<16; ++i) {
-	  FGA_setpalette(i,i<<4,i<<4,i<<4);
-       }
+    } break;
+    case FGA_MODE_640x400x4bpp: {
+      for(int i=0; i<16; ++i) {
+	FGA_setpalette(i,i<<4,i<<4,i<<4);
+      }
+    } break;
+    case FGA_MODE_800x600x2bpp: {
+      for(int i=0; i<4; ++i) {
+	FGA_setpalette(i,i<<6,i<<6,i<<6);
+      }
+    } break;
+    case FGA_MODE_1024x768x1bpp: {
+      FGA_setpalette(0,0,0,0);
+      FGA_setpalette(1,255,255,255);      
+    } break;
+    default:
+      break;
     }
+    
     GL_clear();
     render(spheres, nb_spheres, lights, nb_lights);
     UART_putchar(4); // send <ctrl><D> to UART (exits simulation)
