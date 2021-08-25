@@ -48,6 +48,8 @@
 /******************************************************************************/
 
 // Firmware generation flags for this processor
+//`define NRV_ARCH     "rv32imafc" // C supported, but decoding compressed
+                                   // instructions takes two additional cycles
 `define NRV_ARCH     "rv32imaf"
 `define NRV_ABI      "ilp32f"
 
@@ -462,7 +464,7 @@ module FemtoRV32(
    
    localparam FPMI_FP_TO_INT       = 17;  // fpuIntOut <- fpoint_to_int(fprs1)
    localparam FPMI_INT_TO_FP       = 18;  // A <- int_to_fpoint(rs1)
-   localparam FPMI_OUT             = 19;  // FPUoutput <- A
+   localparam FPMI_OUT             = 19;  // FPUoutput <- A,max(A,B) or min(A,B)
 
    localparam FPMI_NB              = 20;
 
@@ -471,7 +473,7 @@ module FemtoRV32(
    reg [$clog2(FPMI_NB):0] fpmi_instr; // current micro-instruction
 
    // current micro-instruction as 1-hot:
-   //    fmpi_instr == NNN <=> fpmi_is[NNN]
+   //    fpmi_instr == NNN <=> fpmi_is[NNN]
    (* onehot *)
    wire [FPMI_NB-1:0] fpmi_is = 1 << fpmi_instr; 
    
@@ -585,6 +587,10 @@ module FemtoRV32(
 	73: fpmi_instr = FPMI_MV_FPRS2_TMP1;
 	74: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
 	75: fpmi_instr = FPMI_OUT;    
+
+	// FMIN, FMAX
+	76: fpmi_instr = FPMI_LOAD_AB;
+	77: fpmi_instr = FPMI_OUT;
 	
 	default: fpmi_instr = FPMI_READY;
       endcase
@@ -599,20 +605,21 @@ module FemtoRV32(
    localparam FPMPROG_FP_TO_INT  = 42;
    localparam FPMPROG_INT_TO_FP  = 44;         
    localparam FPMPROG_SQRT       = 47;
+   localparam FPMPROG_MIN_MAX    = 76;
    
    /*******************************************************/
 
 
    always @(posedge clk) begin
 
-      
-      if(state[WAIT_INSTR_bit] && !mem_rbusy) begin
-	 // TODO: decompression / raw_instr
+      if(state[DECOMPRESS_REGS_bit]) begin
+      	 fp_rs1 <= fp_registerFile[instr[19:15]];
+	 fp_rs2 <= fp_registerFile[instr[24:20]];
+	 fp_rs3 <= fp_registerFile[instr[31:27]]; 
+      end else if(state[WAIT_INSTR_bit] && !mem_rbusy) begin
 	 fp_rs1 <= fp_registerFile[raw_instr[19:15]];
 	 fp_rs2 <= fp_registerFile[raw_instr[24:20]];
-	 // TODO: read from other state ? 
 	 fp_rs3 <= fp_registerFile[raw_instr[31:27]]; 
-
       end else if(state[EXECUTE_bit] & isFPU) begin
 
 	 (* parallel_case *)
@@ -622,7 +629,7 @@ module FemtoRV32(
 	   isFSGNJN : fpuOut    <= {           !fp_rs2[31], fp_rs1[30:0]};
 	   isFSGNJX : fpuOut    <= { fp_rs1[31]^fp_rs2[31], fp_rs1[30:0]};
            isFMVXW  : fpuIntOut <= fp_rs1;
-	   isFMVWX  : fpuOut    <= rs1;	   
+	   isFMVWX  : fpuOut    <= rs1;	
 	   
 	   // Micro-programmed instructions
 	   isFLT | isFLE | isFEQ                   : fpmi_PC <= FPMPROG_CMP;
@@ -631,9 +638,9 @@ module FemtoRV32(
 	   isFMADD | isFMSUB | isFNMADD | isFNMSUB : fpmi_PC <= FPMPROG_MADD;
 	   isFDIV                                  : fpmi_PC <= FPMPROG_DIV;
 	   isFSQRT                                 : fpmi_PC <= FPMPROG_SQRT;
-	   
 	   isFCVTWS | isFCVTWUS                  : fpmi_PC <= FPMPROG_FP_TO_INT;
 	   isFCVTSW | isFCVTSWU                  : fpmi_PC <= FPMPROG_INT_TO_FP;
+	   isFMIN | isFMAX                       : fpmi_PC <= FPMPROG_MIN_MAX;
 	 endcase 
 	 
       end else if(
@@ -691,10 +698,13 @@ module FemtoRV32(
 	      end
 	   end
 
+	   // if |A| > |B| swap(A,V)
+	   // there are some subtleties when fracA=0 or fracB=0 
+	   // (for this reason we do not use the fabsB_LT_fabsA signal
 	   fpmi_is[FPMI_ADD_SWAP]: begin
 	      if(
 		  fracA_Z || (fp_exp_diff[8] && !fracB_Z) || 
-		 (fp_A_exp == fp_B_exp && fp_frac_diff[50]) 
+		 (fp_exp_diff == 0 && fp_frac_diff[50]) 
 	      ) begin 
 		 fp_A_frac <= fp_B_frac; fp_B_frac <= fp_A_frac;
 		 fp_A_exp  <= fp_B_exp;  fp_B_exp  <= fp_A_exp;
@@ -782,11 +792,11 @@ module FemtoRV32(
 	      fp_A_sign <= isFCVTSW & rs1[31];
 	      fp_A_exp  <= 156; // TODO: understand, why 156 ?
 	   end
-	   
+
 	   fpmi_is[FPMI_OUT]: begin
-	      // TODO: can we wire fpuOut directly on A register 
-	      // and remove FP_OUT state ? (seems to degrade maxfreq though)
-	      fpuOut <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[46:24]};
+	      fpuOut <=  ((A_LT_B ^ isFMAX) | (!isFMIN & !isFMAX)) 
+		                 ? {fp_A_sign, fp_A_exp[7:0], fp_A_frac[46:24]}
+	 	                 : {fp_B_sign, fp_B_exp[7:0], fp_B_frac[46:24]};
 	      fpmi_PC <= 0;
 	   end
 	 endcase
@@ -875,8 +885,8 @@ module FemtoRV32(
 	     // isFSGNJN : fpuOut <= {           !fp_rs2[31], fp_rs1[30:0]};
 	     // isFSGNJX : fpuOut <= { fp_rs1[31]^fp_rs2[31], fp_rs1[30:0]};
 	   
-	     isFMIN   : fpuOut <= $c32("FMIN(",fp_rs1,",",fp_rs2,")");
-	     isFMAX   : fpuOut <= $c32("FMAX(",fp_rs1,",",fp_rs2,")");
+	     // isFMIN   : fpuOut <= $c32("FMIN(",fp_rs1,",",fp_rs2,")");
+	     // isFMAX   : fpuOut <= $c32("FMAX(",fp_rs1,",",fp_rs2,")");
 	   
 	     // isFEQ    : fpuIntOut <= $c32("FEQ(",fp_rs1,",",fp_rs2,")");
 	     // isFLE    : fpuIntOut <= $c32("FLE(",fp_rs1,",",fp_rs2,")");
@@ -900,7 +910,7 @@ module FemtoRV32(
    // When doing simulations, compare the result of all operations with
    // what's computed on the host CPU. 
 
-   reg [31:0] dummy;
+   reg [31:0] z;
    reg [31:0] fp_rs1_bkp;
    reg [31:0] fp_rs2_bkp;
    reg [31:0] fp_rs3_bkp;   
@@ -921,28 +931,45 @@ module FemtoRV32(
          fpmi_PC == 0
       ) begin
 	 case(1'b1)
-	   isFMUL    : dummy <= $c32("CHECK_FMUL(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");
-	   isFADD    : dummy <= $c32("CHECK_FADD(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");
-	   isFSUB    : dummy <= $c32("CHECK_FSUB(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");
+	   isFMUL: z <= $c32("CHECK_FMUL(",fpuOut,",",fp_rs1,",",fp_rs2,")");
+	   isFADD: z <= $c32("CHECK_FADD(",fpuOut,",",fp_rs1,",",fp_rs2,")");
+	   isFSUB: z <= $c32("CHECK_FSUB(",fpuOut,",",fp_rs1,",",fp_rs2,")");
 	   
-	   // my FFIV and FSQRT are not IEEE754 compliant ! (check commented-out for now)
-	   // isFDIV    : dummy <= $c32("CHECK_FDIV(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");
-	   // isFSQRT   : dummy <= $c32("CHECK_FSQRT(",fpuOut,",",fp_rs1_bkp,")");	   
+	   // my FFIV and FSQRT are not IEEE754 compliant ! 
+	   // (checks commented-out for now)
+	   // Note: checks use fp_rs1_bkp and fp_rs2_bkp because
+	   //  FDIV and FSQRT overwrite fp_rs1 and fp_rs2
+	   //
+           //isFDIV:  
+	   // z<=$c32("CHECK_FDIV(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");
+           //isFSQRT: 
+	   // z<=$c32("CHECK_FSQRT(",fpuOut,",",fp_rs1_bkp,")");
 
-	   isFMADD   : dummy <= $c32("CHECK_FMADD(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,",",fp_rs3_bkp,")");
-	   isFMSUB   : dummy <= $c32("CHECK_FMSUB(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,",",fp_rs3_bkp,")");
-	   isFNMSUB  : dummy <= $c32("CHECK_FNMSUB(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,",",fp_rs3_bkp,")");
-	   isFNMADD  : dummy <= $c32("CHECK_FNMADD(",fpuOut,",",fp_rs1_bkp,",",fp_rs2_bkp,",",fp_rs3_bkp,")");
+	   
+	   isFMADD :
+	   z<=$c32("CHECK_FMADD(",fpuOut,",",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	   
+	   isFMSUB :
+	   z<=$c32("CHECK_FMSUB(",fpuOut,",",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	   
+	   isFNMSUB:
+	   z<=$c32("CHECK_FNMSUB(",fpuOut,",",fp_rs1,",",fp_rs2,",",fp_rs3,")");
+	   
+	   isFNMADD:
+	   z<=$c32("CHECK_FNMADD(",fpuOut,",",fp_rs1,",",fp_rs2,",",fp_rs3,")");
 
-	   isFEQ     : dummy <= $c32("CHECK_FEQ(",fpuIntOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");
-	   isFLT     : dummy <= $c32("CHECK_FLT(",fpuIntOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");	   
-	   isFLE     : dummy <= $c32("CHECK_FLE(",fpuIntOut,",",fp_rs1_bkp,",",fp_rs2_bkp,")");
+	   isFEQ: z <= $c32("CHECK_FEQ(",fpuIntOut,",",fp_rs1,",",fp_rs2,")");
+	   isFLT: z <= $c32("CHECK_FLT(",fpuIntOut,",",fp_rs1,",",fp_rs2,")");
+	   isFLE: z <= $c32("CHECK_FLE(",fpuIntOut,",",fp_rs1,",",fp_rs2,")");
 
-	   isFCVTWS  : dummy <= $c32("CHECK_FCVTWS(",fpuIntOut,",",fp_rs1_bkp,")");
-	   isFCVTWUS : dummy <= $c32("CHECK_FCVTWUS(",fpuIntOut,",",fp_rs1_bkp,")");
+	   isFCVTWS : z <= $c32("CHECK_FCVTWS(",fpuIntOut,",",fp_rs1,")");
+	   isFCVTWUS: z <= $c32("CHECK_FCVTWUS(",fpuIntOut,",",fp_rs1,")");
 
-	   isFCVTSW  : dummy <= $c32("CHECK_FCVTSW(",fpuOut,",",rs1,")");
-	   isFCVTSWU : dummy <= $c32("CHECK_FCVTSWU(",fpuOut,",",rs1,")");
+	   isFCVTSW : z <= $c32("CHECK_FCVTSW(",fpuOut,",",rs1,")");
+	   isFCVTSWU: z <= $c32("CHECK_FCVTSWU(",fpuOut,",",rs1,")");
+
+	   isFMIN: z <= $c32("CHECK_FMIN(",fpuOut,",",fp_rs1,",",fp_rs2,")");
+	   isFMAX: z <= $c32("CHECK_FMAX(",fpuOut,",",fp_rs1,",",fp_rs2,")");
 	   
 	 endcase
       end
@@ -1144,24 +1171,22 @@ module FemtoRV32(
                                     : cached_mem;
    wire [31:0] decompressed;
    decompressor _decomp ( .c(raw_instr[15:0]), .d(decompressed) );
-
+   
    /*************************************************************************/
    // And, last but not least, the state machine.
    /*************************************************************************/
 
    localparam FETCH_INSTR_bit          = 0;
    localparam WAIT_INSTR_bit           = 1;
-   localparam DECOMPRESS_bit           = 2;
-   localparam DECOMPRESS_REGS_bit      = 3;   
-   localparam EXECUTE_bit              = 4;
-   localparam WAIT_ALU_OR_MEM_bit      = 5;
-   localparam WAIT_ALU_OR_MEM_SKIP_bit = 6;
+   localparam DECOMPRESS_REGS_bit      = 2;   
+   localparam EXECUTE_bit              = 3;
+   localparam WAIT_ALU_OR_MEM_bit      = 4;
+   localparam WAIT_ALU_OR_MEM_SKIP_bit = 5;
 
-   localparam NB_STATES                = 7;
+   localparam NB_STATES                = 6;
 
    localparam FETCH_INSTR          = 1 << FETCH_INSTR_bit;
    localparam WAIT_INSTR           = 1 << WAIT_INSTR_bit;
-   localparam DECOMPRESS           = 1 << DECOMPRESS_bit;
    localparam DECOMPRESS_REGS      = 1 << DECOMPRESS_REGS_bit;   
    localparam EXECUTE              = 1 << EXECUTE_bit;
    localparam WAIT_ALU_OR_MEM      = 1 << WAIT_ALU_OR_MEM_bit;
@@ -1225,7 +1250,8 @@ module FemtoRV32(
 		 // time (see "The FPU" section).
 		 rs1    <= registerFile[raw_instr[19:15]];
 		 rs2    <= registerFile[raw_instr[24:20]];
-		 instr      <= raw_instr[31:2];
+		 instr      <= &raw_instr[1:0] ? raw_instr[31:2] : decompressed[31:2];
+		 //instr <= raw_instr[31:2];
 		 long_instr <= &raw_instr[1:0];
 
 		 // Long opcode, unaligned, first part fetched, 
@@ -1235,15 +1261,10 @@ module FemtoRV32(
                     state <= FETCH_INSTR;
 		 end else begin
                     fetch_second_half <= 0;
-                    state <= &raw_instr[1:0] ? EXECUTE : DECOMPRESS;
+                    state <= &raw_instr[1:0] ? EXECUTE : DECOMPRESS_REGS;
 		 end
               end
            end
-
-           state[DECOMPRESS_bit]: begin
-	      instr <= decompressed[31:2]; // NOTE: decompressor is a bottleneck
-	      state <= DECOMPRESS_REGS;
-	   end
 
            state[DECOMPRESS_REGS_bit]: begin
 	      rs1   <= registerFile[instr[19:15]];
@@ -1260,7 +1281,7 @@ module FemtoRV32(
 		 state  <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
               end else begin
 
-		 if((isLoad | isStore) && instr[2] && |loadstore_addr[1:0]) begin
+		 if((isLoad|isStore) && instr[2] && |loadstore_addr[1:0]) begin
 		    $display("PC=%x UNALIGNED FLW/FSW",PC);
 		 end
 		 
@@ -1304,10 +1325,6 @@ module FemtoRV32(
 endmodule
 
 /*****************************************************************************/
-
-// if c[15:0] is a compressed instrution, decompresses it in d
-// else copies c to d
-// TODO: decompress RV32F instructions
 
 module decompressor(
    input  wire [15:0] c,
@@ -1358,8 +1375,7 @@ module decompressor(
                                                      // imm / funct7   +   rs2  rs1     fn3                   rd    opcode
 //    16'b???___????????_???_11 : d =                                                                            c  ; // Long opcode, no need to decompress
 
-/* verilator lint_off CASEOVERLAP */
-     
+/* verilator lint_off CASEOVERLAP */   
       16'b000___00000000_000_00 : d =                                                                       illegal ; // c.illegal   -->  illegal
       16'b000___????????_???_00 : d = {      addi4spnImm,             x2, 3'b000,                 rcl, 7'b00100_11} ; // c.addi4spn  -->  addi rd', x2, nzuimm[9:2]
 /* verilator lint_on CASEOVERLAP */
@@ -1367,6 +1383,7 @@ module decompressor(
       16'b010_???_???_??_???_00 : d = {          lwswImm,            rch, 3'b010,                 rcl, 7'b00000_11} ; // c.lw        -->  lw   rd', offset[6:2](rs1')
       16'b110_???_???_??_???_00 : d = {    lwswImm[11:5],       rcl, rch, 3'b010,        lwswImm[4:0], 7'b01000_11} ; // c.sw        -->  sw   rs2', offset[6:2](rs1')
 
+      
       16'b000_???_???_??_???_01 : d = {           addImm,            rwh, 3'b000,                 rwh, 7'b00100_11} ; // c.addi      -->  addi rd, rd, nzimm[5:0]
       16'b001____???????????_01 : d = {     jalImm[20], jalImm[10:1], jalImm[11], jalImm[19:12],   x1, 7'b11011_11} ; // c.jal       -->  jal  x1, offset[11:1]
       16'b010__?_?????_?????_01 : d = {           addImm,             x0, 3'b000,                 rwh, 7'b00100_11} ; // c.li        -->  addi rd, x0, imm[5:0]
@@ -1392,7 +1409,15 @@ module decompressor(
       16'b100__1_?????_?????_10 : d = {        7'b0000000,      rwl, rwh, 3'b000,                 rwh, 7'b01100_11} ; // c.add       -->  add  rd, rd, rs2
       16'b110__?_?????_?????_10 : d = {     swspImm[11:5],      rwl,  x2, 3'b010,        swspImm[4:0], 7'b01000_11} ; // c.swsp      -->  sw   rs2, offset[7:2](x2)
 
-      default:                    d =                                                                       unknown ; // Unknown opcode
+      // Four compressed RV32F load/store instructions
+      16'b011_???_???_??_???_00 : d = {          lwswImm,            rch, 3'b010,                 rcl, 7'b00001_11} ; // c.flw       -->  flw   rd', offset[6:2](rs1')
+      16'b111_???_???_??_???_00 : d = {    lwswImm[11:5],       rcl, rch, 3'b010,        lwswImm[4:0], 7'b01001_11} ; // c.fsw       -->  fsw   rs2', offset[6:2](rs1')
+      16'b011__?_?????_?????_10 : d = {           lwspImm,            x2, 3'b010,                 rwh, 7'b00001_11} ; // c.flwsp     -->  flw   rd, offset[7:2](x2)
+      16'b111__?_?????_?????_10 : d = {     swspImm[11:5],      rwl,  x2, 3'b010,        swspImm[4:0], 7'b01001_11} ; // c.fswsp     -->  fsw   rs2, offset[7:2](x2)
+      
+
+//      default:                    d =                                                                       unknown ; // Unknown opcode
+     default: d = 32'bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX;
    endcase
 endmodule
 

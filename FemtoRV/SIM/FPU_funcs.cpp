@@ -894,9 +894,15 @@ uint32_t CHECK_FSQRT(uint32_t result, uint32_t x) {
   return check("FSQRT", x, 0, 0, result, encodef(sqrtf(decodef(x))),1);  
 }
 
+uint32_t CHECK_FMIN(uint32_t result, uint32_t x, uint32_t y) {
+  return check("FMIN", x, y, 0, result, encodef(fminf(decodef(x),decodef(y))),2);    
+}
+
+uint32_t CHECK_FMAX(uint32_t result, uint32_t x, uint32_t y) {
+  return check("FMAX", x, y, 0, result, encodef(fmaxf(decodef(x),decodef(y))),2);      
+}
+
 uint32_t CHECK_FSGNJ(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 uint32_t CHECK_FSGNJN(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 uint32_t CHECK_FSGNJX(uint32_t result, uint32_t x, uint32_t y) { return 1; }
-uint32_t CHECK_FMIN(uint32_t result, uint32_t x, uint32_t y) { return 1; }
-uint32_t CHECK_FMAX(uint32_t result, uint32_t x, uint32_t y) { return 1; }
 uint32_t CHECK_FCLASS(uint32_t result, uint32_t x) { return 1; }
