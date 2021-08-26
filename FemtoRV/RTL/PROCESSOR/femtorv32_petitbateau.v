@@ -14,9 +14,9 @@
 /******************************************************************************/
 
 // Firmware generation flags for this processor
-//`define NRV_ARCH     "rv32imafc" // RV32C supported, but compressed 
+`define NRV_ARCH     "rv32imafc" // RV32C supported, but compressed 
                                    // instrs take one additional cycle.
-`define NRV_ARCH     "rv32imaf"
+//`define NRV_ARCH     "rv32imaf"
 `define NRV_ABI      "ilp32f"
 
 //`define NRV_ARCH     "rv32imac"

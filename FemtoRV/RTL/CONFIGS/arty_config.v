@@ -11,14 +11,14 @@
 /************************* Processor configuration *******************************************************************/
 
 `define NRV_FREQ 80           // Frequency in MHz, needs to be a multiple of 5
-                              // Validated at 60 MHz, can overclock to 80 MHz
+                               // Validated at 60 MHz, can overclock to 80 MHz
 
-//`define NRV_FEMTORV32_QUARK       // RV32I  experimental fmax = 110 MHz
-//`define NRV_FEMTORV32_TACHYON       // RV32I  experimental fmax = 135 MHz
-//`define NRV_FEMTORV32_ELECTRON    // RV32IM experimental fmax = 90 MHz
-//`define NRV_FEMTORV32_INTERMISSUM // RV32IM, IRQ
-//`define NRV_FEMTORV32_GRACILIS    // RV32IMC, IRQ experimental fmax = 80 MHz
-`define NRV_FEMTORV32_PETITBATEAU
+//`define NRV_FEMTORV32_QUARK       // RV32I          experimental fmax = 110 MHz
+//`define NRV_FEMTORV32_TACHYON     // RV32I          experimental fmax = 135 MHz
+//`define NRV_FEMTORV32_ELECTRON    // RV32IM         experimental fmax = 80 MHz
+//`define NRV_FEMTORV32_INTERMISSUM // RV32IM,   IRQ  experimental fmax = 80 MHz
+//`define NRV_FEMTORV32_GRACILIS    // RV32IMC,  IRQ  experimental fmax = 80 MHz
+`define NRV_FEMTORV32_PETITBATEAU   // RV32IMFC, IRQ  experimental fmax = 80 MHz
 
 `define NRV_RESET_ADDR 0       // The address the processor jumps to on reset 
 

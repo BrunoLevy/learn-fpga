@@ -109,7 +109,7 @@ Symbiflow-magic is a makefile that downloads and configures a pre-compiled versi
 The version bundled with FemtoRV fixes a couple of [issues](https://github.com/merledu/symbiflow-magic/issues/1).
 ```
 $ cd learn-fpga/FemtoRV
-$ make -f TOOLS/get_symbifow.mk
+$ sh -f TOOLS/get_symbifow.sh
 ```
 
 It will download and install several packages (takes a while...)
