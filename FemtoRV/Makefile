@@ -12,8 +12,8 @@ include BOARDS/icesugar_nano.mk
 include BOARDS/fomu.mk
 include BOARDS/ulx3s.mk
 include BOARDS/ecp5_evn.mk
-#include BOARDS/arty35_symbiflow.mk
-include BOARDS/arty35_yosys_nextpnr.mk
+include BOARDS/arty35_symbiflow.mk
+#include BOARDS/arty35_yosys_nextpnr.mk
 
 
 .PHONY: all clean terminal testbench 
