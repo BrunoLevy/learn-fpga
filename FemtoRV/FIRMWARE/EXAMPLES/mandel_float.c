@@ -18,13 +18,13 @@
 #define ymin -2.0
 #define xmax  2.0
 
-// #define dx 0.03125f
-// #define dy 0.03125f
+#define dx 0.03125f
+#define dy 0.03125f
 
 void mandel() {
    
-   float dx = (xmax-xmin)/(float)H;
-   float dy = (ymax-ymin)/(float)H;
+//   float dx = (xmax-xmin)/(float)H;
+//   float dy = (ymax-ymin)/(float)H;
    
    uint32_t total_ticks = 0;
    GL_write_window(0,0,W-1,H-1);

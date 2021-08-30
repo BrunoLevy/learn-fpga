@@ -244,7 +244,10 @@ uint32_t check(
   IEEE754 RS2(rs2);
   IEEE754 RS3(rs3);
   IEEE754 RESULT(result);
-  IEEE754 CHECK(chk);      
+  IEEE754 CHECK(chk);
+
+  // printf("CHECK%s\n",func);
+  
   if(!(RESULT.is_zero() && CHECK.is_zero()) && result != chk) {
     printf("%s mismatch\n",func);
 
