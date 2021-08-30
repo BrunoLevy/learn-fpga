@@ -19,9 +19,9 @@
 // compiler flag, because rv32imfc / imf are not supported in
 // default compiler settings)
 
-`define NRV_ARCH     "rv32imafc" // RV32C supported, but compressed 
-                                   // instrs take one additional cycle.
-//`define NRV_ARCH     "rv32imaf"
+//`define NRV_ARCH     "rv32imafc" // RV32C supported, but compressed 
+                                 // instrs take one additional cycle.
+`define NRV_ARCH     "rv32imaf"
 `define NRV_ABI      "ilp32f"
 
 //`define NRV_ARCH     "rv32imac"
@@ -506,15 +506,15 @@ module FemtoRV32(
 			FPMI_EXIT_FLAG;
 
 	// FMUL
-	 9: fpmi_instr = FPMI_LOAD_AB_MUL | // A <- normalize(fprs1*fprs2)
+	 8: fpmi_instr = FPMI_LOAD_AB_MUL | // A <- normalize(fprs1*fprs2)
 			 FPMI_EXIT_FLAG;
 
 	// FMADD, FMSUB, FNMADD, FNMSUB
-	11: fpmi_instr = FPMI_LOAD_AB_MUL; // A <- norm(fprs1*fprs2), B <- fprs3
-	12: fpmi_instr = FPMI_ADD_SWAP;    // if(|A| > |B|) swap(A,B)
- 	13: fpmi_instr = FPMI_ADD_SHIFT;   // shift A according to B exp
-	14: fpmi_instr = FPMI_ADD_ADD;     // A <- A + B  ( or A - B if FSUB)
-	15: fpmi_instr = FPMI_NORM |       // A <- normalize(A)
+	 9: fpmi_instr = FPMI_LOAD_AB_MUL; // A <- norm(fprs1*fprs2), B <- fprs3
+	10: fpmi_instr = FPMI_ADD_SWAP;    // if(|A| > |B|) swap(A,B)
+ 	11: fpmi_instr = FPMI_ADD_SHIFT;   // shift A according to B exp
+	12: fpmi_instr = FPMI_ADD_ADD;     // A <- A + B  ( or A - B if FSUB)
+	13: fpmi_instr = FPMI_NORM |       // A <- normalize(A)
 			 FPMI_EXIT_FLAG;
 
 	// FDIV
@@ -524,40 +524,40 @@ module FemtoRV32(
 	//           A  <- -D'*32/17 + 48/17
 	// STEP 2,3: A  <- A * (-A*D+2)  (two iterations)
 	// STEP 4  : A  <- fprs1 * A 
-	17: fpmi_instr = FPMI_FRCP_PROLOG;   // STEP 1: A <- -D'*32/17 + 48/17
-	18: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
-	19: fpmi_instr = FPMI_ADD_SWAP;      //    |
- 	20: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
-	21: fpmi_instr = FPMI_ADD_ADD;       //    |
-	22: fpmi_instr = FPMI_NORM;          // ---
-	23: fpmi_instr = FPMI_FRCP_ITER;     // STEP 2: A <- A * (-A*D + 2)
-	24: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
-	25: fpmi_instr = FPMI_ADD_SWAP;      //    |
- 	26: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
-	27: fpmi_instr = FPMI_ADD_ADD;       //    |
-	28: fpmi_instr = FPMI_NORM;          // ---
-	29: fpmi_instr = FPMI_MV_FPRS1_A;    // 
-	30: fpmi_instr = FPMI_LOAD_AB_MUL;   //  FMUL
-	31: fpmi_instr = FPMI_FRCP_ITER;     // STEP 3: A <- A * (-A*D + 2)
-	32: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
-	33: fpmi_instr = FPMI_ADD_SWAP;      //    |
- 	34: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
-	35: fpmi_instr = FPMI_ADD_ADD;       //    |
-	36: fpmi_instr = FPMI_NORM;          // ---
-	37: fpmi_instr = FPMI_MV_FPRS1_A;    // 
-	38: fpmi_instr = FPMI_LOAD_AB_MUL;   //  FMUL
-	39: fpmi_instr = FPMI_FRCP_EPILOG;   // STEP 4: A <- fprs1^(-1) * fprs2
-	40: fpmi_instr = FPMI_LOAD_AB_MUL |  //  FMUL
+	14: fpmi_instr = FPMI_FRCP_PROLOG;   // STEP 1: A <- -D'*32/17 + 48/17
+	15: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
+	16: fpmi_instr = FPMI_ADD_SWAP;      //    |
+ 	17: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
+	18: fpmi_instr = FPMI_ADD_ADD;       //    |
+	19: fpmi_instr = FPMI_NORM;          // ---
+	20: fpmi_instr = FPMI_FRCP_ITER;     // STEP 2: A <- A * (-A*D + 2)
+	21: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
+	22: fpmi_instr = FPMI_ADD_SWAP;      //    |
+ 	23: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
+	24: fpmi_instr = FPMI_ADD_ADD;       //    |
+	25: fpmi_instr = FPMI_NORM;          // ---
+	26: fpmi_instr = FPMI_MV_FPRS1_A;    // 
+	27: fpmi_instr = FPMI_LOAD_AB_MUL;   //  FMUL
+	28: fpmi_instr = FPMI_FRCP_ITER;     // STEP 3: A <- A * (-A*D + 2)
+	29: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
+	30: fpmi_instr = FPMI_ADD_SWAP;      //    |
+ 	31: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
+	32: fpmi_instr = FPMI_ADD_ADD;       //    |
+	33: fpmi_instr = FPMI_NORM;          // ---
+	34: fpmi_instr = FPMI_MV_FPRS1_A;    // 
+	35: fpmi_instr = FPMI_LOAD_AB_MUL;   //  FMUL
+	36: fpmi_instr = FPMI_FRCP_EPILOG;   // STEP 4: A <- fprs1^(-1) * fprs2
+	37: fpmi_instr = FPMI_LOAD_AB_MUL |  //  FMUL
 			 FPMI_EXIT_FLAG;
 
 	// FCVT.W.S, FCVT.WU.S
-	42: fpmi_instr = FPMI_LOAD_AB;
-	43: fpmi_instr = FPMI_FP_TO_INT |
+	38: fpmi_instr = FPMI_LOAD_AB;
+	39: fpmi_instr = FPMI_FP_TO_INT |
 			 FPMI_EXIT_FLAG;
 	
 	// FCVT.S.W, FCVT.S.WU
-	44: fpmi_instr = FPMI_INT_TO_FP;
-	45: fpmi_instr = FPMI_NORM |
+	40: fpmi_instr = FPMI_INT_TO_FP;
+	41: fpmi_instr = FPMI_NORM |
 			 FPMI_EXIT_FLAG;
 
 	// FSQRT
@@ -565,38 +565,38 @@ module FemtoRV32(
 	// https://en.wikipedia.org/wiki/Fast_inverse_square_root
 	// STEP 1  : A <- doom_magic - (A >> 1)
 	// STEP 2,3: A <- A * (3/2 - (fprs1/2 * A * A))
-	47: fpmi_instr = FPMI_FRSQRT_PROLOG;
-	48: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
-	49: fpmi_instr = FPMI_MV_FPRS1_A;
-	50: fpmi_instr = FPMI_MV_FPRS2_MHTMP1; 
-	51: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
-	52: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
-	53: fpmi_instr = FPMI_ADD_ADD;       //    |
-	54: fpmi_instr = FPMI_NORM;          // ---
-	55: fpmi_instr = FPMI_MV_FPRS1_A;
-	56: fpmi_instr = FPMI_MV_FPRS2_TMP2; 
-	57: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
-        58: fpmi_instr = FPMI_MV_TMP2_A;
-	59: fpmi_instr = FPMI_MV_FPRS1_A;
-	60: fpmi_instr = FPMI_MV_FPRS2_TMP2;
-	61: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
-	62: fpmi_instr = FPMI_MV_FPRS1_A;
-	63: fpmi_instr = FPMI_MV_FPRS2_MHTMP1; 
-	64: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
-	65: fpmi_instr = FPMI_ADD_SWAP;      //    |
- 	66: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
-	67: fpmi_instr = FPMI_ADD_ADD;       //    |
-	68: fpmi_instr = FPMI_NORM;          // ---
-	69: fpmi_instr = FPMI_MV_FPRS1_A;
-	70: fpmi_instr = FPMI_MV_FPRS2_TMP2; 
-	71: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
-	72: fpmi_instr = FPMI_MV_FPRS1_A;
-	73: fpmi_instr = FPMI_MV_FPRS2_TMP1;
-	74: fpmi_instr = FPMI_LOAD_AB_MUL |  // -- FMUL
+	42: fpmi_instr = FPMI_FRSQRT_PROLOG;
+	43: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
+	44: fpmi_instr = FPMI_MV_FPRS1_A;
+	45: fpmi_instr = FPMI_MV_FPRS2_MHTMP1; 
+	46: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
+	47: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
+	48: fpmi_instr = FPMI_ADD_ADD;       //    |
+	49: fpmi_instr = FPMI_NORM;          // ---
+	50: fpmi_instr = FPMI_MV_FPRS1_A;
+	51: fpmi_instr = FPMI_MV_FPRS2_TMP2; 
+	52: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
+        53: fpmi_instr = FPMI_MV_TMP2_A;
+	54: fpmi_instr = FPMI_MV_FPRS1_A;
+	55: fpmi_instr = FPMI_MV_FPRS2_TMP2;
+	56: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
+	57: fpmi_instr = FPMI_MV_FPRS1_A;
+	58: fpmi_instr = FPMI_MV_FPRS2_MHTMP1; 
+	59: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
+	60: fpmi_instr = FPMI_ADD_SWAP;      //    |
+ 	61: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
+	62: fpmi_instr = FPMI_ADD_ADD;       //    |
+	63: fpmi_instr = FPMI_NORM;          // ---
+	64: fpmi_instr = FPMI_MV_FPRS1_A;
+	65: fpmi_instr = FPMI_MV_FPRS2_TMP2; 
+	66: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
+	67: fpmi_instr = FPMI_MV_FPRS1_A;
+	68: fpmi_instr = FPMI_MV_FPRS2_TMP1;
+	69: fpmi_instr = FPMI_LOAD_AB_MUL |  // -- FMUL
 			 FPMI_EXIT_FLAG;
 	// FMIN, FMAX
-	76: fpmi_instr = FPMI_LOAD_AB;
-	77: fpmi_instr = FPMI_MIN_MAX   | 
+	70: fpmi_instr = FPMI_LOAD_AB;
+	71: fpmi_instr = FPMI_MIN_MAX   | 
                          FPMI_EXIT_FLAG ;
 	
 	default: begin
@@ -609,13 +609,13 @@ module FemtoRV32(
    // micro-programs
    localparam FPMPROG_CMP        = 1;
    localparam FPMPROG_ADD        = 3;
-   localparam FPMPROG_MUL        = 9;
-   localparam FPMPROG_MADD       = 11;
-   localparam FPMPROG_DIV        = 17;
-   localparam FPMPROG_FP_TO_INT  = 42;
-   localparam FPMPROG_INT_TO_FP  = 44;         
-   localparam FPMPROG_SQRT       = 47;
-   localparam FPMPROG_MIN_MAX    = 76;
+   localparam FPMPROG_MUL        = 8;
+   localparam FPMPROG_MADD       = 9;
+   localparam FPMPROG_DIV        = 14;
+   localparam FPMPROG_FP_TO_INT  = 38;
+   localparam FPMPROG_INT_TO_FP  = 40;         
+   localparam FPMPROG_SQRT       = 42;
+   localparam FPMPROG_MIN_MAX    = 70;
    
    /*******************************************************/
 
