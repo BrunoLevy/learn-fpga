@@ -19,9 +19,9 @@
 // compiler flag, because rv32imfc / imf are not supported in
 // default compiler settings)
 
-//`define NRV_ARCH     "rv32imafc" // RV32C supported, but compressed 
+`define NRV_ARCH     "rv32imafc" // RV32C supported, but compressed 
                                  // instrs take one additional cycle.
-`define NRV_ARCH     "rv32imaf"
+//`define NRV_ARCH     "rv32imaf"
 `define NRV_ABI      "ilp32f"
 
 //`define NRV_ARCH     "rv32imac"
@@ -383,22 +383,24 @@ module FemtoRV32(
    wire signed [50:0] fp_frac_diff = fp_B_frac - fp_A_frac;
 
    // Comparisons
+
+   wire expA_EQ_expB = (fp_exp_diff == 0);
    
    wire fracA_EQ_fracB = (fp_frac_diff == 0);
    
-   wire fabsA_EQ_fabsB = (fp_exp_diff == 0 && fracA_EQ_fracB);
+   wire fabsA_EQ_fabsB = (expA_EQ_expB && fracA_EQ_fracB);
    
-   wire fabsA_LT_fabsB = (!fp_exp_diff[8] && fp_exp_diff != 0) || 
-                   (fp_exp_diff == 0 && fp_frac_diff != 0 && !fp_frac_diff[50]);
+   wire fabsA_LT_fabsB = (!fp_exp_diff[8] && !expA_EQ_expB) || 
+                   (expA_EQ_expB && !fracA_EQ_fracB && !fp_frac_diff[50]);
 
-   wire fabsA_LE_fabsB = (!fp_exp_diff[8] && fp_exp_diff != 0) || 
-                         (fp_exp_diff == 0 && !fp_frac_diff[50]);
+   wire fabsA_LE_fabsB = (!fp_exp_diff[8] && !expA_EQ_expB) || 
+                         (expA_EQ_expB && !fp_frac_diff[50]);
    
    wire fabsB_LT_fabsA = fp_exp_diff[8] || 
-                                         (fp_exp_diff == 0 && fp_frac_diff[50]);
+                                         (expA_EQ_expB && fp_frac_diff[50]);
 
    wire fabsB_LE_fabsA = fp_exp_diff[8] || 
-                     (fp_exp_diff == 0 && (fp_frac_diff[50] || fracA_EQ_fracB));
+                     (expA_EQ_expB && (fp_frac_diff[50] || fracA_EQ_fracB));
 
    wire A_LT_B = fp_A_sign && !fp_B_sign ||
 	         fp_A_sign &&  fp_B_sign && fabsB_LT_fabsA ||
