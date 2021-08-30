@@ -25,7 +25,7 @@
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
 `define NRV_RAM 65536
-//`define NRV_RAM 250000
+//`define NRV_RAM 262144 // On the ARTY, does not work with more than 64k, I don't know why.
 
 /************************* Advanced devices configuration ***********************************************************/
 

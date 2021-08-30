@@ -14,9 +14,14 @@
 /******************************************************************************/
 
 // Firmware generation flags for this processor
-`define NRV_ARCH     "rv32imafc" // RV32C supported, but compressed 
+
+// Note: atomic instructions not supported (but 'a' is set in
+// compiler flag, because rv32imfc / imf are not supported in
+// default compiler settings)
+
+//`define NRV_ARCH     "rv32imafc" // RV32C supported, but compressed 
                                    // instrs take one additional cycle.
-//`define NRV_ARCH     "rv32imaf"
+`define NRV_ARCH     "rv32imaf"
 `define NRV_ABI      "ilp32f"
 
 //`define NRV_ARCH     "rv32imac"
@@ -683,7 +688,7 @@ module FemtoRV32(
 	      end
 	   end
 
-	   // if |A| > |B| swap(A,V)
+	   // if |A| > |B| swap(A,B)
 	   // there are some subtleties when fracA=0 or fracB=0 
 	   // (for this reason we do not use the fabsB_LT_fabsA signal
 	   fpmi_is[FPMI_ADD_SWAP]: begin
@@ -730,7 +735,7 @@ module FemtoRV32(
 	   fpmi_is[FPMI_MV_TMP2_A] : 
 	                fp_tmp2 <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[46:24]};
 	   
-	   // fp_rs2 <= -fp_tmp1 / 2.0
+	   // fp_rs2 <= -|fp_tmp1| / 2.0
 	   fpmi_is[FPMI_MV_FPRS2_MHTMP1]: 
 	                   fp_rs2 <= {1'b1, fp_tmp1[30:23]-8'd1, fp_tmp1[22:0]};
 
@@ -744,9 +749,9 @@ module FemtoRV32(
 	   end
 	   
 	   fpmi_is[FPMI_FRCP_ITER]: begin
-	      fp_rs1  <= {1'b1, 8'd126, fp_tmp2[22:0]}; // -D'
+	      fp_rs1  <= {1'b1, 8'd126, fp_tmp2[22:0]};                // -D'
 	      fp_rs2  <= {fp_A_sign, fp_A_exp[7:0], fp_A_frac[46:24]}; // A
-	      fp_rs3  <= 32'h40000000; // 2.0
+	      fp_rs3  <= 32'h40000000;                                 // 2.0
 	   end
 	      
 	   fpmi_is[FPMI_FRCP_EPILOG]: begin
@@ -798,7 +803,7 @@ module FemtoRV32(
    // Notes:
    //  - FLW/FSW handled by LOAD/STORE (instr[2] set if FLW/FSW)
    //  - For all other F instructions, instr[6:5] == 2'b10
-   //  - FMADD/FSUB/FNMADD/FNSUB: instr[4] = 1'b0
+   //  - FMADD/FMSUB/FNMADD/FNMSUB: instr[4] = 1'b0
    //  - For all remaining F instructions, instr[4] = 1'b1
    //  - FMV.X.W and FCLASS have same funct7 (7'b1110000),
    //      (discriminated by instr[12])
@@ -809,7 +814,8 @@ module FemtoRV32(
    //                       and FNMSUB compures -(rs1*rs2-rs3)
    //        they probably did not put the parentheses because when
    //        you implement it, you change the sign of rs1 and rs3 according
-   //        to the operation rather than the sign of the whole result...
+   //        to the operation rather than the sign of the whole result
+   //        (here, it is done by the FPMI_LOAD_AB_MUL micro instruction).
    
    wire isFMADD   = (instr[4:2] == 3'b000); // rd <-   rs1*rs2+rs3
    wire isFMSUB   = (instr[4:2] == 3'b001); // rd <-   rs1*rs2-rs3
@@ -877,7 +883,7 @@ module FemtoRV32(
 	     // isFLE    : fpuIntOut <= $c32("FLE(",fp_rs1,",",fp_rs2,")");
 	     // isFLT    : fpuIntOut <= $c32("FLT(",fp_rs1,",",fp_rs2,")");
 	   
-	     isFCLASS : fpuIntOut <= $c32("FCLASS(",fp_rs1,")") ;
+	     // isFCLASS : fpuIntOut <= $c32("FCLASS(",fp_rs1,")") ;
 	   
 	     // isFCVTWS : fpuIntOut <= $c32("FCVTWS(",fp_rs1,")");
 	     // isFCVTWUS: fpuIntOut <= $c32("FCVTWUS(",fp_rs1,")");
@@ -1163,7 +1169,7 @@ module FemtoRV32(
 
    localparam FETCH_INSTR_bit          = 0;
    localparam WAIT_INSTR_bit           = 1;
-   localparam DECOMPRESS_GETREGS_bit      = 2;   
+   localparam DECOMPRESS_GETREGS_bit   = 2;   
    localparam EXECUTE_bit              = 3;
    localparam WAIT_ALU_OR_MEM_bit      = 4;
    localparam WAIT_ALU_OR_MEM_SKIP_bit = 5;
@@ -1172,7 +1178,7 @@ module FemtoRV32(
 
    localparam FETCH_INSTR          = 1 << FETCH_INSTR_bit;
    localparam WAIT_INSTR           = 1 << WAIT_INSTR_bit;
-   localparam DECOMPRESS_GETREGS      = 1 << DECOMPRESS_GETREGS_bit;   
+   localparam DECOMPRESS_GETREGS   = 1 << DECOMPRESS_GETREGS_bit;   
    localparam EXECUTE              = 1 << EXECUTE_bit;
    localparam WAIT_ALU_OR_MEM      = 1 << WAIT_ALU_OR_MEM_bit;
    localparam WAIT_ALU_OR_MEM_SKIP = 1 << WAIT_ALU_OR_MEM_SKIP_bit;
@@ -1201,7 +1207,10 @@ module FemtoRV32(
 
    wire jumpToPCplusImm = isJAL | (isBranch & predicate);
 
-   wire needToWait = isLoad | isStore | (isALUreg & funcM) | isFPU;  
+   wire needToWait = isLoad | 
+                    (isStore & `NRV_IS_IO_ADDR(mem_addr)) | 
+                    (isALUreg & funcM) | 
+                     isFPU;  
 
    wire [ADDR_WIDTH-1:0] PC_new = 
            isJALR           ? {aluPlus[ADDR_WIDTH-1:1],1'b0} :
@@ -1258,7 +1267,6 @@ module FemtoRV32(
 	   end
 	   
            state[EXECUTE_bit]: begin
-	      // $display("PC=%x instr=%b",PC,instr);
               if (interrupt) begin
 		 PC     <= mtvec;
 		 mepc   <= PC_new;
