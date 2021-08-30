@@ -176,6 +176,9 @@ module FemtoRV32(
    reg [31:0] rs1;
    reg [31:0] rs2;
    reg [31:0] rs3;
+
+   // Duplicated three times, so that rs1,rs2 and rs3 can be accessed 
+   // simultaneously. rs3 can only be read from FPU registers.
    reg [31:0] registerFile1 [63:0];
    reg [31:0] registerFile2 [63:0];
    reg [31:0] registerFile3 [31:0];    
@@ -568,7 +571,8 @@ module FemtoRV32(
 	42: fpmi_instr = FPMI_FRSQRT_PROLOG;
 	43: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
 	44: fpmi_instr = FPMI_MV_FPRS1_A;
-	45: fpmi_instr = FPMI_MV_FPRS2_MHTMP1; 
+	45: fpmi_instr = FPMI_MV_FPRS2_MHTMP1;
+	 // FMPI_ADD_SWAP not needed in next FMADD ?
 	46: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
 	47: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
 	48: fpmi_instr = FPMI_ADD_ADD;       //    |
@@ -706,6 +710,9 @@ module FemtoRV32(
 	   end
 
 	   fpmi_is[FPMI_ADD_SHIFT]: begin
+`ifdef BENCH	      
+	      if(fabsB_LT_fabsA) $display("ADD_SHIFT: incorrect order");
+`endif	      
 	      fp_A_frac <= (fp_exp_diff > 47) ? 0 
                                         : (fp_A_frac >> fp_exp_diff[5:0]);
 	      fp_A_exp <= fp_B_exp;
