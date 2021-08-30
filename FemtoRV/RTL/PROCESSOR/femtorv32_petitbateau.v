@@ -383,8 +383,6 @@ module FemtoRV32(
    wire signed [50:0] fp_frac_diff = fp_B_frac - fp_A_frac;
 
    // Comparisons
-   wire fracA_Z = (fp_A_frac == 0);
-   wire fracB_Z = (fp_B_frac == 0);   
    
    wire fracA_EQ_fracB = (fp_frac_diff == 0);
    
@@ -641,7 +639,7 @@ module FemtoRV32(
 	   
 	   // Micro-programmed instructions
 	   isFLT   | isFLE   | isFEQ               : fpmi_PC <= FPMPROG_CMP;
-	   isFADD  | isFSUB                        : fpmi_PC <= FPMPROG_ADD;
+	   isFADD  | isFSUB                        : fpmi_PC <= FPMPROG_ADD; 
 	   isFMUL                                  : fpmi_PC <= FPMPROG_MUL;
 	   isFMADD | isFMSUB | isFNMADD | isFNMSUB : fpmi_PC <= FPMPROG_MADD;
 	   isFDIV                                  : fpmi_PC <= FPMPROG_DIV;
@@ -667,7 +665,7 @@ module FemtoRV32(
 	   
 	   fpmi_is[FPMI_LOAD_AB_MUL]: begin
 	      fp_A_sign <= fp_rs1_sign ^ fp_rs2_sign ^ (isFNMSUB | isFNMADD);
-	      fp_A_frac <= fp_prod_Z ? 0 : 
+	      fp_A_frac <= fp_prod_Z ? 0 :  
                (fp_prod_frac[47] ? fp_prod_frac : {fp_prod_frac[48:0],1'b0}); 
 	      fp_A_exp  <= fp_prod_Z ? 0 : fp_prod_exp_norm;
 	      
@@ -677,7 +675,7 @@ module FemtoRV32(
 	   end
 	   
 	   fpmi_is[FPMI_NORM]: begin
-	      if(fp_A_exp_norm <= 0 || fracA_Z) begin
+	      if(fp_A_exp_norm <= 0 || (fp_A_frac == 0)) begin
 		 fp_A_frac <= 0;
 		 fp_A_exp <= 0;
 	      end else begin
@@ -691,24 +689,14 @@ module FemtoRV32(
                     $display("NORM: first bit set = %d\n",63-fp_A_clz);
 		 end
 `endif
-		 if(fp_A_frac[48]) begin
-		    fp_A_frac <= fp_A_frac >> 1;
-		 end else begin
-		    fp_A_frac <= fp_A_frac << (fp_A_clz - 16); 
-		 end
-		  
+		 fp_A_frac <= fp_A_frac[48] ? (fp_A_frac >> 1) 
+                                            : fp_A_frac << (fp_A_clz - 16); 
 		 fp_A_exp  <= fp_A_exp_norm;
 	      end
 	   end
 
-	   // if |A| > |B| swap(A,B)
-	   // there are some subtleties when fracA=0 or fracB=0 
-	   // (for this reason we do not use the fabsB_LT_fabsA signal
 	   fpmi_is[FPMI_ADD_SWAP]: begin
-	      if(
-		  fracA_Z || (fp_exp_diff[8] && !fracB_Z) || 
-		 (fp_exp_diff == 0 && fp_frac_diff[50]) 
-	      ) begin 
+	      if(fabsB_LT_fabsA) begin
 		 fp_A_frac <= fp_B_frac; fp_B_frac <= fp_A_frac;
 		 fp_A_exp  <= fp_B_exp;  fp_B_exp  <= fp_A_exp;
 		 fp_A_sign <= fp_B_sign; fp_B_sign <= fp_A_sign;
@@ -716,22 +704,15 @@ module FemtoRV32(
 	   end
 
 	   fpmi_is[FPMI_ADD_SHIFT]: begin
-	      if(!fracA_Z && !fracB_Z) begin
-		 if(fp_exp_diff > 47) begin
-		    fp_A_frac <= 0;
-		 end else begin
-		    fp_A_frac <= fp_A_frac >> fp_exp_diff[5:0]; 
-		 end
-		 fp_A_exp <= fp_B_exp;
-	      end
+	      fp_A_frac <= (fp_exp_diff > 47) ? 0 
+                                        : (fp_A_frac >> fp_exp_diff[5:0]);
+	      fp_A_exp <= fp_B_exp;
 	   end
 
 	   fpmi_is[FPMI_ADD_ADD]: begin
-	      if(!fracB_Z) begin	      
-		 fp_A_frac <= (fp_A_sign ^ fp_B_sign) ? fp_frac_diff[49:0] 
-                                                      : fp_frac_sum[49:0];
-		 fp_A_sign <= fp_B_sign;
-	      end
+	      fp_A_frac <= (fp_A_sign ^ fp_B_sign) ? fp_frac_diff[49:0] 
+                                                   : fp_frac_sum[49:0];
+	      fp_A_sign <= fp_B_sign;
 	   end
 
 	   fpmi_is[FPMI_CMP]: begin
