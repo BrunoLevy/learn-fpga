@@ -98,6 +98,13 @@ program using a minimalistic/crappy OS (FemtOS). Note that this solution
 requires to have the OS preloaded in the RAM (this is why we need both 
 solutions).
 
+  3) copy the executable in the device's SPI Flash. FPGA boards often 
+have a tiny 8-legged chip used to store the configuration of the FPGA. 
+It is flash memory, with a few megabytes of memory, that is accessed 
+through a serial protocol. The configuration of the FPGA only takes a 
+few tenth of kilobytes. There is a lot of space we can use to store 
+code there, and directly make FemtoRV32 execute it ! This requires
+a special linker script and C startup function.
 
 Bare metal ELF
 --------------
@@ -227,12 +234,12 @@ memory declared in `RTL/femtosoc_config.v`. Then, the generated file
 `FIRMWARE/firmware.hex` is used to initialize the RAM in
 `FIRMWARE/femtosoc.v`, using the `readmemh()` Verilog command.
 
-Then, the script `make_firmware.sh` does all these steps. It is used
+Th `Makefiles` in the FIRMWARE subdirectories do all these steps. It is used
 as follows:
 
 ```
-$ cd FIRMWARE
-$ ./make_firmware.sh EXAMPLES/xxxx.c
+$ cd FIRMWARE/EXAMPLES
+$ make xxx.hex
 $ cd ..
 ```
 (where `xxxx` is the name of the program you want to compile). It
