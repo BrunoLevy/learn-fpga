@@ -179,10 +179,9 @@ module FemtoRV32(
 
    // Duplicated three times, so that rs1,rs2 and rs3 can be accessed 
    // simultaneously. rs3 can only be read from FPU registers.
-   reg [31:0] registerFile1 [63:0];
-   reg [31:0] registerFile2 [63:0];
-   reg [31:0] registerFile3 [31:0];    
-
+   
+   reg [31:0] registerFile [63:0];
+   
    /***************************************************************************/
    // The ALU. Does operations and tests combinatorially, except divisions.
    /***************************************************************************/
@@ -626,13 +625,13 @@ module FemtoRV32(
 
    always @(posedge clk) begin
       if(state[DECOMPRESS_GETREGS_bit]) begin
-	 rs1 <= registerFile1[{decomp_rs1IsFP,instr[19:15]}];
-	 rs2 <= registerFile2[{decomp_rs2IsFP,instr[24:20]}];
+	 rs1 <= registerFile[{decomp_rs1IsFP,instr[19:15]}];
+	 rs2 <= registerFile[{decomp_rs2IsFP,instr[24:20]}];
 	 // Do not get rs3, because there is no compressed FMA.	 
       end else if(state[WAIT_INSTR_bit] /* && !mem_rbusy */) begin
-	 rs1 <= registerFile1[{raw_rs1IsFP,raw_instr[19:15]}]; 
-	 rs2 <= registerFile2[{raw_rs2IsFP,raw_instr[24:20]}];
-	 rs3 <= registerFile3[raw_instr[31:27]]; 	 
+	 rs1 <= registerFile[{raw_rs1IsFP,raw_instr[19:15]}]; 
+	 rs2 <= registerFile[{raw_rs2IsFP,raw_instr[24:20]}];
+	 rs3 <= registerFile[{1'b1,raw_instr[31:27]}];
       end else if(state[EXECUTE_bit] & isFPU) begin
 	 (* parallel_case *)
 	 case(1'b1)
@@ -798,9 +797,7 @@ module FemtoRV32(
 	   end
 	 endcase 
       end else if(writeBack && (rdIsFP || instr[11:7] != 0)) begin
-	 registerFile1[{rdIsFP,instr[11:7]}] <= writeBackData;
-	 registerFile2[{rdIsFP,instr[11:7]}] <= writeBackData;
-	 if(rdIsFP) registerFile3[instr[11:7]] <= writeBackData;	 
+         registerFile[{rdIsFP,instr[11:7]}] <= writeBackData;
       end 
    end
    
@@ -1316,9 +1313,7 @@ module FemtoRV32(
 `ifdef BENCH
    initial begin
       cycles = 0;
-      registerFile1[0] = 0;
-      registerFile2[0] = 0;
-      registerFile3[0] = 0;      
+      registerFile[0] = 0;
    end
 `endif
 
