@@ -660,6 +660,7 @@ module FemtoRV32(
 	 fpmi_PC <= fpmi_instr[FPMI_EXIT_FLAG_bit] ? 0 : fpmi_PC+1;
 
 	 case(1'b1)
+	   // A <- rs1 ; B <- rs2
 	   fpmi_is[FPMI_LOAD_AB]: begin
 	      fp_A_sign <= fp_rs1_sign;
 	      fp_A_frac <= {2'b0, fp_rs1_frac, 24'd0};
@@ -668,7 +669,8 @@ module FemtoRV32(
 	      fp_B_frac <= {2'b0, fp_rs2_frac, 24'd0};
 	      fp_B_exp  <= {1'b0, fp_rs2_exp}; 
 	   end
-	   
+
+	   // A <- (+/-) normalize(rs1*rs2);  B <- (+/-)rs3
 	   fpmi_is[FPMI_LOAD_AB_MUL]: begin
 	      fp_A_sign <= fp_rs1_sign ^ fp_rs2_sign ^ (isFNMSUB | isFNMADD);
 	      fp_A_frac <= fp_prod_Z ? 0 :  
@@ -679,7 +681,8 @@ module FemtoRV32(
 	      fp_B_frac <= {2'b0, fp_rs3_frac, 24'd0};
 	      fp_B_exp  <= {1'b0, fp_rs3_exp};
 	   end
-	   
+
+	   // A <- normalize(A)
 	   fpmi_is[FPMI_NORM]: begin
 	      if(fp_A_exp_norm <= 0 || (fp_A_frac == 0)) begin
 		 fp_A_frac <= 0;
@@ -701,6 +704,7 @@ module FemtoRV32(
 	      end
 	   end
 
+	   // if(|A| > |B|) swap(A,B)
 	   fpmi_is[FPMI_ADD_SWAP]: begin
 	      if(fabsB_LT_fabsA) begin
 		 fp_A_frac <= fp_B_frac; fp_B_frac <= fp_A_frac;
@@ -709,6 +713,7 @@ module FemtoRV32(
 	      end
 	   end
 
+	   // shift A to march B exponent
 	   fpmi_is[FPMI_ADD_SHIFT]: begin
 `ifdef BENCH	      
 	      if(fabsB_LT_fabsA) $display("ADD_SHIFT: incorrect order");
@@ -718,12 +723,14 @@ module FemtoRV32(
 	      fp_A_exp <= fp_B_exp;
 	   end
 
+	   // A <- A (+/-) B
 	   fpmi_is[FPMI_ADD_ADD]: begin
 	      fp_A_frac <= (fp_A_sign ^ fp_B_sign) ? fp_frac_diff[49:0] 
                                                    : fp_frac_sum[49:0];
 	      fp_A_sign <= fp_B_sign;
 	   end
 
+	   // A <- result of comparison between A and B
 	   fpmi_is[FPMI_CMP]: begin
 	      `FPU_OUT <= 
                  {31'b0, isFLT && A_LT_B || isFLE && A_LE_B || isFEQ && A_EQ_B};
@@ -1258,8 +1265,7 @@ module FemtoRV32(
            end
 
            state[DECOMPRESS_GETREGS_bit]: begin
-	      //rs1   <= registerFile[instr[19:15]];
-	      //rs2   <= registerFile[instr[24:20]];
+	      // Registers are fetched in FPU's always block.
 	      state <= EXECUTE;
 	   end
 	   
@@ -1271,9 +1277,11 @@ module FemtoRV32(
 		 state  <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
               end else begin
 
+`ifdef BENCH		 
 		 if((isLoad|isStore) && instr[2] && |loadstore_addr[1:0]) begin
 		    $display("PC=%x UNALIGNED FLW/FSW",PC);
 		 end
+`endif
 		 
 		 PC <= PC_new;
 		 if (interrupt_return) mcause <= 0;

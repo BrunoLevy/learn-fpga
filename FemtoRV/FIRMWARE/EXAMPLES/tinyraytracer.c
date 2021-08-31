@@ -1,10 +1,11 @@
 /* A port of Dmitry Sokolov's tiny raytracer to C and to FemtoRV32 */
 /* Displays on the small OLED display and/or HDMI                  */
+/* Bruno Levy, 2020                                                */
+/* Original tinyraytracer: https://github.com/ssloy/tinyraytracer  */
 
 #include <math.h>
-#include <fenv.h>
-#include <femtoGL.h>
-#include "errno_fix.h"
+#include <femtoGL.h>   // my own graphic stuff (replace by yours if need be)
+#include "errno_fix.h" // needed if the linker barks about missing __errno
 
 /*******************************************************************/
 
@@ -12,6 +13,163 @@ typedef int BOOL;
 
 static inline float max(float x, float y) { return x>y?x:y; }
 static inline float min(float x, float y) { return x<y?x:y; }
+
+/*******************************************************************/
+
+// If you want to adapt tinyraytracer to your own platform, there are
+// mostly two macros and two functions to write:
+//   graphics_width
+//   graphics_height
+//   graphics_init()
+//   graphics_set_pixel()
+//
+// You can also write the following functions (or leave them empty if
+// you do not need them):
+//   graphics_terminate()
+//   stats_begin_frame()
+//   stats_begin_pixel()
+//   stats_end_pixel()
+//   stats_end_frame()
+
+
+// Size of the screen
+// Replace with your own variables or values
+#define graphics_width  GL_width
+#define graphics_height GL_height
+
+// Replace with your own stuff to initialize graphics
+static inline void graphics_init() {
+    GL_init(GL_MODE_CHOOSE);
+    GL_tty_init(FGA_mode);
+
+    switch(FGA_mode) {
+    case FGA_MODE_320x200x8bpp: {
+       for(int i=0; i<256; ++i) {
+	  FGA_setpalette(i,i,i,i);
+       }
+    } break;
+    case FGA_MODE_640x400x4bpp: {
+      for(int i=0; i<16; ++i) {
+	FGA_setpalette(i,i<<4,i<<4,i<<4);
+      }
+    } break;
+    case FGA_MODE_800x600x2bpp: {
+      for(int i=0; i<4; ++i) {
+	FGA_setpalette(i,i<<6,i<<6,i<<6);
+      }
+    } break;
+    case FGA_MODE_1024x768x1bpp: {
+      FGA_setpalette(0,0,0,0);
+      FGA_setpalette(1,255,255,255);      
+    } break;
+    default:
+      break;
+    }
+    GL_clear();
+}
+
+// Replace with your own stuff to terminate graphics or leave empty
+// Here I send <ctrl><D> to the UART, to exit the simulation in Verilator,
+// it is captured by special code in RTL/DEVICES/uart.v
+static inline void graphics_terminate() {
+  UART_putchar(4); // send <ctrl><D> to UART (exits simulation in Verilator)
+}
+
+// The Bayer matrix for ordered dithering, used by graphics_set_pixel()
+const uint8_t dither[4][4] = {
+  { 0, 8, 2,10},
+  {12, 4,14, 6},
+  { 3,11, 1, 9},
+  {15, 7,13, 5}
+};
+
+// Replace with your own code.
+void graphics_set_pixel(int x, int y, float r, float g, float b) {
+   r = max(0.0f, min(1.0f, r));
+   g = max(0.0f, min(1.0f, g));
+   b = max(0.0f, min(1.0f, b));
+   switch(FGA_mode) {
+      case GL_MODE_OLED: {
+	uint8_t R = (uint8_t)(255.0f * r);
+	uint8_t G = (uint8_t)(255.0f * g);
+	uint8_t B = (uint8_t)(255.0f * b);
+	GL_setpixel(x,y,GL_RGB(R,G,B));
+      } break;
+      case FGA_MODE_320x200x16bpp: {
+	uint8_t R = (uint8_t)(255.0f * r);
+	uint8_t G = (uint8_t)(255.0f * g);
+	uint8_t B = (uint8_t)(255.0f * b);
+	FGA_setpixel(x,y,GL_RGB(R,G,B));     
+      } break;
+      case FGA_MODE_320x200x8bpp: {
+	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+	FGA_setpixel(x,y,(uint16_t)(gray*255.0f));
+      } break;
+      case FGA_MODE_640x400x4bpp: {
+	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+	uint16_t GRAY = (uint16_t)(gray*255.0f);
+	uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
+	FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15));
+      } break;
+      case FGA_MODE_800x600x2bpp: {
+	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+	uint16_t GRAY = (uint16_t)(gray*255.0f);
+	uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
+	FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15)>>2);
+      } break;
+      case FGA_MODE_1024x768x1bpp: {
+	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
+	uint16_t GRAY = (uint16_t)(gray*255.0f);
+	uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
+	FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15)>>3);
+      } break;
+   }
+}
+
+uint32_t frame_ticks;
+uint64_t pixel_ticks;
+
+// Begins statistics collection for current frame.
+// Leave emtpy if not needed.
+static inline stats_begin_frame() {
+  frame_ticks = 0;
+}
+
+// Begins statistics collection for current pixel
+// Leave emtpy if not needed.
+// There are these two levels because on some
+// femtorv32 cores (quark, tachyon), the clock tick counter does not
+// have sufficient bits and will wrap during the time taken by
+// rendering a frame (up to several minutes).
+static inline stats_begin_pixel() {
+  pixel_ticks = cycles();
+}
+
+// Ends statistics collection for current pixel
+// Leave emtpy if not needed.
+static inline stats_end_pixel() {
+  pixel_ticks = cycles() - pixel_ticks;
+  frame_ticks += (uint32_t)pixel_ticks/1000;  
+}
+
+// Ends statistics collection for current frame
+// and displays result.
+// Leave emtpy if not needed.
+static inline stats_end_frame() {
+  // Not using floats because my own version of printf()
+  // in libfemtorv does not support them.
+  uint32_t seconds = frame_ticks /= (FEMTORV32_FREQ * 1000);
+  uint32_t minutes = seconds / 60;
+  seconds = seconds % 60;
+  printf(
+      "%d:%s%d\n", 
+      minutes, 
+      seconds >= 10 ? "" : "0", seconds
+  );
+}
+
+// Normally you will not need to modify anything beyond that point.
+/*******************************************************************/
 
 typedef struct { float x,y,z; }   vec3;
 typedef struct { float x,y,z,w; } vec4;
@@ -28,13 +186,33 @@ static inline vec4 make_vec4(float x, float y, float z, float w) {
   return V;
 }
 
-static inline vec3 vec3_neg(vec3 V)            { return make_vec3(-V.x, -V.y, -V.z); }
-static inline vec3 vec3_add(vec3 U, vec3 V)    { return make_vec3(U.x+V.x, U.y+V.y, U.z+V.z); }
-static inline vec3 vec3_sub(vec3 U, vec3 V)    { return make_vec3(U.x-V.x, U.y-V.y, U.z-V.z); }
-static inline float vec3_dot(vec3 U, vec3 V)   { return U.x*V.x+U.y*V.y+U.z*V.z; }
-static inline vec3 vec3_scale(float s, vec3 U) { return make_vec3(s*U.x, s*U.y, s*U.z); }
-static inline float vec3_length(vec3 U)        { return sqrtf(U.x*U.x+U.y*U.y+U.z*U.z); }
-static inline vec3 vec3_normalize(vec3 U)      { return vec3_scale(1.0f/vec3_length(U),U); }
+static inline vec3 vec3_neg(vec3 V) {
+  return make_vec3(-V.x, -V.y, -V.z);
+}
+
+static inline vec3 vec3_add(vec3 U, vec3 V) {
+  return make_vec3(U.x+V.x, U.y+V.y, U.z+V.z);
+}
+
+static inline vec3 vec3_sub(vec3 U, vec3 V) {
+  return make_vec3(U.x-V.x, U.y-V.y, U.z-V.z);
+}
+
+static inline float vec3_dot(vec3 U, vec3 V) {
+  return U.x*V.x+U.y*V.y+U.z*V.z;
+}
+
+static inline vec3 vec3_scale(float s, vec3 U) {
+  return make_vec3(s*U.x, s*U.y, s*U.z);
+}
+
+static inline float vec3_length(vec3 U) {
+  return sqrtf(U.x*U.x+U.y*U.y+U.z*U.z);
+}
+
+static inline vec3 vec3_normalize(vec3 U) {
+  return vec3_scale(1.0f/vec3_length(U),U);
+}
 
 /*************************************************************************/
 
@@ -107,22 +285,34 @@ BOOL Sphere_ray_intersect(Sphere* S, vec3 orig, vec3 dir, float* t0) {
   return 1;
 }
 
-vec3 reflect(vec3 I, vec3 N) { return vec3_sub(I, vec3_scale(2.f*vec3_dot(I,N),N)); }
-
-vec3 refract(vec3 I, vec3 N, float eta_t, float eta_i /* =1.f */) { // Snell's law
-    float cosi = -max(-1.f, min(1.f, vec3_dot(I,N)));
-    if (cosi<0) return refract(I, vec3_neg(N), eta_i, eta_t); // if the ray comes from the inside the object, swap the air and the media
-    float eta = eta_i / eta_t;
-    float k = 1 - eta*eta*(1 - cosi*cosi);
-    return k<0 ? make_vec3(1,0,0) : vec3_add(vec3_scale(eta,I),vec3_scale((eta*cosi - sqrtf(k)),N));
-                                        // k<0 = total reflection, no ray to refract. I refract it anyways, this has no physical meaning
+vec3 reflect(vec3 I, vec3 N) {
+  return vec3_sub(I, vec3_scale(2.f*vec3_dot(I,N),N));
 }
 
-BOOL scene_intersect(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, vec3* hit, vec3* N, Material* material) {
+vec3 refract(vec3 I, vec3 N, float eta_t, float eta_i /* =1.f */) {
+  // Snell's law
+  float cosi = -max(-1.f, min(1.f, vec3_dot(I,N)));
+  // if the ray comes from the inside the object, swap the air and the media  
+  if (cosi<0) return refract(I, vec3_neg(N), eta_i, eta_t); 
+    float eta = eta_i / eta_t;
+    float k = 1 - eta*eta*(1 - cosi*cosi);
+    // k<0 = total reflection, no ray to refract.
+    // I refract it anyways, this has no physical meaning
+    return k<0 ? make_vec3(1,0,0)
+              : vec3_add(vec3_scale(eta,I),vec3_scale((eta*cosi - sqrtf(k)),N));
+}
+
+BOOL scene_intersect(
+   vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres,
+   vec3* hit, vec3* N, Material* material
+) {
   float spheres_dist = 1e30;
   for(int i=0; i<nb_spheres; ++i) {
     float dist_i;
-    if(Sphere_ray_intersect(&spheres[i], orig, dir, &dist_i) && (dist_i < spheres_dist)) {
+    if(
+       Sphere_ray_intersect(&spheres[i], orig, dir, &dist_i) &&
+       (dist_i < spheres_dist)
+    ) {
       spheres_dist = dist_i;
       *hit = vec3_add(orig,vec3_scale(dist_i,dir));
       *N = vec3_normalize(vec3_sub(*hit, spheres[i].center));
@@ -137,130 +327,116 @@ BOOL scene_intersect(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, vec3*
       checkerboard_dist = d;
       *hit = pt;
       *N = make_vec3(0,1,0);
-      material->diffuse_color = (((int)(.5*hit->x+1000) + (int)(.5*hit->z)) & 1) ? make_vec3(.3, .3, .3) : make_vec3(.3, .2, .1);
+      material->diffuse_color =
+	(((int)(.5*hit->x+1000) + (int)(.5*hit->z)) & 1)
+	             ? make_vec3(.3, .3, .3)
+	             : make_vec3(.3, .2, .1);
     }
   }
   return min(spheres_dist, checkerboard_dist)<1000;
 }
 
-vec3 cast_ray(vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres, Light* lights, int nb_lights, int depth /* =0 */) {
+vec3 cast_ray(
+   vec3 orig, vec3 dir, Sphere* spheres, int nb_spheres,
+   Light* lights, int nb_lights, int depth /* =0 */
+) {
   vec3 point,N;
   Material material = make_Material_default();
-  if (depth>2 || !scene_intersect(orig, dir, spheres, nb_spheres, &point, &N, &material)) {
+  if (
+    depth>2 ||
+    !scene_intersect(orig, dir, spheres, nb_spheres, &point, &N, &material)
+  ) {
     float s = 0.5*(dir.y + 1.0);
-    return vec3_add(vec3_scale(s,make_vec3(0.2, 0.7, 0.8)),vec3_scale(s,make_vec3(0.0, 0.0, 0.5)));
+    return vec3_add(
+	vec3_scale(s,make_vec3(0.2, 0.7, 0.8)),
+        vec3_scale(s,make_vec3(0.0, 0.0, 0.5))
+    );
   }
 
-  vec3 reflect_dir = vec3_normalize(reflect(dir, N));
-  vec3 refract_dir = vec3_normalize(refract(dir, N, material.refractive_index, 1)); 
+  vec3 reflect_dir=vec3_normalize(reflect(dir, N));
+  vec3 refract_dir=vec3_normalize(refract(dir,N,material.refractive_index,1));
+  
   // offset the original point to avoid occlusion by the object itself 
-  vec3 reflect_orig = vec3_dot(reflect_dir,N) < 0 ? vec3_sub(point,vec3_scale(1e-3,N)) : vec3_add(point,vec3_scale(1e-3,N)); 
-  vec3 refract_orig = vec3_dot(refract_dir,N) < 0 ? vec3_sub(point,vec3_scale(1e-3,N)) : vec3_add(point,vec3_scale(1e-3,N));
-  vec3 reflect_color = cast_ray(reflect_orig, reflect_dir, spheres, nb_spheres, lights, nb_lights, depth + 1);
-  vec3 refract_color = cast_ray(refract_orig, refract_dir, spheres, nb_spheres, lights, nb_lights, depth + 1);
+  vec3 reflect_orig =
+    vec3_dot(reflect_dir,N) < 0
+               ? vec3_sub(point,vec3_scale(1e-3,N))
+               : vec3_add(point,vec3_scale(1e-3,N)); 
+  vec3 refract_orig =
+    vec3_dot(refract_dir,N) < 0
+               ? vec3_sub(point,vec3_scale(1e-3,N))
+               : vec3_add(point,vec3_scale(1e-3,N));
+  vec3 reflect_color = cast_ray(
+       reflect_orig, reflect_dir, spheres, nb_spheres,
+       lights, nb_lights, depth + 1
+  );
+  vec3 refract_color = cast_ray(
+       refract_orig, refract_dir, spheres, nb_spheres,
+       lights, nb_lights, depth + 1
+  );
   
   float diffuse_light_intensity = 0, specular_light_intensity = 0;
   for (int i=0; i<nb_lights; i++) {
     vec3  light_dir = vec3_normalize(vec3_sub(lights[i].position,point));
     float light_distance = vec3_length(vec3_sub(lights[i].position,point));
 
-    vec3 shadow_orig = vec3_dot(light_dir,N) < 0 ? vec3_sub(point,vec3_scale(1e-3,N)) : vec3_add(point,vec3_scale(1e-3,N));
-        // checking if the point lies in the shadow of the lights[i]
+    vec3 shadow_orig =
+      vec3_dot(light_dir,N) < 0
+                ? vec3_sub(point,vec3_scale(1e-3,N))
+                : vec3_add(point,vec3_scale(1e-3,N)) ;
+    // checking if the point lies in the shadow of the lights[i]
     vec3 shadow_pt, shadow_N;
     Material tmpmaterial;
-    if (scene_intersect(shadow_orig, light_dir, spheres, nb_spheres, &shadow_pt, &shadow_N, &tmpmaterial) &&
-	vec3_length(vec3_sub(shadow_pt,shadow_orig)) < light_distance
+    if (
+       scene_intersect(
+	 shadow_orig, light_dir, spheres, nb_spheres,
+	 &shadow_pt, &shadow_N, &tmpmaterial
+       ) && (
+  	 vec3_length(vec3_sub(shadow_pt,shadow_orig)) < light_distance
+	     )
     ) continue ;
     
-    diffuse_light_intensity  += lights[i].intensity * max(0.f, vec3_dot(light_dir,N));
+    diffuse_light_intensity  +=
+                  lights[i].intensity * max(0.f, vec3_dot(light_dir,N));
      
-    float abc = max(0.f, vec3_dot(vec3_neg(reflect(vec3_neg(light_dir), N)),dir));
+    float abc = max(
+	           0.f, vec3_dot(vec3_neg(reflect(vec3_neg(light_dir), N)),dir)
+	        );
     float def = material.specular_exponent;
     if(abc > 0.0f && def > 0.0f) {
       specular_light_intensity += powf(abc,def)*lights[i].intensity;
     }
   }
-  vec3 result = vec3_scale(diffuse_light_intensity * material.albedo.x, material.diffuse_color);
-  result = vec3_add(result, vec3_scale(specular_light_intensity * material.albedo.y, make_vec3(1,1,1)));
+  vec3 result = vec3_scale(
+      diffuse_light_intensity * material.albedo.x, material.diffuse_color
+  );
+  result = vec3_add(
+       result, vec3_scale(specular_light_intensity * material.albedo.y,
+       make_vec3(1,1,1))
+  );
   result = vec3_add(result, vec3_scale(material.albedo.z, reflect_color));
   result = vec3_add(result, vec3_scale(material.albedo.w, refract_color));
   return result;
 }
 
-const uint8_t dither[4][4] = {
-  { 0, 8, 2,10},
-  {12, 4,14, 6},
-  { 3,11, 1, 9},
-  {15, 7,13, 5}
-};
-
-void set_pixel(int x, int y, float r, float g, float b) {
-   r = max(0.0f, min(1.0f, r));
-   g = max(0.0f, min(1.0f, g));
-   b = max(0.0f, min(1.0f, b));
-   switch(FGA_mode) {
-      case GL_MODE_OLED: {
-	uint8_t R = (uint8_t)(255.0f * r);
-	uint8_t G = (uint8_t)(255.0f * g);
-	uint8_t B = (uint8_t)(255.0f * b);
-	GL_setpixel(x,y,GL_RGB(R,G,B));
-      } break;
-      case FGA_MODE_320x200x16bpp: {
-	uint8_t R = (uint8_t)(255.0f * r);
-	uint8_t G = (uint8_t)(255.0f * g);
-	uint8_t B = (uint8_t)(255.0f * b);
-	FGA_setpixel(x,y,GL_RGB(R,G,B));     
-      } break;
-      case FGA_MODE_320x200x8bpp: {
-	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
-	FGA_setpixel(x,y,(uint16_t)(gray*255.0f));
-      } break;
-      case FGA_MODE_640x400x4bpp: {
-	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
-	uint16_t GRAY = (uint16_t)(gray*255.0f);
-	uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
-	FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15));
-      } break;
-      case FGA_MODE_800x600x2bpp: {
-	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
-	uint16_t GRAY = (uint16_t)(gray*255.0f);
-	uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
-	FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15)>>2);
-      } break;
-      case FGA_MODE_1024x768x1bpp: {
-	float gray = 0.2126f * r + 0.7152f * g + 0.0722 * b;
-	uint16_t GRAY = (uint16_t)(gray*255.0f);
-	uint16_t OFF = (GRAY & 15) > dither[x&3][y&3];
-	FGA_setpixel(x,y,MIN((GRAY>>4)+OFF,15)>>3);
-      } break;
-   }
-}
 
 void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
-   uint32_t total_ticks = 0;
-   uint32_t minutes;
-   uint32_t seconds;
    const float fov  = M_PI/3.;
+   stats_begin_frame();
    for (int j = 0; j<GL_height; j++) { // actual rendering loop
       for (int i = 0; i<GL_width; i++) {
-	 uint64_t pixel_ticks = cycles();
-	 float dir_x =  (i + 0.5) - GL_width/2.;
-	 float dir_y = -(j + 0.5) + GL_height/2.;    // this flips the image at the same time
-	 float dir_z = -GL_height/(2.*tan(fov/2.));
-	 vec3 C = cast_ray(make_vec3(0,0,0), vec3_normalize(make_vec3(dir_x, dir_y, dir_z)), spheres, nb_spheres, lights, nb_lights, 0);
-	 set_pixel(i,j,C.x,C.y,C.z);
-	 pixel_ticks = cycles() - pixel_ticks;
-	 total_ticks += (uint32_t)pixel_ticks/1000;
+	stats_begin_pixel();
+	float dir_x =  (i + 0.5) - GL_width/2.;
+	float dir_y = -(j + 0.5) + GL_height/2.; // this flips the image.
+	float dir_z = -GL_height/(2.*tan(fov/2.));
+	vec3 C = cast_ray(
+	   make_vec3(0,0,0), vec3_normalize(make_vec3(dir_x, dir_y, dir_z)),
+	   spheres, nb_spheres, lights, nb_lights, 0
+	);
+	graphics_set_pixel(i,j,C.x,C.y,C.z);
+	stats_end_pixel();
       }
    }
-   seconds = total_ticks /= (FEMTORV32_FREQ * 1000);
-   minutes = seconds / 60;
-   seconds = seconds % 60;
-   printf(
-      "%d:%s%d\n", 
-      minutes, 
-      seconds >= 10 ? "" : "0", seconds
-   );
+   stats_end_frame();
 }
 
 int nb_spheres = 4;
@@ -270,10 +446,18 @@ int nb_lights = 3;
 Light lights[3];
 
 void init_scene() {
-    Material      ivory = make_Material(1.0, make_vec4(0.6,  0.3, 0.1, 0.0), make_vec3(0.4, 0.4, 0.3),   50.);
-    Material      glass = make_Material(1.5, make_vec4(0.0,  0.5, 0.1, 0.8), make_vec3(0.6, 0.7, 0.8),  125.);
-    Material red_rubber = make_Material(1.0, make_vec4(0.9,  0.1, 0.0, 0.0), make_vec3(0.3, 0.1, 0.1),   10.);
-    Material     mirror = make_Material(1.0, make_vec4(0.0, 10.0, 0.8, 0.0), make_vec3(1.0, 1.0, 1.0),  142.);
+    Material ivory = make_Material(
+       1.0, make_vec4(0.6,  0.3, 0.1, 0.0), make_vec3(0.4, 0.4, 0.3),   50.
+    );
+    Material glass = make_Material(
+       1.5, make_vec4(0.0,  0.5, 0.1, 0.8), make_vec3(0.6, 0.7, 0.8),  125.
+    );
+    Material red_rubber = make_Material(
+       1.0, make_vec4(0.9,  0.1, 0.0, 0.0), make_vec3(0.3, 0.1, 0.1),   10.
+    );
+    Material mirror = make_Material(
+       1.0, make_vec4(0.0, 10.0, 0.8, 0.0), make_vec3(1.0, 1.0, 1.0),  142.
+    );
 
     spheres[0] = make_Sphere(make_vec3(-3,    0,   -16), 2,      ivory);
     spheres[1] = make_Sphere(make_vec3(-1.0, -1.5, -12), 2,      glass);
@@ -287,35 +471,8 @@ void init_scene() {
 
 int main() {
     init_scene();
-    GL_init(GL_MODE_CHOOSE);
-    GL_tty_init(FGA_mode);
-
-    switch(FGA_mode) {
-    case FGA_MODE_320x200x8bpp: {
-       for(int i=0; i<256; ++i) {
-	  FGA_setpalette(i,i,i,i);
-       }
-    } break;
-    case FGA_MODE_640x400x4bpp: {
-      for(int i=0; i<16; ++i) {
-	FGA_setpalette(i,i<<4,i<<4,i<<4);
-      }
-    } break;
-    case FGA_MODE_800x600x2bpp: {
-      for(int i=0; i<4; ++i) {
-	FGA_setpalette(i,i<<6,i<<6,i<<6);
-      }
-    } break;
-    case FGA_MODE_1024x768x1bpp: {
-      FGA_setpalette(0,0,0,0);
-      FGA_setpalette(1,255,255,255);      
-    } break;
-    default:
-      break;
-    }
-    
-    GL_clear();
+    graphics_init();
     render(spheres, nb_spheres, lights, nb_lights);
-    UART_putchar(4); // send <ctrl><D> to UART (exits simulation)
+    graphics_terminate();
     return 0;
 }
