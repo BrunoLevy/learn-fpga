@@ -176,10 +176,6 @@ module FemtoRV32(
    reg [31:0] rs1;
    reg [31:0] rs2;
    reg [31:0] rs3;
-
-   // Duplicated three times, so that rs1,rs2 and rs3 can be accessed 
-   // simultaneously. rs3 can only be read from FPU registers.
-   
    reg [31:0] registerFile [63:0];
    
    /***************************************************************************/
