@@ -422,12 +422,12 @@ vec3 cast_ray(
 void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
    const float fov  = M_PI/3.;
    stats_begin_frame();
-   for (int j = 0; j<GL_height; j++) { // actual rendering loop
-      for (int i = 0; i<GL_width; i++) {
+   for (int j = 0; j<graphics_height; j++) { // actual rendering loop
+      for (int i = 0; i<graphics_width; i++) {
 	stats_begin_pixel();
-	float dir_x =  (i + 0.5) - GL_width/2.;
-	float dir_y = -(j + 0.5) + GL_height/2.; // this flips the image.
-	float dir_z = -GL_height/(2.*tan(fov/2.));
+	float dir_x =  (i + 0.5) - graphics_width/2.;
+	float dir_y = -(j + 0.5) + graphics_height/2.; // this flips the image.
+	float dir_z = -graphics_height/(2.*tan(fov/2.));
 	vec3 C = cast_ray(
 	   make_vec3(0,0,0), vec3_normalize(make_vec3(dir_x, dir_y, dir_z)),
 	   spheres, nb_spheres, lights, nb_lights, 0
