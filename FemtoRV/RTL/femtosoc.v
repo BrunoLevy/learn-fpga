@@ -264,7 +264,7 @@ module femtosoc(
    end
 `endif
 
-   // The power of YOSYS: it infers SB_RAM40_4K BRAM primitives automatically ! (and recognizes
+   // The power of YOSYS: it infers BRAM primitives automatically ! (and recognizes
    // masked writes, amazing ...)
    /* verilator lint_off WIDTH */
    always @(posedge clk) begin
