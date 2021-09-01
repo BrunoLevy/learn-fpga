@@ -25,6 +25,14 @@
 `define NRV_OPTIMIZE "-O3"
 `define NRV_INTERRUPTS
 
+// A macro to verify conditions in simulation
+`ifdef BENCH
+ `define ASSERT(cond,msg) if(!(cond)) $display msg
+ `define ASSERT_NOT_REACHED(msg) $display msg
+`else
+ `define ASSERT(cond,msg)
+ `define ASSERT_NOT_REACHED(msg)
+`endif
 
 // FPU Normalization needs to detect the position of the leftmost bit set 
 // in the fp_A_frac register. It is easier to count the number of leading 
@@ -99,46 +107,11 @@ module FemtoRV32(
    // Reference: Table page 104 of:
    // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
 
-   // asserted if the destination register is a floating-point register
-   wire rdIsFP = (instr[6:2] == 5'b00001)            || // FLW
-	         (instr[6:4] == 3'b100  )            || // F{N}MADD,F{N}MSUB
-	         (instr[6:4] == 3'b101 && (
-                            (instr[31]    == 1'b0)    || // R-Type FPU
-			    (instr[31:28] == 4'b1101) || // FCVT.S.W{U}
-			    (instr[31:28] == 4'b1111)    // FMV.W.X 
-			 )
-                 );
-
-   // rs1 is a FP register if instr[6:5] = 2'b10 except for:
-   //   FCVT.S.W{U}:  instr[6:2] = 5'b10100 and instr[30:28] = 3'b101
-   //   FMV.W.X    :  instr[6:2] = 5'b10100 and instr[30:28] = 3'b111
-   // (two versions of the signal, one for regular instruction decode,
-   //  the other one for compressed instructions).
-   wire raw_rs1IsFP = (raw_instr[6:5]   == 2'b10 ) &&  
-                     !((raw_instr[4:2]  == 3'b100) && (
-                      (raw_instr[31:28] == 4'b1101) || // FCVT.S.W{U}
-     	              (raw_instr[31:28] == 4'b1111)    // FMV.W.X
-                    )						    
-		  );
-
-   wire decomp_rs1IsFP = (instr[6:5]   == 2'b10 ) &&  
-                     !((instr[4:2]  == 3'b100) && (
-                      (instr[31:28] == 4'b1101) || // FCVT.S.W{U}
-     	              (instr[31:28] == 4'b1111)    // FMV.W.X
-                    )						    
-		  );
-   
-   // rs2 is a FP register if instr[6:5] = 2'b10 or instr is FSW
-   // (two versions of the signal, one for regular instruction decode,
-   //  the other one for compressed instructions).
-   wire raw_rs2IsFP = (raw_instr[6:5] == 2'b10) || (raw_instr[6:2]==5'b01001);
-   wire decomp_rs2IsFP =  (instr[6:5] == 2'b10) || (instr[6:2]==5'b01001);   
-   
    wire [2:0] funct3 = instr[14:12];
+   
    // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
    // It is used as follows: funct3Is[val] <=> funct3 == val
-   (* onehot *)
-   wire [7:0] funct3Is = 8'b00000001 << instr[14:12];
+   (* onehot *) wire [7:0] funct3Is = 8'b00000001 << instr[14:12];
 
    // The five imm formats, see RiscV reference (link above), Fig. 2.4 p. 12
    wire [31:0] Uimm={    instr[31],   instr[30:12], {12{1'b0}}};
@@ -170,8 +143,10 @@ module FemtoRV32(
 
    reg [31:0] rs1;
    reg [31:0] rs2;
-   reg [31:0] rs3;
-   reg [31:0] registerFile [63:0];
+   reg [31:0] rs3; // this one is used by the FMA instructions.
+   
+   reg [31:0] registerFile [63:0]; //  0..31: integer registers
+                                   // 32..63: floating-point registers
    
    /***************************************************************************/
    // The ALU. Does operations and tests combinatorially, except divisions.
@@ -306,18 +281,19 @@ module FemtoRV32(
    // The FPU 
    /***************************************************************************/
 
-   // FPU output = MSBs of A register.
+   // FPU output = 32 MSBs of A register (see below)
    // A macro to easily write to it (`FPU_OUT <= ...).
    `define FPU_OUT {fp_A_sign, fp_A_exp[7:0], fp_A_frac[46:24]}
    wire [31:0] fpuOut = `FPU_OUT;   
   
-   // Two temporary registers used by FDIV and FSQRT
+   // Two temporary 32-bit registers used by FDIV and FSQRT
    reg [31:0] fp_tmp1;
    reg [31:0] fp_tmp2;
    
    // Expand the source registers into sign, exponent and fraction.
    // Normalized, if non-zero, leading one is bit 23 (addditional bit).
    // For now, flush all denormals to zero
+   // TODO: denormals and infinities
    wire        fp_rs1_sign = rs1[31];
    wire [7:0]  fp_rs1_exp  = rs1[30:23];
    wire [23:0] fp_rs1_frac = fp_rs1_exp == 8'd0 ? 24'b0 : {1'b1, rs1[22:0]};
@@ -332,7 +308,7 @@ module FemtoRV32(
 
    // Two high-resolution registers
    // Register A has the accumulator / shifters / leading zero counter
-   // Normalized if leading one is bit 47
+   // Normalized if first bit set is bit 47
    reg 	             fp_A_sign;
    reg signed [8:0]  fp_A_exp;
    reg signed [49:0] fp_A_frac;
@@ -363,7 +339,7 @@ module FemtoRV32(
                frcp_exp  = 9'd126 + fp_A_exp - $signed({1'b0, fp_tmp2[30:23]}); 
 
    // Float to Integer conversion
-   // TODO UNDERSTAND: why +9'd6 ?
+   // TODO UNDERSTAND: why +9'd6 ?  --> 49:18 is wrong, should be 47:16
    // TODO: overflow
    wire signed [8:0]  fcvt_ftoi_shift = fp_rs1_exp - 9'd127 - 9'd23 - 9'd6; 
    wire signed [8:0]  neg_fcvt_ftoi_shift = -fcvt_ftoi_shift;
@@ -599,7 +575,7 @@ module FemtoRV32(
                          FPMI_EXIT_FLAG ;
 	
 	default: begin
-	   $display("Invalid microcode address: %d",fpmi_PC);
+	   `ASSERT_NOT_REACHED(("Invalid microcode address: %d",fpmi_PC));
 	   fpmi_instr = 7'bXXXXXXX; 
 	end
       endcase
@@ -687,12 +663,10 @@ module FemtoRV32(
 		 //   left shift amount to normalize = 47 - first_bit_set
 		 //                                  = 47 - (63 - fp_A_clz)
 		 //                                  = fp_A_clz - 16
-`ifdef BENCH
-		 // Sanity check, should not bark
-		 if(63 - fp_A_clz > 48) begin
-                    $display("NORM: first bit set = %d\n",63-fp_A_clz);
-		 end
-`endif
+
+		 // Sanity check
+		 `ASSERT(63 - fp_A_clz <= 48,("NORM: first bit set = %d\n",63-fp_A_clz));
+		 
 		 fp_A_frac <= fp_A_frac[48] ? (fp_A_frac >> 1) 
                                             : fp_A_frac << (fp_A_clz - 16); 
 		 fp_A_exp  <= fp_A_exp_norm;
@@ -710,9 +684,9 @@ module FemtoRV32(
 
 	   // shift A to march B exponent
 	   fpmi_is[FPMI_ADD_SHIFT]: begin
-`ifdef BENCH	      
-	      if(fabsB_LT_fabsA) $display("ADD_SHIFT: incorrect order");
-`endif	      
+	      // Sanity check, |A| < |B| (ensured by FPMI_ADD_SWAP)
+	      `ASSERT(!fabsB_LT_fabsA, ("ADD_SHIFT: incorrect order"));
+	      
 	      fp_A_frac <= (fp_exp_diff > 47) ? 0 
                                         : (fp_A_frac >> fp_exp_diff[5:0]);
 	      fp_A_exp <= fp_B_exp;
@@ -851,6 +825,42 @@ module FemtoRV32(
    wire isFMVXW   = (instr[4] && (instr[31:27] == 5'b11100) && !instr[12]);
    wire isFMVWX   = (instr[4] && (instr[31:27] == 5'b11110));
 
+
+   // asserted if the destination register is a floating-point register
+   wire rdIsFP = (instr[6:2] == 5'b00001)            || // FLW
+	         (instr[6:4] == 3'b100  )            || // F{N}MADD,F{N}MSUB
+	         (instr[6:4] == 3'b101 && (
+                            (instr[31]    == 1'b0)    || // R-Type FPU
+			    (instr[31:28] == 4'b1101) || // FCVT.S.W{U}
+			    (instr[31:28] == 4'b1111)    // FMV.W.X 
+			 )
+                 );
+
+   // rs1 is a FP register if instr[6:5] = 2'b10 except for:
+   //   FCVT.S.W{U}:  instr[6:2] = 5'b10100 and instr[30:28] = 3'b101
+   //   FMV.W.X    :  instr[6:2] = 5'b10100 and instr[30:28] = 3'b111
+   // (two versions of the signal, one for regular instruction decode,
+   //  the other one for compressed instructions).
+   wire raw_rs1IsFP = (raw_instr[6:5]   == 2'b10 ) &&  
+                     !((raw_instr[4:2]  == 3'b100) && (
+                      (raw_instr[31:28] == 4'b1101) || // FCVT.S.W{U}
+     	              (raw_instr[31:28] == 4'b1111)    // FMV.W.X
+                    )						    
+		  );
+
+   wire decomp_rs1IsFP = (instr[6:5]   == 2'b10 ) &&  
+                     !((instr[4:2]  == 3'b100) && (
+                      (instr[31:28] == 4'b1101) || // FCVT.S.W{U}
+     	              (instr[31:28] == 4'b1111)    // FMV.W.X
+                    )						    
+		  );
+   
+   // rs2 is a FP register if instr[6:5] = 2'b10 or instr is FSW
+   // (two versions of the signal, one for regular instruction decode,
+   //  the other one for compressed instructions).
+   wire raw_rs2IsFP = (raw_instr[6:5] == 2'b10) || (raw_instr[6:2]==5'b01001);
+   wire decomp_rs2IsFP =  (instr[6:5] == 2'b10) || (instr[6:2]==5'b01001);   
+   
 // Simulated instructions, implemented in C++ in SIM/FPU_funcs.cpp   
 `ifdef VERILATOR   
    always @(posedge clk) begin
@@ -873,10 +883,6 @@ module FemtoRV32(
 	     //isFSGNJN : `FPU_OUT <= $c32("FSGNJN(",fp_rs1,",",fp_rs2,")");
 	     //isFSGNJX : `FPU_OUT <= $c32("FSGNJX(",fp_rs1,",",fp_rs2,")");
 
-	     // isFSGNJ  : `FPU_OUT <= {            fp_rs2[31], fp_rs1[30:0]};
-	     // isFSGNJN : `FPU_OUT <= {           !fp_rs2[31], fp_rs1[30:0]};
-	     // isFSGNJX : `FPU_OUT <= { fp_rs1[31]^fp_rs2[31], fp_rs1[30:0]};
-	   
 	     // isFMIN   : `FPU_OUT <= $c32("FMIN(",fp_rs1,",",fp_rs2,")");
 	     // isFMAX   : `FPU_OUT <= $c32("FMAX(",fp_rs1,",",fp_rs2,")");
 	   
@@ -892,7 +898,7 @@ module FemtoRV32(
 	     // isFCVTSW : `FPU_OUT <= $c32("FCVTSW(",rs1,")");
 	     // isFCVTSWU: `FPU_OUT <= $c32("FCVTSWU(",rs1,")");
 	     
-             // isFMVXW:   `FPU_OUT <= fp_rs1;
+             // isFMVXW:   `FPU_OUT <= rs1;
 	     // isFMVWX:   `FPU_OUT <= rs1;	   
          endcase		     
       end		     
@@ -1260,7 +1266,7 @@ module FemtoRV32(
            end
 
            state[DECOMPRESS_GETREGS_bit]: begin
-	      // Registers are fetched in FPU's always block.
+	      // All the registers are fetched in FPU's always block.
 	      state <= EXECUTE;
 	   end
 	   
@@ -1271,12 +1277,12 @@ module FemtoRV32(
 		 mcause <= 1;
 		 state  <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
               end else begin
-
-`ifdef BENCH		 
-		 if((isLoad|isStore) && instr[2] && |loadstore_addr[1:0]) begin
-		    $display("PC=%x UNALIGNED FLW/FSW",PC);
-		 end
-`endif
+		 // Unaligned load/store not implemented yet
+		 // (the norm supposes that FLW and FSW can handle them)
+		 `ASSERT(
+                     !((isLoad|isStore) && instr[2] && |loadstore_addr[1:0]), 
+		     ("PC=%x UNALIGNED FLW/FSW",PC)
+                 );
 		 
 		 PC <= PC_new;
 		 if (interrupt_return) mcause <= 0;
