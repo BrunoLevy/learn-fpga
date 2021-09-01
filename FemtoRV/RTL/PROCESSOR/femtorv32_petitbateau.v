@@ -4,11 +4,19 @@
 // This version: PetitBateau (make it float), RV32IMFC
 // Rounding works as follows:
 // - all subnormals are flushed to zero
-// - FADD, FSUB, FMUL, FMADD, FMSUB, FNMADD, FNMSUB round to zero
+// - FADD, FSUB, FMUL, FMADD, FMSUB, FNMADD, FNMSUB: IEEE754 round to zero
 // - FDIV and FSQRT do not have correct rounding
 //
 // [TODO] add FPU CSR (and instret for perf stat)]
 // [TODO] FSW/FLW unaligned (does not seem to occur, but the norm requires it)
+// [TODO] correct IEEE754 round to zero for FDIV and FSQRT
+// [TODO] [BUG] FSUB IEEE754 mismatch (triggered in mandel_float2.c)
+//      RS1=+101000000100111100100010E[  -3]   (0.156551)
+//      RS2=+110011010010110000111001E[ -51]   (0.000000)
+//      Res=+101000000100111100100010E[  -3]   (0.156551)
+//	Chk=+101000000100111100100001E[  -3]   (0.156551)
+// [TODO] support IEEE754 denormals
+// [TODO] support all IEEE754 rounding modes
 //
 // Bruno Levy, Matthias Koch, 2020-2021
 /******************************************************************************/
@@ -35,12 +43,8 @@
 
 // FPU Normalization needs to detect the position of the leftmost bit set 
 // in the A_frac register. It is easier to count the number of leading 
-// zeroes (CLZ for Count Leading Zeroes).
-// I'm using the (very elegant I think) algorithm and its implementation 
-// indicated here (thanks @NickTernovoy and @LukeWren)
+// zeroes (CLZ for Count Leading Zeroes), as follows. See:
 // https://electronics.stackexchange.com/questions/196914/verilog-synthesize-high-speed-leading-zero-count
-// (did you know that recursion is possible in GENERATE blocks ? 
-// Verilog is mode like  modern C++ than I thought !!)
 module CLZ #(
    parameter W_IN = 64, // must be power of 2, >= 2
    parameter W_OUT = $clog2(W_IN)	     
@@ -102,7 +106,6 @@ module FemtoRV32(
    // Instruction decoding.
    /***************************************************************************/
 
-   // Extracts rd,rs1,rs2,funct3,imm and opcode from instruction.
    // Reference: Table page 104 of:
    // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
 
@@ -159,7 +162,7 @@ module FemtoRV32(
    //    ALUimm, Load, JALR: Iimm
    wire [31:0] aluIn2 = isALUreg | isBranch ? rs2 : Iimm;
 
-   wire aluWr;               // ALU write strobe, starts dividing.
+   wire aluWr; // ALU write strobe, starts dividing.
 
    // The adder is used by both arithmetic instructions and JALR.
    wire [31:0] aluPlus = aluIn1 + aluIn2;
@@ -222,10 +225,10 @@ module FemtoRV32(
      (funct3Is[7]  ? aluIn1 & aluIn2                                 : 32'b0) ;
 
    wire [31:0] aluOut_muldiv = 
-     (  funct3Is[0]   ?  multiply[31: 0] : 32'b0) | // 0:MUL
-     ( |funct3Is[3:1] ?  multiply[63:32] : 32'b0) | // 1:MULH, 2:MULHSU, 3:MULHU
-     (  instr[14]     ?  div_sign ? -divResult : divResult : 32'b0) ; 
-                                                 // 4:DIV, 5:DIVU, 6:REM, 7:REMU
+     ( funct3Is[0]   ?  multiply[31: 0] : 32'b0) | // 0:MUL
+     (|funct3Is[3:1] ?  multiply[63:32] : 32'b0) | // 1:MULH, 2:MULHSU, 3:MULHU
+     ( instr[14]     ?  div_sign ? -divResult : divResult : 32'b0) ; 
+                                                // 4:DIV, 5:DIVU, 6:REM, 7:REMU
 
    wire [31:0] aluOut = isALUreg & funcM ? aluOut_muldiv : aluOut_base;
 
@@ -239,12 +242,11 @@ module FemtoRV32(
 
    wire divstep_do = (divisor <= {31'b0, dividend});
 
-   wire [31:0] dividendN     = divstep_do ? dividend - divisor[31:0] : dividend;
-   wire [31:0] quotientN     = divstep_do ? quotient | quotient_msk  : quotient;
+   wire [31:0] dividendN = divstep_do ? dividend - divisor[31:0] : dividend;
+   wire [31:0] quotientN = divstep_do ? quotient | quotient_msk  : quotient;
 
    wire div_sign = ~instr[12] & (instr[13] ? aluIn1[31] : 
-                                          (aluIn1[31] != aluIn2[31]) & |aluIn2);
-
+                                     (aluIn1[31] != aluIn2[31]) & |aluIn2);
    always @(posedge clk) begin
       if (isDivide & aluWr) begin
          dividend <=   ~instr[12] & aluIn1[31] ? -aluIn1 : aluIn1;
@@ -267,21 +269,20 @@ module FemtoRV32(
    /***************************************************************************/
    // The predicate for conditional branches.
 
-
-   wire predicate =
-        funct3Is[0] &  EQ  | // BEQ
-        funct3Is[1] & !EQ  | // BNE
-        funct3Is[4] &  LT  | // BLT
-        funct3Is[5] & !LT  | // BGE
-        funct3Is[6] &  LTU | // BLTU
-        funct3Is[7] & !LTU ; // BGEU
+   wire predicate = funct3Is[0] &  EQ  | // BEQ
+                    funct3Is[1] & !EQ  | // BNE
+                    funct3Is[4] &  LT  | // BLT
+                    funct3Is[5] & !LT  | // BGE
+                    funct3Is[6] &  LTU | // BLTU
+                    funct3Is[7] & !LTU ; // BGEU
 
    /***************************************************************************/
    // The FPU 
    /***************************************************************************/
 
    // FPU output = 32 MSBs of A register (see below)
-   // A macro to easily write to it (`FPU_OUT <= ...).
+   // A macro to easily write to it (`FPU_OUT <= ...),
+   // used with FPU output is an integer.
    `define FPU_OUT {A_sign, A_exp[7:0], A_frac[46:24]}
    wire [31:0] fpuOut = `FPU_OUT;   
   
@@ -290,7 +291,7 @@ module FemtoRV32(
    reg [31:0] tmp2;
    
    // Expand the source registers into sign, exponent and fraction.
-   // Normalized, if non-zero, leading one is bit 23 (addditional bit).
+   // Normalized, if non-zero, first bit set is bit 23 (addditional bit).
    // For now, flush all denormals to zero
    // TODO: denormals and infinities
    wire        rs1_sign = rs1[31];
@@ -333,7 +334,7 @@ module FemtoRV32(
 
    // Exponent for reciprocal (1/x)
    // Initial value of x kept in tmp2.
-   // TODO UNDERSTAND: why 126 and not 127 ?
+   // TODO UNDERSTAND: why 126 and not 127 ? OK (TODO: copy paper notes here)
    wire signed [8:0]  
                frcp_exp  = 9'd126 + A_exp - $signed({1'b0, tmp2[30:23]}); 
 
@@ -357,23 +358,19 @@ module FemtoRV32(
 
    // Comparisons
 
-   wire expA_EQ_expB = (exp_diff == 0);
-   
+   wire expA_EQ_expB   = (exp_diff  == 0);
    wire fracA_EQ_fracB = (frac_diff == 0);
-   
    wire fabsA_EQ_fabsB = (expA_EQ_expB && fracA_EQ_fracB);
-   
    wire fabsA_LT_fabsB = (!exp_diff[8] && !expA_EQ_expB) || 
-                   (expA_EQ_expB && !fracA_EQ_fracB && !frac_diff[50]);
+                           (expA_EQ_expB && !fracA_EQ_fracB && !frac_diff[50]);
 
    wire fabsA_LE_fabsB = (!exp_diff[8] && !expA_EQ_expB) || 
-                         (expA_EQ_expB && !frac_diff[50]);
+                                              (expA_EQ_expB && !frac_diff[50]);
    
-   wire fabsB_LT_fabsA = exp_diff[8] || 
-                                         (expA_EQ_expB && frac_diff[50]);
+   wire fabsB_LT_fabsA = exp_diff[8] || (expA_EQ_expB && frac_diff[50]);
 
    wire fabsB_LE_fabsA = exp_diff[8] || 
-                     (expA_EQ_expB && (frac_diff[50] || fracA_EQ_fracB));
+                           (expA_EQ_expB && (frac_diff[50] || fracA_EQ_fracB));
 
    wire A_LT_B = A_sign && !B_sign ||
 	         A_sign &&  B_sign && fabsB_LT_fabsA ||
@@ -437,7 +434,7 @@ module FemtoRV32(
    
    localparam FPMI_FP_TO_INT       = 17;  // fpuOut <- fpoint_to_int(fprs1)
    localparam FPMI_INT_TO_FP       = 18;  // A <- int_to_fpoint(rs1)
-   localparam FPMI_MIN_MAX         = 19;  // fpuOut <- A, max(A,B) or min(A,B)
+   localparam FPMI_MIN_MAX         = 19;  // fpuOut <- min/max(A,B) 
 
    localparam FPMI_NB              = 20;
 
@@ -445,12 +442,10 @@ module FemtoRV32(
    localparam FPMI_EXIT_FLAG_bit   = 1+$clog2(FPMI_NB);
    localparam FPMI_EXIT_FLAG       = 1 << FPMI_EXIT_FLAG_bit;
    
-   reg [6:0] 	       fpmi_PC; // current micro-instruction pointer
-
+   reg [6:0] 	       fpmi_PC;          // current micro-instruction pointer
    reg [1+$clog2(FPMI_NB):0] fpmi_instr; // current micro-instruction
 
-   // current micro-instruction as 1-hot:
-   //    fpmi_instr == NNN <=> fpmi_is[NNN]
+   // current micro-instruction as 1-hot: fpmi_instr == NNN <=> fpmi_is[NNN]
    (* onehot *)
    wire [FPMI_NB-1:0] fpmi_is = 1 << fpmi_instr[$clog2(FPMI_NB):0]; 
 
@@ -508,7 +503,7 @@ module FemtoRV32(
  	23: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
 	24: fpmi_instr = FPMI_ADD_ADD;       //    |
 	25: fpmi_instr = FPMI_NORM;          // ---
-	26: fpmi_instr = FPMI_MV_RS1_A;    // 
+	26: fpmi_instr = FPMI_MV_RS1_A;      //
 	27: fpmi_instr = FPMI_LOAD_AB_MUL;   //  FMUL
 	28: fpmi_instr = FPMI_FRCP_ITER;     // STEP 3: A <- A * (-A*D + 2)
 	29: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
@@ -516,7 +511,7 @@ module FemtoRV32(
  	31: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
 	32: fpmi_instr = FPMI_ADD_ADD;       //    |
 	33: fpmi_instr = FPMI_NORM;          // ---
-	34: fpmi_instr = FPMI_MV_RS1_A;    // 
+	34: fpmi_instr = FPMI_MV_RS1_A;      // 
 	35: fpmi_instr = FPMI_LOAD_AB_MUL;   //  FMUL
 	36: fpmi_instr = FPMI_FRCP_EPILOG;   // STEP 4: A <- fprs1^(-1) * fprs2
 	37: fpmi_instr = FPMI_LOAD_AB_MUL |  //  FMUL
@@ -596,7 +591,7 @@ module FemtoRV32(
       if(state[DECOMPRESS_GETREGS_bit]) begin
 	 rs1 <= registerFile[{decomp_rs1IsFP,instr[19:15]}];
 	 rs2 <= registerFile[{decomp_rs2IsFP,instr[24:20]}];
-	 // Do not get rs3 here, there is no compressed FMA.	 
+	 // no need to fetch rs3 here, there is no compressed FMA.	 
       end else if(state[WAIT_INSTR_bit]) begin
 	 rs1 <= registerFile[{raw_rs1IsFP,raw_instr[19:15]}]; 
 	 rs2 <= registerFile[{raw_rs2IsFP,raw_instr[24:20]}];
@@ -622,7 +617,7 @@ module FemtoRV32(
 	   isFCVTSW | isFCVTSWU                 : fpmi_PC <= FPMPROG_INT_TO_FP;
 	   isFMIN   | isFMAX                    : fpmi_PC <= FPMPROG_MIN_MAX;
 	 endcase 
-      end else if(fpuBusy) begin // if (state[EXECUTE_bit] & isFPU)
+      end else if(fpuBusy) begin 
 	 
 	 // Implementation of the micro-instructions 
 	 fpmi_PC <= fpmi_instr[FPMI_EXIT_FLAG_bit] ? 0 : fpmi_PC+1;
@@ -656,10 +651,8 @@ module FemtoRV32(
 		 A_frac <= 0;
 		 A_exp <= 0;
 	      end else begin
-		 // Note: first_bit_set = 63 - A_clz
-		 //   left shift amount to normalize = 47 - first_bit_set
-		 //                                  = 47 - (63 - A_clz)
-		 //                                  = A_clz - 16
+		 // left shamt = 47 - first_bit_set = A_clz - 16
+		 // (reminder: first_bit_set = 63 - A_clz)
 		 `ASSERT(
                     63 - A_clz <= 48, ("NORM: first bit set = %d\n",63-A_clz)
                  );
@@ -710,7 +703,7 @@ module FemtoRV32(
 	   fpmi_is[FPMI_FRCP_PROLOG]: begin
 	      tmp1 <= rs1;
 	      tmp2 <= rs2;
-	      // rs1 <= D', that is, fprs2 normalized in [0.5,1]
+	      // rs1 <= -D', that is, -(fprs2 normalized in [0.5,1])
 	      rs1  <= {1'b1, 8'd126, rs2_frac[22:0]}; 
 	      rs2  <= 32'h3FF0F0F1; // 32/17
 	      rs3  <= 32'h4034B4B5; // 48/17
