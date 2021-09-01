@@ -313,6 +313,7 @@ module FemtoRV32(
    // Register A has the accumulator / shifters / leading zero counter
    // Normalized if first bit set is bit 47
    // Represented number is +/- frac * 2^(exp-127-47)
+   
    reg 	             A_sign;
    reg signed [8:0]  A_exp;
    reg signed [49:0] A_frac;
@@ -321,47 +322,12 @@ module FemtoRV32(
    reg signed [8:0]  B_exp;
    reg signed [49:0] B_frac;
 
-   // Normalization
-   // Count leading zeroes in A
-   // Note1: CLZ only work with power of two width (hence 14'b0).
-   // Note2: first bit set = 63 - CLZ (of course !)
-   wire [5:0] 	     A_clz;
-   CLZ clz({14'b0,A_frac}, A_clz);
-   
-   // Exponent of A once normalized = A_exp + first_bit_set - 47
-   //                               = A_exp + 63 - clz - 47 = A_exp + 16 - clz
-   wire signed [8:0] A_exp_norm = A_exp + 16 - {3'b000,A_clz};
-   
+   // ******************* Comparisons
+
    // Exponent adder
    wire signed [8:0]  exp_sum   = B_exp + A_exp;
    wire signed [8:0]  exp_diff  = B_exp - A_exp;
-
-   // Exponent for reciprocal (1/x)
-   // Initial value of x kept in tmp2.
-   wire signed [8:0]  frcp_exp  = 9'd126 + A_exp - $signed({1'b0, tmp2[30:23]});
-
-   // Float to Integer conversion
-   // -127-23 is standard exponent bias
-   // -6 because it is bit 29 of rs1 that corresponds to bit 47 of A_frac,
-   //    instead of bit 23 (and 23-29 = -6).
-   wire signed [8:0]  fcvt_ftoi_shift = rs1_exp - 9'd127 - 9'd23 - 9'd6; 
-   wire signed [8:0]  neg_fcvt_ftoi_shift = -fcvt_ftoi_shift;
    
-   wire [31:0] 	A_fcvt_ftoi_shifted =  fcvt_ftoi_shift[8] ? // R or L shift
-                        (|neg_fcvt_ftoi_shift[8:5]  ?  0 :  // underflow
-                     ({A_frac[49:18]} >> neg_fcvt_ftoi_shift[4:0])) : 
-                     ({A_frac[49:18]} << fcvt_ftoi_shift[4:0]);
-   
-   // Square root
-   // https://en.wikipedia.org/wiki/Fast_inverse_square_root
-   wire [31:0] rsqrt_doom_magic = 32'h5f3759df - {1'b0,rs1[30:1]};
-   
-   // Fraction adder
-   wire signed [50:0] frac_sum  = B_frac + A_frac;
-   wire signed [50:0] frac_diff = B_frac - A_frac;
-
-   // Comparisons
-
    wire expA_EQ_expB   = (exp_diff  == 0);
    wire fracA_EQ_fracB = (frac_diff == 0);
    wire fabsA_EQ_fabsB = (expA_EQ_expB && fracA_EQ_fracB);
@@ -386,7 +352,12 @@ module FemtoRV32(
    
    wire A_EQ_B = fabsA_EQ_fabsB && (A_sign == B_sign);
 
-   // Product 
+   // ****************** Addition, subtraction 
+
+   wire signed [50:0] frac_sum  = B_frac + A_frac;
+   wire signed [50:0] frac_diff = B_frac - A_frac;
+
+   // ****************** Product 
    // TODO: check overflows
    wire [49:0] prod_frac = rs1_frac * rs2_frac;
 
@@ -397,8 +368,43 @@ module FemtoRV32(
 
    // detect null product and underflows (all denormals are flushed to zero)
    wire prod_Z = (prod_exp_norm <= 0) || !(|prod_frac[47:46]);
+   
+   // ****************** Normalization
+   
+   // Count leading zeroes in A
+   // Note1: CLZ only work with power of two width (hence 14'b0).
+   // Note2: first bit set = 63 - CLZ (of course !)
+   wire [5:0] 	     A_clz;
+   CLZ clz({14'b0,A_frac}, A_clz);
+   
+   // Exponent of A once normalized = A_exp + first_bit_set - 47
+   //                               = A_exp + 63 - clz - 47 = A_exp + 16 - clz
+   wire signed [8:0] A_exp_norm = A_exp + 16 - {3'b000,A_clz};
+   
+   // ****************** Reciprocal (1/x), used by FDIV
+   
+   // Exponent for reciprocal (1/x)
+   // Initial value of x kept in tmp2.
+   wire signed [8:0]  frcp_exp  = 9'd126 + A_exp - $signed({1'b0, tmp2[30:23]});
 
-   // Classification
+   // ****************** Reciprocal square root (1/sqrt(x)), used by FSQRT
+   // https://en.wikipedia.org/wiki/Fast_inverse_square_root
+   wire [31:0] rsqrt_doom_magic = 32'h5f3759df - {1'b0,rs1[30:1]};
+
+   
+   // ****************** Float to Integer conversion
+   // -127-23 is standard exponent bias
+   // -6 because it is bit 29 of rs1 that corresponds to bit 47 of A_frac,
+   //    instead of bit 23 (and 23-29 = -6).
+   wire signed [8:0]  fcvt_ftoi_shift = rs1_exp - 9'd127 - 9'd23 - 9'd6; 
+   wire signed [8:0]  neg_fcvt_ftoi_shift = -fcvt_ftoi_shift;
+   
+   wire [31:0] 	A_fcvt_ftoi_shifted =  fcvt_ftoi_shift[8] ? // R or L shift
+                        (|neg_fcvt_ftoi_shift[8:5]  ?  0 :  // underflow
+                     ({A_frac[49:18]} >> neg_fcvt_ftoi_shift[4:0])) : 
+                     ({A_frac[49:18]} << fcvt_ftoi_shift[4:0]);
+   
+   // ******************* Classification
    wire rs1_exp_Z   = (rs1_exp  == 0  );
    wire rs1_exp_255 = (rs1_exp  == 255);
    wire rs1_frac_Z  = (rs1_frac == 0  );
@@ -596,15 +602,22 @@ module FemtoRV32(
    /*******************************************************/
 
    always @(posedge clk) begin
-      if(state[DECOMPRESS_GETREGS_bit]) begin
-	 rs1 <= registerFile[{decomp_rs1IsFP,instr[19:15]}];
-	 rs2 <= registerFile[{decomp_rs2IsFP,instr[24:20]}];
-	 // no need to fetch rs3 here, there is no compressed FMA.	 
-      end else if(state[WAIT_INSTR_bit]) begin
+      
+      if(state[WAIT_INSTR_bit]) begin
+	 // Fetch registers as soon as instruction is ready
 	 rs1 <= registerFile[{raw_rs1IsFP,raw_instr[19:15]}]; 
 	 rs2 <= registerFile[{raw_rs2IsFP,raw_instr[24:20]}];
 	 rs3 <= registerFile[{1'b1,       raw_instr[31:27]}];
+      end else if(state[DECOMPRESS_GETREGS_bit]) begin
+	 // For compressed instructions, fetch registers once decompressed.
+	 rs1 <= registerFile[{decomp_rs1IsFP,instr[19:15]}];
+	 rs2 <= registerFile[{decomp_rs2IsFP,instr[24:20]}];
+	 // no need to fetch rs3 here, there is no compressed FMA.
       end else if(state[EXECUTE_bit] & isFPU) begin
+
+	 // Execute single-cycle intructions and call micro-program
+	 // for micro-programmed ones.
+	 
 	 (* parallel_case *)
 	 case(1'b1)
 	   // Single-cycle instructions
@@ -627,8 +640,12 @@ module FemtoRV32(
 	 endcase 
       end else if(fpuBusy) begin 
 	 
-	 // Implementation of the micro-instructions 
+
+
+	 // Increment micro-program counter.
 	 fpmi_PC <= fpmi_instr[FPMI_EXIT_FLAG_bit] ? 0 : fpmi_PC+1;
+
+	 // Implementation of the micro-instructions	 
 	 (* parallel_case *)	 
 	 case(1'b1)
 	   // A <- rs1 ; B <- rs2
@@ -749,8 +766,8 @@ module FemtoRV32(
                                                 : {-$signed(rs1), 18'd0};
 	      A_sign <= isFCVTSW & rs1[31];
 	      // 127+23: standard exponent bias
-	      // +6 because it is bit 29 of rs1 that overwrites bit 47 of A_frac,
-	      //    instead of bit 23 (and 29-23 = 6).
+	      // +6 because it is bit 29 of rs1 that overwrites 
+	      //    bit 47 of A_frac, instead of bit 23 (and 29-23 = 6).
 	      A_exp  <= 127+23+6;  
 	   end
 
