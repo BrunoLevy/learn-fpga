@@ -282,7 +282,7 @@ module FemtoRV32(
 
    // FPU output = 32 MSBs of A register (see below)
    // A macro to easily write to it (`FPU_OUT <= ...),
-   // used with FPU output is an integer.
+   // used when FPU output is an integer.
    `define FPU_OUT {A_sign, A_exp[7:0], A_frac[46:24]}
    wire [31:0] fpuOut = `FPU_OUT;   
   
