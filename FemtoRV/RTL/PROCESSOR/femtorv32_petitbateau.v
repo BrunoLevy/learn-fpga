@@ -322,8 +322,7 @@ module FemtoRV32(
    reg signed [8:0]  B_exp;
    reg signed [49:0] B_frac;
 
-   // ******************* Comparisons
-
+   // ******************* Comparisons ******************************************
    // Exponent adder
    wire signed [8:0]  exp_sum   = B_exp + A_exp;
    wire signed [8:0]  exp_diff  = B_exp - A_exp;
@@ -352,14 +351,12 @@ module FemtoRV32(
    
    wire A_EQ_B = fabsA_EQ_fabsB && (A_sign == B_sign);
 
-   // ****************** Addition, subtraction 
-
+   // ****************** Addition, subtraction *********************************
    wire signed [50:0] frac_sum  = B_frac + A_frac;
    wire signed [50:0] frac_diff = B_frac - A_frac;
 
-   // ****************** Product 
-   // TODO: check overflows
-   wire [49:0] prod_frac = rs1_frac * rs2_frac;
+   // ****************** Product ***********************************************
+   wire [49:0] prod_frac = rs1_frac * rs2_frac; // TODO: check overflows
 
    // exponent of product, once normalized
    // (obtained by writing expression of product and inspecting exponent)
@@ -369,8 +366,7 @@ module FemtoRV32(
    // detect null product and underflows (all denormals are flushed to zero)
    wire prod_Z = (prod_exp_norm <= 0) || !(|prod_frac[47:46]);
    
-   // ****************** Normalization
-   
+   // ****************** Normalization *****************************************
    // Count leading zeroes in A
    // Note1: CLZ only work with power of two width (hence 14'b0).
    // Note2: first bit set = 63 - CLZ (of course !)
@@ -381,18 +377,17 @@ module FemtoRV32(
    //                               = A_exp + 63 - clz - 47 = A_exp + 16 - clz
    wire signed [8:0] A_exp_norm = A_exp + 16 - {3'b000,A_clz};
    
-   // ****************** Reciprocal (1/x), used by FDIV
-   
+   // ****************** Reciprocal (1/x), used by FDIV ************************
    // Exponent for reciprocal (1/x)
    // Initial value of x kept in tmp2.
    wire signed [8:0]  frcp_exp  = 9'd126 + A_exp - $signed({1'b0, tmp2[30:23]});
 
-   // ****************** Reciprocal square root (1/sqrt(x)), used by FSQRT
+   // ****************** Reciprocal square root (1/sqrt(x)) ********************
    // https://en.wikipedia.org/wiki/Fast_inverse_square_root
    wire [31:0] rsqrt_doom_magic = 32'h5f3759df - {1'b0,rs1[30:1]};
 
    
-   // ****************** Float to Integer conversion
+   // ****************** Float to Integer conversion ***************************
    // -127-23 is standard exponent bias
    // -6 because it is bit 29 of rs1 that corresponds to bit 47 of A_frac,
    //    instead of bit 23 (and 23-29 = -6).
@@ -404,7 +399,7 @@ module FemtoRV32(
                      ({A_frac[49:18]} >> neg_fcvt_ftoi_shift[4:0])) : 
                      ({A_frac[49:18]} << fcvt_ftoi_shift[4:0]);
    
-   // ******************* Classification
+   // ******************* Classification ***************************************
    wire rs1_exp_Z   = (rs1_exp  == 0  );
    wire rs1_exp_255 = (rs1_exp  == 255);
    wire rs1_frac_Z  = (rs1_frac == 0  );
@@ -604,17 +599,18 @@ module FemtoRV32(
    always @(posedge clk) begin
       
       if(state[WAIT_INSTR_bit]) begin
-	 // Fetch registers as soon as instruction is ready
+	 // Fetch registers as soon as instruction is ready.
 	 rs1 <= registerFile[{raw_rs1IsFP,raw_instr[19:15]}]; 
 	 rs2 <= registerFile[{raw_rs2IsFP,raw_instr[24:20]}];
 	 rs3 <= registerFile[{1'b1,       raw_instr[31:27]}];
+	 
       end else if(state[DECOMPRESS_GETREGS_bit]) begin
 	 // For compressed instructions, fetch registers once decompressed.
 	 rs1 <= registerFile[{decomp_rs1IsFP,instr[19:15]}];
 	 rs2 <= registerFile[{decomp_rs2IsFP,instr[24:20]}];
 	 // no need to fetch rs3 here, there is no compressed FMA.
+	 
       end else if(state[EXECUTE_bit] & isFPU) begin
-
 	 // Execute single-cycle intructions and call micro-program
 	 // for micro-programmed ones.
 	 
@@ -638,10 +634,9 @@ module FemtoRV32(
 	   isFCVTSW | isFCVTSWU                 : fpmi_PC <= FPMPROG_INT_TO_FP;
 	   isFMIN   | isFMAX                    : fpmi_PC <= FPMPROG_MIN_MAX;
 	 endcase 
+	 
       end else if(fpuBusy) begin 
 	 
-
-
 	 // Increment micro-program counter.
 	 fpmi_PC <= fpmi_instr[FPMI_EXIT_FLAG_bit] ? 0 : fpmi_PC+1;
 
@@ -777,6 +772,8 @@ module FemtoRV32(
 	 	                 : {B_sign, B_exp[7:0], B_frac[46:24]};
 	   end
 	 endcase 
+
+      // register write-back
       end else if(writeBack) begin 
 	 if(rdIsFP || |instr[11:7]) begin
             registerFile[{rdIsFP,instr[11:7]}] <= writeBackData;
