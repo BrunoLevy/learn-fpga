@@ -41,7 +41,7 @@
  `define ASSERT_NOT_REACHED(msg)
 `endif
 
-// FPU Normalization needs to detect the position of the leftmost bit set 
+// FPU Normalization needs to detect the position of the first bit set 
 // in the A_frac register. It is easier to count the number of leading 
 // zeroes (CLZ for Count Leading Zeroes), as follows. See:
 // https://electronics.stackexchange.com/questions/196914/verilog-synthesize-high-speed-leading-zero-count
@@ -291,9 +291,12 @@ module FemtoRV32(
    reg [31:0] tmp2;
    
    // Expand the source registers into sign, exponent and fraction.
-   // Normalized, if non-zero, first bit set is bit 23 (addditional bit).
+   // Normalized, first bit set is bit 23 (addditional bit), or zero.
    // For now, flush all denormals to zero
    // TODO: denormals and infinities
+   // Following IEEE754, represented number is +/- frac * 2^(exp-127-23)
+   // (127: bias  23: position of first bit set for normalized numbers)
+   
    wire        rs1_sign = rs1[31];
    wire [7:0]  rs1_exp  = rs1[30:23];
    wire [23:0] rs1_frac = rs1_exp == 8'd0 ? 24'b0 : {1'b1, rs1[22:0]};
@@ -309,6 +312,7 @@ module FemtoRV32(
    // Two high-resolution registers
    // Register A has the accumulator / shifters / leading zero counter
    // Normalized if first bit set is bit 47
+   // Represented number is +/- frac * 2^(exp-127-47)
    reg 	             A_sign;
    reg signed [8:0]  A_exp;
    reg signed [49:0] A_frac;
@@ -334,19 +338,19 @@ module FemtoRV32(
 
    // Exponent for reciprocal (1/x)
    // Initial value of x kept in tmp2.
-   // TODO UNDERSTAND: why 126 and not 127 ? OK (TODO: copy paper notes here)
-   wire signed [8:0]  
-               frcp_exp  = 9'd126 + A_exp - $signed({1'b0, tmp2[30:23]}); 
+   wire signed [8:0]  frcp_exp  = 9'd126 + A_exp - $signed({1'b0, tmp2[30:23]});
 
    // Float to Integer conversion
-   // TODO UNDERSTAND: why +9'd6 ?  --> 49:18 is wrong, should be 47:16
-   // TODO: overflow
+   // -127-23 is standard exponent bias
+   // -6 because it is bit 29 of rs1 that corresponds to bit 47 of A_frac,
+   //    instead of bit 23 (and 23-29 = -6).
    wire signed [8:0]  fcvt_ftoi_shift = rs1_exp - 9'd127 - 9'd23 - 9'd6; 
    wire signed [8:0]  neg_fcvt_ftoi_shift = -fcvt_ftoi_shift;
-   wire [31:0] 	A_fcvt_ftoi_shifted =  fcvt_ftoi_shift[8] ? 
-                        (|neg_fcvt_ftoi_shift[8:5]  ?  0 : (
-                     A_frac[49:18] >> neg_fcvt_ftoi_shift[4:0])) : 
-                    (A_frac[49:18] << fcvt_ftoi_shift[4:0]) ;
+   
+   wire [31:0] 	A_fcvt_ftoi_shifted =  fcvt_ftoi_shift[8] ? // R or L shift
+                        (|neg_fcvt_ftoi_shift[8:5]  ?  0 :  // underflow
+                     ({A_frac[49:18]} >> neg_fcvt_ftoi_shift[4:0])) : 
+                     ({A_frac[49:18]} << fcvt_ftoi_shift[4:0]);
    
    // Square root
    // https://en.wikipedia.org/wiki/Fast_inverse_square_root
@@ -385,9 +389,13 @@ module FemtoRV32(
    // Product 
    // TODO: check overflows
    wire [49:0] prod_frac = rs1_frac * rs2_frac;
-   
-   wire signed [8:0] prod_exp_norm = rs1_exp+rs2_exp-126-{7'b0, !prod_frac[47]};
-   
+
+   // exponent of product, once normalized
+   // (obtained by writing expression of product and inspecting exponent)
+   // Two cases: first bit set = 47 or 46 (only possible cases with normals)
+   wire signed [8:0] prod_exp_norm = rs1_exp+rs2_exp-127+{7'b0,prod_frac[47]};
+
+   // detect null product and underflows (all denormals are flushed to zero)
    wire prod_Z = (prod_exp_norm <= 0) || !(|prod_frac[47:46]);
 
    // Classification
@@ -737,10 +745,13 @@ module FemtoRV32(
 
 	   fpmi_is[FPMI_INT_TO_FP]: begin
 	      // TODO: rounding
-	      A_frac <=  (isFCVTSWU | !rs1[31]) ? {rs1, 18'd0} 
-                                                : {-$signed(rs1), 18'd0}; 
+	      A_frac <=  (isFCVTSWU | !rs1[31]) ? {rs1, 18'd0}
+                                                : {-$signed(rs1), 18'd0};
 	      A_sign <= isFCVTSW & rs1[31];
-	      A_exp  <= 156; // TODO: understand, why 156 ? (OK: 127+23+6 !)
+	      // 127+23: standard exponent bias
+	      // +6 because it is bit 29 of rs1 that overwrites bit 47 of A_frac,
+	      //    instead of bit 23 (and 29-23 = 6).
+	      A_exp  <= 127+23+6;  
 	   end
 
 	   fpmi_is[FPMI_MIN_MAX]: begin

@@ -24,3 +24,6 @@ References
 - [Proc with FPU](https://github.com/cr88192/bgbtech_btsr1arch)
 
 - [Bogdan Mihai Pasca Ph.D thesis](https://tel.archives-ouvertes.fr/tel-00654121v2/document)
+
+- [A FPU written in system verilog](https://github.com/taneroksuz/riscv-fpu)
+- [How to subtract IEEE-754 numbers](see https://stackoverflow.com/questions/8766237/how-to-subtract-ieee-754-numbers)
