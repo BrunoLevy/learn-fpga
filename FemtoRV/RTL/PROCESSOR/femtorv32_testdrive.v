@@ -2,11 +2,12 @@
 // TestDrive: morphing tachyon into a RV32IMF core, trying to 
 // preserve maxfreq at each step.
 // Step 0: Tachyon       valid. fmax: 115-120 MHz  exp. fmax: 135-140 MHz
-// Step 1: Barrel shft   valid. fmax:  110-115 MHz  exp. fmax: 130-135 MHz
+// Step 1: Barrel shft   valid. fmax: 110-115 MHz  exp. fmax: 130-135 MHz
+// Step 2: RV32M         valid. fmax: 90      MHz  exp. fmax: 115     MHz
 /******************************************************************************/
 
 // Firmware generation flags for this processor
-`define NRV_ARCH     "rv32i"
+`define NRV_ARCH     "rv32im"
 `define NRV_ABI      "ilp32"
 `define NRV_OPTIMIZE "-O3"
 
@@ -105,7 +106,6 @@ module FemtoRV32(
    //    ALUimm, Load, JALR: Iimm
    wire [31:0] aluIn2 = isALUreg | isBranch ? rs2 : Iimm;
 
-   reg  [31:0] aluReg;       // The internal register of the ALU
    wire aluWr;               // ALU write strobe
 
    // The adder is used by both arithmetic instructions and JALR.
@@ -134,32 +134,89 @@ module FemtoRV32(
    
    /***************************************************************************/
 
+   // funct3: 1->MULH, 2->MULHSU  3->MULHU
+   wire isMULH   = funct3Is[1];
+   wire isMULHSU = funct3Is[2];
+
+   wire sign1 = aluIn1[31] &  isMULH;
+   wire sign2 = aluIn2[31] & (isMULH | isMULHSU);
+
+   wire signed [32:0] signed1 = {sign1, aluIn1};
+   wire signed [32:0] signed2 = {sign2, aluIn2};
+   wire signed [63:0] multiply = signed1 * signed2;
+
+   /***************************************************************************/
+
    // Notes:
    // - instr[30] is 1 for SUB and 0 for ADD
    // - for SUB, need to test also instr[5] to discriminate ADDI:
    //    (1 for ADD/SUB, 0 for ADDI, and Iimm used by ADDI overlaps bit 30 !)
    // - instr[30] is 1 for SRA (do sign extension) and 0 for SRL
+
+   wire [31:0] alu_base =
+     (funct3Is[0]  ? instr[30] & instr[5] ? aluMinus[31:0] : aluPlus : 32'b0) |
+     (funct3Is[1]  ? leftshift                                       : 32'b0) |
+     (funct3Is[2]  ? {31'b0, LT}                                     : 32'b0) |
+     (funct3Is[3]  ? {31'b0, LTU}                                    : 32'b0) |
+     (funct3Is[4]  ? aluIn1 ^ aluIn2                                 : 32'b0) |
+     (funct3Is[5]  ? shifter                                         : 32'b0) |
+     (funct3Is[6]  ? aluIn1 | aluIn2                                 : 32'b0) |
+     (funct3Is[7]  ? aluIn1 & aluIn2                                 : 32'b0) ;
+
+   // funct3: 0->MUL 1->MULH 2->MULHSU 3->MULHU
+   //         4->DIV 5->DIVU 6->REM    7->REMU
    
-   wire [31:0] aluOut = aluReg;
-   reg 	       aluBusy;
+   wire [31:0] alu_mul = funct3Is[0] ? multiply[31: 0]   // 0:MUL
+                                     : multiply[63:32] ; // 1:MULH, 2:MULHSU, 3:MULHU
+
+   wire [31:0] alu_div = instr[13] ? (div_sign ? -dividendN : dividendN) 
+    	                           : (div_sign ? -quotientN : quotientN);
+   
+
+   wire aluBusy = |quotient_msk ; // ALU is busy if division is in progress.
+   reg [31:0]  aluOut;
+
+   wire funcM     = instr[25];
+   wire isDivide  = instr[14];
    
    always @(posedge clk) begin
-      if(aluWr) begin
-	 aluBusy <= 1'b1;
-	 aluReg <=
-	 (funct3Is[0]  ? instr[30] & instr[5] ? aluMinus[31:0] : aluPlus : 32'b0) |
-	 (funct3Is[1]  ? leftshift                                       : 32'b0) |	 	 
-	 (funct3Is[2]  ? {31'b0, LT}                                     : 32'b0) | 
-         (funct3Is[3]  ? {31'b0, LTU}                                    : 32'b0) | 
-         (funct3Is[4]  ? aluIn1 ^ aluIn2                                 : 32'b0) |
-	 (funct3Is[5]  ? shifter                                         : 32'b0) |	 
-         (funct3Is[6]  ? aluIn1 | aluIn2                                 : 32'b0) | 
-	 (funct3Is[7]  ? aluIn1 & aluIn2                                 : 32'b0) ;
-      end else begin // if (aluWr)
-	 aluBusy <= 1'b0;
-      end
+	 aluOut <=  (isALUreg & funcM) ? (isDivide ? alu_div : alu_mul) : alu_base;
    end
 
+
+   /***************************************************************************/
+   // Implementation of DIV/REM instructions, highly inspired by PicoRV32
+
+   reg [31:0] dividend;
+   reg [62:0] divisor;
+   reg [31:0] quotient;
+   reg [31:0] quotient_msk;
+
+   wire divstep_do = divisor <= {31'b0, dividend};
+
+   wire [31:0] dividendN     = divstep_do ? dividend - divisor[31:0] : dividend;
+   wire [31:0] quotientN     = divstep_do ? quotient | quotient_msk  : quotient;
+
+   wire div_sign = ~instr[12] & (instr[13] ? aluIn1[31] : 
+                    (aluIn1[31] != aluIn2[31]) & |aluIn2);
+
+   always @(posedge clk) begin
+      if (isALUreg & funcM & isDivide & aluWr) begin
+	 dividend <=   ~instr[12] & aluIn1[31] ? -aluIn1 : aluIn1;
+	 divisor  <= {(~instr[12] & aluIn2[31] ? -aluIn2 : aluIn2), 31'b0};
+	 quotient <= 0;
+	 quotient_msk <= 1 << 31;
+      end else begin
+	 dividend     <= dividendN;
+	 divisor      <= divisor >> 1;
+	 quotient     <= quotientN;
+	 quotient_msk <= quotient_msk >> 1;
+      end
+   end
+      
+   reg  [31:0] divResult;
+   always @(posedge clk) divResult <= instr[13] ? dividendN : quotientN;
+ 
    /***************************************************************************/
    // The predicate for conditional branches.
    /***************************************************************************/
