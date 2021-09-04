@@ -1,9 +1,11 @@
 /******************************************************************************/
+//     Electron: valid. fmax: 70 MHz  exp. fmax: 80 MHz
 // TestDrive: morphing tachyon into a RV32IMF core, trying to 
 // preserve maxfreq at each step.
 // Step 0: Tachyon       valid. fmax: 115-120 MHz  exp. fmax: 135-140 MHz
 // Step 1: Barrel shft   valid. fmax: 110-115 MHz  exp. fmax: 130-135 MHz
-// Step 2: RV32M         valid. fmax: 105     MHz  exp. fmax: 120     MHz (electron: 70-80)
+// Step 2: RV32M         valid. fmax: 105-115 MHz  exp. fmax: 120     MHz 
+
 //           
 /******************************************************************************/
 
@@ -55,19 +57,9 @@ module FemtoRV32(
 
  // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
  // It is used as follows: funct3Is[val] <=> funct3 == val
-   (* onehot *) reg  [7:0] funct3Is;
+ (* onehot *) reg  [7:0] funct3Is;
 
-
- // The five immediate formats, see RiscV reference (link above), Fig. 2.4 p. 12
- wire [31:0] Uimm = {    instr[31],   instr[30:12], {12{1'b0}}};
- wire [31:0] Iimm = {{21{instr[31]}}, instr[30:20]};
- /* verilator lint_off UNUSED */ // MSBs of SBJimms are not used by addr adder. 
- wire [31:0] Simm = {{21{instr[31]}}, instr[30:25],instr[11:7]};
- wire [31:0] Bimm = {{20{instr[31]}}, instr[7],instr[30:25],instr[11:8],1'b0};
- wire [31:0] Jimm = {{12{instr[31]}}, instr[19:12],instr[20],instr[30:21],1'b0};
- /* verilator lint_on UNUSED */
-
-   // Base RISC-V (RV32I) has only 10 different instructions !
+ // Base RISC-V (RV32I) has only 10 different instructions !
    reg isLoad;
    reg isALUimm;
    reg isAUIPC;
@@ -78,6 +70,12 @@ module FemtoRV32(
    reg isJALR;
    reg isJAL;
    reg isSYSTEM;
+  
+   reg [31:0] Uimm;
+   reg [31:0] Iimm;   
+   reg [31:0] Simm;   
+   reg [31:0] Bimm;
+   reg [31:0] Jimm;
    
    always @(posedge clk) begin
       if(state[WAIT_INSTR_bit] & !mem_rbusy) begin
@@ -92,6 +90,12 @@ module FemtoRV32(
 	 isJAL     <=  (mem_rdata[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
 	 isSYSTEM  <=  (mem_rdata[6:2] == 5'b11100); // rd <- cycles
 	 funct3Is  <= 8'b00000001 << mem_rdata[14:12];
+
+	 Uimm <= {    mem_rdata[31],   mem_rdata[30:12], {12{1'b0}}};
+	 Iimm <= {{21{mem_rdata[31]}}, mem_rdata[30:20]};
+	 Simm <= {{21{mem_rdata[31]}}, mem_rdata[30:25],mem_rdata[11:7]};
+	 Bimm <= {{20{mem_rdata[31]}}, mem_rdata[7],mem_rdata[30:25],mem_rdata[11:8],1'b0};
+	 Jimm <= {{12{mem_rdata[31]}}, mem_rdata[19:12],mem_rdata[20],mem_rdata[30:21],1'b0};
       end 
    end
    
