@@ -10,7 +10,7 @@
 
 /*** Processor configuration **************************************************/
 
-`define NRV_FREQ 80           // Frequency in MHz, needs to be a multiple of 5
+`define NRV_FREQ 140           // Frequency in MHz, needs to be a multiple of 5
 
 //         CORE                      RV32 subset    fmax validated-experimental
 //
@@ -19,7 +19,9 @@
 //`define NRV_FEMTORV32_ELECTRON    // RV32IM         fmax = 70-80 MHz
 //`define NRV_FEMTORV32_INTERMISSUM // RV32IM,   IRQ  fmax = 60-80 MHz
 //`define NRV_FEMTORV32_GRACILIS    // RV32IMC,  IRQ  fmax = 60-80 MHz
-`define NRV_FEMTORV32_PETITBATEAU   // RV32IMFC, IRQ  fmax = 50-80 MHz
+//`define NRV_FEMTORV32_PETITBATEAU   // RV32IMFC, IRQ  fmax = 50-80 MHz
+
+`define NRV_FEMTORV32_TESTDRIVE
 
 `define NRV_RESET_ADDR 0       // The address the processor jumps to on reset 
 

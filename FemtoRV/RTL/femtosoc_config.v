@@ -123,7 +123,11 @@
 `endif
 
 `ifdef NRV_FEMTORV32_PETITBATEAU
- `include "PROCESSOR/femtorv32_petitbateau.v" // under development, RV32F
+ `include "PROCESSOR/femtorv32_petitbateau.v" // under development, RV32IMFC
+`endif
+
+`ifdef NRV_FEMTORV32_TESTDRIVE
+ `include "PROCESSOR/femtorv32_testdrive.v" // CPU under test
 `endif
 
 /******************************************************************************************************************/

@@ -690,7 +690,7 @@ module FemtoRV32(
 	      end
 	   end
 
-	   // shift A to march B exponent
+	   // shift A in order to make it match B exponent
 	   fpmi_is[FPMI_ADD_SHIFT]: begin
 	      `ASSERT(!fabsB_LT_fabsA, ("ADD_SHIFT: incorrect order"));
 	      A_frac <= (exp_diff > 47) ? 0 : (A_frac >> exp_diff[5:0]);
