@@ -190,7 +190,7 @@ module FemtoRV32(
    // Implementation of DIV/REM instructions, highly inspired by PicoRV32
 
    wire div_sign = ~instr[12] & (instr[13] ? aluIn1[31] : 
-                    (aluIn1[31] != aluIn2[31]) & |aluIn2);
+                    (aluIn1[31] ^ aluIn2[31]) & |aluIn2);
 
    reg [31:0] dividend;
    reg [62:0] divisor;
@@ -207,8 +207,10 @@ module FemtoRV32(
 	 divisor      <= divisor >> 1;
 	 quotient_msk <= quotient_msk >> 1;
 	 if(divisor <= {31'b0, dividend}) begin
-	    quotient <= quotient | quotient_msk[32:1];
+	    quotient <= {quotient[30:0],1'b1};
 	    dividend <= dividend - divisor[31:0];
+	 end else begin
+	    quotient <= {quotient[30:0],1'b0};
 	 end
       end
    end
