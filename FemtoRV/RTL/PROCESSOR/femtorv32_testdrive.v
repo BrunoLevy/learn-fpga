@@ -3,7 +3,10 @@
 // preserve maxfreq at each step.
 // Step 0: Tachyon       valid. fmax: 115-120 MHz  exp. fmax: 135-140 MHz
 // Step 1: Barrel shft   valid. fmax: 110-115 MHz  exp. fmax: 130-135 MHz
-// Step 2: RV32M         valid. fmax: 90      MHz  exp. fmax: 115     MHz
+// Step 2: RV32M         valid. fmax: 90      MHz  exp. fmax: 115     MHz (electron: 70-80)
+//                       DIV is bottleneck (fmax 90) then MUL (105)
+//                       Let's try the division from projectF
+//           
 /******************************************************************************/
 
 // Firmware generation flags for this processor
@@ -169,54 +172,47 @@ module FemtoRV32(
    wire [31:0] alu_mul = funct3Is[0] ? multiply[31: 0]   // 0:MUL
                                      : multiply[63:32] ; // 1:MULH, 2:MULHSU, 3:MULHU
 
-   wire [31:0] alu_div = instr[13] ? (div_sign ? -dividendN : dividendN) 
-    	                           : (div_sign ? -quotientN : quotientN);
+   wire [31:0] alu_div = instr[13] ? (div_sign ? -dividend : dividend) 
+    	                           : (div_sign ? -quotient : quotient);
    
 
-   wire aluBusy = |quotient_msk ; // ALU is busy if division is in progress.
+   wire aluBusy = |quotient_msk; // ALU is busy if division is in progress.
    reg [31:0]  aluOut;
 
    wire funcM     = instr[25];
    wire isDivide  = instr[14];
    
    always @(posedge clk) begin
-	 aluOut <=  (isALUreg & funcM) ? (isDivide ? alu_div : alu_mul) : alu_base;
+      aluOut <=  (isALUreg & funcM) ? (isDivide ? alu_div : alu_mul) : alu_base;
    end
-
 
    /***************************************************************************/
    // Implementation of DIV/REM instructions, highly inspired by PicoRV32
 
-   reg [31:0] dividend;
-   reg [62:0] divisor;
-   reg [31:0] quotient;
-   reg [31:0] quotient_msk;
-
-   wire divstep_do = divisor <= {31'b0, dividend};
-
-   wire [31:0] dividendN     = divstep_do ? dividend - divisor[31:0] : dividend;
-   wire [31:0] quotientN     = divstep_do ? quotient | quotient_msk  : quotient;
-
    wire div_sign = ~instr[12] & (instr[13] ? aluIn1[31] : 
                     (aluIn1[31] != aluIn2[31]) & |aluIn2);
 
+   reg [31:0] dividend;
+   reg [62:0] divisor;
+   reg [31:0] quotient;
+   reg [32:0] quotient_msk;
+
    always @(posedge clk) begin
-      if (isALUreg & funcM & isDivide & aluWr) begin
+      if (aluWr) begin
 	 dividend <=   ~instr[12] & aluIn1[31] ? -aluIn1 : aluIn1;
 	 divisor  <= {(~instr[12] & aluIn2[31] ? -aluIn2 : aluIn2), 31'b0};
 	 quotient <= 0;
-	 quotient_msk <= 1 << 31;
+	 quotient_msk[32] <= isALUreg & funcM & isDivide;
       end else begin
-	 dividend     <= dividendN;
 	 divisor      <= divisor >> 1;
-	 quotient     <= quotientN;
 	 quotient_msk <= quotient_msk >> 1;
+	 if(divisor <= {31'b0, dividend}) begin
+	    quotient <= quotient | quotient_msk[32:1];
+	    dividend <= dividend - divisor[31:0];
+	 end
       end
    end
-      
-   reg  [31:0] divResult;
-   always @(posedge clk) divResult <= instr[13] ? dividendN : quotientN;
- 
+   
    /***************************************************************************/
    // The predicate for conditional branches.
    /***************************************************************************/
