@@ -1,8 +1,9 @@
-/*******************************************************************/
+/******************************************************************************/
 // TestDrive: morphing tachyon into a RV32IMF core, trying to 
 // preserve maxfreq at each step.
-// Step 0: tachyon  valid. fmax: 115-120 MHz  exp. fmax: 135-140 MHz
-/*******************************************************************/
+// Step 0: Tachyon       valid. fmax: 115-120 MHz  exp. fmax: 135-140 MHz
+// Step 1: Barrel shft   valid. fmax:  110-115 MHz  exp. fmax: 130-135 MHz
+/******************************************************************************/
 
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32i"
@@ -27,6 +28,17 @@ module FemtoRV32(
    parameter ADDR_WIDTH       = 24;           
 
    localparam ADDR_PAD = {(32-ADDR_WIDTH){1'b0}}; // 32-bits padding for addrs
+
+
+   // Flip a 32 bit word. Used by the shifter (a single shifter for
+   // left and right shifts, saves silicium !)
+   function [31:0] flip32;
+      input [31:0] x;
+      flip32 = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7], 
+		x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15], 
+		x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
+		x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
+   endfunction
 
  /***************************************************************************/
  // Instruction decoding.
@@ -93,11 +105,8 @@ module FemtoRV32(
    //    ALUimm, Load, JALR: Iimm
    wire [31:0] aluIn2 = isALUreg | isBranch ? rs2 : Iimm;
 
-   reg  [31:0] aluReg;       // The internal register of the ALU, used by shift.
-   reg  [4:0]  aluShamt;     // Current shift amount.
-
-   wire aluBusy = |aluShamt; // ALU is busy if shift amount is non-zero.
-   wire aluWr;               // ALU write strobe, starts shifting.
+   reg  [31:0] aluReg;       // The internal register of the ALU
+   wire aluWr;               // ALU write strobe
 
    // The adder is used by both arithmetic instructions and JALR.
    wire [31:0] aluPlus = aluIn1 + aluIn2;
@@ -109,6 +118,22 @@ module FemtoRV32(
    wire        LTU = aluMinus[32];
    wire        EQ  = (aluMinus[31:0] == 0);
 
+   /***************************************************************************/
+
+   // Use the same shifter both for left and right shifts by 
+   // applying bit reversal
+
+   wire [31:0] shifter_in = funct3Is[1] ? flip32(aluIn1) : aluIn1;
+   
+   /* verilator lint_off WIDTH */
+   wire [31:0] shifter = 
+               $signed({instr[30] & aluIn1[31], shifter_in}) >>> aluIn2[4:0];
+   /* verilator lint_on WIDTH */
+
+   wire [31:0] leftshift = flip32(shifter);
+   
+   /***************************************************************************/
+
    // Notes:
    // - instr[30] is 1 for SUB and 0 for ADD
    // - for SUB, need to test also instr[5] to discriminate ADDI:
@@ -116,38 +141,22 @@ module FemtoRV32(
    // - instr[30] is 1 for SRA (do sign extension) and 0 for SRL
    
    wire [31:0] aluOut = aluReg;
-
-   wire funct3IsShift = funct3Is[1] | funct3Is[5];
-
+   reg 	       aluBusy;
+   
    always @(posedge clk) begin
       if(aluWr) begin
-	 aluShamt <= funct3IsShift ? aluIn2[4:0] : 5'b0;
+	 aluBusy <= 1'b1;
 	 aluReg <=
-	 (funct3IsShift ? aluIn1 : 32'b0                                        ) |
-	 (funct3Is[0]  ? instr[30] & instr[5] ? aluMinus[31:0] : aluPlus : 32'b0) | 
+	 (funct3Is[0]  ? instr[30] & instr[5] ? aluMinus[31:0] : aluPlus : 32'b0) |
+	 (funct3Is[1]  ? leftshift                                       : 32'b0) |	 	 
 	 (funct3Is[2]  ? {31'b0, LT}                                     : 32'b0) | 
          (funct3Is[3]  ? {31'b0, LTU}                                    : 32'b0) | 
-         (funct3Is[4]  ? aluIn1 ^ aluIn2                                 : 32'b0) | 
+         (funct3Is[4]  ? aluIn1 ^ aluIn2                                 : 32'b0) |
+	 (funct3Is[5]  ? shifter                                         : 32'b0) |	 
          (funct3Is[6]  ? aluIn1 | aluIn2                                 : 32'b0) | 
 	 (funct3Is[7]  ? aluIn1 & aluIn2                                 : 32'b0) ;
-      end 
-
-`ifdef NRV_TWOLEVEL_SHIFTER
-      else if(|aluShamt[3:2]) begin // Shift by 4
-         aluShamt <= aluShamt - 4;
-	 aluReg <= funct3Is[1] ? aluReg << 4 : 
-		   {{4{instr[30] & aluReg[31]}}, aluReg[31:4]};	    
-      end  else
-`endif
-      // Compact form of:
-      // funct3=001              -> SLL  (aluReg <= aluReg << 1)      
-      // funct3=101 &  instr[30] -> SRA  (aluReg <= {aluReg[31], aluReg[31:1]})
-      // funct3=101 & !instr[30] -> SRL  (aluReg <= {1'b0,       aluReg[31:1]})
-
-      if (|aluShamt) begin
-         aluShamt <= aluShamt - 1;
-	 aluReg <= funct3Is[1] ? aluReg << 1 :              // SLL
-		   {instr[30] & aluReg[31], aluReg[31:1]};  // SRA,SRL
+      end else begin // if (aluWr)
+	 aluBusy <= 1'b0;
       end
    end
 
