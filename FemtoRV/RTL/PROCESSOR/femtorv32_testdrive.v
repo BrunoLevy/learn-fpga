@@ -3,9 +3,7 @@
 // preserve maxfreq at each step.
 // Step 0: Tachyon       valid. fmax: 115-120 MHz  exp. fmax: 135-140 MHz
 // Step 1: Barrel shft   valid. fmax: 110-115 MHz  exp. fmax: 130-135 MHz
-// Step 2: RV32M         valid. fmax: 90      MHz  exp. fmax: 115     MHz (electron: 70-80)
-//                       DIV is bottleneck (fmax 90) then MUL (105)
-//                       Let's try the division from projectF
+// Step 2: RV32M         valid. fmax: 105     MHz  exp. fmax: 120     MHz (electron: 70-80)
 //           
 /******************************************************************************/
 
@@ -57,8 +55,8 @@ module FemtoRV32(
 
  // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
  // It is used as follows: funct3Is[val] <=> funct3 == val
- (* onehot *)
- wire [7:0] funct3Is = 8'b00000001 << instr[14:12];
+   (* onehot *) reg  [7:0] funct3Is;
+
 
  // The five immediate formats, see RiscV reference (link above), Fig. 2.4 p. 12
  wire [31:0] Uimm = {    instr[31],   instr[30:12], {12{1'b0}}};
@@ -70,17 +68,33 @@ module FemtoRV32(
  /* verilator lint_on UNUSED */
 
    // Base RISC-V (RV32I) has only 10 different instructions !
-   wire isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
-   wire isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
-   wire isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
-   wire isStore   =  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
-   wire isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
-   wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
-   wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
-   wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
-   wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
-   wire isSYSTEM  =  (instr[6:2] == 5'b11100); // rd <- cycles
-
+   reg isLoad;
+   reg isALUimm;
+   reg isAUIPC;
+   reg isStore;
+   reg isALUreg;
+   reg isLUI;
+   reg isBranch;
+   reg isJALR;
+   reg isJAL;
+   reg isSYSTEM;
+   
+   always @(posedge clk) begin
+      if(state[WAIT_INSTR_bit] & !mem_rbusy) begin
+	 isLoad    <=  (mem_rdata[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
+	 isALUimm  <=  (mem_rdata[6:2] == 5'b00100); // rd <- rs1 OP Iimm
+	 isAUIPC   <=  (mem_rdata[6:2] == 5'b00101); // rd <- PC + Uimm
+	 isStore   <=  (mem_rdata[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
+	 isALUreg  <=  (mem_rdata[6:2] == 5'b01100); // rd <- rs1 OP rs2
+	 isLUI     <=  (mem_rdata[6:2] == 5'b01101); // rd <- Uimm
+	 isBranch  <=  (mem_rdata[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
+	 isJALR    <=  (mem_rdata[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
+	 isJAL     <=  (mem_rdata[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
+	 isSYSTEM  <=  (mem_rdata[6:2] == 5'b11100); // rd <- cycles
+	 funct3Is  <= 8'b00000001 << mem_rdata[14:12];
+      end 
+   end
+   
    wire isALU = isALUimm | isALUreg;
 
    /***************************************************************************/
@@ -176,7 +190,7 @@ module FemtoRV32(
     	                           : (div_sign ? -quotient : quotient);
    
 
-   wire aluBusy = |quotient_msk; // ALU is busy if division is in progress.
+   wire        aluBusy = |quotient_msk; // ALU is busy if division is in progress.
    reg [31:0]  aluOut;
 
    wire funcM     = instr[25];
@@ -189,8 +203,7 @@ module FemtoRV32(
    /***************************************************************************/
    // Implementation of DIV/REM instructions, highly inspired by PicoRV32
 
-   wire div_sign = ~instr[12] & (instr[13] ? aluIn1[31] : 
-                    (aluIn1[31] ^ aluIn2[31]) & |aluIn2);
+   reg div_sign;
 
    reg [31:0] dividend;
    reg [62:0] divisor;
@@ -203,6 +216,8 @@ module FemtoRV32(
 	 divisor  <= {(~instr[12] & aluIn2[31] ? -aluIn2 : aluIn2), 31'b0};
 	 quotient <= 0;
 	 quotient_msk[32] <= isALUreg & funcM & isDivide;
+	 div_sign <= ~instr[12] & (instr[13] ? aluIn1[31] : 
+                      (aluIn1[31] ^ aluIn2[31]) & |aluIn2);
       end else begin
 	 divisor      <= divisor >> 1;
 	 quotient_msk <= quotient_msk >> 1;
