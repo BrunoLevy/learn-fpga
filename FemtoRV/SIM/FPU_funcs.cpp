@@ -274,6 +274,8 @@ uint32_t check(
 
 /*********************************************/
 
+// C++ code to test the algorithms before implementing femtorv32-petitbateau
+// completely in VERILOG.
 class FPU {
 public:
   int32_t result() const {
@@ -447,12 +449,9 @@ private:
 };
 
 
-/*********************************************/
+/********************************************************************************/
 
-uint32_t FMADD(uint32_t x, uint32_t y, uint32_t z) {
-  L("FMADD");
-  return encodef(fma(decodef(x),decodef(y),decodef(z)));
-		
+uint32_t FMADD_WITH_SOFT_FPU(uint32_t x, uint32_t y, uint32_t z) {
   FPU fpu;
   fpu.MUL(x,y);
   fpu.LOAD_B(z,false,false);
@@ -462,15 +461,10 @@ uint32_t FMADD(uint32_t x, uint32_t y, uint32_t z) {
     fpu.ADD_FRAC();
   }
   fpu.NORM();
-  uint32_t result = fpu.result();
-  check("FMADD",x,y,z,result,encodef(fma(decodef(x),decodef(y),decodef(z))));
-  return result;
+  return fpu.result();
 }
 
-uint32_t FMSUB(uint32_t x, uint32_t y, uint32_t z) {
-  L("FMSUB");
-  return encodef(fma(decodef(x),decodef(y),-decodef(z)));
-  
+uint32_t FMSUB_WITH_SOFT_FPU(uint32_t x, uint32_t y, uint32_t z) {
   FPU fpu;
   fpu.MUL(x,y);  
   fpu.LOAD_B(z,false,true);
@@ -480,15 +474,10 @@ uint32_t FMSUB(uint32_t x, uint32_t y, uint32_t z) {
     fpu.ADD_FRAC();
   }
   fpu.NORM();
-  uint32_t result = fpu.result();
-  check("FMSUB",x,y,z,result,encodef(fma(decodef(x),decodef(y),-decodef(z))));
-  return result;
+  return fpu.result();
 }
 
-uint32_t FNMADD(uint32_t x, uint32_t y, uint32_t z) {
-  L("FNMADD");
-  return encodef(fma(-decodef(x),decodef(y),-decodef(z)));
-  
+uint32_t FNMADD_WITH_SOFT_FPU(uint32_t x, uint32_t y, uint32_t z) {
   FPU fpu;
   fpu.MUL(x,y);
   fpu.LOAD_B(z,true,true);
@@ -498,15 +487,10 @@ uint32_t FNMADD(uint32_t x, uint32_t y, uint32_t z) {
     fpu.ADD_FRAC();
   }
   fpu.NORM();
-  uint32_t result = fpu.result();
-  check("FNMADD",x,y,z,result,encodef(fma(-decodef(x),decodef(y),-decodef(z))));
-  return result;
+  return fpu.result();
 }
 
-uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
-  L("FNMSUB");
-  return encodef(fma(-decodef(x),decodef(y),decodef(z)));
-		
+uint32_t FNMSUB_WITH_SOFT_FPU(uint32_t x, uint32_t y, uint32_t z) {
   FPU fpu;
   fpu.MUL(x,y);
   fpu.LOAD_B(z,true,false);
@@ -516,15 +500,10 @@ uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
     fpu.ADD_FRAC();
   }
   fpu.NORM();
-  uint32_t result = fpu.result();
-  check("FNMSUB",x,y,z,result,encodef(fma(-decodef(x),decodef(y),decodef(z))));
-  return result;
+  return fpu.result();
 }
 
-uint32_t FADD(uint32_t x, uint32_t y) {
-  L("FADD");
-  return encodef(decodef(x)+decodef(y));
-  
+uint32_t FADD_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
   FPU fpu;
   fpu.LOAD_AB(x,y,false);
   if(fpu.ADD_SWP_EXP()) {
@@ -532,14 +511,10 @@ uint32_t FADD(uint32_t x, uint32_t y) {
     fpu.ADD_FRAC();
   }
   fpu.NORM();
-  uint32_t result = fpu.result();
-  check("FADD",x,y,0,result,encodef(decodef(x)+decodef(y)));
-  return result;
+  return fpu.result();
 }
 
-uint32_t FSUB(uint32_t x, uint32_t y) {
-  L("FSUB");
-  return encodef(decodef(x)-decodef(y));  
+uint32_t FSUB_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
   FPU fpu;
   fpu.LOAD_AB(x,y,true);
   if(fpu.ADD_SWP_EXP()) {
@@ -547,20 +522,14 @@ uint32_t FSUB(uint32_t x, uint32_t y) {
     fpu.ADD_FRAC();
   }
   fpu.NORM();
-  uint32_t result = fpu.result();
-  check("FSUB",x,y,0,result,encodef(decodef(x)-decodef(y)));
-  return result;
+  return fpu.result();
 }
 
-uint32_t FMUL(uint32_t x, uint32_t y) {
-  L("FMUL");
-  return encodef(decodef(x)*decodef(y));    
+uint32_t FMUL_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
   FPU fpu;
   fpu.MUL(x,y);
   fpu.NORM();
-  uint32_t result = fpu.result();
-  check("FMUL",x,y,0,result,encodef(decodef(x)*decodef(y)));    
-  return result;
+  return fpu.result();
 }
 
 // Stack Overflow - Fast 1/X division (reciprocal)
@@ -574,7 +543,7 @@ float DOOM_approx_inv_sqrt(float x) {
 }
 
 // reciprocal (1/x)
-uint32_t FRCP(uint32_t D_in) {
+uint32_t FRCP_WITH_SOFT_FPU(uint32_t D_in) {
 
   // version 0: use simulator's FPU
   if(0) {
@@ -650,81 +619,43 @@ uint32_t FRCP(uint32_t D_in) {
       
     return result;
   }
-  
 }
 
-uint32_t FDIV(uint32_t x, uint32_t y) {
-  L("FDIV");    
-
-  // return encodef(decodef(x)/decodef(y));
-
-  uint32_t result = FMUL(x, FRCP(y));
-  // check("FDIV",x,y,0,result,encodef(decodef(x)/decodef(y))); // Barks often ! (small ulp errors)
-  return result;
-
-  /*
-  float fx = decodef(x);
-  float fy = decodef(y);
-  int sign = (fx < 0) ^ (fy < 0);
-  fx = fabs(fx);
-  fy = fabs(fy);
-
-  float inv_y = DOOM_approx_inv_sqrt(fy);
-  inv_y = inv_y * inv_y;
-
-  float result = fx * inv_y;
-  if(sign) result = -result;
-  return encodef(result);
-  */
+uint32_t FDIV_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
+  return FMUL_WITH_SOFT_FPU(x, FRCP_WITH_SOFT_FPU(y));
 }
 
-uint32_t FSQRT(uint32_t x) {
-  L("FSQRT");
-
-  //uint32_t inv_sqrt = (0xbe6eb3beU - x) >> 1;
-  //uint32_t sqrt = encodef(1.0f / decodef(inv_sqrt));
-
-  // DOOM algo:
-  uint32_t sqrt = FMUL(x,encodef(DOOM_approx_inv_sqrt(decodef(x))));
-  
-  // printf("x=%f sqrt(x)=%f  result=%f\n", decodef(x), sqrtf(decodef(x)), decodef(sqrt));
-  
-  //  return encodef(sqrtf(decodef(x)));
-  return sqrt;
+uint32_t FSQRT_WITH_SOFT_FPU(uint32_t x) {
+  return FMUL_WITH_SOFT_FPU(x,encodef(DOOM_approx_inv_sqrt(decodef(x))));
 }
 
-uint32_t FSGNJ(uint32_t x, uint32_t y) {
-  L("FSGNJ");  
+uint32_t FSGNJ_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
   IEEE754 X(x), Y(y);
   X.sign = Y.sign;
   return Y.i;
 }
 
-uint32_t FSGNJN(uint32_t x, uint32_t y) {
-  L("FSGNJN");    
+uint32_t FSGNJN_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
   IEEE754 X(x),Y(y);
   X.sign = !Y.sign;
   return X.i;
 }
 
-uint32_t FSGNJX(uint32_t x, uint32_t y) {
-  L("FSGNJX");    
+uint32_t FSGNJX_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
   IEEE754 X(x),Y(y);
   X.sign = X.sign ^ Y.sign;
   return X.i;
 }
 
-uint32_t FMIN(uint32_t x, uint32_t y) {
-  L("FMIN");    
+uint32_t FMIN_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
   return encodef(fminf(decodef(x),decodef(y)));
 }
 
-uint32_t FMAX(uint32_t x, uint32_t y) {
-  L("FMAX");      
+uint32_t FMAX_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
   return encodef(fmaxf(decodef(x),decodef(y)));  
 }
 
-uint32_t FCVTWS(uint32_t x) { 
+uint32_t FCVTWS_WITH_SOFT_FPU(uint32_t x) { 
   L("FCVTWS");
   // TODO: overflow detect
   uint32_t result;
@@ -743,11 +674,10 @@ uint32_t FCVTWS(uint32_t x) {
   if(X.sign) {
     result = uint32_t(-int32_t(result));
   }
-  check("FCVT.WU.S",x,0,0,result,uint32_t(int32_t(decodef(x))));
   return result;
 }
 
-uint32_t FCVTWUS(uint32_t x) {
+uint32_t FCVTWUS_WITH_SOFT_FPU(uint32_t x) {
   // TODO: overflow detect
   L("FCVTWUS");
   uint32_t result;
@@ -763,29 +693,16 @@ uint32_t FCVTWUS(uint32_t x) {
       result = result >> -shift;
     }
   }
-  check("FCVT.WU.S",x,0,0,result,uint32_t(decodef(x)));
   return result;
 }
 
-uint32_t FEQ(uint32_t x, uint32_t y) {
-  L("FEQ");
+uint32_t FEQ_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
   uint32_t result = (x == y);
-  uint32_t check = (decodef(x) == decodef(y));
-  if(result != check) {
-    IEEE754 X(x);
-    IEEE754 Y(y);    
-    printf("FEQ ");
-    X.print();
-    printf(" ==? ");
-    Y.print();
-    printf(" -> %d %d\n", result, check);
-  }
+  // TODO: +zero/-zero
   return result;
 }
 
-uint32_t FLT(uint32_t x, uint32_t y) {
-  L("FLT");         
-  uint32_t check = (decodef(x) < decodef(y));
+uint32_t FLT_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
   IEEE754 X(x), Y(y);
   int s1 = X.sign;
   int s2 = Y.sign;
@@ -799,34 +716,209 @@ uint32_t FLT(uint32_t x, uint32_t y) {
   } else if(s1) {
     result = !result;
   } 
-  
-  if(result != check) {
-    printf("FLT ");
-    X.print();
-    printf(" <? ");
-    Y.print();
-    printf(" -> %d %d\n", result, check);
-  }
   return result;
 }
 
-uint32_t FLE(uint32_t x, uint32_t y) {
-  L("FLE");           
+uint32_t FLE_WITH_SOFT_FPU(uint32_t x, uint32_t y) {
   return (decodef(x) <= decodef(y));
 }
 
+uint32_t FCLASS_WITH_SOFT_FPU(uint32_t x) {
+  printf("FCLASS - not implemented yet\n");
+  return 0;
+}
+
+uint32_t FCVTSW_WITH_SOFT_FPU(uint32_t x) {
+  return encodef(float(int32_t(x)));
+}
+
+uint32_t FCVTSWU_WITH_SOFT_FPU(uint32_t x) {
+  return encodef(float(x));
+}
+
+/********************************************************************************/
+
+static int use_soft_fpu = 0;
+
+uint32_t FMADD(uint32_t x, uint32_t y, uint32_t z) {
+  if(use_soft_fpu) {
+    return FMADD_WITH_SOFT_FPU(x,y,z);
+  }
+  L("FMADD");
+  return encodef(fma(decodef(x),decodef(y),decodef(z)));
+}
+
+uint32_t FMSUB(uint32_t x, uint32_t y, uint32_t z) {
+  if(use_soft_fpu) {
+    return FMSUB_WITH_SOFT_FPU(x,y,z);
+  }
+  L("FMSUB");
+  return encodef(fma(decodef(x),decodef(y),-decodef(z)));
+}
+
+uint32_t FNMADD(uint32_t x, uint32_t y, uint32_t z) {
+  if(use_soft_fpu) {
+    return FNMADD_WITH_SOFT_FPU(x,y,z);
+  }
+  L("FNMADD");
+  return encodef(fma(-decodef(x),decodef(y),-decodef(z)));
+}
+
+uint32_t FNMSUB(uint32_t x, uint32_t y, uint32_t z) {
+  if(use_soft_fpu) {
+    return FNMSUB_WITH_SOFT_FPU(x,y,z);
+  }
+  L("FNMSUB");
+  return encodef(fma(-decodef(x),decodef(y),decodef(z)));
+}
+
+uint32_t FADD(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FADD_WITH_SOFT_FPU(x,y);
+  }
+  L("FADD");
+  return encodef(decodef(x)+decodef(y));
+}
+
+uint32_t FSUB(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FSUB_WITH_SOFT_FPU(x,y);
+  }
+  L("FSUB");
+  return encodef(decodef(x)-decodef(y));  
+}
+
+uint32_t FMUL(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FMUL_WITH_SOFT_FPU(x,y);
+  }
+  L("FMUL");
+  return encodef(decodef(x)*decodef(y));    
+}
+
+uint32_t FDIV(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FDIV_WITH_SOFT_FPU(x,y);
+  }
+  L("FDIV");    
+  return encodef(decodef(x)/decodef(y));
+}
+
+uint32_t FSQRT(uint32_t x) {
+  if(use_soft_fpu) {
+    return FSQRT_WITH_SOFT_FPU(x);
+  }
+  L("FSQRT");
+  return encodef(sqrtf(decodef(x)));
+}
+
+uint32_t FSGNJ(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FSGNJ_WITH_SOFT_FPU(x,y);
+  }
+  L("FSGNJ");  
+  IEEE754 X(x), Y(y);
+  X.sign = Y.sign;
+  return Y.i;
+}
+
+uint32_t FSGNJN(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FSGNJN_WITH_SOFT_FPU(x,y);
+  }
+  L("FSGNJN");    
+  IEEE754 X(x),Y(y);
+  X.sign = !Y.sign;
+  return X.i;
+}
+
+uint32_t FSGNJX(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FSGNJX_WITH_SOFT_FPU(x,y);
+  }
+  L("FSGNJX");    
+  IEEE754 X(x),Y(y);
+  X.sign = X.sign ^ Y.sign;
+  return X.i;
+}
+
+uint32_t FMIN(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FMIN_WITH_SOFT_FPU(x,y);
+  }
+  L("FMIN");    
+  return encodef(fminf(decodef(x),decodef(y)));
+}
+
+uint32_t FMAX(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FMAX_WITH_SOFT_FPU(x,y);
+  }
+  L("FMAX");      
+  return encodef(fmaxf(decodef(x),decodef(y)));  
+}
+
+uint32_t FCVTWS(uint32_t x) {
+  if(use_soft_fpu) {
+    return FCVTWS_WITH_SOFT_FPU(x);
+  }
+  L("FCVTWS");
+  return uint32_t(int32_t(decodef(x)));
+}
+
+uint32_t FCVTWUS(uint32_t x) {
+  if(use_soft_fpu) {
+    return FCVTWUS_WITH_SOFT_FPU(x);
+  }
+  L("FCVTWUS");
+  return uint32_t(decodef(x));
+}
+
+uint32_t FEQ(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FEQ_WITH_SOFT_FPU(x,y);
+  }
+  L("FEQ");
+  return uint32_t(decodef(x) == decodef(y));
+}
+
+uint32_t FLT(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FLT_WITH_SOFT_FPU(x,y);
+  }
+  L("FLT");
+  return uint32_t(decodef(x) < decodef(y));
+}
+
+uint32_t FLE(uint32_t x, uint32_t y) {
+  if(use_soft_fpu) {
+    return FLE_WITH_SOFT_FPU(x,y);
+  }
+  L("FLE");           
+  return uint32_t(decodef(x) <= decodef(y));
+}
+
 uint32_t FCLASS(uint32_t x) {
+  if(use_soft_fpu) {
+    return FCLASS_WITH_SOFT_FPU(x);
+  }
   L("FCLASS");             
   printf("FCLASS - not implemented yet\n");
   return 0;
 }
 
 uint32_t FCVTSW(uint32_t x) {
+  if(use_soft_fpu) {
+    return FCVTSW_WITH_SOFT_FPU(x);
+  }
   L("FCVTSW");             
   return encodef(float(int32_t(x)));
 }
 
 uint32_t FCVTSWU(uint32_t x) {
+  if(use_soft_fpu) {
+    return FCVTSWU_WITH_SOFT_FPU(x);
+  }
   L("FCVTSWU");               
   return encodef(float(x));
 }

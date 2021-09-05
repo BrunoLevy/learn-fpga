@@ -10,52 +10,9 @@
 /******************************************************************************/
 
 // Firmware generation flags for this processor
-`define NRV_ARCH     "rv32imaf"
-`define NRV_ABI      "ilp32f"
-
-//`define NRV_ARCH     "rv32im"
-//`define NRV_ABI      "ilp32"
-
+`define NRV_ARCH     "rv32im"
+`define NRV_ABI      "ilp32"
 `define NRV_OPTIMIZE "-O3"
-
-// Check condition and display message in simulation
-`ifdef BENCH
- `define ASSERT(cond,msg) if(!(cond)) $display msg
- `define ASSERT_NOT_REACHED(msg) $display msg
-`else
- `define ASSERT(cond,msg)
- `define ASSERT_NOT_REACHED(msg)
-`endif
-
-// FPU Normalization needs to detect the position of the first bit set 
-// in the A_frac register. It is easier to count the number of leading 
-// zeroes (CLZ for Count Leading Zeroes), as follows. See:
-// https://electronics.stackexchange.com/questions/196914/verilog-synthesize-high-speed-leading-zero-count
-module CLZ #(
-   parameter W_IN = 64, // must be power of 2, >= 2
-   parameter W_OUT = $clog2(W_IN)	     
-) (
-   input wire [W_IN-1:0]   in,
-   output wire [W_OUT-1:0] out
-);
-  generate
-     if(W_IN == 2) begin
-	assign out = !in[1];
-     end else begin
-	wire [W_OUT-2:0] half_count;
-	wire [W_IN/2-1:0] lhs = in[W_IN/2 +: W_IN/2];
-	wire [W_IN/2-1:0] rhs = in[0      +: W_IN/2];
-	wire left_empty = ~|lhs;
-	CLZ #(
-	  .W_IN(W_IN/2)
-        ) inner(
-           .in(left_empty ? rhs : lhs),
-           .out(half_count)		
-	);
-	assign out = {left_empty, half_count};
-     end
-  endgenerate
-endmodule   
 
 module FemtoRV32(
    input          clk,
@@ -102,27 +59,36 @@ module FemtoRV32(
  // It is used as follows: funct3Is[val] <=> funct3 == val
  (* onehot *) reg  [7:0] funct3Is;
 
- // Instruction decoder and immediate decoder
  // Base RISC-V (RV32I) has only 10 different instructions !
-   
-   reg isLoad,   isALUimm, isAUIPC, isStore,  isALUreg, isLUI,
-       isBranch, isJALR,   isJAL,   isSYSTEM, isFPU;
+   reg isLoad;
+   reg isALUimm;
+   reg isAUIPC;
+   reg isStore;
+   reg isALUreg;
+   reg isLUI;
+   reg isBranch;
+   reg isJALR;
+   reg isJAL;
+   reg isSYSTEM;
   
-   reg [31:0] Uimm, Iimm, Simm, Bimm, Jimm;
+   reg [31:0] Uimm;
+   reg [31:0] Iimm;   
+   reg [31:0] Simm;   
+   reg [31:0] Bimm;
+   reg [31:0] Jimm;
    
    always @(posedge clk) begin
       if(state[WAIT_INSTR_bit] & !mem_rbusy) begin
-	 isLoad    <=  (mem_rdata[6:3] == 4'b0000);  // rd <- mem[rs1+Iimm]
+	 isLoad    <=  (mem_rdata[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
 	 isALUimm  <=  (mem_rdata[6:2] == 5'b00100); // rd <- rs1 OP Iimm
 	 isAUIPC   <=  (mem_rdata[6:2] == 5'b00101); // rd <- PC + Uimm
-	 isStore   <=  (mem_rdata[6:3] == 4'b0100);  // mem[rs1+Simm] <- rs2
+	 isStore   <=  (mem_rdata[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
 	 isALUreg  <=  (mem_rdata[6:2] == 5'b01100); // rd <- rs1 OP rs2
 	 isLUI     <=  (mem_rdata[6:2] == 5'b01101); // rd <- Uimm
 	 isBranch  <=  (mem_rdata[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
 	 isJALR    <=  (mem_rdata[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
 	 isJAL     <=  (mem_rdata[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
 	 isSYSTEM  <=  (mem_rdata[6:2] == 5'b11100); // rd <- cycles
-	 isFPU     <=  (mem_rdata[6:5] == 2'b10);    // all FPU instr except FLW/FSW	 
 	 funct3Is  <= 8'b00000001 << mem_rdata[14:12];
 
 	 Uimm <= {    mem_rdata[31],   mem_rdata[30:12], {12{1'b0}}};
@@ -138,220 +104,17 @@ module FemtoRV32(
    /***************************************************************************/
    // The register file.
    /***************************************************************************/
-
+   
    reg [31:0] rs1;
    reg [31:0] rs2;
-   reg [31:0] rs3; // this one is used by the FMA instructions.
-   
-   reg [31:0] registerFile [0:63]; //  0..31: integer registers
-                                   // 32..63: floating-point registers
-   
-   /***************************************************************************/
-   // The FPU 
-   /***************************************************************************/
+   reg [31:0] registerFile [31:0];
 
-   // instruction decoder
-
-   reg isFMADD, isFMSUB,  isFNMSUB, isFNMADD,  isFADD,   isFSUB, isFMUL, isFDIV,
-       isFSQRT, isFSGNJ,  isFSGNJN, isFSGNJX,  isFMIN,   isFMAX, isFEQ,  isFLT,
-       isFLE,   isFCLASS, isFCVTWS, isFCVTWUS, isFCVTSW, isFCVTSWU, isFMVXW,
-       isFMVWX;
-   
-   reg rdIsFP; // Asserted if destination register is a FP register.
-
-   // rs1 is a FP register if instr[6:5] = 2'b10 except for:
-   //   FCVT.S.W{U}:  instr[6:2] = 5'b10100 and instr[30:28] = 3'b101
-   //   FMV.W.X    :  instr[6:2] = 5'b10100 and instr[30:28] = 3'b111
-   // (two versions of the signal, one for regular instruction decode,
-   //  the other one for compressed instructions).
-   wire raw_rs1IsFP = (mem_rdata[6:5]   == 2'b10 ) &&  
-                     !((mem_rdata[4:2]  == 3'b100) && (
-                      (mem_rdata[31:28] == 4'b1101) || // FCVT.S.W{U}
-     	              (mem_rdata[31:28] == 4'b1111)    // FMV.W.X
-                    )						    
-		  );
-
-   // rs2 is a FP register if instr[6:5] = 2'b10 or instr is FSW
-   // (two versions of the signal, one for regular instruction decode,
-   //  the other one for compressed instructions).
-   wire raw_rs2IsFP = (mem_rdata[6:5] == 2'b10) || (mem_rdata[6:2]==5'b01001);
-   
    always @(posedge clk) begin
-      if(state[WAIT_INSTR_bit] & !mem_rbusy) begin
-	 isFMADD   <= (mem_rdata[4:2] == 3'b000); 
-	 isFMSUB   <= (mem_rdata[4:2] == 3'b001); 
-	 isFNMSUB  <= (mem_rdata[4:2] == 3'b010); 
-	 isFNMADD  <= (mem_rdata[4:2] == 3'b011);
-	 
-	 isFADD    <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b00000));
-	 isFSUB    <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b00001));
-	 isFMUL    <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b00010));
-	 isFDIV    <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b00011));
-	 isFSQRT   <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b01011));
-	 
-	 isFSGNJ   <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b00100) && (mem_rdata[13:12] == 2'b00));
-	 isFSGNJN  <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b00100) && (mem_rdata[13:12] == 2'b01));      
-	 isFSGNJX  <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b00100) && (mem_rdata[13:12] == 2'b10));   
-	 
-	 isFMIN    <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b00101) && !mem_rdata[12]);
-	 isFMAX    <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b00101) &&  mem_rdata[12]);      
-	 
-	 isFEQ     <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b10100) && (mem_rdata[13:12] == 2'b10));
-	 isFLT     <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b10100) && (mem_rdata[13:12] == 2'b01));
-	 isFLE     <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b10100) && (mem_rdata[13:12] == 2'b00));                        
-	 
-	 isFCLASS  <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b11100) &&  mem_rdata[12]); 
-   
-	 isFCVTWS  <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b11000) && !mem_rdata[20]);
-	 isFCVTWUS <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b11000) &&  mem_rdata[20]);
-
-	 isFCVTSW  <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b11010) && !mem_rdata[20]);
-	 isFCVTSWU <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b11010) &&  mem_rdata[20]);
-	 
-	 isFMVXW   <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b11100) && !mem_rdata[12]);
-	 isFMVWX   <= (mem_rdata[4] && (mem_rdata[31:27] == 5'b11110));
-
-	 rdIsFP <= (mem_rdata[6:2] == 5'b00001)             || // FLW
-	           (mem_rdata[6:4] == 3'b100  )             || // F{N}MADD,F{N}MSUB
-	           (mem_rdata[6:4] == 3'b101 && (
-                              (mem_rdata[31]    == 1'b0)    || // R-Type FPU
-		  	      (mem_rdata[31:28] == 4'b1101) || // FCVT.S.W{U}
-			      (mem_rdata[31:28] == 4'b1111)    // FMV.W.X 
-		   )
-               );
-      end
-   end   
-
-   reg [31:0] fpuOut;
-`define FPU_OUT fpuOut
-   wire       fpuBusy = 0;
-   
-   always @(posedge clk) begin
-      if(state[WAIT_INSTR_bit]) begin
-	 // Fetch registers as soon as instruction is ready.
-	 rs1 <= registerFile[{raw_rs1IsFP,mem_rdata[19:15]}]; 
-	 rs2 <= registerFile[{raw_rs2IsFP,mem_rdata[24:20]}];
-	 rs3 <= registerFile[{1'b1,       mem_rdata[31:27]}];
-      end else if(state[EXECUTE2_bit] & isFPU) begin
-`ifdef VERILATOR
-	 (* parallel_case *)
-	 case(1'b1)
-	   isFMADD  : `FPU_OUT <= $c32("FMADD(",rs1,",",rs2,",",rs3,")");
-	   isFMSUB  : `FPU_OUT <= $c32("FMSUB(",rs1,",",rs2,",",rs3,")");
-	   isFNMSUB : `FPU_OUT <= $c32("FNMSUB(",rs1,",",rs2,",",rs3,")");
-	   isFNMADD : `FPU_OUT <= $c32("FNMADD(",rs1,",",rs2,",",rs3,")");
-	   
-	   isFMUL   : `FPU_OUT <= $c32("FMUL(",rs1,",",rs2,")");
-	   isFADD   : `FPU_OUT <= $c32("FADD(",rs1,",",rs2,")");
-	   isFSUB   : `FPU_OUT <= $c32("FSUB(",rs1,",",rs2,")");
-	   
-	   isFDIV   : `FPU_OUT <= $c32("FDIV(",rs1,",",rs2,")");
-	   isFSQRT  : `FPU_OUT <= $c32("FSQRT(",rs1,")");
-
-	   
-	   isFSGNJ  : `FPU_OUT <= $c32("FSGNJ(",rs1,",",rs2,")");
-	   isFSGNJN : `FPU_OUT <= $c32("FSGNJN(",rs1,",",rs2,")");
-	   isFSGNJX : `FPU_OUT <= $c32("FSGNJX(",rs1,",",rs2,")");
-	   
-	   isFMIN   : `FPU_OUT <= $c32("FMIN(",rs1,",",rs2,")");
-	   isFMAX   : `FPU_OUT <= $c32("FMAX(",rs1,",",rs2,")");
-	   
-	   isFEQ    : `FPU_OUT <= $c32("FEQ(",rs1,",",rs2,")");
-	   isFLE    : `FPU_OUT <= $c32("FLE(",rs1,",",rs2,")");
-	   isFLT    : `FPU_OUT <= $c32("FLT(",rs1,",",rs2,")");
-	   
-	   isFCLASS : `FPU_OUT <= $c32("FCLASS(",rs1,")") ;
-	   
-	   isFCVTWS : `FPU_OUT <= $c32("FCVTWS(",rs1,")");
-	   isFCVTWUS: `FPU_OUT <= $c32("FCVTWUS(",rs1,")");
-	   
-	   isFCVTSW : `FPU_OUT <= $c32("FCVTSW(",rs1,")");
-	   isFCVTSWU: `FPU_OUT <= $c32("FCVTSWU(",rs1,")");
-	   
-           isFMVXW:   `FPU_OUT <= rs1;
-	   isFMVWX:   `FPU_OUT <= rs1;	   
-	 endcase 
-`endif
-	 
-      // register write-back
-      end else if(writeBack) begin 
-	 if(rdIsFP || |instr[11:7]) begin
-            registerFile[{rdIsFP,instr[11:7]}] <= writeBackData;
-	 end
-      end 
+     if (writeBack)
+       if (rdId != 0)
+         registerFile[rdId] <= writeBackData;
    end
 
-   
-`ifdef VERILATOR
-   // When doing simulations, compare the result of all operations with
-   // what's computed on the host CPU. 
-
-   reg [31:0] z;
-   reg [31:0] rs1_bkp;
-   reg [31:0] rs2_bkp;
-   reg [31:0] rs3_bkp;   
-
-   always @(posedge clk) begin
-      // Some micro-coded instructions (FDIV/FSQRT) use rs1, rs2 and
-      // rs3 as temporaty registers, so we need to save them to be able
-      // to recompute the operation on the host CPU.
-      if(isFPU && state[EXECUTE2_bit]) begin
-	 rs1_bkp <= rs1;
-	 rs2_bkp <= rs2;
-	 rs3_bkp <= rs3;
-      end
-      
-      if(
-	 isFPU && state[WAIT_ALU_OR_MEM_bit] // && fpmi_PC == 0
-      ) begin
-	 case(1'b1)
-	   isFMUL: z <= $c32("CHECK_FMUL(",fpuOut,",",rs1,",",rs2,")");
-	   isFADD: z <= $c32("CHECK_FADD(",fpuOut,",",rs1,",",rs2,")");
-	   isFSUB: z <= $c32("CHECK_FSUB(",fpuOut,",",rs1,",",rs2,")");
-	   
-	   // my FDIV and FSQRT are not IEEE754 compliant ! 
-	   // (checks commented-out for now)
-	   // Note: checks use rs1_bkp and rs2_bkp because
-	   //  FDIV and FSQRT overwrite rs1 and rs2
-	   //
-           //isFDIV:  
-	   // z<=$c32("CHECK_FDIV(",fpuOut,",",rs1_bkp,",",rs2_bkp,")");
-           //isFSQRT: 
-	   // z<=$c32("CHECK_FSQRT(",fpuOut,",",rs1_bkp,")");
-
-	   
-	   isFMADD :
-	   z<=$c32("CHECK_FMADD(",fpuOut,",",rs1,",",rs2,",",rs3,")");
-	   
-	   isFMSUB :
-	   z<=$c32("CHECK_FMSUB(",fpuOut,",",rs1,",",rs2,",",rs3,")");
-	   
-	   isFNMSUB:
-	   z<=$c32("CHECK_FNMSUB(",fpuOut,",",rs1,",",rs2,",",rs3,")");
-	   
-	   isFNMADD:
-	   z<=$c32("CHECK_FNMADD(",fpuOut,",",rs1,",",rs2,",",rs3,")");
-
-	   isFEQ: z <= $c32("CHECK_FEQ(",fpuOut,",",rs1,",",rs2,")");
-	   isFLT: z <= $c32("CHECK_FLT(",fpuOut,",",rs1,",",rs2,")");
-	   isFLE: z <= $c32("CHECK_FLE(",fpuOut,",",rs1,",",rs2,")");
-
-	   isFCVTWS : z <= $c32("CHECK_FCVTWS(",fpuOut,",",rs1,")");
-	   isFCVTWUS: z <= $c32("CHECK_FCVTWUS(",fpuOut,",",rs1,")");
-
-	   isFCVTSW : z <= $c32("CHECK_FCVTSW(",fpuOut,",",rs1,")");
-	   isFCVTSWU: z <= $c32("CHECK_FCVTSWU(",fpuOut,",",rs1,")");
-
-	   isFMIN: z <= $c32("CHECK_FMIN(",fpuOut,",",rs1,",",rs2,")");
-	   isFMAX: z <= $c32("CHECK_FMAX(",fpuOut,",",rs1,",",rs2,")");
-	   
-	 endcase
-      end
-   end 
-   
-`endif
-   
-   
    /***************************************************************************/
    // The ALU. Does operations and tests combinatorially, except shifts.
    /***************************************************************************/
@@ -516,7 +279,6 @@ module FemtoRV32(
       /* verilator lint_on WIDTH */	       	       	       
       (isLUI               ? Uimm                 : 32'b0) |  // LUI
       (isALU               ? aluOut               : 32'b0) |  // ALUreg, ALUimm
-      (isFPU               ? fpuOut               : 32'b0) |  // FPU	       
       (isAUIPC             ? {ADDR_PAD,PCplusImm} : 32'b0) |  // AUIPC
       (isJALR   | isJAL    ? {ADDR_PAD,PCplus4  } : 32'b0) |  // JAL, JALR
       (isLoad              ? LOAD_data            : 32'b0);   // Load
@@ -530,9 +292,9 @@ module FemtoRV32(
    // and byte load/store, based on:
    // - funct3[1:0]:  00->byte 01->halfword 10->word
    // - mem_addr[1:0]: indicates which byte/halfword is accessed
-   // - instr[2] is set for FLW and FSW. instr[13:12] = func3[1:0]
-   wire mem_byteAccess     = !instr[2] && (instr[13:12] == 2'b00); 
-   wire mem_halfwordAccess = !instr[2] && (instr[13:12] == 2'b01); 
+
+   wire mem_byteAccess     = instr[13:12] == 2'b00; // funct3[1:0] == 2'b00;
+   wire mem_halfwordAccess = instr[13:12] == 2'b01; // funct3[1:0] == 2'b01;
 
    // LOAD, in addition to funct3[1:0], LOAD depends on:
    // - funct3[2] (instr[14]): 0->do sign expansion   1->no sign expansion
@@ -600,7 +362,7 @@ module FemtoRV32(
    // combinatorially from state and other signals.
 
    // register write-back enable.
-   wire writeBack = ~(isBranch | isStore ) & !fpuBusy &
+   wire writeBack = ~(isBranch | isStore ) & 
 	            (state[EXECUTE2_bit] | state[WAIT_ALU_OR_MEM_bit]);
 
    // The memory-read signal.
@@ -616,11 +378,11 @@ module FemtoRV32(
 `ifdef NRV_IS_IO_ADDR  
    wire needToWait = isLoad | 
 		     isStore  & `NRV_IS_IO_ADDR(mem_addr) | 
-		     aluBusy | isFPU;
+		     aluBusy;
 `else
-   wire needToWait = isLoad | isStore | aluBusy | isFPU;   
+   wire needToWait = isLoad | isStore | aluBusy;   
 `endif
-
+   
    always @(posedge clk) begin
       if(!reset) begin
          state      <= WAIT_ALU_OR_MEM; // Just waiting for !mem_wbusy
@@ -633,6 +395,8 @@ module FemtoRV32(
 
         state[WAIT_INSTR_bit]: begin
            if(!mem_rbusy) begin // may be high when executing from SPI flash
+              rs1 <= registerFile[mem_rdata[19:15]];
+              rs2 <= registerFile[mem_rdata[24:20]];
               instr <= mem_rdata[31:2]; // Bits 0 and 1 are ignored (see
               state <= EXECUTE1;        // also the declaration of instr).
            end
@@ -662,7 +426,7 @@ module FemtoRV32(
         end
 
         state[WAIT_ALU_OR_MEM_bit]: begin
-           if(!aluBusy & !fpuBusy & !mem_rbusy & !mem_wbusy) state <= FETCH_INSTR;
+           if(!aluBusy & !mem_rbusy & !mem_wbusy) state <= FETCH_INSTR;
         end
 
         default: begin // FETCH_INSTR
