@@ -10,7 +10,7 @@
 
 /*** Processor configuration **************************************************/
 
-`define NRV_FREQ 105          // Frequency in MHz, needs to be a multiple of 5
+`define NRV_FREQ 90          // Frequency in MHz, needs to be a multiple of 5
 
 //         CORE                      RV32 subset    fmax validated-experimental
 //

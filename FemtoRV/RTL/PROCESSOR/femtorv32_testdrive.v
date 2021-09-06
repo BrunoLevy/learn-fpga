@@ -11,11 +11,11 @@
 /******************************************************************************/
 
 // Firmware generation flags for this processor
-//`define NRV_ARCH     "rv32imaf"
-//`define NRV_ABI      "ilp32f"
+`define NRV_ARCH     "rv32imaf"
+`define NRV_ABI      "ilp32f"
 
-`define NRV_ARCH     "rv32im"
-`define NRV_ABI      "ilp32"
+//`define NRV_ARCH     "rv32im"
+//`define NRV_ABI      "ilp32"
 
 `define NRV_OPTIMIZE "-O3"
 
@@ -96,9 +96,6 @@ module FemtoRV32(
  // Reference: Table page 104 of:
  // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
 
- // The destination register
- wire [4:0] rdId = instr[11:7];
-
  // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
  // It is used as follows: funct3Is[val] <=> funct3 == val
  (* onehot *) reg  [7:0] funct3Is;
@@ -110,22 +107,22 @@ module FemtoRV32(
        isBranch, isJALR,   isJAL,   isSYSTEM, isFPU;
   
    reg [31:0] Uimm, Iimm, Simm, Bimm, Jimm;
-   reg 	      rdIsZ; // Asserted if dest. register is zero (no writeback)
+   reg 	      rdIsNZ; // Asserted if dest. register is non-zero (writeback)
    
    always @(posedge clk) begin
       if(state[WAIT_INSTR_bit]) begin
-	 isLoad    <=  (mem_rdata[6:3] == 4'b0000);    // rd <- mem[rs1+Iimm]
-	 isALUimm  <=  (mem_rdata[6:2] == 5'b00100);   // rd <- rs1 OP Iimm
-	 isAUIPC   <=  (mem_rdata[6:2] == 5'b00101);   // rd <- PC + Uimm
-	 isStore   <=  (mem_rdata[6:3] == 4'b0100);    // mem[rs1+Simm] <- rs2
-	 isALUreg  <=  (mem_rdata[6:2] == 5'b01100);   // rd <- rs1 OP rs2
-	 isLUI     <=  (mem_rdata[6:2] == 5'b01101);   // rd <- Uimm
-	 isBranch  <=  (mem_rdata[6:2] == 5'b11000);   // if(rs1 OP rs2) PC<-PC+Bimm
-	 isJALR    <=  (mem_rdata[6:2] == 5'b11001);   // rd <- PC+4; PC<-rs1+Iimm
-	 isJAL     <=  (mem_rdata[6:2] == 5'b11011);   // rd <- PC+4; PC<-PC+Jimm
-	 isSYSTEM  <=  (mem_rdata[6:2] == 5'b11100);   // rd <- cycles
-	 isFPU     <=  (mem_rdata[6:5] == 2'b10);      // all FPU instr except FLW/FSW	 
-	 funct3Is  <= 8'b00000001 << mem_rdata[14:12]; // 1-hot decoded funct3
+	 isLoad    <=  (mem_rdata[6:3] == 4'b0000);  // rd <- mem[rs1+Iimm]
+	 isALUimm  <=  (mem_rdata[6:2] == 5'b00100); // rd <- rs1 OP Iimm
+	 isAUIPC   <=  (mem_rdata[6:2] == 5'b00101); // rd <- PC + Uimm
+	 isStore   <=  (mem_rdata[6:3] == 4'b0100);  // mem[rs1+Simm] <- rs2
+	 isALUreg  <=  (mem_rdata[6:2] == 5'b01100); // rd <- rs1 OP rs2
+	 isLUI     <=  (mem_rdata[6:2] == 5'b01101); // rd <- Uimm
+	 isBranch  <=  (mem_rdata[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
+	 isJALR    <=  (mem_rdata[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
+	 isJAL     <=  (mem_rdata[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
+	 isSYSTEM  <=  (mem_rdata[6:2] == 5'b11100); // rd <- cycles
+	 isFPU     <=  (mem_rdata[6:5] == 2'b10);    // all FPU instr except FLW/FSW	 
+	 funct3Is  <= 8'b00000001 << mem_rdata[14:12];
 
 	 Uimm <= {    mem_rdata[31],   mem_rdata[30:12], {12{1'b0}}};
 	 Iimm <= {{21{mem_rdata[31]}}, mem_rdata[30:20]};
@@ -133,12 +130,13 @@ module FemtoRV32(
 	 Bimm <= {{20{mem_rdata[31]}}, mem_rdata[7],mem_rdata[30:25],mem_rdata[11:8],1'b0};
 	 Jimm <= {{12{mem_rdata[31]}}, mem_rdata[19:12],mem_rdata[20],mem_rdata[30:21],1'b0};
 
-	 rdIsZ <= ~(
+	 rdIsNZ <= |mem_rdata[11:7];
+	 /*
+		   (
 		    (mem_rdata[6:5] == 2'b10)  | // FPU
 		    (|mem_rdata[11:7])           // rd != 0
-		  ) | 
-		  (mem_rdata[6:2] == 5'b11000) | // isBranch
-		  (mem_rdata[6:3] == 4'b0100)  ; // isStore
+		   );
+         */	  
       end 
    end
    
@@ -173,7 +171,7 @@ module FemtoRV32(
    //   FMV.W.X    :  instr[6:2] = 5'b10100 and instr[30:28] = 3'b111
    // (two versions of the signal, one for regular instruction decode,
    //  the other one for compressed instructions).
-   wire raw_rs1IsFP = (mem_rdata[6:5]   == 2'b10 ) &&  
+   wire rs1IsFP = (mem_rdata[6:5]   == 2'b10 ) &&  
                      !((mem_rdata[4:2]  == 3'b100) && (
                       (mem_rdata[31:28] == 4'b1101) || // FCVT.S.W{U}
      	              (mem_rdata[31:28] == 4'b1111)    // FMV.W.X
@@ -183,7 +181,7 @@ module FemtoRV32(
    // rs2 is a FP register if instr[6:5] = 2'b10 or instr is FSW
    // (two versions of the signal, one for regular instruction decode,
    //  the other one for compressed instructions).
-   wire raw_rs2IsFP = (mem_rdata[6:5] == 2'b10) || (mem_rdata[6:2]==5'b01001);
+   wire rs2IsFP = (mem_rdata[6:5] == 2'b10) || (mem_rdata[6:2]==5'b01001);
 
    always @(posedge clk) begin
       if(state[WAIT_INSTR_bit]) begin
@@ -238,12 +236,10 @@ module FemtoRV32(
    always @(posedge clk) begin
       if(state[WAIT_INSTR_bit]) begin
 	 // Fetch registers as soon as instruction is ready.
-	 rs1 <= registerFile[{raw_rs1IsFP,mem_rdata[19:15]}]; 
-	 rs2 <= registerFile[{raw_rs2IsFP,mem_rdata[24:20]}];
-//	 rs3 <= registerFile[{1'b1,       mem_rdata[31:27]}];
+	 rs1 <= registerFile[{rs1IsFP,mem_rdata[19:15]}]; 
+	 rs2 <= registerFile[{rs2IsFP,mem_rdata[24:20]}];
+	 rs3 <= registerFile[{1'b1, mem_rdata[31:27]}];
       end else if(state[EXECUTE2_bit] & isFPU) begin
-	 rs3 <= registerFile[{1'b1,       mem_rdata[31:27]}];
-	 // NOTE: sim no longer works if I read rs3 here (of course)
 `ifdef VERILATOR
 	 (* parallel_case *)
 	 case(1'b1)
@@ -251,7 +247,7 @@ module FemtoRV32(
 	   isFMSUB  : `FPU_OUT <= $c32("FMSUB(",rs1,",",rs2,",",rs3,")");
 	   isFNMSUB : `FPU_OUT <= $c32("FNMSUB(",rs1,",",rs2,",",rs3,")");
 	   isFNMADD : `FPU_OUT <= $c32("FNMADD(",rs1,",",rs2,",",rs3,")");
-	   
+  
 	   isFMUL   : `FPU_OUT <= $c32("FMUL(",rs1,",",rs2,")");
 	   isFADD   : `FPU_OUT <= $c32("FADD(",rs1,",",rs2,")");
 	   isFSUB   : `FPU_OUT <= $c32("FSUB(",rs1,",",rs2,")");
@@ -285,9 +281,12 @@ module FemtoRV32(
 `endif
 	 
       // register write-back
-      end else if(!rdIsZ & (state[EXECUTE2_bit] | state[WAIT_ALU_OR_MEM_bit])) begin 
-         registerFile[{rdIsFP,instr[11:7]}] <= writeBackData;
-      end 
+      end else if( 
+	      !(isBranch | isStore) & (rdIsFP | rdIsNZ) & 
+	      (state[EXECUTE2_bit] | state[WAIT_ALU_OR_MEM_bit]) 
+      ) begin 
+	 registerFile[{rdIsFP,instr[11:7]}] <= writeBackData;
+      end
    end
 
    
@@ -362,7 +361,7 @@ module FemtoRV32(
    
    
    /***************************************************************************/
-   // The ALU. Does operations and tests combinatorially, except shifts.
+   // The ALU. Does operations and tests combinatorially, except DIV
    /***************************************************************************/
 
    // First ALU source, always rs1
@@ -537,9 +536,9 @@ module FemtoRV32(
    // All memory accesses are aligned on 32 bits boundary. For this
    // reason, we need some circuitry that does unaligned halfword
    // and byte load/store, based on:
-   // - funct3[1:0]:  00->byte 01->halfword 10->word
+   // - funct3[1:0]:  00->byte 01->halfword 10->word (=instr[13:12])
    // - mem_addr[1:0]: indicates which byte/halfword is accessed
-   // - instr[2] is set for FLW and FSW. instr[13:12] = func3[1:0]
+   // - instr[2] is set for FLW and FSW. 
    wire mem_byteAccess     = !instr[2] && (instr[13:12] == 2'b00); 
    wire mem_halfwordAccess = !instr[2] && (instr[13:12] == 2'b01); 
 
@@ -638,7 +637,7 @@ module FemtoRV32(
 
         state[WAIT_INSTR_bit]: begin
            if(!mem_rbusy) begin // may be high when executing from SPI flash
-              instr <= mem_rdata[31:2]; // Bits 0 and 1 are ignored (see
+              instr <= mem_rdata[31:2]; // Bits 0 and 1 are ignored (see // TODO: move outside test ?
               state <= EXECUTE1;        // also the declaration of instr).
            end
         end

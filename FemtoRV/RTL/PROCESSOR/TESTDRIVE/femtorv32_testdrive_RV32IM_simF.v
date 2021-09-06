@@ -2,9 +2,10 @@
 //     Electron: valid. fmax: 70 MHz  exp. fmax: 80 MHz
 // TestDrive: morphing tachyon into a RV32IMF core, trying to 
 // preserve maxfreq at each step.
-// Step 0: Tachyon       valid. fmax: 115-120 MHz  exp. fmax: 135-140 MHz
-// Step 1: Barrel shft   valid. fmax: 110-115 MHz  exp. fmax: 130-135 MHz
-// Step 2: RV32M         valid. fmax: 105-115 MHz  exp. fmax: 120     MHz 
+// Step 0: Tachyon            valid. fmax: 115-120 MHz  exp. fmax: 135-140 MHz
+// Step 1: Barrel shft        valid. fmax: 110-115 MHz  exp. fmax: 130-135 MHz
+// Step 2: RV32M              valid. fmax: 105-115 MHz  exp. fmax: 120     MHz 
+// Step 3: RV32F  decod only  valid. fmax: 100-105 MHz  exp. fmax: 105     MHz
 
 //           
 /******************************************************************************/
@@ -95,9 +96,6 @@ module FemtoRV32(
  // Reference: Table page 104 of:
  // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
 
- // The destination register
- wire [4:0] rdId = instr[11:7];
-
  // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
  // It is used as follows: funct3Is[val] <=> funct3 == val
  (* onehot *) reg  [7:0] funct3Is;
@@ -109,9 +107,10 @@ module FemtoRV32(
        isBranch, isJALR,   isJAL,   isSYSTEM, isFPU;
   
    reg [31:0] Uimm, Iimm, Simm, Bimm, Jimm;
+   reg 	      rdIsNZ; // Asserted if dest. register is non-zero (writeback)
    
    always @(posedge clk) begin
-      if(state[WAIT_INSTR_bit] & !mem_rbusy) begin
+      if(state[WAIT_INSTR_bit]) begin
 	 isLoad    <=  (mem_rdata[6:3] == 4'b0000);  // rd <- mem[rs1+Iimm]
 	 isALUimm  <=  (mem_rdata[6:2] == 5'b00100); // rd <- rs1 OP Iimm
 	 isAUIPC   <=  (mem_rdata[6:2] == 5'b00101); // rd <- PC + Uimm
@@ -130,6 +129,14 @@ module FemtoRV32(
 	 Simm <= {{21{mem_rdata[31]}}, mem_rdata[30:25],mem_rdata[11:7]};
 	 Bimm <= {{20{mem_rdata[31]}}, mem_rdata[7],mem_rdata[30:25],mem_rdata[11:8],1'b0};
 	 Jimm <= {{12{mem_rdata[31]}}, mem_rdata[19:12],mem_rdata[20],mem_rdata[30:21],1'b0};
+
+	 rdIsNZ <= |mem_rdata[11:7];
+	 /*
+		   (
+		    (mem_rdata[6:5] == 2'b10)  | // FPU
+		    (|mem_rdata[11:7])           // rd != 0
+		   );
+         */	  
       end 
    end
    
@@ -164,7 +171,7 @@ module FemtoRV32(
    //   FMV.W.X    :  instr[6:2] = 5'b10100 and instr[30:28] = 3'b111
    // (two versions of the signal, one for regular instruction decode,
    //  the other one for compressed instructions).
-   wire raw_rs1IsFP = (mem_rdata[6:5]   == 2'b10 ) &&  
+   wire rs1IsFP = (mem_rdata[6:5]   == 2'b10 ) &&  
                      !((mem_rdata[4:2]  == 3'b100) && (
                       (mem_rdata[31:28] == 4'b1101) || // FCVT.S.W{U}
      	              (mem_rdata[31:28] == 4'b1111)    // FMV.W.X
@@ -174,10 +181,10 @@ module FemtoRV32(
    // rs2 is a FP register if instr[6:5] = 2'b10 or instr is FSW
    // (two versions of the signal, one for regular instruction decode,
    //  the other one for compressed instructions).
-   wire raw_rs2IsFP = (mem_rdata[6:5] == 2'b10) || (mem_rdata[6:2]==5'b01001);
-   
+   wire rs2IsFP = (mem_rdata[6:5] == 2'b10) || (mem_rdata[6:2]==5'b01001);
+
    always @(posedge clk) begin
-      if(state[WAIT_INSTR_bit] & !mem_rbusy) begin
+      if(state[WAIT_INSTR_bit]) begin
 	 isFMADD   <= (mem_rdata[4:2] == 3'b000); 
 	 isFMSUB   <= (mem_rdata[4:2] == 3'b001); 
 	 isFNMSUB  <= (mem_rdata[4:2] == 3'b010); 
@@ -229,10 +236,10 @@ module FemtoRV32(
    always @(posedge clk) begin
       if(state[WAIT_INSTR_bit]) begin
 	 // Fetch registers as soon as instruction is ready.
-	 rs1 <= registerFile[{raw_rs1IsFP,mem_rdata[19:15]}]; 
-	 rs2 <= registerFile[{raw_rs2IsFP,mem_rdata[24:20]}];
+	 rs1 <= registerFile[{rs1IsFP,mem_rdata[19:15]}]; 
+	 rs2 <= registerFile[{rs2IsFP,mem_rdata[24:20]}];
+	 rs3 <= registerFile[{1'b1, mem_rdata[31:27]}];
       end else if(state[EXECUTE2_bit] & isFPU) begin
-	 rs3 <= registerFile[{1'b1,       mem_rdata[31:27]}];
 `ifdef VERILATOR
 	 (* parallel_case *)
 	 case(1'b1)
@@ -240,7 +247,7 @@ module FemtoRV32(
 	   isFMSUB  : `FPU_OUT <= $c32("FMSUB(",rs1,",",rs2,",",rs3,")");
 	   isFNMSUB : `FPU_OUT <= $c32("FNMSUB(",rs1,",",rs2,",",rs3,")");
 	   isFNMADD : `FPU_OUT <= $c32("FNMADD(",rs1,",",rs2,",",rs3,")");
-	   
+  
 	   isFMUL   : `FPU_OUT <= $c32("FMUL(",rs1,",",rs2,")");
 	   isFADD   : `FPU_OUT <= $c32("FADD(",rs1,",",rs2,")");
 	   isFSUB   : `FPU_OUT <= $c32("FSUB(",rs1,",",rs2,")");
@@ -274,11 +281,12 @@ module FemtoRV32(
 `endif
 	 
       // register write-back
-      end else if(writeBack) begin 
-	 if(rdIsFP || |instr[11:7]) begin
-            registerFile[{rdIsFP,instr[11:7]}] <= writeBackData;
-	 end
-      end 
+      end else if( 
+	      !(isBranch | isStore) & (rdIsFP | rdIsNZ) & 
+	      (state[EXECUTE2_bit] | state[WAIT_ALU_OR_MEM_bit]) 
+      ) begin 
+	 registerFile[{rdIsFP,instr[11:7]}] <= writeBackData;
+      end
    end
 
    
@@ -353,7 +361,7 @@ module FemtoRV32(
    
    
    /***************************************************************************/
-   // The ALU. Does operations and tests combinatorially, except shifts.
+   // The ALU. Does operations and tests combinatorially, except DIV
    /***************************************************************************/
 
    // First ALU source, always rs1
@@ -528,9 +536,9 @@ module FemtoRV32(
    // All memory accesses are aligned on 32 bits boundary. For this
    // reason, we need some circuitry that does unaligned halfword
    // and byte load/store, based on:
-   // - funct3[1:0]:  00->byte 01->halfword 10->word
+   // - funct3[1:0]:  00->byte 01->halfword 10->word (=instr[13:12])
    // - mem_addr[1:0]: indicates which byte/halfword is accessed
-   // - instr[2] is set for FLW and FSW. instr[13:12] = func3[1:0]
+   // - instr[2] is set for FLW and FSW. 
    wire mem_byteAccess     = !instr[2] && (instr[13:12] == 2'b00); 
    wire mem_halfwordAccess = !instr[2] && (instr[13:12] == 2'b01); 
 
@@ -599,10 +607,6 @@ module FemtoRV32(
    // The signals (internal and external) that are determined
    // combinatorially from state and other signals.
 
-   // register write-back enable.
-   wire writeBack = ~(isBranch | isStore ) & !fpuBusy &
-	            (state[EXECUTE2_bit] | state[WAIT_ALU_OR_MEM_bit]);
-
    // The memory-read signal.
    assign mem_rstrb = state[EXECUTE2_bit] & isLoad | state[FETCH_INSTR_bit];
 
@@ -633,7 +637,7 @@ module FemtoRV32(
 
         state[WAIT_INSTR_bit]: begin
            if(!mem_rbusy) begin // may be high when executing from SPI flash
-              instr <= mem_rdata[31:2]; // Bits 0 and 1 are ignored (see
+              instr <= mem_rdata[31:2]; // Bits 0 and 1 are ignored (see // TODO: move outside test ?
               state <= EXECUTE1;        // also the declaration of instr).
            end
         end
