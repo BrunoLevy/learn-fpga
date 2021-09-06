@@ -2,19 +2,20 @@
 //     Electron: valid. fmax: 70 MHz  exp. fmax: 80 MHz
 // TestDrive: morphing tachyon into a RV32IMF core, trying to 
 // preserve maxfreq at each step.
-// Step 0: Tachyon       valid. fmax: 115-120 MHz  exp. fmax: 135-140 MHz
-// Step 1: Barrel shft   valid. fmax: 110-115 MHz  exp. fmax: 130-135 MHz
-// Step 2: RV32M         valid. fmax: 105-115 MHz  exp. fmax: 120     MHz 
+// Step 0: Tachyon            valid. fmax: 115-120 MHz  exp. fmax: 135-140 MHz
+// Step 1: Barrel shft        valid. fmax: 110-115 MHz  exp. fmax: 130-135 MHz
+// Step 2: RV32M              valid. fmax: 105-115 MHz  exp. fmax: 120     MHz 
+// Step 3: RV32F  decod only  valid. fmax: 100-105 MHz  exp. fmax: 105     MHz
 
 //           
 /******************************************************************************/
 
 // Firmware generation flags for this processor
-`define NRV_ARCH     "rv32imaf"
-`define NRV_ABI      "ilp32f"
+//`define NRV_ARCH     "rv32imaf"
+//`define NRV_ABI      "ilp32f"
 
-//`define NRV_ARCH     "rv32im"
-//`define NRV_ABI      "ilp32"
+`define NRV_ARCH     "rv32im"
+`define NRV_ABI      "ilp32"
 
 `define NRV_OPTIMIZE "-O3"
 
@@ -109,27 +110,35 @@ module FemtoRV32(
        isBranch, isJALR,   isJAL,   isSYSTEM, isFPU;
   
    reg [31:0] Uimm, Iimm, Simm, Bimm, Jimm;
+   reg 	      rdIsZ; // Asserted if dest. register is zero (no writeback)
    
    always @(posedge clk) begin
-      if(state[WAIT_INSTR_bit] & !mem_rbusy) begin
-	 isLoad    <=  (mem_rdata[6:3] == 4'b0000);  // rd <- mem[rs1+Iimm]
-	 isALUimm  <=  (mem_rdata[6:2] == 5'b00100); // rd <- rs1 OP Iimm
-	 isAUIPC   <=  (mem_rdata[6:2] == 5'b00101); // rd <- PC + Uimm
-	 isStore   <=  (mem_rdata[6:3] == 4'b0100);  // mem[rs1+Simm] <- rs2
-	 isALUreg  <=  (mem_rdata[6:2] == 5'b01100); // rd <- rs1 OP rs2
-	 isLUI     <=  (mem_rdata[6:2] == 5'b01101); // rd <- Uimm
-	 isBranch  <=  (mem_rdata[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
-	 isJALR    <=  (mem_rdata[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
-	 isJAL     <=  (mem_rdata[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
-	 isSYSTEM  <=  (mem_rdata[6:2] == 5'b11100); // rd <- cycles
-	 isFPU     <=  (mem_rdata[6:5] == 2'b10);    // all FPU instr except FLW/FSW	 
-	 funct3Is  <= 8'b00000001 << mem_rdata[14:12];
+      if(state[WAIT_INSTR_bit]) begin
+	 isLoad    <=  (mem_rdata[6:3] == 4'b0000);    // rd <- mem[rs1+Iimm]
+	 isALUimm  <=  (mem_rdata[6:2] == 5'b00100);   // rd <- rs1 OP Iimm
+	 isAUIPC   <=  (mem_rdata[6:2] == 5'b00101);   // rd <- PC + Uimm
+	 isStore   <=  (mem_rdata[6:3] == 4'b0100);    // mem[rs1+Simm] <- rs2
+	 isALUreg  <=  (mem_rdata[6:2] == 5'b01100);   // rd <- rs1 OP rs2
+	 isLUI     <=  (mem_rdata[6:2] == 5'b01101);   // rd <- Uimm
+	 isBranch  <=  (mem_rdata[6:2] == 5'b11000);   // if(rs1 OP rs2) PC<-PC+Bimm
+	 isJALR    <=  (mem_rdata[6:2] == 5'b11001);   // rd <- PC+4; PC<-rs1+Iimm
+	 isJAL     <=  (mem_rdata[6:2] == 5'b11011);   // rd <- PC+4; PC<-PC+Jimm
+	 isSYSTEM  <=  (mem_rdata[6:2] == 5'b11100);   // rd <- cycles
+	 isFPU     <=  (mem_rdata[6:5] == 2'b10);      // all FPU instr except FLW/FSW	 
+	 funct3Is  <= 8'b00000001 << mem_rdata[14:12]; // 1-hot decoded funct3
 
 	 Uimm <= {    mem_rdata[31],   mem_rdata[30:12], {12{1'b0}}};
 	 Iimm <= {{21{mem_rdata[31]}}, mem_rdata[30:20]};
 	 Simm <= {{21{mem_rdata[31]}}, mem_rdata[30:25],mem_rdata[11:7]};
 	 Bimm <= {{20{mem_rdata[31]}}, mem_rdata[7],mem_rdata[30:25],mem_rdata[11:8],1'b0};
 	 Jimm <= {{12{mem_rdata[31]}}, mem_rdata[19:12],mem_rdata[20],mem_rdata[30:21],1'b0};
+
+	 rdIsZ <= ~(
+		    (mem_rdata[6:5] == 2'b10)  | // FPU
+		    (|mem_rdata[11:7])           // rd != 0
+		  ) | 
+		  (mem_rdata[6:2] == 5'b11000) | // isBranch
+		  (mem_rdata[6:3] == 4'b0100)  ; // isStore
       end 
    end
    
@@ -175,9 +184,9 @@ module FemtoRV32(
    // (two versions of the signal, one for regular instruction decode,
    //  the other one for compressed instructions).
    wire raw_rs2IsFP = (mem_rdata[6:5] == 2'b10) || (mem_rdata[6:2]==5'b01001);
-   
+
    always @(posedge clk) begin
-      if(state[WAIT_INSTR_bit] & !mem_rbusy) begin
+      if(state[WAIT_INSTR_bit]) begin
 	 isFMADD   <= (mem_rdata[4:2] == 3'b000); 
 	 isFMSUB   <= (mem_rdata[4:2] == 3'b001); 
 	 isFNMSUB  <= (mem_rdata[4:2] == 3'b010); 
@@ -231,8 +240,10 @@ module FemtoRV32(
 	 // Fetch registers as soon as instruction is ready.
 	 rs1 <= registerFile[{raw_rs1IsFP,mem_rdata[19:15]}]; 
 	 rs2 <= registerFile[{raw_rs2IsFP,mem_rdata[24:20]}];
-	 rs3 <= registerFile[{1'b1,       mem_rdata[31:27]}];
+//	 rs3 <= registerFile[{1'b1,       mem_rdata[31:27]}];
       end else if(state[EXECUTE2_bit] & isFPU) begin
+	 rs3 <= registerFile[{1'b1,       mem_rdata[31:27]}];
+	 // NOTE: sim no longer works if I read rs3 here (of course)
 `ifdef VERILATOR
 	 (* parallel_case *)
 	 case(1'b1)
@@ -274,10 +285,8 @@ module FemtoRV32(
 `endif
 	 
       // register write-back
-      end else if(writeBack) begin 
-	 if(rdIsFP || |instr[11:7]) begin
-            registerFile[{rdIsFP,instr[11:7]}] <= writeBackData;
-	 end
+      end else if(!rdIsZ & (state[EXECUTE2_bit] | state[WAIT_ALU_OR_MEM_bit])) begin 
+         registerFile[{rdIsFP,instr[11:7]}] <= writeBackData;
       end 
    end
 
@@ -598,10 +607,6 @@ module FemtoRV32(
 
    // The signals (internal and external) that are determined
    // combinatorially from state and other signals.
-
-   // register write-back enable.
-   wire writeBack = ~(isBranch | isStore ) & !fpuBusy &
-	            (state[EXECUTE2_bit] | state[WAIT_ALU_OR_MEM_bit]);
 
    // The memory-read signal.
    assign mem_rstrb = state[EXECUTE2_bit] & isLoad | state[FETCH_INSTR_bit];

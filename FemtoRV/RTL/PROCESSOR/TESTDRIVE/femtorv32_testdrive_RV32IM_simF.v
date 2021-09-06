@@ -231,8 +231,8 @@ module FemtoRV32(
 	 // Fetch registers as soon as instruction is ready.
 	 rs1 <= registerFile[{raw_rs1IsFP,mem_rdata[19:15]}]; 
 	 rs2 <= registerFile[{raw_rs2IsFP,mem_rdata[24:20]}];
-	 rs3 <= registerFile[{1'b1,       mem_rdata[31:27]}];
       end else if(state[EXECUTE2_bit] & isFPU) begin
+	 rs3 <= registerFile[{1'b1,       mem_rdata[31:27]}];
 `ifdef VERILATOR
 	 (* parallel_case *)
 	 case(1'b1)
