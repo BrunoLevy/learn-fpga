@@ -117,11 +117,11 @@ module FemtoRV32(
 	 isStore   <=  (mem_rdata[6:3] == 4'b0100);  // mem[rs1+Simm] <- rs2
 	 isALUreg  <=  (mem_rdata[6:2] == 5'b01100); // rd <- rs1 OP rs2
 	 isLUI     <=  (mem_rdata[6:2] == 5'b01101); // rd <- Uimm
-	 isBranch  <=  (mem_rdata[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
+	 isBranch  <=  (mem_rdata[6:2] == 5'b11000); // if(rs1OPrs2) PC<-PC+Bimm
 	 isJALR    <=  (mem_rdata[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
 	 isJAL     <=  (mem_rdata[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
 	 isSYSTEM  <=  (mem_rdata[6:2] == 5'b11100); // rd <- cycles
-	 isFPU     <=  (mem_rdata[6:5] == 2'b10);    // all FPU instr except FLW/FSW	 
+	 isFPU     <=  (mem_rdata[6:5] == 2'b10);    // all FPU except FLW/FSW 
 	 funct3Is  <= 8'b00000001 << mem_rdata[14:12];
 
 	 Uimm <= {    mem_rdata[31],   mem_rdata[30:12], {12{1'b0}}};
@@ -131,12 +131,6 @@ module FemtoRV32(
 	 Jimm <= {{12{mem_rdata[31]}}, mem_rdata[19:12],mem_rdata[20],mem_rdata[30:21],1'b0};
 
 	 rdIsNZ <= |mem_rdata[11:7];
-	 /*
-		   (
-		    (mem_rdata[6:5] == 2'b10)  | // FPU
-		    (|mem_rdata[11:7])           // rd != 0
-		   );
-         */	  
       end 
    end
    
@@ -432,14 +426,15 @@ module FemtoRV32(
    // funct3: 0->MUL 1->MULH 2->MULHSU 3->MULHU
    //         4->DIV 5->DIVU 6->REM    7->REMU
    
-   wire [31:0] alu_mul = funct3Is[0] ? multiply[31: 0]   // 0:MUL
-                                     : multiply[63:32] ; // 1:MULH, 2:MULHSU, 3:MULHU
+   wire [31:0] alu_mul = funct3Is[0] 
+                               ? multiply[31: 0]   // 0:MUL
+                               : multiply[63:32] ; // 1:MULH, 2:MULHSU, 3:MULHU
 
    wire [31:0] alu_div = instr[13] ? (div_sign ? -dividend : dividend) 
     	                           : (div_sign ? -quotient : quotient);
    
 
-   wire        aluBusy = |quotient_msk; // ALU is busy if division is in progress.
+   wire        aluBusy = |quotient_msk; // ALU is busy if division in progress.
    reg [31:0]  aluOut;
 
    wire funcM     = instr[25];
@@ -637,7 +632,7 @@ module FemtoRV32(
 
         state[WAIT_INSTR_bit]: begin
            if(!mem_rbusy) begin // may be high when executing from SPI flash
-              instr <= mem_rdata[31:2]; // Bits 0 and 1 are ignored (see // TODO: move outside test ?
+              instr <= mem_rdata[31:2]; // Bits 0 and 1 are ignored 
               state <= EXECUTE1;        // also the declaration of instr).
            end
         end
@@ -666,7 +661,9 @@ module FemtoRV32(
         end
 
         state[WAIT_ALU_OR_MEM_bit]: begin
-           if(!aluBusy & !fpuBusy & !mem_rbusy & !mem_wbusy) state <= FETCH_INSTR;
+           if(!aluBusy & !fpuBusy & !mem_rbusy & !mem_wbusy) begin
+	      state <= FETCH_INSTR;
+	   end
         end
 
         default: begin // FETCH_INSTR
@@ -690,30 +687,3 @@ module FemtoRV32(
 endmodule
 
 /*****************************************************************************/
-// Notes:
-//
-// [1] About the "reverse case" statement, also used in Claire Wolf's picorv32:
-// It is just a cleaner way of writing a series of cascaded if() statements,
-// To understand it, think about the case statement *in general* as follows:
-// case (expr)
-//       val_1: statement_1
-//       val_2: statement_2
-//   ... val_n: statement_n
-// endcase
-// The first statement_i such that expr == val_i is executed. 
-// Now if expr is 1'b1:
-// case (1'b1)
-//       cond_1: statement_1
-//       cond_2: statement_2
-//   ... cond_n: statement_n
-// endcase
-// It is *exactly the same thing*, the first statement_i such that
-// expr == cond_i is executed (that is, such that 1'b1 == cond_i,
-// in other words, such that cond_i is true)
-// More on this: 
-//     https://stackoverflow.com/questions/15418636/case-statement-in-verilog
-//
-// [2] state uses 1-hot encoding (at any time, state has only one bit set to 1).
-// It uses a larger number of bits (one bit per state), but often results in
-// a both more compact (fewer LUTs) and faster state machine.
-
