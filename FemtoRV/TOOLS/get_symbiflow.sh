@@ -5,12 +5,15 @@
 INSTALL_DIR=$HOME/opt/symbiflow
 FPGA_FAM=xc7
 ARCH_DEFS_WEB=https://storage.googleapis.com/symbiflow-arch-defs/artifacts/prod/foss-fpga-tools/symbiflow-arch-defs/continuous/install/367/20210822-000315
+SYMBIFLOW_EXAMPLES=https://raw.githubusercontent.com/SymbiFlow/symbiflow-examples/master/xc7
 
 
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O conda_installer.sh
+wget $SYMBIFLOW_EXAMPLES/environment.yml -O environment.yml
+wget $SYMBIFLOW_EXAMPLES/requirements.txt -O requirements.txt
 bash conda_installer.sh -u -b -p $INSTALL_DIR/$FPGA_FAM/conda;
 . "$INSTALL_DIR/$FPGA_FAM/conda/etc/profile.d/conda.sh";
-$INSTALL_DIR/$FPGA_FAM/conda/bin/conda env create -f $FPGA_FAM/environment.yml
+$INSTALL_DIR/$FPGA_FAM/conda/bin/conda env create -f environment.yml
 mkdir -p $INSTALL_DIR/xc7/install
 
 echo Getting arch defs

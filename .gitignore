@@ -23,3 +23,5 @@ FemtoRV/FIRMWARE/TOOLS/firmware_words
 FemtoRV/RTL/CONFIGS/my_config.v
 FemtoRV/femtosoc.txt
 FemtoRV/FIRMWARE/config.mk
+FemtoRV/TOOLS/environment.yml
+FemtoRV/TOOLS/requirements.txt
