@@ -2,16 +2,10 @@
 //     Electron: valid. fmax: 70 MHz  exp. fmax: 80 MHz
 // TestDrive: morphing tachyon into a RV32IMF core, trying to 
 // preserve maxfreq at each step.
-//
-// This version is meant for testing, identifying critical path and
-// bottlenecks, 
-// I recommend to use femtorv32_petitbateau instead.
-
 // Step 0: Tachyon            valid. fmax: 115-120 MHz  exp. fmax: 135-140 MHz
 // Step 1: Barrel shft        valid. fmax: 110-115 MHz  exp. fmax: 130-135 MHz
 // Step 2: RV32M              valid. fmax: 105-115 MHz  exp. fmax: 120     MHz 
 // Step 3: RV32F  decod only  valid. fmax: 100-105 MHz  exp. fmax: 105     MHz
-// Step 4: RV32F              valid. fmax: 55-60   MHz  exp. fmax: 80      MHz
 
 //           
 /******************************************************************************/
