@@ -280,6 +280,11 @@ module FemtoRV32(
    // The FPU 
    /***************************************************************************/
 
+   // Uncomment the line below to emulate all FPU instructions in Verilator
+   // (useful to test instruction decoder and implementations of micro-instr
+   // in C++). See SIM/FPU_funcs.{h,cpp}
+//`define FPU_EMUL
+   
    // FPU output = 32 MSBs of A register (see below)
    // A macro to easily write to it (`FPU_OUT <= ...),
    // used when FPU output is an integer.
@@ -321,6 +326,8 @@ module FemtoRV32(
    reg 	             B_sign;
    reg signed [8:0]  B_exp;
    reg signed [49:0] B_frac;
+
+   // Some circuitry used by the FPU micro-instructions:
 
    // ******************* Comparisons ******************************************
    // Exponent adder
@@ -499,7 +506,7 @@ module FemtoRV32(
 	// STEP 1    : D' <- fprs2 normalized between [0.5,1] (set exp to 126)
 	//             A  <- -D'*32/17 + 48/17
 	// STEP 2,3,4: A  <- A * (-A*D+2)  fp32: 3 iterations (needs 4 in fp64)
-	// STEP 4    : A  <- fprs1 * A       // NOTE/TODO: rounding is not correct
+	// STEP 4    : A  <- fprs1 * A       // TODO: correct rounding !
 	14: fpmi_instr = FPMI_FRCP_PROLOG;   // STEP 1: A <- -D'*32/17 + 48/17
 	15: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
 	16: fpmi_instr = FPMI_ADD_SWAP;      //    |
@@ -547,6 +554,7 @@ module FemtoRV32(
 	// FSQRT
 	// Using Doom's fast inverse square root algorithm:
 	// https://en.wikipedia.org/wiki/Fast_inverse_square_root
+	// TODO: correct rounding
 	// STEP 1  : A <- doom_magic - (A >> 1)
 	// STEP 2,3: A <- A * (3/2 - (fprs1/2 * A * A))
 	50: fpmi_instr = FPMI_FRSQRT_PROLOG;
@@ -602,7 +610,7 @@ module FemtoRV32(
    localparam FPMPROG_SQRT      = 50;
    localparam FPMPROG_MIN_MAX   = 79;
    
-   /*******************************************************/
+   /*************************************************************************/
 
    always @(posedge clk) begin
       
@@ -621,7 +629,8 @@ module FemtoRV32(
       end else if(state[EXECUTE_bit] & isFPU) begin
 	 // Execute single-cycle intructions and call micro-program
 	 // for micro-programmed ones.
-	 
+
+`ifndef FPU_EMUL
 	 (* parallel_case *)
 	 case(1'b1)
 	   // Single-cycle instructions
@@ -642,6 +651,7 @@ module FemtoRV32(
 	   isFCVTSW | isFCVTSWU                 : fpmi_PC <= FPMPROG_INT_TO_FP;
 	   isFMIN   | isFMAX                    : fpmi_PC <= FPMPROG_MIN_MAX;
 	 endcase 
+`endif 
 	 
       end else if(fpuBusy) begin 
 	 
@@ -876,54 +886,66 @@ module FemtoRV32(
    //  the other one for compressed instructions).
    wire raw_rs2IsFP = (raw_instr[6:5] == 2'b10) || (raw_instr[6:2]==5'b01001);
    wire decomp_rs2IsFP =  (instr[6:5] == 2'b10) || (instr[6:2]==5'b01001);   
+
+/****************************************************************************/
+// Simulated instructions, implemented in C++ in SIM/FPU_funcs.cpp 
+// (toggle C++ emul / Verilog FPU by defining FPU_EMUL)
    
-// Simulated instructions, implemented in C++ in SIM/FPU_funcs.cpp   
-`ifdef VERILATOR   
+`ifdef VERILATOR
+`ifdef FPU_EMUL
+   
+ `define FPU_EMUL1(op) `FPU_OUT <= $c32(op,"(",rs1,")")
+ `define FPU_EMUL2(op) `FPU_OUT <= $c32(op,"(",rs1,",",rs2,")")
+ `define FPU_EMUL3(op) `FPU_OUT <= $c32(op,"(",rs1,",",rs2,",",rs3,")")
+   
    always @(posedge clk) begin
       if(isFPU && state[EXECUTE_bit]) begin
 	 case(1'b1)
-     // isFMADD  : `FPU_OUT <= $c32("FMADD(",rs1,",",rs2,",",rs3,")");
-     // isFMSUB  : `FPU_OUT <= $c32("FMSUB(",rs1,",",rs2,",",rs3,")");
-     // isFNMSUB : `FPU_OUT <= $c32("FNMSUB(",rs1,",",rs2,",",rs3,")");
-     // isFNMADD : `FPU_OUT <= $c32("FNMADD(",rs1,",",rs2,",",rs3,")");
-	   
-	     // isFMUL   : `FPU_OUT <= $c32("FMUL(",rs1,",",rs2,")");
-	     // isFADD   : `FPU_OUT <= $c32("FADD(",rs1,",",rs2,")");
-	     // isFSUB   : `FPU_OUT <= $c32("FSUB(",rs1,",",rs2,")");
-	   
-	     // isFDIV   : `FPU_OUT <= $c32("FDIV(",rs1,",",rs2,")");
-	     // isFSQRT  : `FPU_OUT <= $c32("FSQRT(",rs1,")");
-
-	   
-	     //isFSGNJ  : `FPU_OUT <= $c32("FSGNJ(",rs1,",",rs2,")");
-	     //isFSGNJN : `FPU_OUT <= $c32("FSGNJN(",rs1,",",rs2,")");
-	     //isFSGNJX : `FPU_OUT <= $c32("FSGNJX(",rs1,",",rs2,")");
-
-	     // isFMIN   : `FPU_OUT <= $c32("FMIN(",rs1,",",rs2,")");
-	     // isFMAX   : `FPU_OUT <= $c32("FMAX(",rs1,",",rs2,")");
-	   
-	     // isFEQ    : `FPU_OUT <= $c32("FEQ(",rs1,",",rs2,")");
-	     // isFLE    : `FPU_OUT <= $c32("FLE(",rs1,",",rs2,")");
-	     // isFLT    : `FPU_OUT <= $c32("FLT(",rs1,",",rs2,")");
-	   
-	     // isFCLASS : `FPU_OUT <= $c32("FCLASS(",rs1,")") ;
-	   
-	     // isFCVTWS : `FPU_OUT <= $c32("FCVTWS(",rs1,")");
-	     // isFCVTWUS: `FPU_OUT <= $c32("FCVTWUS(",rs1,")");
-	   
-	     // isFCVTSW : `FPU_OUT <= $c32("FCVTSW(",rs1,")");
-	     // isFCVTSWU: `FPU_OUT <= $c32("FCVTSWU(",rs1,")");
-	     
-             // isFMVXW:   `FPU_OUT <= rs1;
-	     // isFMVWX:   `FPU_OUT <= rs1;	   
+	   isFMUL   : `FPU_EMUL2("FMUL");
+	   isFADD   : `FPU_EMUL2("FADD");
+	   isFSUB   : `FPU_EMUL2("FSUB");
+	   isFDIV   : `FPU_EMUL2("FDIV");
+	   isFSQRT  : `FPU_EMUL1("FSQRT");	   
+	   isFMADD  : `FPU_EMUL3("FMADD");	  
+	   isFMSUB  : `FPU_EMUL3("FMSUB");	  
+	   isFNMADD : `FPU_EMUL3("FNMADD");	  
+	   isFNMSUB : `FPU_EMUL3("FNMSUB");	  
+	   isFEQ    : `FPU_EMUL2("FEQ");
+	   isFLT    : `FPU_EMUL2("FLT");
+	   isFLE    : `FPU_EMUL2("FLE");
+	   isFCVTWS : `FPU_EMUL1("FCVTWS"); 
+	   isFCVTWUS: `FPU_EMUL1("FCVTWUS");
+	   isFCVTSW : `FPU_EMUL1("FCVTSW"); 
+	   isFCVTSWU: `FPU_EMUL1("FCVTSWU"); 
+	   isFMIN   : `FPU_EMUL2("FMIN");
+	   isFMAX   : `FPU_EMUL2("FMAX");
+	   isFCLASS : `FPU_EMUL1("FCLASS");
+	   isFSGNJ  : `FPU_EMUL2("FSGNJ");
+	   isFSGNJN : `FPU_EMUL2("FSGNJN");
+	   isFSGNJX : `FPU_EMUL2("FSGNJX");
+           isFMVXW  : `FPU_OUT <= rs1;
+	   isFMVWX  : `FPU_OUT <= rs1;
          endcase		     
       end		     
-   end
+   end 
+`endif
+`endif 
 
+/****************************************************************************/
+// When doing simulations, compare the result of all operations with
+// what's computed on the host CPU. 
+// Note1: checks use rs1_bkp, rs2_bkp, rs3_bkp because
+//  FDIV and FSQRT overwrite rs1 and rs2
+// Note2: my FDIV and FSQRT are not IEEE754 compliant (yet) ! 
+// (checks commented-out for now)
+   
+`ifdef VERILATOR   
 
-   // When doing simulations, compare the result of all operations with
-   // what's computed on the host CPU. 
-
+   
+ `define FPU_CHECK1(op) z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,")")
+ `define FPU_CHECK2(op) z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,",",rs2_bkp,")")
+ `define FPU_CHECK3(op) z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,",",rs2_bkp,",",rs3_bkp,")")      
+   
    reg [31:0] z;
    reg [31:0] rs1_bkp;
    reg [31:0] rs2_bkp;
@@ -945,46 +967,24 @@ module FemtoRV32(
          fpmi_PC == 0
       ) begin
 	 case(1'b1)
-	   isFMUL: z <= $c32("CHECK_FMUL(",fpuOut,",",rs1,",",rs2,")");
-	   isFADD: z <= $c32("CHECK_FADD(",fpuOut,",",rs1,",",rs2,")");
-	   isFSUB: z <= $c32("CHECK_FSUB(",fpuOut,",",rs1,",",rs2,")");
-	   
-	   // my FDIV and FSQRT are not IEEE754 compliant ! 
-	   // (checks commented-out for now)
-	   // Note: checks use rs1_bkp and rs2_bkp because
-	   //  FDIV and FSQRT overwrite rs1 and rs2
-	   //
-           //isFDIV:  
-	   // z<=$c32("CHECK_FDIV(",fpuOut,",",rs1_bkp,",",rs2_bkp,")");
-           //isFSQRT: 
-	   // z<=$c32("CHECK_FSQRT(",fpuOut,",",rs1_bkp,")");
-
-	   
-	   isFMADD :
-	   z<=$c32("CHECK_FMADD(",fpuOut,",",rs1,",",rs2,",",rs3,")");
-	   
-	   isFMSUB :
-	   z<=$c32("CHECK_FMSUB(",fpuOut,",",rs1,",",rs2,",",rs3,")");
-	   
-	   isFNMSUB:
-	   z<=$c32("CHECK_FNMSUB(",fpuOut,",",rs1,",",rs2,",",rs3,")");
-	   
-	   isFNMADD:
-	   z<=$c32("CHECK_FNMADD(",fpuOut,",",rs1,",",rs2,",",rs3,")");
-
-	   isFEQ: z <= $c32("CHECK_FEQ(",fpuOut,",",rs1,",",rs2,")");
-	   isFLT: z <= $c32("CHECK_FLT(",fpuOut,",",rs1,",",rs2,")");
-	   isFLE: z <= $c32("CHECK_FLE(",fpuOut,",",rs1,",",rs2,")");
-
-	   isFCVTWS : z <= $c32("CHECK_FCVTWS(",fpuOut,",",rs1,")");
-	   isFCVTWUS: z <= $c32("CHECK_FCVTWUS(",fpuOut,",",rs1,")");
-
-	   isFCVTSW : z <= $c32("CHECK_FCVTSW(",fpuOut,",",rs1,")");
-	   isFCVTSWU: z <= $c32("CHECK_FCVTSWU(",fpuOut,",",rs1,")");
-
-	   isFMIN: z <= $c32("CHECK_FMIN(",fpuOut,",",rs1,",",rs2,")");
-	   isFMAX: z <= $c32("CHECK_FMAX(",fpuOut,",",rs1,",",rs2,")");
-	   
+	   isFMUL :   `FPU_CHECK2("FMUL");
+	   isFADD :   `FPU_CHECK2("FADD");
+	   isFSUB :   `FPU_CHECK2("FSUB");
+//	   isFDIV :   `FPU_CHECK2("FDIV");  // yes I know, not IEEE754 yet
+//	   isFSQRT:   `FPU_CHECK1("FSQRT"); // yes I know, not IEEE754 yet
+	   isFMADD:   `FPU_CHECK3("FMADD");	  
+	   isFMSUB:   `FPU_CHECK3("FMSUB");	  
+	   isFNMADD:  `FPU_CHECK3("FNMADD");	  
+	   isFNMSUB:  `FPU_CHECK3("FNMSUB");	  
+	   isFEQ:     `FPU_CHECK2("FEQ");
+	   isFLT:     `FPU_CHECK2("FLT");
+	   isFLE:     `FPU_CHECK2("FLE");
+	   isFCVTWS : `FPU_CHECK1("FCVTWS"); 
+	   isFCVTWUS: `FPU_CHECK1("FCVTWUS");
+	   isFCVTSW : `FPU_CHECK1("FCVTSW"); 
+	   isFCVTSWU: `FPU_CHECK1("FCVTSWU"); 
+	   isFMIN:    `FPU_CHECK2("FMIN");
+	   isFMAX:    `FPU_CHECK2("FMAX");
 	 endcase
       end
    end 
