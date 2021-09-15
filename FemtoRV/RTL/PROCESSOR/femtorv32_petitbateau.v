@@ -10,12 +10,8 @@
 // [TODO] add FPU CSR (and instret for perf stat)]
 // [TODO] FSW/FLW unaligned (does not seem to occur, but the norm requires it)
 // [TODO] correct IEEE754 round to zero for FDIV and FSQRT
-// [TODO] [BUG] FSUB IEEE754 mismatch (triggered in mandel_float2.c)
-//      RS1=+101000000100111100100010E[  -3]   (0.156551)
-//      RS2=+110011010010110000111001E[ -51]   (0.000000)
-//      Res=+101000000100111100100010E[  -3]   (0.156551)
-//	Chk=+101000000100111100100001E[  -3]   (0.156551)
 // [TODO] support IEEE754 denormals
+// [TODO] NaNs propagation and infinity
 // [TODO] support all IEEE754 rounding modes
 //
 // Bruno Levy, Matthias Koch, 2020-2021
@@ -430,8 +426,11 @@ module FemtoRV32(
    localparam FPMI_READY           = 0; 
    localparam FPMI_LOAD_AB         = 1;   // A <- fprs1; B <- fprs2
    localparam FPMI_LOAD_AB_MUL     = 2;   // A <- norm(fprs1*fprs2); B <- fprs3
-   localparam FPMI_NORM            = 3;   // A <- norm(A) 
-   localparam FPMI_ADD_SWAP        = 4;   // if |A| > |B| swap(A,B)
+   localparam FPMI_NORM            = 3;   // A <- norm(A)
+   
+   localparam FPMI_ADD_SWAP        = 4;   // if |A|>|B| swap(A,B);
+                                          // if sign(A) != sign(B) A <- -A
+   
    localparam FPMI_ADD_SHIFT       = 5;   // shift A to match B exponent
    localparam FPMI_ADD_ADD         = 6;   // A <- A + B   (or A - B if FSUB)
    localparam FPMI_CMP             = 7;   // fpuOut <- test A,B (FEQ,FLE,FLT)
@@ -482,7 +481,7 @@ module FemtoRV32(
 
 	// FADD, FSUB
 	3: fpmi_instr = FPMI_LOAD_AB;      // A <- fprs1, B <- fprs2
-	4: fpmi_instr = FPMI_ADD_SWAP;     // if(|A| > |B|) swap(A,B)
+	4: fpmi_instr = FPMI_ADD_SWAP;     // if(|A| > |B|) swap(A,B) (and sign)
 	5: fpmi_instr = FPMI_ADD_SHIFT;    // shift A according to B exp
 	6: fpmi_instr = FPMI_ADD_ADD;      // A <- A + B  ( or A - B if FSUB)
 	7: fpmi_instr = FPMI_NORM |        // A <- normalize(A)
@@ -494,7 +493,7 @@ module FemtoRV32(
 
 	// FMADD, FMSUB, FNMADD, FNMSUB
 	 9: fpmi_instr = FPMI_LOAD_AB_MUL; // A <- norm(fprs1*fprs2), B <- fprs3
-	10: fpmi_instr = FPMI_ADD_SWAP;    // if(|A| > |B|) swap(A,B)
+	10: fpmi_instr = FPMI_ADD_SWAP;    // if(|A| > |B|) swap(A,B) (and sign)
  	11: fpmi_instr = FPMI_ADD_SHIFT;   // shift A according to B exp
 	12: fpmi_instr = FPMI_ADD_ADD;     // A <- A + B  ( or A - B if FSUB)
 	13: fpmi_instr = FPMI_NORM |       // A <- normalize(A)
@@ -506,7 +505,8 @@ module FemtoRV32(
 	// STEP 1    : D' <- fprs2 normalized between [0.5,1] (set exp to 126)
 	//             A  <- -D'*32/17 + 48/17
 	// STEP 2,3,4: A  <- A * (-A*D+2)  fp32: 3 iterations (needs 4 in fp64)
-	// STEP 4    : A  <- fprs1 * A       // TODO: correct rounding !
+	// STEP 4    : A  <- fprs1 * A       // TODO: correct rounding ! 
+	                                     // (nearly there with 3 NR iters, but sometimes one or two LSBs are not correct)
 	14: fpmi_instr = FPMI_FRCP_PROLOG;   // STEP 1: A <- -D'*32/17 + 48/17
 	15: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
 	16: fpmi_instr = FPMI_ADD_SWAP;      //    |
@@ -700,24 +700,32 @@ module FemtoRV32(
 	   end
 
 	   // if(|A| > |B|) swap(A,B)
+	   // if A_sign != B_sign A <- -A
+	   // We always *add*, but replace A_frac with -A_frac if the
+	   // sign of the operands differ, THEN we shift (signed shift). In
+	   // this way, rounding is correct, even when subtracting a
+	   // low magnitude numner from a large magnitude one.
 	   fpmi_is[FPMI_ADD_SWAP]: begin
 	      if(fabsB_LT_fabsA) begin
-		 A_frac <= B_frac; B_frac <= A_frac;
+		 A_frac <= (A_sign ^ B_sign) ? -B_frac : B_frac; 
+		 B_frac <= A_frac;
 		 A_exp  <= B_exp;  B_exp  <= A_exp;
 		 A_sign <= B_sign; B_sign <= A_sign;
+	      end else if(A_sign ^ B_sign) begin
+		 A_frac <= -A_frac;
 	      end
 	   end
 
 	   // shift A in order to make it match B exponent
 	   fpmi_is[FPMI_ADD_SHIFT]: begin
 	      `ASSERT(!fabsB_LT_fabsA, ("ADD_SHIFT: incorrect order"));
-	      A_frac <= (exp_diff > 47) ? 0 : (A_frac >> exp_diff[5:0]);
+	      A_frac <= A_frac >>> exp_diff; // note the signed shift !
 	      A_exp <= B_exp;
 	   end
 
 	   // A <- A (+/-) B
 	   fpmi_is[FPMI_ADD_ADD]: begin
-	      A_frac <= (A_sign ^ B_sign) ? frac_diff[49:0] : frac_sum[49:0];
+	      A_frac <= frac_sum[49:0];
 	      A_sign <= B_sign;
 	   end
 
