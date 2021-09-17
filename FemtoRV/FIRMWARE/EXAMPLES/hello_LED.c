@@ -5,7 +5,7 @@ int main() {
    for(;;) {
 //      printf("Hello, RISC-V world !!! ");
 //      printf("Hello, Symposium on Geometry Processing 2021 !!! ");/
-      printf("Yabayabayaba pouet pouet");
+      printf("Hello Telecom Nancy ......");
    }
 
    return 0;

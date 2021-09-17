@@ -451,13 +451,16 @@ module FemtoRV32(
    localparam FPMI_INT_TO_FP       = 18;  // A <- int_to_fpoint(rs1)
    localparam FPMI_MIN_MAX         = 19;  // fpuOut <- min/max(A,B) 
 
-   localparam FPMI_NB              = 20;
+   localparam FPMI_FRCP_ITER1      = 20;  // New version of recriprocal
+   localparam FPMI_FRCP_ITER2      = 21;  // iteration (two FMAs)
+   
+   localparam FPMI_NB              = 22;
 
    // Instruction exit flag (if set in current micro-instr, exit microprogram)
    localparam FPMI_EXIT_FLAG_bit   = 1+$clog2(FPMI_NB);
    localparam FPMI_EXIT_FLAG       = 1 << FPMI_EXIT_FLAG_bit;
    
-   reg [6:0] 	       fpmi_PC;          // current micro-instruction pointer
+   reg [6:0] 	             fpmi_PC;    // current micro-instruction pointer
    reg [1+$clog2(FPMI_NB):0] fpmi_instr; // current micro-instruction
 
    // current micro-instruction as 1-hot: fpmi_instr == NNN <=> fpmi_is[NNN]
@@ -468,137 +471,132 @@ module FemtoRV32(
 
    wire fpuBusy = !fpmi_is[FPMI_READY];
 
-   // micro-program ROM (wired 
-   // as a combinatorial function).
-   always @(*) begin
-      case(fpmi_PC)
-	0: fpmi_instr = FPMI_READY;
-	
-	// FLT, FLE, FEQ
-	1: fpmi_instr = FPMI_LOAD_AB;
-	2: fpmi_instr = FPMI_CMP | 
-                        FPMI_EXIT_FLAG;
-
-	// FADD, FSUB
-	3: fpmi_instr = FPMI_LOAD_AB;      // A <- fprs1, B <- fprs2
-	4: fpmi_instr = FPMI_ADD_SWAP;     // if(|A| > |B|) swap(A,B) (and sign)
-	5: fpmi_instr = FPMI_ADD_SHIFT;    // shift A according to B exp
-	6: fpmi_instr = FPMI_ADD_ADD;      // A <- A + B  ( or A - B if FSUB)
-	7: fpmi_instr = FPMI_NORM |        // A <- normalize(A)
-			FPMI_EXIT_FLAG;
-
-	// FMUL
-	 8: fpmi_instr = FPMI_LOAD_AB_MUL | // A <- normalize(fprs1*fprs2)
-			 FPMI_EXIT_FLAG;
-
-	// FMADD, FMSUB, FNMADD, FNMSUB
-	 9: fpmi_instr = FPMI_LOAD_AB_MUL; // A <- norm(fprs1*fprs2), B <- fprs3
-	10: fpmi_instr = FPMI_ADD_SWAP;    // if(|A| > |B|) swap(A,B) (and sign)
- 	11: fpmi_instr = FPMI_ADD_SHIFT;   // shift A according to B exp
-	12: fpmi_instr = FPMI_ADD_ADD;     // A <- A + B  ( or A - B if FSUB)
-	13: fpmi_instr = FPMI_NORM |       // A <- normalize(A)
-			 FPMI_EXIT_FLAG;
-
-	// FDIV
-	// using Newton-Raphson:
-	// https://en.wikipedia.org/wiki/Division_algorithm#Newton%E2%80%93Raphson_division
-	// STEP 1    : D' <- fprs2 normalized between [0.5,1] (set exp to 126)
-	//             A  <- -D'*32/17 + 48/17
-	// STEP 2,3,4: A  <- A * (-A*D+2)  fp32: 3 iterations (needs 4 in fp64)
-	// STEP 4    : A  <- fprs1 * A       // TODO: correct rounding ! 
-	                                     // (nearly there with 3 NR iters, but sometimes one or two LSBs are not correct)
-	14: fpmi_instr = FPMI_FRCP_PROLOG;   // STEP 1: A <- -D'*32/17 + 48/17
-	15: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
-	16: fpmi_instr = FPMI_ADD_SWAP;      //    |
- 	17: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
-	18: fpmi_instr = FPMI_ADD_ADD;       //    |
-	19: fpmi_instr = FPMI_NORM;          // ---
-	20: fpmi_instr = FPMI_FRCP_ITER;     // STEP 2: A <- A * (-A*D + 2)
-	21: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
-	22: fpmi_instr = FPMI_ADD_SWAP;      //    |
- 	23: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
-	24: fpmi_instr = FPMI_ADD_ADD;       //    |
-	25: fpmi_instr = FPMI_NORM;          // ---
-	26: fpmi_instr = FPMI_MV_RS1_A;      //
-	27: fpmi_instr = FPMI_LOAD_AB_MUL;   //  FMUL
-	28: fpmi_instr = FPMI_FRCP_ITER;     // STEP 3: A <- A * (-A*D + 2)
-	29: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
-	30: fpmi_instr = FPMI_ADD_SWAP;      //    |
- 	31: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
-	32: fpmi_instr = FPMI_ADD_ADD;       //    |
-	33: fpmi_instr = FPMI_NORM;          // ---
-	34: fpmi_instr = FPMI_MV_RS1_A;      // 
-	35: fpmi_instr = FPMI_LOAD_AB_MUL;   //  FMUL
-	36: fpmi_instr = FPMI_FRCP_ITER;     // STEP 4: A <- A * (-A*D + 2)
-	37: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
-	38: fpmi_instr = FPMI_ADD_SWAP;      //    |
- 	39: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
-	40: fpmi_instr = FPMI_ADD_ADD;       //    |
-	41: fpmi_instr = FPMI_NORM;          // ---
-	42: fpmi_instr = FPMI_MV_RS1_A;      // 
-	43: fpmi_instr = FPMI_LOAD_AB_MUL;   //  FMUL
-	44: fpmi_instr = FPMI_FRCP_EPILOG;   // STEP 5: A <- fprs1^(-1) * fprs2
-	45: fpmi_instr = FPMI_LOAD_AB_MUL |  //  FMUL
-			 FPMI_EXIT_FLAG;
-
-	// FCVT.W.S, FCVT.WU.S
-	46: fpmi_instr = FPMI_LOAD_AB;
-	47: fpmi_instr = FPMI_FP_TO_INT |
-			 FPMI_EXIT_FLAG;
-	
-	// FCVT.S.W, FCVT.S.WU
-	48: fpmi_instr = FPMI_INT_TO_FP;
-	49: fpmi_instr = FPMI_NORM |
-			 FPMI_EXIT_FLAG;
-
-	// FSQRT
-	// Using Doom's fast inverse square root algorithm:
-	// https://en.wikipedia.org/wiki/Fast_inverse_square_root
-	// TODO: correct rounding
-	// STEP 1  : A <- doom_magic - (A >> 1)
-	// STEP 2,3: A <- A * (3/2 - (fprs1/2 * A * A))
-	50: fpmi_instr = FPMI_FRSQRT_PROLOG;
-	51: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
-	52: fpmi_instr = FPMI_MV_RS1_A;
-	53: fpmi_instr = FPMI_MV_RS2_MHTMP1;
-	54: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
-	55: fpmi_instr = FPMI_ADD_SWAP;      //    |
-	56: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
-	57: fpmi_instr = FPMI_ADD_ADD;       //    |
-	58: fpmi_instr = FPMI_NORM;          // ---
-	59: fpmi_instr = FPMI_MV_RS1_A;
-	60: fpmi_instr = FPMI_MV_RS2_TMP2; 
-	61: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
-        62: fpmi_instr = FPMI_MV_TMP2_A;
-	63: fpmi_instr = FPMI_MV_RS1_A;
-	64: fpmi_instr = FPMI_MV_RS2_TMP2;
-	65: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
-	66: fpmi_instr = FPMI_MV_RS1_A;
-	67: fpmi_instr = FPMI_MV_RS2_MHTMP1; 
-	68: fpmi_instr = FPMI_LOAD_AB_MUL;   // ---
-	69: fpmi_instr = FPMI_ADD_SWAP;      //    |
- 	70: fpmi_instr = FPMI_ADD_SHIFT;     //  FMADD
-	71: fpmi_instr = FPMI_ADD_ADD;       //    |
-	72: fpmi_instr = FPMI_NORM;          // ---
-	73: fpmi_instr = FPMI_MV_RS1_A;
-	74: fpmi_instr = FPMI_MV_RS2_TMP2; 
-	75: fpmi_instr = FPMI_LOAD_AB_MUL;   // -- FMUL
-	76: fpmi_instr = FPMI_MV_RS1_A;
-	77: fpmi_instr = FPMI_MV_RS2_TMP1;
-	78: fpmi_instr = FPMI_LOAD_AB_MUL |  // -- FMUL
-			 FPMI_EXIT_FLAG;
-	// FMIN, FMAX
-	79: fpmi_instr = FPMI_LOAD_AB;
-	80: fpmi_instr = FPMI_MIN_MAX   | 
-                         FPMI_EXIT_FLAG ;
-	
-	default: begin
-	   `ASSERT_NOT_REACHED(("Invalid microcode address: %d",fpmi_PC));
-	   fpmi_instr = 7'bXXXXXXX; 
-	end
-      endcase
-   end
+   // Tasks to generate micro-instructions in ROM 
+   task fpmi_gen;
+   input [6:0] instr;
+      begin
+	 fpmi_ROM[I] = instr;
+	 I = I + 1;
+      end
+   endtask   
    
+   task fpmi_gen_add;
+   input [6:0] flags;
+      begin
+     end
+   endtask
+
+   task fpmi_gen_fma;
+   input [6:0] flags;
+      begin
+	 fpmi_gen(FPMI_LOAD_AB_MUL);  // A <- norm(rs1*rs2), B <- rs3  
+	 fpmi_gen(FPMI_ADD_SWAP);     // if(|A| > |B|) swap(A,B) (and sgn)
+	 fpmi_gen(FPMI_ADD_SHIFT);    // shift A according to B exp
+	 fpmi_gen(FPMI_ADD_ADD);      // A <- A + B  ( or A - B if FSUB)
+	 fpmi_gen(FPMI_NORM | flags); // A <- normalize(A)
+     end
+   endtask
+   
+   integer I; // current ROM location in initialization
+   integer iter;
+   localparam FPMI_ROM_SIZE=80; 
+   reg [1+$clog2(FPMI_NB):0] fpmi_ROM[0:FPMI_ROM_SIZE-1];
+   
+   initial begin
+      I = 0;
+      fpmi_gen(FPMI_READY);
+
+      // FLT, FLE, FEQ
+      fpmi_gen(FPMI_LOAD_AB); // A <- fprs1, B <- fprs2
+      fpmi_gen(FPMI_CMP | FPMI_EXIT_FLAG);
+
+      // FADD, FSUB
+      fpmi_gen(FPMI_LOAD_AB);               // A <- rs1, B <- rs2
+      fpmi_gen(FPMI_ADD_SWAP);              // if(|A| > |B|) swap(A,B) (and sgn)
+      fpmi_gen(FPMI_ADD_SHIFT);             // shift A according to B exp
+      fpmi_gen(FPMI_ADD_ADD);               // A <- A + B  ( or A - B if FSUB)
+      fpmi_gen(FPMI_NORM | FPMI_EXIT_FLAG); // A <- normalize(A)
+      
+      // FMUL
+      fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG); 
+
+      // FMADD, FMSUB, FNMADD, FNMSUB
+      fpmi_gen_fma(FPMI_EXIT_FLAG);
+
+      // FDIV using Newton-Raphson:
+      // https://en.wikipedia.org/wiki/Division_algorithm
+      // This version is not good, one should use DIV2 instead
+      // D' <- fprs2 normalized between [0.5,1] (set exp to 126)
+      fpmi_gen(FPMI_FRCP_PROLOG);   // A <- -D'*32/17 + 48/17
+      fpmi_gen_fma(0);
+      for(iter=0; iter<3; iter++) begin
+	 //  A <- A * (-A*D + 2)	 
+	 fpmi_gen(FPMI_FRCP_ITER);     
+	 fpmi_gen_fma(0);
+	 fpmi_gen(FPMI_MV_RS1_A);
+	 fpmi_gen(FPMI_LOAD_AB_MUL);
+      end
+      fpmi_gen(FPMI_FRCP_EPILOG); // A  <- rs1 * A
+      fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
+
+      // FCVT.W.S, FCVT.WU.S
+      fpmi_gen(FPMI_LOAD_AB);
+      fpmi_gen(FPMI_FP_TO_INT | FPMI_EXIT_FLAG);
+	
+      // FCVT.S.W, FCVT.S.WU
+      fpmi_gen(FPMI_INT_TO_FP);
+      fpmi_gen(FPMI_NORM | FPMI_EXIT_FLAG);
+
+      // FSQRT
+      // Using Doom's fast inverse square root algorithm:
+      // https://en.wikipedia.org/wiki/Fast_inverse_square_root
+      // TODO: correct rounding
+      // A <- doom_magic - (A >> 1)      
+      fpmi_gen(FPMI_FRSQRT_PROLOG);
+      for(iter=0; iter<2; iter++) begin
+	 // A <- A * (3/2 - (fprs1/2 * A * A))      	 
+	 fpmi_gen(FPMI_LOAD_AB_MUL);
+	 fpmi_gen(FPMI_MV_RS1_A);
+         fpmi_gen(FPMI_MV_RS2_MHTMP1);
+	 fpmi_gen_fma(0);
+	 fpmi_gen(FPMI_MV_RS1_A);
+	 fpmi_gen(FPMI_MV_RS2_TMP2);
+	 fpmi_gen(FPMI_LOAD_AB_MUL);
+	 if(iter==0) begin
+	    fpmi_gen(FPMI_MV_TMP2_A);
+	    fpmi_gen(FPMI_MV_RS1_A);
+	    fpmi_gen(FPMI_MV_RS2_TMP2);
+	 end
+      end // Now A contains an approx of 1/sqrt(rs1)
+      // A <- A * rs1
+      fpmi_gen(FPMI_MV_RS1_A);
+      fpmi_gen(FPMI_MV_RS2_TMP1);
+      fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
+
+      // FMIN, FMAX
+      fpmi_gen(FPMI_LOAD_AB);
+      fpmi_gen(FPMI_MIN_MAX | FPMI_EXIT_FLAG);
+
+
+      // FDIV2 (new MUL algorithm, nearly IEEE-754 compliant
+      // but still off by one bit...)
+      // https://stackoverflow.com/questions/24792966/error-using-newton-raphson-iteration-method-for-floating-point-division
+      /*
+      fpmi_gen(FPMI_FRCP_PROLOG); // A <- -D'*32/17 + 48/17
+      fpmi_gen_fma(0);
+      for(iter=0; iter<3; iter++) begin
+	 // Newton-raphson iteration: A <- A + A*(1-D'*A)
+	 fpmi_gen(FPMI_FRCP_ITER1);
+	 fpmi_gen_fma(0);
+	 fpmi_gen(FPMI_FRCP_ITER2);
+	 fpmi_gen_fma(0);	 
+      end
+      fpmi_gen(FPMI_FRCP_EPILOG); // A <- rs1^(-1) * rs2
+      fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
+      */
+      `ASSERT(I <= FPMI_ROM_SIZE,("FPMI ROM SIZE exceeded!!!"));
+   end
+
    // micro-programs
    localparam FPMPROG_CMP       = 1;
    localparam FPMPROG_ADD       = 3;
@@ -609,27 +607,32 @@ module FemtoRV32(
    localparam FPMPROG_INT_TO_FP = 48;         
    localparam FPMPROG_SQRT      = 50;
    localparam FPMPROG_MIN_MAX   = 79;
+   localparam FPMPROG_DIV2      = 81; // new DIV algorithm 
+   
+   wire [6:0] fpmi_PC_next = (state[EXECUTE_bit] & isFPU) ? fpmprog :
+	      fpuBusy ? (fpmi_instr[FPMI_EXIT_FLAG_bit] ? 0 : fpmi_PC+1) : 0;
    
    /*************************************************************************/
 
+`ifndef FPU_EMUL
    always @(posedge clk) begin
-      
+      fpmi_PC <= fpmi_PC_next;
+      fpmi_instr <= fpmi_ROM[fpmi_PC_next];
+   end
+`endif
+   
+   always @(posedge clk) begin
       if(state[WAIT_INSTR_bit]) begin
 	 // Fetch registers as soon as instruction is ready.
 	 rs1 <= registerFile[{raw_rs1IsFP,raw_instr[19:15]}]; 
 	 rs2 <= registerFile[{raw_rs2IsFP,raw_instr[24:20]}];
 	 rs3 <= registerFile[{1'b1,       raw_instr[31:27]}];
-	 
       end else if(state[DECOMPRESS_GETREGS_bit]) begin
 	 // For compressed instructions, fetch registers once decompressed.
 	 rs1 <= registerFile[{decomp_rs1IsFP,instr[19:15]}];
 	 rs2 <= registerFile[{decomp_rs2IsFP,instr[24:20]}];
 	 // no need to fetch rs3 here, there is no compressed FMA.
-	 
       end else if(state[EXECUTE_bit] & isFPU) begin
-	 // Execute single-cycle intructions and call micro-program
-	 // for micro-programmed ones.
-
 `ifndef FPU_EMUL
 	 (* parallel_case *)
 	 case(1'b1)
@@ -639,25 +642,9 @@ module FemtoRV32(
 	   isFSGNJX          : `FPU_OUT <= { rs1[31]^rs2[31], rs1[30:0]};
 	   isFCLASS          : `FPU_OUT <= fclass;
            isFMVXW | isFMVWX : `FPU_OUT <= rs1;
-	   
-	   // Micro-programmed instructions
-	   isFLT   | isFLE   | isFEQ               : fpmi_PC <= FPMPROG_CMP;
-	   isFADD  | isFSUB                        : fpmi_PC <= FPMPROG_ADD; 
-	   isFMUL                                  : fpmi_PC <= FPMPROG_MUL;
-	   isFMADD | isFMSUB | isFNMADD | isFNMSUB : fpmi_PC <= FPMPROG_MADD;
-	   isFDIV                                  : fpmi_PC <= FPMPROG_DIV;
-	   isFSQRT                                 : fpmi_PC <= FPMPROG_SQRT;
-	   isFCVTWS | isFCVTWUS                 : fpmi_PC <= FPMPROG_TO_INT;
-	   isFCVTSW | isFCVTSWU                 : fpmi_PC <= FPMPROG_INT_TO_FP;
-	   isFMIN   | isFMAX                    : fpmi_PC <= FPMPROG_MIN_MAX;
 	 endcase 
 `endif 
-	 
       end else if(fpuBusy) begin 
-	 
-	 // Increment micro-program counter.
-	 fpmi_PC <= fpmi_instr[FPMI_EXIT_FLAG_bit] ? 0 : fpmi_PC+1;
-
 	 // Implementation of the micro-instructions	 
 	 (* parallel_case *)	 
 	 case(1'b1)
@@ -762,10 +749,24 @@ module FemtoRV32(
 	   end
 	      
 	   fpmi_is[FPMI_FRCP_EPILOG]: begin
-	      rs1 <= {tmp2[31], frcp_exp[7:0], A_frac[46:24]};
+	      rs1 <= {tmp2[31], frcp_exp[7:0], A_frac[46:24]}; 
 	      rs2 <= tmp1;
 	   end
 
+
+	   // New reciprocal
+	   fpmi_is[FPMI_FRCP_ITER1]: begin
+	      rs1  <= {1'b1, 8'd126, tmp2[22:0]};          // -D'
+	      rs2  <= {A_sign, A_exp[7:0], A_frac[46:24]}; // A
+	      rs3  <= 32'h3f800000;                        // 1.0
+	   end
+
+	   // New reciprocal	   
+	   fpmi_is[FPMI_FRCP_ITER2]: begin
+	      rs1 <= {A_sign, A_exp[7:0], A_frac[46:24]}; // A
+	      rs3 <= rs2;
+	   end
+	   
 	   fpmi_is[FPMI_FRSQRT_PROLOG]: begin
 	      tmp1 <= rs1;
 	      tmp2 <= rsqrt_doom_magic;
@@ -895,6 +896,24 @@ module FemtoRV32(
    wire raw_rs2IsFP = (raw_instr[6:5] == 2'b10) || (raw_instr[6:2]==5'b01001);
    wire decomp_rs2IsFP =  (instr[6:5] == 2'b10) || (instr[6:2]==5'b01001);   
 
+   // microprogram
+   reg [6:0] fpmprog;
+   always @(*) begin
+      case(1'b1)
+	isFLT   | isFLE   | isFEQ               : fpmprog = FPMPROG_CMP;
+	isFADD  | isFSUB                        : fpmprog = FPMPROG_ADD;
+	isFMUL                                  : fpmprog = FPMPROG_MUL;
+	isFMADD | isFMSUB | isFNMADD | isFNMSUB : fpmprog = FPMPROG_MADD;
+	isFDIV                                  : fpmprog = FPMPROG_DIV;
+	isFSQRT                                 : fpmprog = FPMPROG_SQRT;
+	isFCVTWS | isFCVTWUS                    : fpmprog = FPMPROG_TO_INT;
+	isFCVTSW | isFCVTSWU                    : fpmprog = FPMPROG_INT_TO_FP;
+	isFMIN   | isFMAX                       : fpmprog = FPMPROG_MIN_MAX;
+	default                                 : fpmprog = 0;
+      endcase
+   end
+
+   
 /****************************************************************************/
 // Simulated instructions, implemented in C++ in SIM/FPU_funcs.cpp 
 // (toggle C++ emul / Verilog FPU by defining FPU_EMUL)
