@@ -40,7 +40,8 @@
 // FPU Normalization needs to detect the position of the first bit set 
 // in the A_frac register. It is easier to count the number of leading 
 // zeroes (CLZ for Count Leading Zeroes), as follows. See:
-// https://electronics.stackexchange.com/questions/196914/verilog-synthesize-high-speed-leading-zero-count
+// https://electronics.stackexchange.com/questions/196914/
+//    verilog-synthesize-high-speed-leading-zero-count
 module CLZ #(
    parameter W_IN = 64, // must be power of 2, >= 2
    parameter W_OUT = $clog2(W_IN)	     
@@ -421,8 +422,10 @@ module FemtoRV32(
                rs1_sign &  rs1_exp_255 & rs1_frac_Z    // 0: -infinity
    };
    
-   /** FPU micro-instructions *************************************************/
+   /** FPU micro-instructions and ROM ****************************************/
 
+   localparam PRECISE_DIV = 1;
+   
    localparam FPMI_READY           = 0; 
    localparam FPMI_LOAD_AB         = 1;   // A <- fprs1; B <- fprs2
    localparam FPMI_LOAD_AB_MUL     = 2;   // A <- norm(fprs1*fprs2); B <- fprs3
@@ -471,7 +474,7 @@ module FemtoRV32(
 
    wire fpuBusy = !fpmi_is[FPMI_READY];
 
-   // Tasks to generate micro-instructions in ROM 
+   // Generate a micro-instructions in ROM 
    task fpmi_gen;
    input [6:0] instr;
       begin
@@ -479,13 +482,8 @@ module FemtoRV32(
 	 I = I + 1;
       end
    endtask   
-   
-   task fpmi_gen_add;
-   input [6:0] flags;
-      begin
-     end
-   endtask
 
+   // Generate a FMA sequence in ROM
    task fpmi_gen_fma;
    input [6:0] flags;
       begin
@@ -497,60 +495,93 @@ module FemtoRV32(
      end
    endtask
    
-   integer I; // current ROM location in initialization
-   integer iter;
-   localparam FPMI_ROM_SIZE=80; 
+   integer I;    // current ROM location in initialization
+   integer iter; // iteration variable for Newton-Raphson (FDIV,FSQRT)
+   localparam FPMI_ROM_SIZE=80 + 13*PRECISE_DIV; 
    reg [1+$clog2(FPMI_NB):0] fpmi_ROM[0:FPMI_ROM_SIZE-1];
-   
+
+   // Microprograms start addresses
+   integer FPMPROG_CMP;
+   integer FPMPROG_ADD;
+   integer FPMPROG_MUL;
+   integer FPMPROG_MADD;
+   integer FPMPROG_DIV;
+   integer FPMPROG_TO_INT;
+   integer FPMPROG_INT_TO_FP;
+   integer FPMPROG_SQRT;
+   integer FPMPROG_MIN_MAX;
+
+   /******************** Generate microprograms in ROM **********************/
    initial begin
       I = 0;
       fpmi_gen(FPMI_READY);
 
-      // FLT, FLE, FEQ
-      fpmi_gen(FPMI_LOAD_AB); // A <- fprs1, B <- fprs2
+      // ******************** FLT, FLE, FEQ *********************************
+      FPMPROG_CMP = I;
+      fpmi_gen(FPMI_LOAD_AB); // A <- rs1, B <- rs2
       fpmi_gen(FPMI_CMP | FPMI_EXIT_FLAG);
 
-      // FADD, FSUB
+      // ******************** FADD, FSUB ************************************
+      FPMPROG_ADD = I;
       fpmi_gen(FPMI_LOAD_AB);               // A <- rs1, B <- rs2
       fpmi_gen(FPMI_ADD_SWAP);              // if(|A| > |B|) swap(A,B) (and sgn)
       fpmi_gen(FPMI_ADD_SHIFT);             // shift A according to B exp
       fpmi_gen(FPMI_ADD_ADD);               // A <- A + B  ( or A - B if FSUB)
       fpmi_gen(FPMI_NORM | FPMI_EXIT_FLAG); // A <- normalize(A)
       
-      // FMUL
+      // ******************** FMUL ******************************************
+      FPMPROG_MUL = I;      
       fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG); 
 
-      // FMADD, FMSUB, FNMADD, FNMSUB
+      // ******************** FMADD, FMSUB, FNMADD, FNMSUB ******************
+      FPMPROG_MADD = I;      
       fpmi_gen_fma(FPMI_EXIT_FLAG);
 
-      // FDIV using Newton-Raphson:
+      // ******************** FDIV ******************************************
+      FPMPROG_DIV = I;            
       // https://en.wikipedia.org/wiki/Division_algorithm
-      // This version is not good, one should use DIV2 instead
+      // https://stackoverflow.com/questions/24792966/
+      // error-using-newton-raphson-iteration-method-for-
+      // floating-point-division
+      //
       // D' <- fprs2 normalized between [0.5,1] (set exp to 126)
       fpmi_gen(FPMI_FRCP_PROLOG);   // A <- -D'*32/17 + 48/17
       fpmi_gen_fma(0);
       for(iter=0; iter<3; iter++) begin
-	 //  A <- A * (-A*D + 2)	 
-	 fpmi_gen(FPMI_FRCP_ITER);     
-	 fpmi_gen_fma(0);
-	 fpmi_gen(FPMI_MV_RS1_A);
-	 fpmi_gen(FPMI_LOAD_AB_MUL);
+	 if(PRECISE_DIV) begin
+	    // A <- A + A*(1-D'*A)
+	    // (slower more precise iter, but not IEEE754 compliant yet...)
+	    fpmi_gen(FPMI_FRCP_ITER1);
+	    fpmi_gen_fma(0);
+	    fpmi_gen(FPMI_FRCP_ITER2);
+	    fpmi_gen_fma(0);	 
+	 end else begin
+	    //  A <- A * (-A*D + 2)
+	    // (faster but less precise)
+	    fpmi_gen(FPMI_FRCP_ITER);     
+	    fpmi_gen_fma(0);
+	    fpmi_gen(FPMI_MV_RS1_A);
+	    fpmi_gen(FPMI_LOAD_AB_MUL);
+	 end
       end
       fpmi_gen(FPMI_FRCP_EPILOG); // A  <- rs1 * A
       fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
 
-      // FCVT.W.S, FCVT.WU.S
+      // ******************** FCVT.W.S, FCVT.WU.S ***************************
+      FPMPROG_TO_INT = I;            
       fpmi_gen(FPMI_LOAD_AB);
       fpmi_gen(FPMI_FP_TO_INT | FPMI_EXIT_FLAG);
 	
-      // FCVT.S.W, FCVT.S.WU
+      // ******************** FCVT.S.W, FCVT.S.WU ***************************
+      FPMPROG_INT_TO_FP = I;            
       fpmi_gen(FPMI_INT_TO_FP);
       fpmi_gen(FPMI_NORM | FPMI_EXIT_FLAG);
 
-      // FSQRT
+      // ******************** FSQRT *****************************************
+      FPMPROG_SQRT = I;            
       // Using Doom's fast inverse square root algorithm:
       // https://en.wikipedia.org/wiki/Fast_inverse_square_root
-      // TODO: correct rounding
+      // TODO: IEEE754-compliant version
       // A <- doom_magic - (A >> 1)      
       fpmi_gen(FPMI_FRSQRT_PROLOG);
       for(iter=0; iter<2; iter++) begin
@@ -573,42 +604,18 @@ module FemtoRV32(
       fpmi_gen(FPMI_MV_RS2_TMP1);
       fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
 
-      // FMIN, FMAX
+      // ******************** FMIN, FMAX ************************************
+      FPMPROG_MIN_MAX = I;            
       fpmi_gen(FPMI_LOAD_AB);
       fpmi_gen(FPMI_MIN_MAX | FPMI_EXIT_FLAG);
 
-
-      // FDIV2 (new MUL algorithm, nearly IEEE-754 compliant
-      // but still off by one bit...)
-      // https://stackoverflow.com/questions/24792966/error-using-newton-raphson-iteration-method-for-floating-point-division
-      /*
-      fpmi_gen(FPMI_FRCP_PROLOG); // A <- -D'*32/17 + 48/17
-      fpmi_gen_fma(0);
-      for(iter=0; iter<3; iter++) begin
-	 // Newton-raphson iteration: A <- A + A*(1-D'*A)
-	 fpmi_gen(FPMI_FRCP_ITER1);
-	 fpmi_gen_fma(0);
-	 fpmi_gen(FPMI_FRCP_ITER2);
-	 fpmi_gen_fma(0);	 
-      end
-      fpmi_gen(FPMI_FRCP_EPILOG); // A <- rs1^(-1) * rs2
-      fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
-      */
-      `ASSERT(I <= FPMI_ROM_SIZE,("FPMI ROM SIZE exceeded!!!"));
+`ifdef BENCH      
+      $display("FPMI ROM max address:%d",I-1);
+      $display("FPMI ROM size       :%d",FPMI_ROM_SIZE);      
+      `ASSERT(I <= FPMI_ROM_SIZE,("!!!!!!! FPMI ROM SIZE exceeded !!!!!!!"));
+`endif      
    end
 
-   // micro-programs
-   localparam FPMPROG_CMP       = 1;
-   localparam FPMPROG_ADD       = 3;
-   localparam FPMPROG_MUL       = 8;
-   localparam FPMPROG_MADD      = 9;
-   localparam FPMPROG_DIV       = 14;
-   localparam FPMPROG_TO_INT    = 46;
-   localparam FPMPROG_INT_TO_FP = 48;         
-   localparam FPMPROG_SQRT      = 50;
-   localparam FPMPROG_MIN_MAX   = 79;
-   localparam FPMPROG_DIV2      = 81; // new DIV algorithm 
-   
    wire [6:0] fpmi_PC_next = (state[EXECUTE_bit] & isFPU) ? fpmprog :
 	      fpuBusy ? (fpmi_instr[FPMI_EXIT_FLAG_bit] ? 0 : fpmi_PC+1) : 0;
    
@@ -838,16 +845,16 @@ module FemtoRV32(
    wire isFDIV    = (instr[4] && (instr[31:27] == 5'b00011));
    wire isFSQRT   = (instr[4] && (instr[31:27] == 5'b01011));   
 
-   wire isFSGNJ   = (instr[4] && (instr[31:27] == 5'b00100) && (instr[13:12] == 2'b00));
-   wire isFSGNJN  = (instr[4] && (instr[31:27] == 5'b00100) && (instr[13:12] == 2'b01));      
-   wire isFSGNJX  = (instr[4] && (instr[31:27] == 5'b00100) && (instr[13:12] == 2'b10));   
+   wire isFSGNJ =(instr[4] && (instr[31:27]==5'b00100)&&(instr[13:12]==2'b00));
+   wire isFSGNJN=(instr[4] && (instr[31:27]==5'b00100)&&(instr[13:12]==2'b01));
+   wire isFSGNJX=(instr[4] && (instr[31:27]==5'b00100)&&(instr[13:12]==2'b10));
 
    wire isFMIN    = (instr[4] && (instr[31:27] == 5'b00101) && !instr[12]);
-   wire isFMAX    = (instr[4] && (instr[31:27] == 5'b00101) &&  instr[12]);      
+   wire isFMAX    = (instr[4] && (instr[31:27] == 5'b00101) &&  instr[12]);
 
-   wire isFEQ     = (instr[4] && (instr[31:27] == 5'b10100) && (instr[13:12] == 2'b10));
-   wire isFLT     = (instr[4] && (instr[31:27] == 5'b10100) && (instr[13:12] == 2'b01));
-   wire isFLE     = (instr[4] && (instr[31:27] == 5'b10100) && (instr[13:12] == 2'b00));                        
+   wire isFEQ=(instr[4] && (instr[31:27]==5'b10100) && (instr[13:12] == 2'b10));
+   wire isFLT=(instr[4] && (instr[31:27]==5'b10100) && (instr[13:12] == 2'b01));
+   wire isFLE=(instr[4] && (instr[31:27]==5'b10100) && (instr[13:12] == 2'b00));
    
    wire isFCLASS  = (instr[4] && (instr[31:27] == 5'b11100) &&  instr[12]); 
    
@@ -900,16 +907,16 @@ module FemtoRV32(
    reg [6:0] fpmprog;
    always @(*) begin
       case(1'b1)
-	isFLT   | isFLE   | isFEQ               : fpmprog = FPMPROG_CMP;
-	isFADD  | isFSUB                        : fpmprog = FPMPROG_ADD;
-	isFMUL                                  : fpmprog = FPMPROG_MUL;
-	isFMADD | isFMSUB | isFNMADD | isFNMSUB : fpmprog = FPMPROG_MADD;
-	isFDIV                                  : fpmprog = FPMPROG_DIV;
-	isFSQRT                                 : fpmprog = FPMPROG_SQRT;
-	isFCVTWS | isFCVTWUS                    : fpmprog = FPMPROG_TO_INT;
-	isFCVTSW | isFCVTSWU                    : fpmprog = FPMPROG_INT_TO_FP;
-	isFMIN   | isFMAX                       : fpmprog = FPMPROG_MIN_MAX;
-	default                                 : fpmprog = 0;
+	isFLT   | isFLE   | isFEQ               : fpmprog = FPMPROG_CMP[6:0];
+	isFADD  | isFSUB                        : fpmprog = FPMPROG_ADD[6:0];
+	isFMUL                                  : fpmprog = FPMPROG_MUL[6:0];
+	isFMADD | isFMSUB | isFNMADD | isFNMSUB : fpmprog = FPMPROG_MADD[6:0];
+	isFDIV                                  : fpmprog = FPMPROG_DIV[6:0];
+	isFSQRT                                 : fpmprog = FPMPROG_SQRT[6:0];
+	isFCVTWS | isFCVTWUS  : fpmprog = FPMPROG_TO_INT[6:0];
+	isFCVTSW | isFCVTSWU  : fpmprog = FPMPROG_INT_TO_FP[6:0];
+	isFMIN   | isFMAX     : fpmprog = FPMPROG_MIN_MAX[6:0];
+	default               : fpmprog = 0;
       endcase
    end
 
@@ -968,10 +975,12 @@ module FemtoRV32(
    
 `ifdef VERILATOR   
 
-   
- `define FPU_CHECK1(op) z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,")")
- `define FPU_CHECK2(op) z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,",",rs2_bkp,")")
- `define FPU_CHECK3(op) z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,",",rs2_bkp,",",rs3_bkp,")")      
+ `define FPU_CHECK1(op) \
+       z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,")")
+ `define FPU_CHECK2(op) \
+       z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,",",rs2_bkp,")")
+ `define FPU_CHECK3(op) \
+       z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,",",rs2_bkp,",",rs3_bkp,")")
    
    reg [31:0] z;
    reg [31:0] rs1_bkp;
