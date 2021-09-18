@@ -371,15 +371,9 @@ module FemtoRV32(
    wire prod_Z = (prod_exp_norm <= 0) || !(|prod_frac[47:46]);
    
    // ****************** Normalization *****************************************
-   // Count leading zeroes in A
+   // Count leading zeroes in A+B
    // Note1: CLZ only work with power of two width (hence 14'b0).
    // Note2: first bit set = 63 - CLZ (of course !)
-   /*
-   wire [5:0] 	     A_clz;
-   CLZ clz({14'b0,A_frac}, A_clz);
-   */
-   
-   // HERE
    wire [5:0] 	              frac_sum_clz;
    CLZ clz2({13'b0,frac_sum}, frac_sum_clz);
    reg [5:0] 		      norm_lshamt;
@@ -477,9 +471,7 @@ module FemtoRV32(
    // current micro-instruction as 1-hot: fpmi_instr == NNN <=> fpmi_is[NNN]
    (* onehot *)
    wire [FPMI_NB-1:0] fpmi_is = 1 << fpmi_instr[$clog2(FPMI_NB):0]; 
-
    initial fpmi_PC = 0;
-
    wire fpuBusy = !fpmi_is[FPMI_READY];
 
    // Generate a micro-instructions in ROM 
@@ -488,12 +480,14 @@ module FemtoRV32(
       I = I + 1;
    end endtask   
 
-   // Generate a FMA sequence in ROM
+   // Generate a FMA sequence in ROM.
+   // Use fpmi_gen_fma(0) in the middle of a micro-program
+   // Use fpmi_gen_fma(FPMI_EXIT_FLAG) if last instruction of micro-program
    task fpmi_gen_fma; input [6:0] flags; begin
-      fpmi_gen(FPMI_LOAD_AB_MUL);  // A <- norm(rs1*rs2), B <- rs3  
-      fpmi_gen(FPMI_ADD_SWAP);     // if(|A| > |B|) swap(A,B) (and sgn)
-      fpmi_gen(FPMI_ADD_SHIFT);    // shift A according to B exp
-      fpmi_gen(FPMI_ADD_ADD);      // A <- A + B  ( or A - B if FSUB)
+      fpmi_gen(FPMI_LOAD_AB_MUL);      // A <- norm(rs1*rs2), B <- rs3  
+      fpmi_gen(FPMI_ADD_SWAP);         // if(|A| > |B|) swap(A,B) (and sgn)
+      fpmi_gen(FPMI_ADD_SHIFT);        // shift A according to B exp
+      fpmi_gen(FPMI_ADD_ADD);          // A <- A + B  ( or A - B if FSUB)
       fpmi_gen(FPMI_ADD_NORM | flags); // A <- normalize(A)
    end endtask
    
@@ -513,12 +507,15 @@ module FemtoRV32(
    integer FPMPROG_SQRT;
    integer FPMPROG_MIN_MAX;
 
-   `ifdef BENCH
-    `define FPMPROG_STAT(s,x) $display(s,"%d microinstructions",I-x)
-  `else
-   `define FPMPROG_STAT(s,x)
-   `endif
+   `define FPMPROG_BEGIN(prg) prg = I
    
+   `ifdef BENCH
+    `define FPMPROG_END(prg) \
+        $display("%3d microinstructions used by %s",I-prg,`"prg`")
+   `else
+    `define FPMPROG_END(prg)
+   `endif
+
    /******************** Generate microprograms in ROM **********************/
    initial begin
 
@@ -529,37 +526,37 @@ module FemtoRV32(
       fpmi_gen(FPMI_READY | FPMI_EXIT_FLAG);
 
       // ******************** FLT, FLE, FEQ *********************************
-      FPMPROG_CMP = I;
+      `FPMPROG_BEGIN(FPMPROG_CMP);
       fpmi_gen(FPMI_LOAD_AB); // A <- rs1, B <- rs2
       fpmi_gen(FPMI_CMP | FPMI_EXIT_FLAG);
-      `FPMPROG_STAT("CMP      ",FPMPROG_CMP);
+      `FPMPROG_END(FPMPROG_CMP);
       
       // ******************** FADD, FSUB ************************************
-      FPMPROG_ADD = I;
+      `FPMPROG_BEGIN(FPMPROG_ADD);
       fpmi_gen(FPMI_LOAD_AB);               // A <- rs1, B <- rs2
       fpmi_gen(FPMI_ADD_SWAP);              // if(|A| > |B|) swap(A,B) (and sgn)
       fpmi_gen(FPMI_ADD_SHIFT);             // shift A according to B exp
       fpmi_gen(FPMI_ADD_ADD);               // A <- A + B  ( or A - B if FSUB)
       fpmi_gen(FPMI_ADD_NORM | FPMI_EXIT_FLAG); // A <- normalize(A)
-      `FPMPROG_STAT("ADD      ",FPMPROG_ADD);
+      `FPMPROG_END(FPMPROG_ADD);
       
       // ******************** FMUL ******************************************
-      FPMPROG_MUL = I;      
+      `FPMPROG_BEGIN(FPMPROG_MUL);
       fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
-      `FPMPROG_STAT("MUL      ",FPMPROG_MUL);
+      `FPMPROG_END(FPMPROG_MUL);
 
       // ******************** FMADD, FMSUB, FNMADD, FNMSUB ******************
-      FPMPROG_MADD = I;      
+      `FPMPROG_BEGIN(FPMPROG_MADD);
       fpmi_gen_fma(FPMI_EXIT_FLAG);
-      `FPMPROG_STAT("MADD     ",FPMPROG_MADD);      
+      `FPMPROG_END(FPMPROG_MADD);      
 
       // ******************** FDIV ******************************************
-      FPMPROG_DIV = I;            
       // https://en.wikipedia.org/wiki/Division_algorithm
       // https://stackoverflow.com/questions/24792966/
       // error-using-newton-raphson-iteration-method-for-
       // floating-point-division
       //
+      `FPMPROG_BEGIN(FPMPROG_DIV);      
       // D' <- fprs2 normalized between [0.5,1] (set exp to 126)
       fpmi_gen(FPMI_FRCP_PROLOG);   // A <- -D'*32/17 + 48/17
       fpmi_gen_fma(0);
@@ -582,26 +579,27 @@ module FemtoRV32(
       end
       fpmi_gen(FPMI_FRCP_EPILOG); // A  <- rs1 * A
       fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
-      `FPMPROG_STAT("DIV      ",FPMPROG_DIV);      
+      `FPMPROG_END(FPMPROG_DIV);      
       
       // ******************** FCVT.W.S, FCVT.WU.S ***************************
-      FPMPROG_TO_INT = I;            
+      `FPMPROG_BEGIN(FPMPROG_TO_INT);
       fpmi_gen(FPMI_LOAD_AB);
       fpmi_gen(FPMI_FP_TO_INT | FPMI_EXIT_FLAG);
-      `FPMPROG_STAT("TO_INT   ",FPMPROG_TO_INT);      
+      `FPMPROG_END(FPMPROG_TO_INT);      
       
       // ******************** FCVT.S.W, FCVT.S.WU ***************************
-      FPMPROG_INT_TO_FP = I;            
+      `FPMPROG_BEGIN(FPMPROG_INT_TO_FP);
       fpmi_gen(FPMI_INT_TO_FP);
       fpmi_gen(FPMI_ADD_ADD);
       fpmi_gen(FPMI_ADD_NORM | FPMI_EXIT_FLAG);
-      `FPMPROG_STAT("INT_TO_FP",FPMPROG_INT_TO_FP);
+      `FPMPROG_END(FPMPROG_INT_TO_FP);
       
       // ******************** FSQRT *****************************************
-      FPMPROG_SQRT = I;            
       // Using Doom's fast inverse square root algorithm:
       // https://en.wikipedia.org/wiki/Fast_inverse_square_root
       // TODO: IEEE754-compliant version
+      //
+      `FPMPROG_BEGIN(FPMPROG_SQRT);
       // A <- doom_magic - (A >> 1)      
       fpmi_gen(FPMI_FRSQRT_PROLOG);
       for(iter=0; iter<2; iter++) begin
@@ -623,13 +621,13 @@ module FemtoRV32(
       fpmi_gen(FPMI_MV_RS1_A);
       fpmi_gen(FPMI_MV_RS2_TMP1);
       fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
-      `FPMPROG_STAT("SQRT     ",FPMPROG_SQRT);
+      `FPMPROG_END(FPMPROG_SQRT);
       
       // ******************** FMIN, FMAX ************************************
-      FPMPROG_MIN_MAX = I;            
+      `FPMPROG_BEGIN(FPMPROG_MIN_MAX);
       fpmi_gen(FPMI_LOAD_AB);
       fpmi_gen(FPMI_MIN_MAX | FPMI_EXIT_FLAG);
-      `FPMPROG_STAT("MIN_MAX  ",FPMPROG_MIN_MAX);
+      `FPMPROG_END(FPMPROG_MIN_MAX);
       
 `ifdef BENCH      
       $display("FPMI ROM max address:%d",I-1);
@@ -750,6 +748,8 @@ module FemtoRV32(
 	      A_sign      <= B_sign;
 	      // normalization left shamt = 47 - first_bit_set = clz - 16
 	      norm_lshamt <= frac_sum_clz - 16;
+	      // Exponent of A once normalized = A_exp + first_bit_set - 47
+	      //                 = A_exp + 63 - clz - 47 = A_exp + 16 - clz
 	      A_exp_norm <= A_exp + 16 - {3'b000,frac_sum_clz};
 	   end
 
