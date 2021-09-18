@@ -6,7 +6,7 @@ PART=xc7a35tcsg324-1
 # cascading DSPs not supported yet by nextpnr-xilinx -----.
 # -DARTY ... -q      -p " ... -nowidelut ..."             v
 YOSYS_ARTY_OPT=-DARTY -p "scratchpad -set xilinx_dsp.multonly 1" \
-                      -p "synth_xilinx -flatten -abc9 -arch xc7 -top $(PROJECTNAME); write_json $(PROJECTNAME).json"
+                      -p "synth_xilinx -nowidelut -flatten -abc9 -arch xc7 -top $(PROJECTNAME); write_json $(PROJECTNAME).json"
 
 ARTY: ARTY.firmware_config ARTY.synth ARTY.prog
 
