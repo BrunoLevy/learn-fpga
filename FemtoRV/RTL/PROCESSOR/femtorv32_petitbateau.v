@@ -383,7 +383,7 @@ module FemtoRV32(
    wire [5:0] 	              frac_sum_clz;
    CLZ clz2({13'b0,frac_sum}, frac_sum_clz);
    reg [5:0] 		      norm_lshamt;
-   
+
    // Exponent of A once normalized = A_exp + first_bit_set - 47
    //                               = A_exp + 63 - clz - 47 = A_exp + 16 - clz
    // wire signed [8:0] A_exp_norm = A_exp + 16 - {3'b000,A_clz};
@@ -440,13 +440,12 @@ module FemtoRV32(
    localparam FPMI_READY           = 0; 
    localparam FPMI_LOAD_AB         = 1;   // A <- fprs1; B <- fprs2
    localparam FPMI_LOAD_AB_MUL     = 2;   // A <- norm(fprs1*fprs2); B <- fprs3
-   localparam FPMI_NORM            = 3;   // A <- norm(A)
-   
-   localparam FPMI_ADD_SWAP        = 4;   // if |A|>|B| swap(A,B);
+   localparam FPMI_ADD_SWAP        = 3;   // if |A|>|B| swap(A,B);
                                           // if sign(A) != sign(B) A <- -A
+   localparam FPMI_ADD_SHIFT       = 4;   // shift A to match B exponent
+   localparam FPMI_ADD_ADD         = 5;   // A <- A + B   (or A - B if FSUB)
+   localparam FPMI_ADD_NORM        = 6;   // A <- norm(A) (after ADD_ADD)
    
-   localparam FPMI_ADD_SHIFT       = 5;   // shift A to match B exponent
-   localparam FPMI_ADD_ADD         = 6;   // A <- A + B   (or A - B if FSUB)
    localparam FPMI_CMP             = 7;   // fpuOut <- test A,B (FEQ,FLE,FLT)
 
    localparam FPMI_MV_RS1_A        =  8;  // fprs1 <- A
@@ -495,7 +494,7 @@ module FemtoRV32(
       fpmi_gen(FPMI_ADD_SWAP);     // if(|A| > |B|) swap(A,B) (and sgn)
       fpmi_gen(FPMI_ADD_SHIFT);    // shift A according to B exp
       fpmi_gen(FPMI_ADD_ADD);      // A <- A + B  ( or A - B if FSUB)
-      fpmi_gen(FPMI_NORM | flags); // A <- normalize(A)
+      fpmi_gen(FPMI_ADD_NORM | flags); // A <- normalize(A)
    end endtask
    
    integer I;    // current ROM location in initialization
@@ -541,7 +540,7 @@ module FemtoRV32(
       fpmi_gen(FPMI_ADD_SWAP);              // if(|A| > |B|) swap(A,B) (and sgn)
       fpmi_gen(FPMI_ADD_SHIFT);             // shift A according to B exp
       fpmi_gen(FPMI_ADD_ADD);               // A <- A + B  ( or A - B if FSUB)
-      fpmi_gen(FPMI_NORM | FPMI_EXIT_FLAG); // A <- normalize(A)
+      fpmi_gen(FPMI_ADD_NORM | FPMI_EXIT_FLAG); // A <- normalize(A)
       `FPMPROG_STAT("ADD      ",FPMPROG_ADD);
       
       // ******************** FMUL ******************************************
@@ -595,7 +594,7 @@ module FemtoRV32(
       FPMPROG_INT_TO_FP = I;            
       fpmi_gen(FPMI_INT_TO_FP);
       fpmi_gen(FPMI_ADD_ADD);
-      fpmi_gen(FPMI_NORM | FPMI_EXIT_FLAG);
+      fpmi_gen(FPMI_ADD_NORM | FPMI_EXIT_FLAG);
       `FPMPROG_STAT("INT_TO_FP",FPMPROG_INT_TO_FP);
       
       // ******************** FSQRT *****************************************
@@ -704,7 +703,7 @@ module FemtoRV32(
 	   end
 
 	   // A <- normalize(A)
-	   fpmi_is[FPMI_NORM]: begin
+	   fpmi_is[FPMI_ADD_NORM]: begin
 	      if(A_exp_norm <= 0 || (A_frac == 0)) begin
 		 A_frac <= 0;
 		 A_exp <= 0;
