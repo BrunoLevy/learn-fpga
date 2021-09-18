@@ -630,7 +630,7 @@ module FemtoRV32(
 `endif      
    end
 
-   // FPU micro-code instruction counter
+   // FPU micro-code next instruction
    wire [6:0] fpmi_PC_next = 
                (state[EXECUTE_bit] & isFPU)   ? fpmprog   :
 	       fpmi_instr[FPMI_EXIT_FLAG_bit] ? 0         : 
