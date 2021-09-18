@@ -374,12 +374,22 @@ module FemtoRV32(
    // Count leading zeroes in A
    // Note1: CLZ only work with power of two width (hence 14'b0).
    // Note2: first bit set = 63 - CLZ (of course !)
+   /*
    wire [5:0] 	     A_clz;
    CLZ clz({14'b0,A_frac}, A_clz);
+   */
+   
+   // HERE
+   wire [5:0] 	              frac_sum_clz;
+   CLZ clz2({13'b0,frac_sum}, frac_sum_clz);
+   reg [5:0] 		      norm_lshamt;
    
    // Exponent of A once normalized = A_exp + first_bit_set - 47
    //                               = A_exp + 63 - clz - 47 = A_exp + 16 - clz
-   wire signed [8:0] A_exp_norm = A_exp + 16 - {3'b000,A_clz};
+   // wire signed [8:0] A_exp_norm = A_exp + 16 - {3'b000,A_clz};
+   reg signed [8:0] A_exp_norm;
+   
+
    
    // ****************** Reciprocal (1/x), used by FDIV ************************
    // Exponent for reciprocal (1/x)
@@ -446,19 +456,17 @@ module FemtoRV32(
    localparam FPMI_MV_TMP2_A       = 12;  // tmp2  <- A
 
    localparam FPMI_FRCP_PROLOG     = 13;  // init reciprocal (1/x) 
-   localparam FPMI_FRCP_ITER       = 14;  // iteration for reciprocal
-   localparam FPMI_FRCP_EPILOG     = 15;  // epilog for reciprocal
+   localparam FPMI_FRCP_ITER1      = 14;  // iteration for reciprocal
+   localparam FPMI_FRCP_ITER2      = 15;  // iteration for reciprocal   
+   localparam FPMI_FRCP_EPILOG     = 16;  // epilog for reciprocal
    
-   localparam FPMI_FRSQRT_PROLOG   = 16;  // init recipr sqr root (1/sqrt(x))
+   localparam FPMI_FRSQRT_PROLOG   = 17;  // init recipr sqr root (1/sqrt(x))
    
-   localparam FPMI_FP_TO_INT       = 17;  // fpuOut <- fpoint_to_int(fprs1)
-   localparam FPMI_INT_TO_FP       = 18;  // A <- int_to_fpoint(rs1)
-   localparam FPMI_MIN_MAX         = 19;  // fpuOut <- min/max(A,B) 
+   localparam FPMI_FP_TO_INT       = 18;  // fpuOut <- fpoint_to_int(fprs1)
+   localparam FPMI_INT_TO_FP       = 19;  // A <- int_to_fpoint(rs1)
+   localparam FPMI_MIN_MAX         = 20;  // fpuOut <- min/max(A,B) 
 
-   localparam FPMI_FRCP_ITER1      = 20;  // New version of recriprocal
-   localparam FPMI_FRCP_ITER2      = 21;  // iteration (two FMAs)
-   
-   localparam FPMI_NB              = 22;
+   localparam FPMI_NB              = 21;
 
    // Instruction exit flag (if set in current micro-instr, exit microprogram)
    localparam FPMI_EXIT_FLAG_bit   = 1+$clog2(FPMI_NB);
@@ -492,7 +500,7 @@ module FemtoRV32(
    
    integer I;    // current ROM location in initialization
    integer iter; // iteration variable for Newton-Raphson (FDIV,FSQRT)
-   localparam FPMI_ROM_SIZE=81 + 12*PRECISE_DIV; 
+   localparam FPMI_ROM_SIZE=82 + 12*PRECISE_DIV; 
    reg [1+$clog2(FPMI_NB):0] fpmi_ROM[0:FPMI_ROM_SIZE-1];
 
    // Microprograms start addresses
@@ -567,7 +575,7 @@ module FemtoRV32(
 	 end else begin
 	    //  A <- A * (-A*D + 2)
 	    // (faster but less precise)
-	    fpmi_gen(FPMI_FRCP_ITER);     
+	    fpmi_gen(FPMI_FRCP_ITER1);     
 	    fpmi_gen_fma(0);
 	    fpmi_gen(FPMI_MV_RS1_A);
 	    fpmi_gen(FPMI_LOAD_AB_MUL);
@@ -586,6 +594,7 @@ module FemtoRV32(
       // ******************** FCVT.S.W, FCVT.S.WU ***************************
       FPMPROG_INT_TO_FP = I;            
       fpmi_gen(FPMI_INT_TO_FP);
+      fpmi_gen(FPMI_ADD_ADD);
       fpmi_gen(FPMI_NORM | FPMI_EXIT_FLAG);
       `FPMPROG_STAT("INT_TO_FP",FPMPROG_INT_TO_FP);
       
@@ -702,11 +711,13 @@ module FemtoRV32(
 	      end else begin
 		 // left shamt = 47 - first_bit_set = A_clz - 16
 		 // (reminder: first_bit_set = 63 - A_clz)
-		 `ASSERT(
-                    63 - A_clz <= 48, ("NORM: first bit set = %d\n",63-A_clz)
-                 );
-		 A_frac <= A_frac[48] ? (A_frac >> 1) : A_frac << (A_clz - 16); 
+		 //`ASSERT(
+                 //   63 - A_clz <= 48, ("NORM: first bit set = %d\n",63-A_clz)
+                 //);
+		 // A_frac <= A_frac[48] ? (A_frac >> 1) : A_frac << (A_clz - 16);
+		 A_frac <= A_frac[48] ? (A_frac >> 1) : A_frac << norm_lshamt;
 		 A_exp  <= A_exp_norm;
+		 // $display("CLZ %b %d",{14'b0,A_frac},A_clz); 
 	      end
 	   end
 
@@ -736,8 +747,11 @@ module FemtoRV32(
 
 	   // A <- A (+/-) B
 	   fpmi_is[FPMI_ADD_ADD]: begin
-	      A_frac <= frac_sum[49:0];
-	      A_sign <= B_sign;
+	      A_frac      <= frac_sum[49:0];
+	      A_sign      <= B_sign;
+	      // normalization left shamt = 47 - first_bit_set = clz - 16
+	      norm_lshamt <= frac_sum_clz - 16;
+	      A_exp_norm <= A_exp + 16 - {3'b000,frac_sum_clz};
 	   end
 
 	   // A <- result of comparison between A and B
@@ -766,29 +780,21 @@ module FemtoRV32(
 	      rs3  <= 32'h4034B4B5; // 48/17
 	   end
 	   
-	   fpmi_is[FPMI_FRCP_ITER]: begin
-	      rs1  <= {1'b1, 8'd126, tmp2[22:0]};          // -D'
-	      rs2  <= {A_sign, A_exp[7:0], A_frac[46:24]}; // A
-	      rs3  <= 32'h40000000;                        // 2.0
-	   end
-	      
-	   fpmi_is[FPMI_FRCP_EPILOG]: begin
-	      rs1 <= {tmp2[31], frcp_exp[7:0], A_frac[46:24]}; 
-	      rs2 <= tmp1;
-	   end
-
-
-	   // New reciprocal
 	   fpmi_is[FPMI_FRCP_ITER1]: begin
-	      rs1  <= {1'b1, 8'd126, tmp2[22:0]};          // -D'
-	      rs2  <= {A_sign, A_exp[7:0], A_frac[46:24]}; // A
-	      rs3  <= 32'h3f800000;                        // 1.0
+	      rs1  <= {1'b1, 8'd126, tmp2[22:0]};                // -D'
+	      rs2  <= {A_sign, A_exp[7:0], A_frac[46:24]};       // A
+	      rs3  <= PRECISE_DIV ? 32'h3f800000 : 32'h40000000; //p ? 1.0 : 2.0
 	   end
 
-	   // New reciprocal	   
+	   // This one is used only if PRECISE_DIV is set
 	   fpmi_is[FPMI_FRCP_ITER2]: begin
 	      rs1 <= {A_sign, A_exp[7:0], A_frac[46:24]}; // A
 	      rs3 <= rs2;
+	   end
+	   
+	   fpmi_is[FPMI_FRCP_EPILOG]: begin
+	      rs1 <= {tmp2[31], frcp_exp[7:0], A_frac[46:24]}; 
+	      rs2 <= tmp1;
 	   end
 	   
 	   fpmi_is[FPMI_FRSQRT_PROLOG]: begin
@@ -808,13 +814,17 @@ module FemtoRV32(
 
 	   fpmi_is[FPMI_INT_TO_FP]: begin
 	      // TODO: rounding
-	      A_frac <=  (isFCVTSWU | !rs1[31]) ? {rs1, 18'd0}
-                                                : {-$signed(rs1), 18'd0};
-	      A_sign <= isFCVTSW & rs1[31];
+
+	      // We do a fake addition with zero, to prepare normalization
+	      // (uses CLZ plugged on the adder).
+	      A_frac <= 0;
 	      // 127+23: standard exponent bias
 	      // +6 because it is bit 29 of rs1 that overwrites 
 	      //    bit 47 of A_frac, instead of bit 23 (and 29-23 = 6).
-	      A_exp  <= 127+23+6;  
+	      A_exp  <= 127+23+6;
+	      B_frac <=  (isFCVTSWU | !rs1[31]) ? {rs1, 18'd0}
+                                                : {-$signed(rs1), 18'd0};
+	      B_sign <= isFCVTSW & rs1[31];
 	   end
 
 	   fpmi_is[FPMI_MIN_MAX]: begin
