@@ -25,6 +25,9 @@
 `define NRV_ARCH     "rv32imafc" 
 `define NRV_ABI      "ilp32f"
 
+//`define NRV_ARCH     "rv32imac" 
+//`define NRV_ABI      "ilp32"
+
 `define NRV_OPTIMIZE "-O3"
 `define NRV_INTERRUPTS
 
@@ -190,7 +193,7 @@ module FemtoRV32(
 
    wire funcM     = instr[25];
    wire isDivide  = isALUreg & funcM & instr[14];
-   wire aluBusy   = |quotient_msk; // ALU is busy if division is in progress.
+   wire aluBusy   = |div_cnt; // ALU is busy if division is in progress.
 
    // funct3: 1->MULH, 2->MULHSU  3->MULHU
    wire isMULH   = funct3Is[1];
@@ -222,48 +225,63 @@ module FemtoRV32(
      (funct3Is[6]  ? aluIn1 | aluIn2                                 : 32'b0) |
      (funct3Is[7]  ? aluIn1 & aluIn2                                 : 32'b0) ;
 
-   wire [31:0] aluOut_muldiv = 
-     ( funct3Is[0]   ?  multiply[31: 0] : 32'b0) | // 0:MUL
-     (|funct3Is[3:1] ?  multiply[63:32] : 32'b0) | // 1:MULH, 2:MULHSU, 3:MULHU
-     ( instr[14]     ?  div_sign ? -divResult : divResult : 32'b0) ; 
-                                                // 4:DIV, 5:DIVU, 6:REM, 7:REMU
+   reg [31:0]  aluOut_mul;
+   always @(posedge clk) begin
+      aluOut_mul <= funct3Is[0] ? multiply[31:0] : multiply[63:32];
+   end
 
-   wire [31:0] aluOut = isALUreg & funcM ? aluOut_muldiv : aluOut_base;
+   reg [31:0]  aluOut_div;
+   always @(posedge clk) begin
+      (* parallel_case, full_case *)
+      case(1'b1)
+	 instr[13] &  div_sign: aluOut_div <= -dividend;
+	 instr[13] & !div_sign: aluOut_div <=  dividend;
+	!instr[13] &  div_sign: aluOut_div <= -quotient;
+	!instr[13] & !div_sign: aluOut_div <=  quotient;	
+      endcase
+   end
 
+   reg [31:0] aluOut;
+   always @(*) begin
+      (* parallel_case, full_case *)
+      case(1'b1)
+	isALUreg & funcM &  instr[14]: aluOut = aluOut_div;
+	isALUreg & funcM & !instr[14]: aluOut = aluOut_mul;
+	default: aluOut = aluOut_base;
+      endcase
+   end
+    
    /***************************************************************************/
    // Implementation of DIV/REM instructions, highly inspired by PicoRV32
 
    reg [31:0] dividend;
    reg [62:0] divisor;
    reg [31:0] quotient;
-   reg [31:0] quotient_msk;
-
-   wire divstep_do = (divisor <= {31'b0, dividend});
-
-   wire [31:0] dividendN = divstep_do ? dividend - divisor[31:0] : dividend;
-   wire [31:0] quotientN = divstep_do ? quotient | quotient_msk  : quotient;
-
-   wire div_sign = ~instr[12] & (instr[13] ? aluIn1[31] : 
-                                     (aluIn1[31] != aluIn2[31]) & |aluIn2);
+   reg [5:0]  div_cnt;
+   reg div_sign;
+   
    always @(posedge clk) begin
-      if (isDivide & aluWr) begin
+      if (aluWr) begin
+	 div_sign <= ~instr[12] & (instr[13] ? aluIn1[31] : 
+                                  (aluIn1[31] != aluIn2[31]) & |aluIn2);
          dividend <=   ~instr[12] & aluIn1[31] ? -aluIn1 : aluIn1;
          divisor  <= {(~instr[12] & aluIn2[31] ? -aluIn2 : aluIn2), 31'b0};
          quotient <= 0;
-         quotient_msk <= 1 << 31;
+	 div_cnt <= isDivide ? 33 : 0; // one additional cycle for aluOut_div
       end else begin
-         dividend     <= dividendN;
-         divisor      <= divisor >> 1;
-         quotient     <= quotientN;
-         quotient_msk <= quotient_msk >> 1;
+	 if(aluBusy) div_cnt <= div_cnt - 1;
+      end
+      if(|div_cnt[5:1]) begin
+         divisor <= divisor >> 1;
+	 if(divisor <= {31'b0, dividend}) begin
+	    quotient <= {quotient[30:0],1'b1};
+	    dividend <= dividend - divisor[31:0];
+	 end else begin
+	    quotient <= {quotient[30:0],1'b0};	    
+	 end
       end
    end 
-   
-   reg  [31:0] divResult;
-   always @(posedge clk) begin
-      divResult <= instr[13] ? dividendN : quotientN;
-   end
-   
+
    /***************************************************************************/
    // The predicate for conditional branches.
 
@@ -1284,7 +1302,7 @@ module FemtoRV32(
 
    wire needToWait = isLoad | 
                     (isStore & `NRV_IS_IO_ADDR(mem_addr)) | 
-                     isDivide | 
+                     isALUreg & funcM  /* isDivide */ | 
                      isFPU;  
 
    wire [ADDR_WIDTH-1:0] PC_new = 
