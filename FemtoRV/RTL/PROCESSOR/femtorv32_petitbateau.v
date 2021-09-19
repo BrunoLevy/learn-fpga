@@ -42,6 +42,7 @@
 // zeroes (CLZ for Count Leading Zeroes), as follows. See:
 // https://electronics.stackexchange.com/questions/196914/
 //    verilog-synthesize-high-speed-leading-zero-count
+// TODO: test also Dean Gaudet's algorithm (see Hackers Delights p. 110)
 module CLZ #(
    parameter W_IN = 64, // must be power of 2, >= 2
    parameter W_OUT = $clog2(W_IN)	     
@@ -376,14 +377,12 @@ module FemtoRV32(
    // Note2: first bit set = 63 - CLZ (of course !)
    wire [5:0] 	              frac_sum_clz;
    CLZ clz2({13'b0,frac_sum}, frac_sum_clz);
-   reg [5:0] 		      norm_lshamt;
+   reg [5:0] 		      norm_lshamt; // shift amount for ADD normalization
 
    // Exponent of A once normalized = A_exp + first_bit_set - 47
    //                               = A_exp + 63 - clz - 47 = A_exp + 16 - clz
    // wire signed [8:0] A_exp_norm = A_exp + 16 - {3'b000,A_clz};
    reg signed [8:0] A_exp_norm;
-   
-
    
    // ****************** Reciprocal (1/x), used by FDIV ************************
    // Exponent for reciprocal (1/x)
@@ -406,7 +405,7 @@ module FemtoRV32(
                         (|neg_fcvt_ftoi_shift[8:5]  ?  0 :  // underflow
                      ({A_frac[49:18]} >> neg_fcvt_ftoi_shift[4:0])) : 
                      ({A_frac[49:18]} << fcvt_ftoi_shift[4:0]);
-   
+  
    // ******************* Classification ***************************************
    wire rs1_exp_Z   = (rs1_exp  == 0  );
    wire rs1_exp_255 = (rs1_exp  == 255);
@@ -428,12 +427,12 @@ module FemtoRV32(
    
    /** FPU micro-instructions and ROM ****************************************/
 
-   // Set to 1 for higher-precision division (costs 10 additional cycles)
+   // Set to 1 for higher-precision FDIV (costs 12 additional cycles per FDIV)
    localparam PRECISE_DIV = 0;
    
    localparam FPMI_READY           = 0; 
-   localparam FPMI_LOAD_AB         = 1;   // A <- fprs1; B <- fprs2
-   localparam FPMI_LOAD_AB_MUL     = 2;   // A <- norm(fprs1*fprs2); B <- fprs3
+   localparam FPMI_LOAD_AB         = 1;   // A <- rs1; B <- rs2
+   localparam FPMI_LOAD_AB_MUL     = 2;   // A <- norm(rs1*rs2); B <- rs3
    localparam FPMI_ADD_SWAP        = 3;   // if |A|>|B| swap(A,B);
                                           // if sign(A) != sign(B) A <- -A
    localparam FPMI_ADD_SHIFT       = 4;   // shift A to match B exponent
@@ -442,10 +441,10 @@ module FemtoRV32(
    
    localparam FPMI_CMP             = 7;   // fpuOut <- test A,B (FEQ,FLE,FLT)
 
-   localparam FPMI_MV_RS1_A        =  8;  // fprs1 <- A
-   localparam FPMI_MV_RS2_TMP1     =  9;  // fprs1 <- tmp1
-   localparam FPMI_MV_RS2_MHTMP1   = 10;  // fprs2 <- -0.5*tmp1
-   localparam FPMI_MV_RS2_TMP2     = 11;  // fprs2 <- tmp2
+   localparam FPMI_MV_RS1_A        =  8;  // rs1 <- A
+   localparam FPMI_MV_RS2_TMP1     =  9;  // rs1 <- tmp1
+   localparam FPMI_MV_RS2_MHTMP1   = 10;  // rs2 <- -0.5*tmp1
+   localparam FPMI_MV_RS2_TMP2     = 11;  // rs2 <- tmp2
    localparam FPMI_MV_TMP2_A       = 12;  // tmp2  <- A
 
    localparam FPMI_FRCP_PROLOG     = 13;  // init reciprocal (1/x) 
@@ -455,7 +454,7 @@ module FemtoRV32(
    
    localparam FPMI_FRSQRT_PROLOG   = 17;  // init recipr sqr root (1/sqrt(x))
    
-   localparam FPMI_FP_TO_INT       = 18;  // fpuOut <- fpoint_to_int(fprs1)
+   localparam FPMI_FP_TO_INT       = 18;  // fpuOut <- fpoint_to_int(rs1)
    localparam FPMI_INT_TO_FP       = 19;  // A <- int_to_fpoint(rs1)
    localparam FPMI_MIN_MAX         = 20;  // fpuOut <- min/max(A,B) 
 
@@ -497,23 +496,19 @@ module FemtoRV32(
    reg [1+$clog2(FPMI_NB):0] fpmi_ROM[0:FPMI_ROM_SIZE-1];
 
    // Microprograms start addresses
-   integer FPMPROG_CMP;
-   integer FPMPROG_ADD;
-   integer FPMPROG_MUL;
-   integer FPMPROG_MADD;
-   integer FPMPROG_DIV;
-   integer FPMPROG_TO_INT;
-   integer FPMPROG_INT_TO_FP;
-   integer FPMPROG_SQRT;
-   integer FPMPROG_MIN_MAX;
+   // Programatically determined when generating the ROM ('initial' block below)
+   integer FPMPROG_CMP, FPMPROG_ADD, FPMPROG_MUL, FPMPROG_MADD, FPMPROG_DIV;
+   integer FPMPROG_TO_INT, FPMPROG_INT_TO_FP, FPMPROG_SQRT, FPMPROG_MIN_MAX;
 
+   // Start the definition of a microprogram (determines start address)
    `define FPMPROG_BEGIN(prg) prg = I
-   
+
+   // Ends the definition of a microprogram (displays stats in Verilator)
    `ifdef BENCH
     `define FPMPROG_END(prg) \
         $display("%3d microinstructions used by %s",I-prg,`"prg`")
    `else
-    `define FPMPROG_END(prg)
+    `define FPMPROG_END(prg) 
    `endif
 
    /******************** Generate microprograms in ROM **********************/
@@ -557,7 +552,7 @@ module FemtoRV32(
       // floating-point-division
       //
       `FPMPROG_BEGIN(FPMPROG_DIV);      
-      // D' <- fprs2 normalized between [0.5,1] (set exp to 126)
+      // D' <- rs2 normalized between [0.5,1] (set exp to 126)
       fpmi_gen(FPMI_FRCP_PROLOG);   // A <- -D'*32/17 + 48/17
       fpmi_gen_fma(0);
       for(iter=0; iter<3; iter++) begin
@@ -565,14 +560,14 @@ module FemtoRV32(
 	    // A <- A + A*(1-D'*A)
 	    // (slower more precise iter, but not IEEE754 compliant yet...)
 	    fpmi_gen(FPMI_FRCP_ITER1);
-	    fpmi_gen_fma(0);
+	    fpmi_gen_fma(0); // 5 cycles
 	    fpmi_gen(FPMI_FRCP_ITER2);
-	    fpmi_gen_fma(0);	 
+	    fpmi_gen_fma(0); // 5 cycles	 
 	 end else begin
 	    //  A <- A * (-A*D + 2)
 	    // (faster but less precise)
 	    fpmi_gen(FPMI_FRCP_ITER1);     
-	    fpmi_gen_fma(0);
+	    fpmi_gen_fma(0); // 5 cycles
 	    fpmi_gen(FPMI_MV_RS1_A);
 	    fpmi_gen(FPMI_LOAD_AB_MUL);
 	 end
@@ -597,13 +592,16 @@ module FemtoRV32(
       // ******************** FSQRT *****************************************
       // Using Doom's fast inverse square root algorithm:
       // https://en.wikipedia.org/wiki/Fast_inverse_square_root
+      // http://www.lomont.org/papers/2003/InvSqrt.pdf
       // TODO: IEEE754-compliant version
+      // See https://t.co/V1SWQ6N6xD?amp=1 (Method of Switching Constants)
+      // See simple effective fast inverse square root with two magic constants
       //
       `FPMPROG_BEGIN(FPMPROG_SQRT);
       // A <- doom_magic - (A >> 1)      
       fpmi_gen(FPMI_FRSQRT_PROLOG);
       for(iter=0; iter<2; iter++) begin
-	 // A <- A * (3/2 - (fprs1/2 * A * A))      	 
+	 // A <- A * (3/2 - (rs1/2 * A * A))      	 
 	 fpmi_gen(FPMI_LOAD_AB_MUL);
 	 fpmi_gen(FPMI_MV_RS1_A);
          fpmi_gen(FPMI_MV_RS2_MHTMP1);
@@ -700,18 +698,12 @@ module FemtoRV32(
 	      B_exp  <= {1'b0, rs3_exp};
 	   end
 
-	   // A <- normalize(A)
+	   // A <- normalize(A) (after ADD_ADD -> norm_lshamt and A_exp_norm)
 	   fpmi_is[FPMI_ADD_NORM]: begin
 	      if(A_exp_norm <= 0 || (A_frac == 0)) begin
 		 A_frac <= 0;
 		 A_exp <= 0;
 	      end else begin
-		 // left shamt = 47 - first_bit_set = A_clz - 16
-		 // (reminder: first_bit_set = 63 - A_clz)
-		 //`ASSERT(
-                 //   63 - A_clz <= 48, ("NORM: first bit set = %d\n",63-A_clz)
-                 //);
-		 // A_frac <= A_frac[48] ? (A_frac >> 1) : A_frac << (A_clz - 16);
 		 A_frac <= A_frac[48] ? (A_frac >> 1) : A_frac << norm_lshamt;
 		 A_exp  <= A_exp_norm;
 		 // $display("CLZ %b %d",{14'b0,A_frac},A_clz); 
@@ -773,7 +765,7 @@ module FemtoRV32(
 	   fpmi_is[FPMI_FRCP_PROLOG]: begin
 	      tmp1 <= rs1;
 	      tmp2 <= rs2;
-	      // rs1 <= -D', that is, -(fprs2 normalized in [0.5,1])
+	      // rs1 <= -D', that is, -(rs2 normalized in [0.5,1])
 	      rs1  <= {1'b1, 8'd126, rs2_frac[22:0]}; 
 	      rs2  <= 32'h3FF0F0F1; // 32/17
 	      rs3  <= 32'h4034B4B5; // 48/17
