@@ -27,7 +27,7 @@
 `define NRV_ARCH     "rv32imafc" 
 `define NRV_ABI      "ilp32f"
 
-`define NRV_OPTIMIZE "-O0"
+`define NRV_OPTIMIZE "-O3"
 `define NRV_INTERRUPTS
 
 // Check condition and display message in simulation
