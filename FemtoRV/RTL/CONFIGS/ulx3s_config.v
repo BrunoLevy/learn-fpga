@@ -14,7 +14,7 @@
 
 /************************* Frequency ********************************************************************************/
 
-`define NRV_FREQ 60           // Frequency in MHz. Recomm: 40 MHz   Overclocking: 80 MHz
+`define NRV_FREQ 75          // Frequency in MHz. Recomm: 40 MHz   Overclocking: 80 MHz
 //`define NRV_FEMTORV32_ELECTRON // RV32IM
 //`define NRV_FEMTORV32_GRACILIS // RV32IMC, IRQ
 `define NRV_FEMTORV32_PETITBATEAU

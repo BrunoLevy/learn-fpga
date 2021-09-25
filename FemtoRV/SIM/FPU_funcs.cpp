@@ -268,6 +268,8 @@ uint32_t check(
       printf("   Chk="); CHECK.print();  printf("   (%f)\n",CHECK.f);
     }
     return 0;
+  } else {
+    //    printf("%s OK\n",func);
   }
   return 1;
 }
@@ -736,7 +738,7 @@ uint32_t FCVTSWU_WITH_SOFT_FPU(uint32_t x) {
   return encodef(float(x));
 }
 
-/********************************************************************************/
+/*****************************************************************************/
 
 static int use_soft_fpu = 0;
 

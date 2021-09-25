@@ -17,6 +17,8 @@
 // Bruno Levy, Matthias Koch, 2020-2021
 /******************************************************************************/
 
+`include "petitbateau.v"
+
 // Firmware generation flags for this processor
 //    Note: atomic instructions not supported, but 'a' is set in
 //    compiler flag, because there is no toolchain/libs for
@@ -25,10 +27,7 @@
 `define NRV_ARCH     "rv32imafc" 
 `define NRV_ABI      "ilp32f"
 
-//`define NRV_ARCH     "rv32imac" 
-//`define NRV_ABI      "ilp32"
-
-`define NRV_OPTIMIZE "-O3"
+`define NRV_OPTIMIZE "-O0"
 `define NRV_INTERRUPTS
 
 // Check condition and display message in simulation
@@ -39,38 +38,6 @@
  `define ASSERT(cond,msg)
  `define ASSERT_NOT_REACHED(msg)
 `endif
-
-// FPU Normalization needs to detect the position of the first bit set 
-// in the A_frac register. It is easier to count the number of leading 
-// zeroes (CLZ for Count Leading Zeroes), as follows. See:
-// https://electronics.stackexchange.com/questions/196914/
-//    verilog-synthesize-high-speed-leading-zero-count
-// TODO: test also Dean Gaudet's algorithm (see Hackers Delights p. 110)
-module CLZ #(
-   parameter W_IN = 64, // must be power of 2, >= 2
-   parameter W_OUT = $clog2(W_IN)	     
-) (
-   input wire [W_IN-1:0]   in,
-   output wire [W_OUT-1:0] out
-);
-  generate
-     if(W_IN == 2) begin
-	assign out = !in[1];
-     end else begin
-	wire [W_OUT-2:0] half_count;
-	wire [W_IN/2-1:0] lhs = in[W_IN/2 +: W_IN/2];
-	wire [W_IN/2-1:0] rhs = in[0      +: W_IN/2];
-	wire left_empty = ~|lhs;
-	CLZ #(
-	  .W_IN(W_IN/2)
-        ) inner(
-           .in(left_empty ? rhs : lhs),
-           .out(half_count)		
-	);
-	assign out = {left_empty, half_count};
-     end
-  endgenerate
-endmodule   
 
 module FemtoRV32(
    input          clk,
@@ -243,7 +210,7 @@ module FemtoRV32(
 
    reg [31:0] aluOut;
    always @(*) begin
-      (* parallel_case, full_case *)
+      (* parallel_case *)
       case(1'b1)
 	isALUreg & funcM &  instr[14]: aluOut = aluOut_div;
 	isALUreg & funcM & !instr[14]: aluOut = aluOut_mul;
@@ -293,380 +260,9 @@ module FemtoRV32(
                     funct3Is[7] & !LTU ; // BGEU
 
    /***************************************************************************/
-   // The FPU 
+   // Registers read-write 
    /***************************************************************************/
 
-   // Uncomment the line below to emulate all FPU instructions in Verilator
-   // (useful to test instruction decoder and implementations of micro-instr
-   // in C++). See SIM/FPU_funcs.{h,cpp}
-//`define FPU_EMUL
-   
-   // FPU output = 32 MSBs of A register (see below)
-   // A macro to easily write to it (`FPU_OUT <= ...),
-   // used when FPU output is an integer.
-   `define FPU_OUT {A_sign, A_exp[7:0], A_frac[46:24]}
-   wire [31:0] fpuOut = `FPU_OUT;   
-  
-   // Two temporary 32-bit registers used by FDIV and FSQRT
-   reg [31:0] tmp1;
-   reg [31:0] tmp2;
-   
-   // Expand the source registers into sign, exponent and fraction.
-   // Normalized, first bit set is bit 23 (addditional bit), or zero.
-   // For now, flush all denormals to zero
-   // TODO: denormals and infinities
-   // Following IEEE754, represented number is +/- frac * 2^(exp-127-23)
-   // (127: bias  23: position of first bit set for normalized numbers)
-   
-   wire        rs1_sign = rs1[31];
-   wire [7:0]  rs1_exp  = rs1[30:23];
-   wire [23:0] rs1_frac = rs1_exp == 8'd0 ? 24'b0 : {1'b1, rs1[22:0]};
-   
-   wire        rs2_sign = rs2[31];
-   wire [7:0]  rs2_exp  = rs2[30:23];
-   wire [23:0] rs2_frac = rs2_exp == 8'd0 ? 24'b0 : {1'b1, rs2[22:0]};
-   
-   wire        rs3_sign = rs3[31];
-   wire [7:0]  rs3_exp  = rs3[30:23];
-   wire [23:0] rs3_frac = rs3_exp == 8'd0 ? 24'b0 : {1'b1, rs3[22:0]};
-
-   // Two high-resolution registers
-   // Register A has the accumulator / shifters / leading zero counter
-   // Normalized if first bit set is bit 47
-   // Represented number is +/- frac * 2^(exp-127-47)
-   
-   reg 	             A_sign;
-   reg signed [8:0]  A_exp;
-   reg signed [49:0] A_frac;
-   
-   reg 	             B_sign;
-   reg signed [8:0]  B_exp;
-   reg signed [49:0] B_frac;
-
-   // Some circuitry used by the FPU micro-instructions:
-
-   // ******************* Comparisons ******************************************
-   // Exponent adder
-   wire signed [8:0]  exp_sum   = B_exp + A_exp;
-   wire signed [8:0]  exp_diff  = B_exp - A_exp;
-   
-   wire expA_EQ_expB   = (exp_diff  == 0);
-   wire fracA_EQ_fracB = (frac_diff == 0);
-   wire fabsA_EQ_fabsB = (expA_EQ_expB && fracA_EQ_fracB);
-   wire fabsA_LT_fabsB = (!exp_diff[8] && !expA_EQ_expB) || 
-                           (expA_EQ_expB && !fracA_EQ_fracB && !frac_diff[50]);
-
-   wire fabsA_LE_fabsB = (!exp_diff[8] && !expA_EQ_expB) || 
-                                              (expA_EQ_expB && !frac_diff[50]);
-   
-   wire fabsB_LT_fabsA = exp_diff[8] || (expA_EQ_expB && frac_diff[50]);
-
-   wire fabsB_LE_fabsA = exp_diff[8] || 
-                           (expA_EQ_expB && (frac_diff[50] || fracA_EQ_fracB));
-
-   wire A_LT_B = A_sign && !B_sign ||
-	         A_sign &&  B_sign && fabsB_LT_fabsA ||
- 		!A_sign && !B_sign && fabsA_LT_fabsB ;
-
-   wire A_LE_B = A_sign && !B_sign ||
-		 A_sign &&  B_sign && fabsB_LE_fabsA ||
- 	        !A_sign && !B_sign && fabsA_LE_fabsB ;
-   
-   wire A_EQ_B = fabsA_EQ_fabsB && (A_sign == B_sign);
-
-   // ****************** Addition, subtraction *********************************
-   wire signed [50:0] frac_sum  = B_frac + A_frac;
-   wire signed [50:0] frac_diff = B_frac - A_frac;
-
-   // ****************** Product ***********************************************
-   wire [49:0] prod_frac = rs1_frac * rs2_frac; // TODO: check overflows
-
-   // exponent of product, once normalized
-   // (obtained by writing expression of product and inspecting exponent)
-   // Two cases: first bit set = 47 or 46 (only possible cases with normals)
-   wire signed [8:0] prod_exp_norm = rs1_exp+rs2_exp-127+{7'b0,prod_frac[47]};
-
-   // detect null product and underflows (all denormals are flushed to zero)
-   wire prod_Z = (prod_exp_norm <= 0) || !(|prod_frac[47:46]);
-   
-   // ****************** Normalization *****************************************
-   // Count leading zeroes in A+B
-   // Note1: CLZ only work with power of two width (hence 14'b0).
-   // Note2: first bit set = 63 - CLZ (of course !)
-   wire [5:0] 	              frac_sum_clz;
-   CLZ clz2({13'b0,frac_sum}, frac_sum_clz);
-   reg [5:0] 		      norm_lshamt; // shift amount for ADD normalization
-
-   // Exponent of A once normalized = A_exp + first_bit_set - 47
-   //                               = A_exp + 63 - clz - 47 = A_exp + 16 - clz
-   // wire signed [8:0] A_exp_norm = A_exp + 16 - {3'b000,A_clz};
-   reg signed [8:0] A_exp_norm;
-   
-   // ****************** Reciprocal (1/x), used by FDIV ************************
-   // Exponent for reciprocal (1/x)
-   // Initial value of x kept in tmp2.
-   wire signed [8:0]  frcp_exp  = 9'd126 + A_exp - $signed({1'b0, tmp2[30:23]});
-
-   // ****************** Reciprocal square root (1/sqrt(x)) ********************
-   // https://en.wikipedia.org/wiki/Fast_inverse_square_root
-   wire [31:0] rsqrt_doom_magic = 32'h5f3759df - {1'b0,rs1[30:1]};
-
-   
-   // ****************** Float to Integer conversion ***************************
-   // -127-23 is standard exponent bias
-   // -6 because it is bit 29 of rs1 that corresponds to bit 47 of A_frac,
-   //    instead of bit 23 (and 23-29 = -6).
-   wire signed [8:0]  fcvt_ftoi_shift = rs1_exp - 9'd127 - 9'd23 - 9'd6; 
-   wire signed [8:0]  neg_fcvt_ftoi_shift = -fcvt_ftoi_shift;
-   
-   wire [31:0] 	A_fcvt_ftoi_shifted =  fcvt_ftoi_shift[8] ? // R or L shift
-                        (|neg_fcvt_ftoi_shift[8:5]  ?  0 :  // underflow
-                     ({A_frac[49:18]} >> neg_fcvt_ftoi_shift[4:0])) : 
-                     ({A_frac[49:18]} << fcvt_ftoi_shift[4:0]);
-  
-   // ******************* Classification ***************************************
-   wire rs1_exp_Z   = (rs1_exp  == 0  );
-   wire rs1_exp_255 = (rs1_exp  == 255);
-   wire rs1_frac_Z  = (rs1_frac == 0  );
-
-   wire [31:0] fclass = {
-      22'b0,				    
-      rs1_exp_255 & rs1_frac[22],                      // 9: quiet NaN
-      rs1_exp_255 & !rs1_frac[22] & (|rs1_frac[21:0]), // 8: sig   NaN
-              !rs1_sign &  rs1_exp_255 & rs1_frac_Z,   // 7: +infinity
-              !rs1_sign & !rs1_exp_Z   & !rs1_exp_255, // 6: +normal
-              !rs1_sign &  rs1_exp_Z   & !rs1_frac_Z,  // 5: +subnormal
-              !rs1_sign &  rs1_exp_Z   & rs1_frac_Z,   // 4: +0  
-               rs1_sign &  rs1_exp_Z   & rs1_frac_Z,   // 3: -0
-               rs1_sign &  rs1_exp_Z   & !rs1_frac_Z,  // 2: -subnormal
-               rs1_sign & !rs1_exp_Z   & !rs1_exp_255, // 1: -normal
-               rs1_sign &  rs1_exp_255 & rs1_frac_Z    // 0: -infinity
-   };
-   
-   /** FPU micro-instructions and ROM ****************************************/
-
-   // Set to 1 for higher-precision FDIV (costs 12 additional cycles per FDIV)
-   localparam PRECISE_DIV = 0;
-   
-   localparam FPMI_READY           = 0; 
-   localparam FPMI_LOAD_AB         = 1;   // A <- rs1; B <- rs2
-   localparam FPMI_LOAD_AB_MUL     = 2;   // A <- norm(rs1*rs2); B <- rs3
-   localparam FPMI_ADD_SWAP        = 3;   // if |A|>|B| swap(A,B);
-                                          // if sign(A) != sign(B) A <- -A
-   localparam FPMI_ADD_SHIFT       = 4;   // shift A to match B exponent
-   localparam FPMI_ADD_ADD         = 5;   // A <- A + B   (or A - B if FSUB)
-   localparam FPMI_ADD_NORM        = 6;   // A <- norm(A) (after ADD_ADD)
-   
-   localparam FPMI_CMP             = 7;   // fpuOut <- test A,B (FEQ,FLE,FLT)
-
-   localparam FPMI_MV_RS1_A        =  8;  // rs1 <- A
-   localparam FPMI_MV_RS2_TMP1     =  9;  // rs1 <- tmp1
-   localparam FPMI_MV_RS2_MHTMP1   = 10;  // rs2 <- -0.5*tmp1
-   localparam FPMI_MV_RS2_TMP2     = 11;  // rs2 <- tmp2
-   localparam FPMI_MV_TMP2_A       = 12;  // tmp2  <- A
-
-   localparam FPMI_FRCP_PROLOG     = 13;  // init reciprocal (1/x) 
-   localparam FPMI_FRCP_ITER1      = 14;  // iteration for reciprocal
-   localparam FPMI_FRCP_ITER2      = 15;  // iteration for reciprocal   
-   localparam FPMI_FRCP_EPILOG     = 16;  // epilog for reciprocal
-   
-   localparam FPMI_FRSQRT_PROLOG   = 17;  // init recipr sqr root (1/sqrt(x))
-   
-   localparam FPMI_FP_TO_INT       = 18;  // fpuOut <- fpoint_to_int(rs1)
-   localparam FPMI_INT_TO_FP       = 19;  // A <- int_to_fpoint(rs1)
-   localparam FPMI_MIN_MAX         = 20;  // fpuOut <- min/max(A,B) 
-
-   localparam FPMI_NB              = 21;
-
-   // Instruction exit flag (if set in current micro-instr, exit microprogram)
-   localparam FPMI_EXIT_FLAG_bit   = 1+$clog2(FPMI_NB);
-   localparam FPMI_EXIT_FLAG       = 1 << FPMI_EXIT_FLAG_bit;
-   
-   reg [6:0] 	             fpmi_PC;    // current micro-instruction pointer
-   reg [1+$clog2(FPMI_NB):0] fpmi_instr; // current micro-instruction
-
-   // current micro-instruction as 1-hot: fpmi_instr == NNN <=> fpmi_is[NNN]
-   (* onehot *)
-   wire [FPMI_NB-1:0] fpmi_is = 1 << fpmi_instr[$clog2(FPMI_NB):0]; 
-   initial fpmi_PC = 0;
-   wire fpuBusy = !fpmi_is[FPMI_READY];
-
-   // Generate a micro-instructions in ROM 
-   task fpmi_gen; input [6:0] instr; begin
-      fpmi_ROM[I] = instr;
-      I = I + 1;
-   end endtask   
-
-   // Generate a FMA sequence in ROM.
-   // Use fpmi_gen_fma(0) in the middle of a micro-program
-   // Use fpmi_gen_fma(FPMI_EXIT_FLAG) if last instruction of micro-program
-   task fpmi_gen_fma; input [6:0] flags; begin
-      fpmi_gen(FPMI_LOAD_AB_MUL);      // A <- norm(rs1*rs2), B <- rs3  
-      fpmi_gen(FPMI_ADD_SWAP);         // if(|A| > |B|) swap(A,B) (and sgn)
-      fpmi_gen(FPMI_ADD_SHIFT);        // shift A according to B exp
-      fpmi_gen(FPMI_ADD_ADD);          // A <- A + B  ( or A - B if FSUB)
-      fpmi_gen(FPMI_ADD_NORM | flags); // A <- normalize(A)
-   end endtask
-   
-   integer I;    // current ROM location in initialization
-   integer iter; // iteration variable for Newton-Raphson (FDIV,FSQRT)
-   localparam FPMI_ROM_SIZE=82 + 12*PRECISE_DIV; 
-   reg [1+$clog2(FPMI_NB):0] fpmi_ROM[0:FPMI_ROM_SIZE-1];
-
-   // Microprograms start addresses
-   // Programatically determined when generating the ROM ('initial' block below)
-   integer FPMPROG_CMP, FPMPROG_ADD, FPMPROG_MUL, FPMPROG_MADD, FPMPROG_DIV;
-   integer FPMPROG_TO_INT, FPMPROG_INT_TO_FP, FPMPROG_SQRT, FPMPROG_MIN_MAX;
-
-   // Start the definition of a microprogram (determines start address)
-   `define FPMPROG_BEGIN(prg) prg = I
-
-   // Ends the definition of a microprogram (displays stats in Verilator)
-   `ifdef BENCH
-    `define FPMPROG_END(prg) \
-        $display("%3d microinstructions used by %s",I-prg,`"prg`")
-   `else
-    `define FPMPROG_END(prg) 
-   `endif
-
-   /******************** Generate microprograms in ROM **********************/
-   initial begin
-
-   `ifdef BENCH
-      $display("Generating FPMI ROM...");
-   `endif
-      I = 0;
-      fpmi_gen(FPMI_READY | FPMI_EXIT_FLAG);
-
-      // ******************** FLT, FLE, FEQ *********************************
-      `FPMPROG_BEGIN(FPMPROG_CMP);
-      fpmi_gen(FPMI_LOAD_AB); // A <- rs1, B <- rs2
-      fpmi_gen(FPMI_CMP | FPMI_EXIT_FLAG);
-      `FPMPROG_END(FPMPROG_CMP);
-      
-      // ******************** FADD, FSUB ************************************
-      `FPMPROG_BEGIN(FPMPROG_ADD);
-      fpmi_gen(FPMI_LOAD_AB);               // A <- rs1, B <- rs2
-      fpmi_gen(FPMI_ADD_SWAP);              // if(|A| > |B|) swap(A,B) (and sgn)
-      fpmi_gen(FPMI_ADD_SHIFT);             // shift A according to B exp
-      fpmi_gen(FPMI_ADD_ADD);               // A <- A + B  ( or A - B if FSUB)
-      fpmi_gen(FPMI_ADD_NORM | FPMI_EXIT_FLAG); // A <- normalize(A)
-      `FPMPROG_END(FPMPROG_ADD);
-      
-      // ******************** FMUL ******************************************
-      `FPMPROG_BEGIN(FPMPROG_MUL);
-      fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
-      `FPMPROG_END(FPMPROG_MUL);
-
-      // ******************** FMADD, FMSUB, FNMADD, FNMSUB ******************
-      `FPMPROG_BEGIN(FPMPROG_MADD);
-      fpmi_gen_fma(FPMI_EXIT_FLAG);
-      `FPMPROG_END(FPMPROG_MADD);      
-
-      // ******************** FDIV ******************************************
-      // https://en.wikipedia.org/wiki/Division_algorithm
-      // https://stackoverflow.com/questions/24792966/
-      // error-using-newton-raphson-iteration-method-for-
-      // floating-point-division
-      //
-      `FPMPROG_BEGIN(FPMPROG_DIV);      
-      // D' <- rs2 normalized between [0.5,1] (set exp to 126)
-      fpmi_gen(FPMI_FRCP_PROLOG);   // A <- -D'*32/17 + 48/17
-      fpmi_gen_fma(0);
-      for(iter=0; iter<3; iter++) begin
-	 if(PRECISE_DIV) begin
-	    // A <- A + A*(1-D'*A)
-	    // (slower more precise iter, but not IEEE754 compliant yet...)
-	    fpmi_gen(FPMI_FRCP_ITER1);
-	    fpmi_gen_fma(0); // 5 cycles
-	    fpmi_gen(FPMI_FRCP_ITER2);
-	    fpmi_gen_fma(0); // 5 cycles	 
-	 end else begin
-	    //  A <- A * (-A*D + 2)
-	    // (faster but less precise)
-	    fpmi_gen(FPMI_FRCP_ITER1);     
-	    fpmi_gen_fma(0); // 5 cycles
-	    fpmi_gen(FPMI_MV_RS1_A);
-	    fpmi_gen(FPMI_LOAD_AB_MUL);
-	 end
-      end
-      fpmi_gen(FPMI_FRCP_EPILOG); // A  <- rs1 * A
-      fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
-      `FPMPROG_END(FPMPROG_DIV);      
-      
-      // ******************** FCVT.W.S, FCVT.WU.S ***************************
-      `FPMPROG_BEGIN(FPMPROG_TO_INT);
-      fpmi_gen(FPMI_LOAD_AB);
-      fpmi_gen(FPMI_FP_TO_INT | FPMI_EXIT_FLAG);
-      `FPMPROG_END(FPMPROG_TO_INT);      
-      
-      // ******************** FCVT.S.W, FCVT.S.WU ***************************
-      `FPMPROG_BEGIN(FPMPROG_INT_TO_FP);
-      fpmi_gen(FPMI_INT_TO_FP);
-      fpmi_gen(FPMI_ADD_ADD);
-      fpmi_gen(FPMI_ADD_NORM | FPMI_EXIT_FLAG);
-      `FPMPROG_END(FPMPROG_INT_TO_FP);
-      
-      // ******************** FSQRT *****************************************
-      // Using Doom's fast inverse square root algorithm:
-      // https://en.wikipedia.org/wiki/Fast_inverse_square_root
-      // http://www.lomont.org/papers/2003/InvSqrt.pdf
-      // TODO: IEEE754-compliant version
-      // See https://t.co/V1SWQ6N6xD?amp=1 (Method of Switching Constants)
-      // See simple effective fast inverse square root with two magic constants
-      //
-      `FPMPROG_BEGIN(FPMPROG_SQRT);
-      // A <- doom_magic - (A >> 1)      
-      fpmi_gen(FPMI_FRSQRT_PROLOG);
-      for(iter=0; iter<2; iter++) begin
-	 // A <- A * (3/2 - (rs1/2 * A * A))      	 
-	 fpmi_gen(FPMI_LOAD_AB_MUL);
-	 fpmi_gen(FPMI_MV_RS1_A);
-         fpmi_gen(FPMI_MV_RS2_MHTMP1);
-	 fpmi_gen_fma(0);
-	 fpmi_gen(FPMI_MV_RS1_A);
-	 fpmi_gen(FPMI_MV_RS2_TMP2);
-	 fpmi_gen(FPMI_LOAD_AB_MUL);
-	 if(iter==0) begin
-	    fpmi_gen(FPMI_MV_TMP2_A);
-	    fpmi_gen(FPMI_MV_RS1_A);
-	    fpmi_gen(FPMI_MV_RS2_TMP2);
-	 end
-      end // Now A contains an approx of 1/sqrt(rs1)
-      // A <- A * rs1
-      fpmi_gen(FPMI_MV_RS1_A);
-      fpmi_gen(FPMI_MV_RS2_TMP1);
-      fpmi_gen(FPMI_LOAD_AB_MUL | FPMI_EXIT_FLAG);
-      `FPMPROG_END(FPMPROG_SQRT);
-      
-      // ******************** FMIN, FMAX ************************************
-      `FPMPROG_BEGIN(FPMPROG_MIN_MAX);
-      fpmi_gen(FPMI_LOAD_AB);
-      fpmi_gen(FPMI_MIN_MAX | FPMI_EXIT_FLAG);
-      `FPMPROG_END(FPMPROG_MIN_MAX);
-      
-`ifdef BENCH      
-      $display("FPMI ROM max address:%d",I-1);
-      $display("FPMI ROM size       :%d",FPMI_ROM_SIZE);      
-      `ASSERT(I <= FPMI_ROM_SIZE,("!!!!!!! FPMI ROM SIZE exceeded !!!!!!!"));
-`endif      
-   end
-
-   // FPU micro-code next instruction
-   wire [6:0] fpmi_PC_next = 
-               (state[EXECUTE_bit] & isFPU)   ? fpmprog   :
-	       fpmi_instr[FPMI_EXIT_FLAG_bit] ? 0         : 
-                                                fpmi_PC+1 ;
-   
-   /*************************************************************************/
-
-`ifndef FPU_EMUL
-   always @(posedge clk) begin
-      fpmi_PC <= fpmi_PC_next;
-      fpmi_instr <= fpmi_ROM[fpmi_PC_next];
-   end
-`endif
-   
    always @(posedge clk) begin
       if(state[WAIT_INSTR_bit]) begin
 	 // Fetch registers as soon as instruction is ready.
@@ -678,231 +274,34 @@ module FemtoRV32(
 	 rs1 <= registerFile[{decomp_rs1IsFP,instr[19:15]}];
 	 rs2 <= registerFile[{decomp_rs2IsFP,instr[24:20]}];
 	 // no need to fetch rs3 here, there is no compressed FMA.
-      end else if(state[EXECUTE_bit] & isFPU) begin
-`ifndef FPU_EMUL
-	 (* parallel_case *)
-	 case(1'b1)
-	   // Single-cycle instructions
-	   isFSGNJ           : `FPU_OUT <= {         rs2[31], rs1[30:0]};
-	   isFSGNJN          : `FPU_OUT <= {        !rs2[31], rs1[30:0]};
-	   isFSGNJX          : `FPU_OUT <= { rs1[31]^rs2[31], rs1[30:0]};
-	   isFCLASS          : `FPU_OUT <= fclass;
-           isFMVXW | isFMVWX : `FPU_OUT <= rs1;
-	 endcase 
-`endif 
-      end else if(fpuBusy) begin 
-	 // Implementation of the micro-instructions	 
-	 (* parallel_case *)	 
-	 case(1'b1)
-	   // A <- rs1 ; B <- rs2
-	   fpmi_is[FPMI_LOAD_AB]: begin
-	      A_sign <= rs1_sign;
-	      A_frac <= {2'b0, rs1_frac, 24'd0};
-	      A_exp  <= {1'b0, rs1_exp}; 
-	      B_sign <= rs2_sign ^ isFSUB;
-	      B_frac <= {2'b0, rs2_frac, 24'd0};
-	      B_exp  <= {1'b0, rs2_exp}; 
-	   end
-
-	   // A <- (+/-) normalize(rs1*rs2);  B <- (+/-)rs3
-	   fpmi_is[FPMI_LOAD_AB_MUL]: begin
-	      A_sign <= rs1_sign ^ rs2_sign ^ (isFNMSUB | isFNMADD);
-	      A_frac <= prod_Z ? 0 :  
-                          (prod_frac[47] ? prod_frac : {prod_frac[48:0],1'b0}); 
-	      A_exp  <= prod_Z ? 0 : prod_exp_norm;
-	      
-	      B_sign <= rs3_sign ^ (isFMSUB | isFNMADD);
-	      B_frac <= {2'b0, rs3_frac, 24'd0};
-	      B_exp  <= {1'b0, rs3_exp};
-	   end
-
-	   // A <- normalize(A) (after ADD_ADD -> norm_lshamt and A_exp_norm)
-	   fpmi_is[FPMI_ADD_NORM]: begin
-	      if(A_exp_norm <= 0 || (A_frac == 0)) begin
-		 A_frac <= 0;
-		 A_exp <= 0;
-	      end else begin
-		 A_frac <= A_frac[48] ? (A_frac >> 1) : A_frac << norm_lshamt;
-		 A_exp  <= A_exp_norm;
-		 // $display("CLZ %b %d",{14'b0,A_frac},A_clz); 
-	      end
-	   end
-
-	   // if(|A| > |B|) swap(A,B)
-	   // if A_sign != B_sign A <- -A
-	   // We always *add*, but replace A_frac with -A_frac if the
-	   // sign of the operands differ, THEN we shift (signed shift). In
-	   // this way, rounding is correct, even when subtracting a
-	   // low magnitude numner from a large magnitude one.
-	   fpmi_is[FPMI_ADD_SWAP]: begin
-	      if(fabsB_LT_fabsA) begin
-		 A_frac <= (A_sign ^ B_sign) ? -B_frac : B_frac; 
-		 B_frac <= A_frac;
-		 A_exp  <= B_exp;  B_exp  <= A_exp;
-		 A_sign <= B_sign; B_sign <= A_sign;
-	      end else if(A_sign ^ B_sign) begin
-		 A_frac <= -A_frac;
-	      end
-	   end
-
-	   // shift A in order to make it match B exponent
-	   fpmi_is[FPMI_ADD_SHIFT]: begin
-	      `ASSERT(!fabsB_LT_fabsA, ("ADD_SHIFT: incorrect order"));
-	      A_frac <= A_frac >>> exp_diff; // note the signed shift !
-	      A_exp <= B_exp;
-	   end
-
-	   // A <- A (+/-) B
-	   fpmi_is[FPMI_ADD_ADD]: begin
-	      A_frac      <= frac_sum[49:0];
-	      A_sign      <= B_sign;
-	      // normalization left shamt = 47 - first_bit_set = clz - 16
-	      norm_lshamt <= frac_sum_clz - 16;
-	      // Exponent of A once normalized = A_exp + first_bit_set - 47
-	      //                 = A_exp + 63 - clz - 47 = A_exp + 16 - clz
-	      A_exp_norm <= A_exp + 16 - {3'b000,frac_sum_clz};
-	   end
-
-	   // A <- result of comparison between A and B
-	   fpmi_is[FPMI_CMP]: begin
-	      `FPU_OUT <= { 31'b0, 
-			    isFLT && A_LT_B || 
-			    isFLE && A_LE_B || 
-			    isFEQ && A_EQ_B
-                          };
-	   end
-
-	   fpmi_is[FPMI_MV_RS2_TMP1] : rs2 <= tmp1;
-	   fpmi_is[FPMI_MV_RS2_TMP2] : rs2 <= tmp2;	   
-	   fpmi_is[FPMI_MV_RS1_A]  : rs1  <= {A_sign,A_exp[7:0],A_frac[46:24]};
-	   fpmi_is[FPMI_MV_TMP2_A] : tmp2 <= {A_sign,A_exp[7:0],A_frac[46:24]};
-	   
-	   // rs2 <= -|tmp1| / 2.0
-	   fpmi_is[FPMI_MV_RS2_MHTMP1]:rs2<={1'b1,tmp1[30:23]-8'd1,tmp1[22:0]};
-
-	   fpmi_is[FPMI_FRCP_PROLOG]: begin
-	      tmp1 <= rs1;
-	      tmp2 <= rs2;
-	      // rs1 <= -D', that is, -(rs2 normalized in [0.5,1])
-	      rs1  <= {1'b1, 8'd126, rs2_frac[22:0]}; 
-	      rs2  <= 32'h3FF0F0F1; // 32/17
-	      rs3  <= 32'h4034B4B5; // 48/17
-	   end
-	   
-	   fpmi_is[FPMI_FRCP_ITER1]: begin
-	      rs1  <= {1'b1, 8'd126, tmp2[22:0]};                // -D'
-	      rs2  <= {A_sign, A_exp[7:0], A_frac[46:24]};       // A
-	      rs3  <= PRECISE_DIV ? 32'h3f800000 : 32'h40000000; //p ? 1.0 : 2.0
-	   end
-
-	   // This one is used only if PRECISE_DIV is set
-	   fpmi_is[FPMI_FRCP_ITER2]: begin
-	      rs1 <= {A_sign, A_exp[7:0], A_frac[46:24]}; // A
-	      rs3 <= rs2;
-	   end
-	   
-	   fpmi_is[FPMI_FRCP_EPILOG]: begin
-	      rs1 <= {tmp2[31], frcp_exp[7:0], A_frac[46:24]}; 
-	      rs2 <= tmp1;
-	   end
-	   
-	   fpmi_is[FPMI_FRSQRT_PROLOG]: begin
-	      tmp1 <= rs1;
-	      tmp2 <= rsqrt_doom_magic;
-	      rs1  <= rsqrt_doom_magic;
-	      rs2  <= rsqrt_doom_magic;
-	      rs3  <= 32'h3fc00000; // 1.5
-	   end
-	   
-	   fpmi_is[FPMI_FP_TO_INT]: begin
-	      // TODO: check overflow
-	      `FPU_OUT <= 
-               (isFCVTWUS | !A_sign) ? A_fcvt_ftoi_shifted 
-                                     : -$signed(A_fcvt_ftoi_shifted);
-	   end
-
-	   fpmi_is[FPMI_INT_TO_FP]: begin
-	      // TODO: rounding
-
-	      // We do a fake addition with zero, to prepare normalization
-	      // (uses CLZ plugged on the adder).
-	      A_frac <= 0;
-	      // 127+23: standard exponent bias
-	      // +6 because it is bit 29 of rs1 that overwrites 
-	      //    bit 47 of A_frac, instead of bit 23 (and 29-23 = 6).
-	      A_exp  <= 127+23+6;
-	      B_frac <=  (isFCVTSWU | !rs1[31]) ? {rs1, 18'd0}
-                                                : {-$signed(rs1), 18'd0};
-	      B_sign <= isFCVTSW & rs1[31];
-	   end
-
-	   fpmi_is[FPMI_MIN_MAX]: begin
-	      `FPU_OUT <=  (A_LT_B ^ isFMAX)
-		                 ? {A_sign, A_exp[7:0], A_frac[46:24]}
-	 	                 : {B_sign, B_exp[7:0], B_frac[46:24]};
-	   end
-	 endcase 
-
-      // register write-back
-      end else if(writeBack) begin 
+      end else if(writeBack & !fpuBusy) begin
 	 if(rdIsFP || |instr[11:7]) begin
             registerFile[{rdIsFP,instr[11:7]}] <= writeBackData;
 	 end
-      end 
+      end
    end
+
+   /***************************************************************************/
+   // The FPU 
+   /***************************************************************************/
+
+   wire fpuBusy;
+   wire [31:0] fpuOut;
+   PetitBateau FPU(
+      .clk(clk),
+      .wr(state[EXECUTE_bit] & isFPU),
+      .instr(instr[31:2]),
+      .rs1(rs1),
+      .rs2(rs2),
+      .rs3(rs3),
+      .busy(fpuBusy),		   
+      .out(fpuOut)		   
+   );
    
-   // RV32F instruction decoder
-   // See table p133 (RV32G instruction listings)
-   // Notes:
-   //  - FLW/FSW handled by LOAD/STORE (instr[2] set if FLW/FSW)
-   //  - For all other F instructions, instr[6:5] == 2'b10
-   //  - FMADD/FMSUB/FNMADD/FNMSUB: instr[4] = 1'b0
-   //  - For all remaining F instructions, instr[4] = 1'b1
-   //  - FMV.X.W and FCLASS have same funct7 (7'b1110000),
-   //      (discriminated by instr[12])
-   //  - there is a big gotcha in the official doc for RV32F:
-   //        the doc says FNMADD computes -rs1*rs2-rs3
-   //          (yes, with *minus* rs3)
-   //        it should have said FNMADD computes -(rs1*rs2+rs3)
-   //                        and FNMSUB compures -(rs1*rs2-rs3)
-   //        they probably did not put the parentheses because when
-   //        you implement it, you change the sign of rs1 and rs3 according
-   //        to the operation rather than the sign of the whole result
-   //        (here, it is done by the FPMI_LOAD_AB_MUL micro instruction).
-   
-   wire isFMADD   = (instr[4:2] == 3'b000); // rd <-   rs1*rs2+rs3
-   wire isFMSUB   = (instr[4:2] == 3'b001); // rd <-   rs1*rs2-rs3
-   wire isFNMSUB  = (instr[4:2] == 3'b010); // rd <- -(rs1*rs2-rs3) 
-   wire isFNMADD  = (instr[4:2] == 3'b011); // rd <- -(rs1*rs2+rs3) 
-
-   wire isFADD    = (instr[4] && (instr[31:27] == 5'b00000));
-   wire isFSUB    = (instr[4] && (instr[31:27] == 5'b00001));
-   wire isFMUL    = (instr[4] && (instr[31:27] == 5'b00010));
-   wire isFDIV    = (instr[4] && (instr[31:27] == 5'b00011));
-   wire isFSQRT   = (instr[4] && (instr[31:27] == 5'b01011));   
-
-   wire isFSGNJ =(instr[4] && (instr[31:27]==5'b00100)&&(instr[13:12]==2'b00));
-   wire isFSGNJN=(instr[4] && (instr[31:27]==5'b00100)&&(instr[13:12]==2'b01));
-   wire isFSGNJX=(instr[4] && (instr[31:27]==5'b00100)&&(instr[13:12]==2'b10));
-
-   wire isFMIN    = (instr[4] && (instr[31:27] == 5'b00101) && !instr[12]);
-   wire isFMAX    = (instr[4] && (instr[31:27] == 5'b00101) &&  instr[12]);
-
-   wire isFEQ=(instr[4] && (instr[31:27]==5'b10100) && (instr[13:12] == 2'b10));
-   wire isFLT=(instr[4] && (instr[31:27]==5'b10100) && (instr[13:12] == 2'b01));
-   wire isFLE=(instr[4] && (instr[31:27]==5'b10100) && (instr[13:12] == 2'b00));
-   
-   wire isFCLASS  = (instr[4] && (instr[31:27] == 5'b11100) &&  instr[12]); 
-   
-   wire isFCVTWS  = (instr[4] && (instr[31:27] == 5'b11000) && !instr[20]);
-   wire isFCVTWUS = (instr[4] && (instr[31:27] == 5'b11000) &&  instr[20]);
-
-   wire isFCVTSW  = (instr[4] && (instr[31:27] == 5'b11010) && !instr[20]);
-   wire isFCVTSWU = (instr[4] && (instr[31:27] == 5'b11010) &&  instr[20]);
-
-   wire isFMVXW   = (instr[4] && (instr[31:27] == 5'b11100) && !instr[12]);
-   wire isFMVWX   = (instr[4] && (instr[31:27] == 5'b11110));
-
+   // There is a single register bank, registers 0..31 are the integer
+   // registers, and 32..63 are the floating point registers, hence
+   // bit 5 of rs1,rs2,rd index is set to 0 for an integer register
+   // and 1 for a fp register. 
 
    // asserted if the destination register is a floating-point register
    wire rdIsFP = (instr[6:2] == 5'b00001)             || // FLW
@@ -939,130 +338,6 @@ module FemtoRV32(
    wire raw_rs2IsFP = (raw_instr[6:5] == 2'b10) || (raw_instr[6:2]==5'b01001);
    wire decomp_rs2IsFP =  (instr[6:5] == 2'b10) || (instr[6:2]==5'b01001);   
 
-   // microprogram
-   reg [6:0] fpmprog;
-   always @(*) begin
-      case(1'b1)
-	isFLT   | isFLE   | isFEQ               : fpmprog = FPMPROG_CMP[6:0];
-	isFADD  | isFSUB                        : fpmprog = FPMPROG_ADD[6:0];
-	isFMUL                                  : fpmprog = FPMPROG_MUL[6:0];
-	isFMADD | isFMSUB | isFNMADD | isFNMSUB : fpmprog = FPMPROG_MADD[6:0];
-	isFDIV                                  : fpmprog = FPMPROG_DIV[6:0];
-	isFSQRT                                 : fpmprog = FPMPROG_SQRT[6:0];
-	isFCVTWS | isFCVTWUS  : fpmprog = FPMPROG_TO_INT[6:0];
-	isFCVTSW | isFCVTSWU  : fpmprog = FPMPROG_INT_TO_FP[6:0];
-	isFMIN   | isFMAX     : fpmprog = FPMPROG_MIN_MAX[6:0];
-	default               : fpmprog = 0;
-      endcase
-   end
-
-   
-/****************************************************************************/
-// Simulated instructions, implemented in C++ in SIM/FPU_funcs.cpp 
-// (toggle C++ emul / Verilog FPU by defining FPU_EMUL)
-   
-`ifdef VERILATOR
-`ifdef FPU_EMUL
-   
- `define FPU_EMUL1(op) `FPU_OUT <= $c32(op,"(",rs1,")")
- `define FPU_EMUL2(op) `FPU_OUT <= $c32(op,"(",rs1,",",rs2,")")
- `define FPU_EMUL3(op) `FPU_OUT <= $c32(op,"(",rs1,",",rs2,",",rs3,")")
-   
-   always @(posedge clk) begin
-      if(isFPU && state[EXECUTE_bit]) begin
-	 case(1'b1)
-	   isFMUL   : `FPU_EMUL2("FMUL");
-	   isFADD   : `FPU_EMUL2("FADD");
-	   isFSUB   : `FPU_EMUL2("FSUB");
-	   isFDIV   : `FPU_EMUL2("FDIV");
-	   isFSQRT  : `FPU_EMUL1("FSQRT");	   
-	   isFMADD  : `FPU_EMUL3("FMADD");	  
-	   isFMSUB  : `FPU_EMUL3("FMSUB");	  
-	   isFNMADD : `FPU_EMUL3("FNMADD");	  
-	   isFNMSUB : `FPU_EMUL3("FNMSUB");	  
-	   isFEQ    : `FPU_EMUL2("FEQ");
-	   isFLT    : `FPU_EMUL2("FLT");
-	   isFLE    : `FPU_EMUL2("FLE");
-	   isFCVTWS : `FPU_EMUL1("FCVTWS"); 
-	   isFCVTWUS: `FPU_EMUL1("FCVTWUS");
-	   isFCVTSW : `FPU_EMUL1("FCVTSW"); 
-	   isFCVTSWU: `FPU_EMUL1("FCVTSWU"); 
-	   isFMIN   : `FPU_EMUL2("FMIN");
-	   isFMAX   : `FPU_EMUL2("FMAX");
-	   isFCLASS : `FPU_EMUL1("FCLASS");
-	   isFSGNJ  : `FPU_EMUL2("FSGNJ");
-	   isFSGNJN : `FPU_EMUL2("FSGNJN");
-	   isFSGNJX : `FPU_EMUL2("FSGNJX");
-           isFMVXW  : `FPU_OUT <= rs1;
-	   isFMVWX  : `FPU_OUT <= rs1;
-         endcase		     
-      end		     
-   end 
-`endif
-`endif 
-
-/****************************************************************************/
-// When doing simulations, compare the result of all operations with
-// what's computed on the host CPU. 
-// Note1: checks use rs1_bkp, rs2_bkp, rs3_bkp because
-//  FDIV and FSQRT overwrite rs1 and rs2
-// Note2: my FDIV and FSQRT are not IEEE754 compliant (yet) ! 
-// (checks commented-out for now)
-   
-`ifdef VERILATOR   
-
- `define FPU_CHECK1(op) \
-       z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,")")
- `define FPU_CHECK2(op) \
-       z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,",",rs2_bkp,")")
- `define FPU_CHECK3(op) \
-       z <= $c32("CHECK_",op,"(",fpuOut,",",rs1_bkp,",",rs2_bkp,",",rs3_bkp,")")
-   
-   reg [31:0] z;
-   reg [31:0] rs1_bkp;
-   reg [31:0] rs2_bkp;
-   reg [31:0] rs3_bkp;   
-
-   always @(posedge clk) begin
-      // Some micro-coded instructions (FDIV/FSQRT) use rs1, rs2 and
-      // rs3 as temporaty registers, so we need to save them to be able
-      // to recompute the operation on the host CPU.
-      if(isFPU && state[EXECUTE_bit]) begin
-	 rs1_bkp <= rs1;
-	 rs2_bkp <= rs2;
-	 rs3_bkp <= rs3;
-      end
-      
-      if(
-	 isFPU && 
-	 (state[WAIT_ALU_OR_MEM_bit] | state[WAIT_ALU_OR_MEM_SKIP_bit]) && 
-         fpmi_PC == 0
-      ) begin
-	 case(1'b1)
-	   isFMUL :   `FPU_CHECK2("FMUL");
-	   isFADD :   `FPU_CHECK2("FADD");
-	   isFSUB :   `FPU_CHECK2("FSUB");
-//	   isFDIV :   `FPU_CHECK2("FDIV");  // yes I know, not IEEE754 yet
-//	   isFSQRT:   `FPU_CHECK1("FSQRT"); // yes I know, not IEEE754 yet
-	   isFMADD:   `FPU_CHECK3("FMADD");	  
-	   isFMSUB:   `FPU_CHECK3("FMSUB");	  
-	   isFNMADD:  `FPU_CHECK3("FNMADD");	  
-	   isFNMSUB:  `FPU_CHECK3("FNMSUB");	  
-	   isFEQ:     `FPU_CHECK2("FEQ");
-	   isFLT:     `FPU_CHECK2("FLT");
-	   isFLE:     `FPU_CHECK2("FLE");
-	   isFCVTWS : `FPU_CHECK1("FCVTWS"); 
-	   isFCVTWUS: `FPU_CHECK1("FCVTWUS");
-	   isFCVTSW : `FPU_CHECK1("FCVTSW"); 
-	   isFCVTSWU: `FPU_CHECK1("FCVTSWU"); 
-	   isFMIN:    `FPU_CHECK2("FMIN");
-	   isFMAX:    `FPU_CHECK2("FMAX");
-	 endcase
-      end
-   end 
-   
-`endif
-   
    /***************************************************************************/
    // Program counter and branch target computation.
    /***************************************************************************/
@@ -1209,8 +484,6 @@ module FemtoRV32(
                loadstore_addr[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
 
    // STORE
-
-   wire [31:0] i_mem_wdata;
    assign mem_wdata[ 7: 0] = rs2[7:0];
    assign mem_wdata[15: 8] = loadstore_addr[0] ? rs2[7:0]  : rs2[15: 8];
    assign mem_wdata[23:16] = loadstore_addr[1] ? rs2[7:0]  : rs2[23:16];
