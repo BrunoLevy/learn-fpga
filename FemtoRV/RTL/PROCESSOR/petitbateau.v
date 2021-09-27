@@ -20,6 +20,10 @@
 //       A*B+C and mux rs1,rs2,rs3,1.0,0.0 to A,B,C based on instr (mux
 //       will be more complicated but will probably reduce overall
 //       critical path)
+// TODO: there are too many different paths between the internal registers,
+//       maybe micro-instructions could be redesigned with this in mind.
+// TODO: the necessity to copy rs1 in E without flushing denormals for
+//       the int-to-fp instructions is unelegant.
 
 // Check condition and display message in simulation
 `ifdef BENCH
@@ -88,8 +92,8 @@ module PetitBateau(
    // sign: 1'b1 (-) or 1'b0 (+)
    // exp: 8-bits, biased exponent
    // frac: 24-bit fraction
-   `define FP_LD(RD,sign,exp,frac) \
-         {RD``_sign, RD``_exp, RD``_frac} <= {sign,exp,frac}
+   `define FP_LD(RD,sign,eexp,frac) \
+         {RD``_sign, RD``_exp, RD``_frac} <= {sign,eexp,frac}
 	 
    // RD <= RS
    // RD,RS: one of A,B,C,D,E
@@ -177,7 +181,7 @@ module PetitBateau(
    // Ends the definition of a microprogram (displays stats in Verilator)
    `ifdef BENCH
     `define FPMPROG_END(prg) \
-        $display("%3d microinstructions used by %d:%s",I-prg,prg,`"prg`")
+        $display("#  %3d microinstructions used by %d:%s",I-prg,prg,`"prg`")
    `else
     `define FPMPROG_END(prg) 
    `endif
@@ -186,7 +190,7 @@ module PetitBateau(
    initial begin
 
    `ifdef BENCH
-      $display("Generating FPMI ROM...");
+      $display("#  Generating FPMI ROM...");
    `endif
       I = 0;
       fpmi_gen(FPMI_READY | FPMI_EXIT_FLAG);
@@ -299,8 +303,8 @@ module PetitBateau(
       `FPMPROG_END(FPMPROG_MIN_MAX);
       
 `ifdef BENCH      
-      $display("FPMI ROM max address:%d",I-1);
-      $display("FPMI ROM size       :%d",FPMI_ROM_SIZE);      
+      $display("#  FPMI ROM max address:%d",I-1);
+      $display("#  FPMI ROM size       :%d",FPMI_ROM_SIZE);      
       `ASSERT(I <= FPMI_ROM_SIZE,("!!!!!!! FPMI ROM SIZE exceeded !!!!!!!"));
 `endif      
    end
@@ -339,11 +343,11 @@ module PetitBateau(
    always @(posedge clk) begin
       if(wr) begin
          // Denormals are flushed to zero
-         `FP_LD(A, rs1[31], rs1[30:23], |rs1[30:23]?{1'b1,rs1[22:0]}:24'b0);
-         `FP_LD(B, rs2[31], rs2[30:23], |rs2[30:23]?{1'b1,rs2[22:0]}:24'b0);
-         `FP_LD(C, rs3[31], rs3[30:23], |rs3[30:23]?{1'b1,rs3[22:0]}:24'b0);
+         `FP_LD(A, rs1[31], rs1[30:23], (|rs1[30:23]?{1'b1,rs1[22:0]}:24'b0));
+         `FP_LD(B, rs2[31], rs2[30:23], (|rs2[30:23]?{1'b1,rs2[22:0]}:24'b0));
+         `FP_LD(C, rs3[31], rs3[30:23], (|rs3[30:23]?{1'b1,rs3[22:0]}:24'b0));
 
-	 // Backup rs1 in E without flusing to zero (for int-to-fp instructions)
+	 // Backup rs1 in E without flushing to zero (for int2fp instructions)
          `FP_LD32(E, rs1);	 
 
          // Single-cycle instructions
