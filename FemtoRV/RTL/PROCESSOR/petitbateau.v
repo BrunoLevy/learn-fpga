@@ -16,9 +16,6 @@
 // Bruno Levy, 2021
 /******************************************************************************/
 
-// TODO: expand A,B,C,D,E as sign,exp,frac and add 1 bit to frac
-//       define `A...`E macros to assign them easily
-//       flush-to-zero done only once when reading rs1,rs2,rs3 to A,B,C
 // TODO: instead of mux between A,B,C and FMA, make FMA always compute
 //       A*B+C and mux rs1,rs2,rs3,1.0,0.0 to A,B,C based on instr (mux
 //       will be more complicated but will probably reduce overall
@@ -53,6 +50,20 @@ module PetitBateau(
    // in C++). See SIM/FPU_funcs.{h,cpp}
 //`define FPU_EMUL
 
+   // Two high-resolution registers for the FMA, that computes X+Y
+   // Register X has the accumulator / shifters / leading zero counter
+   // Normalized if first bit set is bit 47
+   // Represented number is +/- frac * 2^(exp-127-47)
+   
+   reg X_sign; reg signed [8:0] X_exp; reg signed [49:0] X_frac;
+   reg Y_sign; reg signed [8:0] Y_exp; reg signed [49:0] Y_frac;
+   
+   // FPU output = 32 MSBs of X register (see below)
+   // A macro to easily write to it (`FPU_OUT <= ...),
+   // used when FPU output is an integer.
+   `define X {X_sign, X_exp[7:0], X_frac[46:24]}
+   assign out = `X;
+   
    // Five single-precision floating-point registers for internal use.
    // A,B,C are wired to the FMA that computes either A*B+C or A+B
    // D,E are temporaries used by FDIV and FSQRT
@@ -63,6 +74,8 @@ module PetitBateau(
    reg C_sign; reg [7:0] C_exp; reg [23:0] C_frac;
    reg D_sign; reg [7:0] D_exp; reg [23:0] D_frac;
    reg E_sign; reg [7:0] E_exp; reg [23:0] E_frac;
+   
+   /*************************************************************************/
 
    // Load a 32-bit value in RD
    // RD:  one of A,B,C,D,E
@@ -82,126 +95,6 @@ module PetitBateau(
    // RD,RS: one of A,B,C,D,E
    `define FP_MV(RD,RS)            \
          {RD``_sign, RD``_exp, RD``_frac} <= {RS``_sign, RS``_exp, RS``_frac}
-
-   // Two high-resolution registers for the FMA
-   // Register X has the accumulator / shifters / leading zero counter
-   // Normalized if first bit set is bit 47
-   // Represented number is +/- frac * 2^(exp-127-47)
-   
-   reg X_sign; reg signed [8:0] X_exp; reg signed [49:0] X_frac;
-   reg Y_sign; reg signed [8:0] Y_exp; reg signed [49:0] Y_frac;
-   
-   // FPU output = 32 MSBs of X register (see below)
-   // A macro to easily write to it (`FPU_OUT <= ...),
-   // used when FPU output is an integer.
-   `define X {X_sign, X_exp[7:0], X_frac[46:24]}
-   assign out = `X;
-
-   // Some circuitry used by the FPU micro-instructions:
-
-   // ******************* Comparisons ******************************************
-   // Exponent adder
-   wire signed [8:0]  exp_sum   = Y_exp + X_exp;
-   wire signed [8:0]  exp_diff  = Y_exp - X_exp;
-   
-   wire expX_EQ_expY   = (exp_diff  == 0);
-   wire fracX_EQ_fracY = (frac_diff == 0);
-   wire fabsX_EQ_fabsY = (expX_EQ_expY && fracX_EQ_fracY);
-   wire fabsX_LT_fabsY = (!exp_diff[8] && !expX_EQ_expY) || 
-                           (expX_EQ_expY && !fracX_EQ_fracY && !frac_diff[50]);
-
-   wire fabsX_LE_fabsY = (!exp_diff[8] && !expX_EQ_expY) || 
-                                              (expX_EQ_expY && !frac_diff[50]);
-   
-   wire fabsY_LT_fabsX = exp_diff[8] || (expX_EQ_expY && frac_diff[50]);
-
-   wire fabsY_LE_fabsX = exp_diff[8] || 
-                           (expX_EQ_expY && (frac_diff[50] || fracX_EQ_fracY));
-
-   wire X_LT_Y = X_sign && !Y_sign ||
-	         X_sign &&  Y_sign && fabsY_LT_fabsX ||
- 		!X_sign && !Y_sign && fabsX_LT_fabsY ;
-
-   wire X_LE_Y = X_sign && !Y_sign ||
-		 X_sign &&  Y_sign && fabsY_LE_fabsX ||
- 	        !X_sign && !Y_sign && fabsX_LE_fabsY ;
-   
-   wire X_EQ_Y = fabsX_EQ_fabsY && (X_sign == Y_sign);
-
-   // ****************** Addition, subtraction *********************************
-   wire signed [50:0] frac_sum  = Y_frac + X_frac;
-   wire signed [50:0] frac_diff = Y_frac - X_frac;
-
-   // ****************** Product ***********************************************
-   wire [49:0] prod_frac = A_frac * B_frac; // TODO: check overflows
-
-   // exponent of product, once normalized
-   // (obtained by writing expression of product and inspecting exponent)
-   // Two cases: first bit set = 47 or 46 (only possible cases with normals)
-   wire signed [8:0] prod_exp_norm = A_exp+B_exp-127+{7'b0,prod_frac[47]};
-
-   // detect null product and underflows (all denormals are flushed to zero)
-   wire prod_Z = (prod_exp_norm <= 0) || !(|prod_frac[47:46]);
-
-   // ****************** Normalization *****************************************
-   // Count leading zeroes in A+B
-   // Note1: CLZ only work with power of two width (hence 14'b0).
-   // Note2: first bit set = 63 - CLZ (of course !)
-   wire [5:0] 	              frac_sum_clz;
-   CLZ clz2({13'b0,frac_sum}, frac_sum_clz);
-   reg [5:0] 		      norm_lshamt; // shift amount for ADD normalization
-
-   // Exponent of A once normalized = X_exp + first_bit_set - 47
-   //                               = X_exp + 63 - clz - 47 = X_exp + 16 - clz
-   // X_exp_norm <= X_exp + 16 - {3'b000,A_clz};
-   reg signed [8:0] X_exp_norm;
-
-   // ****************** Reciprocal (1/x), used by FDIV ************************
-   // Exponent for reciprocal (1/x)
-   // Initial value of x kept in E.
-   wire signed [8:0]  frcp_exp  = 9'd126 + X_exp - $signed({1'b0, E_exp});
-
-   // ****************** Reciprocal square root (1/sqrt(x)) ********************
-   // https://en.wikipedia.org/wiki/Fast_inverse_square_root
-   wire [31:0] rsqrt_doom_magic = 32'h5f3759df - {1'b0,A_exp, A_frac[22:1]};
-
-   // ****************** Float to Integer conversion ***************************
-   // -127-23 is standard exponent bias
-   // -6 because it is bit 29 of A that corresponds to bit 47 of A_frac,
-   //    instead of bit 23 (and 23-29 = -6).
-   wire signed [8:0]  fcvt_ftoi_shift = A_exp - 9'd127 - 9'd23 - 9'd6; 
-   wire signed [8:0]  neg_fcvt_ftoi_shift = -fcvt_ftoi_shift;
-   
-   wire [31:0] 	X_fcvt_ftoi_shifted =  fcvt_ftoi_shift[8] ? // R or L shift
-                        (|neg_fcvt_ftoi_shift[8:5]  ?  0 :  // underflow
-                     ({X_frac[49:18]} >> neg_fcvt_ftoi_shift[4:0])) : 
-                     ({X_frac[49:18]} << fcvt_ftoi_shift[4:0]);
-   
-   // ******************* Classification ***************************************
-
-   // For now, flush all denormals to zero
-   // TODO: handle infinities and NaNs...
-   wire [31:0] rs1_flushed = |rs1[30:23] ? rs1 : 32'b0;
-   wire [31:0] rs2_flushed = |rs2[30:23] ? rs2 : 32'b0;
-   wire [31:0] rs3_flushed = |rs3[30:23] ? rs3 : 32'b0;   
-   
-   wire rs1_exp_Z   = (rs1[30:23] == 0  );
-   wire rs1_exp_255 = (rs1[30:23] == 255);
-   wire rs1_frac_Z  = (rs1[22:0]  == 0  );
-   
-   wire [31:0] fclass = {
-      22'b0,				    
-      rs1_exp_255 &  rs1[22],                         // 9: quiet NaN
-      rs1_exp_255 & !rs1[22] & (|rs1[21:0]),          // 8: sig   NaN
-              !rs1[31] &  rs1_exp_255 & rs1_frac_Z,   // 7: +infinity
-              !rs1[31] & !rs1_exp_Z   & !rs1_exp_255, // 6: +normal
-              !rs1[31] &  rs1_exp_Z   & !rs1_frac_Z,  // 5: +subnormal
-              !rs1[31] &  rs1_exp_Z   & rs1_frac_Z,   // 4: +0  
-               rs1[31] &  rs1_exp_Z   & rs1_frac_Z,   // 3: -0
-               rs1[31] &  rs1_exp_Z   & !rs1_frac_Z,  // 2: -subnormal
-               rs1[31] & !rs1_exp_Z   & !rs1_exp_255, // 1: -normal
-               rs1[31] &  rs1_exp_255 & rs1_frac_Z    // 0: -infinity
-   };
 
    /** FPU micro-instructions and ROM ****************************************/
 
@@ -446,9 +339,12 @@ module PetitBateau(
    always @(posedge clk) begin
       if(wr) begin
          // Denormals are flushed to zero
-         `FP_LD(A, rs1[31], rs1[30:23], |rs1[30:23]?{1'b1, rs1[22:0]}:24'b0);
-         `FP_LD(B, rs2[31], rs2[30:23], |rs2[30:23]?{1'b1, rs2[22:0]}:24'b0);
-         `FP_LD(C, rs3[31], rs3[30:23], |rs3[30:23]?{1'b1, rs3[22:0]}:24'b0);
+         `FP_LD(A, rs1[31], rs1[30:23], |rs1[30:23]?{1'b1,rs1[22:0]}:24'b0);
+         `FP_LD(B, rs2[31], rs2[30:23], |rs2[30:23]?{1'b1,rs2[22:0]}:24'b0);
+         `FP_LD(C, rs3[31], rs3[30:23], |rs3[30:23]?{1'b1,rs3[22:0]}:24'b0);
+
+	 // Backup rs1 in E without flusing to zero (for int-to-fp instructions)
+         `FP_LD32(E, rs1);	 
 
          // Single-cycle instructions
 	 (* parallel_case *)
@@ -528,7 +424,6 @@ module PetitBateau(
 	      end else begin
 		 X_frac <= X_frac[48] ? (X_frac >> 1) : X_frac << norm_lshamt;
 		 X_exp  <= X_exp_norm;
-		 // $display("CLZ %b %d",{14'b0,A_frac},A_clz); 
 	      end
 	   end
 
@@ -602,9 +497,9 @@ module PetitBateau(
 	      //    bit 47 of A_frac, instead of bit 23 (and 29-23 = 6).
 	      X_exp  <= 127+23+6;
 	      Y_frac <= 
-	         (isFCVTSWU | !A_sign) ? {A_sign, A_exp, A_frac[22:0], 18'd0}
-                           : {-$signed({A_sign, A_exp, A_frac[22:0]}), 18'd0};
-	      Y_sign <= isFCVTSW & A_sign;
+	         (isFCVTSWU | !E_sign) ? {E_sign, E_exp, E_frac[22:0], 18'd0}
+                           : {-$signed({E_sign, E_exp, E_frac[22:0]}), 18'd0};
+	      Y_sign <= isFCVTSW & E_sign;
 	   end 
 	   
 	   fpmi_is[FPMI_MIN_MAX]: begin
@@ -617,6 +512,105 @@ module PetitBateau(
    end
 `endif   
 
+   // Some circuitry used by the FPU micro-instructions:
+
+   // ******************* Comparisons ******************************************
+   // Exponent adder
+   wire signed [8:0]  exp_sum   = Y_exp + X_exp;
+   wire signed [8:0]  exp_diff  = Y_exp - X_exp;
+   
+   wire expX_EQ_expY   = (exp_diff  == 0);
+   wire fracX_EQ_fracY = (frac_diff == 0);
+   wire fabsX_EQ_fabsY = (expX_EQ_expY && fracX_EQ_fracY);
+   wire fabsX_LT_fabsY = (!exp_diff[8] && !expX_EQ_expY) || 
+                           (expX_EQ_expY && !fracX_EQ_fracY && !frac_diff[50]);
+
+   wire fabsX_LE_fabsY = (!exp_diff[8] && !expX_EQ_expY) || 
+                                              (expX_EQ_expY && !frac_diff[50]);
+   
+   wire fabsY_LT_fabsX = exp_diff[8] || (expX_EQ_expY && frac_diff[50]);
+
+   wire fabsY_LE_fabsX = exp_diff[8] || 
+                           (expX_EQ_expY && (frac_diff[50] || fracX_EQ_fracY));
+
+   wire X_LT_Y = X_sign && !Y_sign ||
+	         X_sign &&  Y_sign && fabsY_LT_fabsX ||
+ 		!X_sign && !Y_sign && fabsX_LT_fabsY ;
+
+   wire X_LE_Y = X_sign && !Y_sign ||
+		 X_sign &&  Y_sign && fabsY_LE_fabsX ||
+ 	        !X_sign && !Y_sign && fabsX_LE_fabsY ;
+   
+   wire X_EQ_Y = fabsX_EQ_fabsY && (X_sign == Y_sign);
+
+   // ****************** Addition, subtraction *********************************
+   wire signed [50:0] frac_sum  = Y_frac + X_frac;
+   wire signed [50:0] frac_diff = Y_frac - X_frac;
+
+   // ****************** Product ***********************************************
+   wire [49:0] prod_frac = A_frac * B_frac; // TODO: check overflows
+
+   // exponent of product, once normalized
+   // (obtained by writing expression of product and inspecting exponent)
+   // Two cases: first bit set = 47 or 46 (only possible cases with normals)
+   wire signed [8:0] prod_exp_norm = A_exp+B_exp-127+{7'b0,prod_frac[47]};
+
+   // detect null product and underflows (all denormals are flushed to zero)
+   wire prod_Z = (prod_exp_norm <= 0) || !(|prod_frac[47:46]);
+
+   // ****************** Normalization *****************************************
+   // Count leading zeroes in A+B
+   // Note1: CLZ only work with power of two width (hence 14'b0).
+   // Note2: first bit set = 63 - CLZ (of course !)
+   wire [5:0] 	              frac_sum_clz;
+   CLZ clz2({13'b0,frac_sum}, frac_sum_clz);
+   reg [5:0] 		      norm_lshamt; // shift amount for ADD normalization
+
+   // Exponent of A once normalized = X_exp + first_bit_set - 47
+   //                               = X_exp + 63 - clz - 47 = X_exp + 16 - clz
+   // X_exp_norm <= X_exp + 16 - {3'b000,A_clz};
+   reg signed [8:0] X_exp_norm;
+
+   // ****************** Reciprocal (1/x), used by FDIV ************************
+   // Exponent for reciprocal (1/x)
+   // Initial value of x kept in E.
+   wire signed [8:0]  frcp_exp  = 9'd126 + X_exp - $signed({1'b0, E_exp});
+
+   // ****************** Reciprocal square root (1/sqrt(x)) ********************
+   // https://en.wikipedia.org/wiki/Fast_inverse_square_root
+   wire [31:0] rsqrt_doom_magic = 32'h5f3759df - {1'b0,A_exp, A_frac[22:1]};
+
+   // ****************** Float to Integer conversion ***************************
+   // -127-23 is standard exponent bias
+   // -6 because it is bit 29 of A that corresponds to bit 47 of A_frac,
+   //    instead of bit 23 (and 23-29 = -6).
+   wire signed [8:0]  fcvt_ftoi_shift = A_exp - 9'd127 - 9'd23 - 9'd6; 
+   wire signed [8:0]  neg_fcvt_ftoi_shift = -fcvt_ftoi_shift;
+   
+   wire [31:0] 	X_fcvt_ftoi_shifted =  fcvt_ftoi_shift[8] ? // R or L shift
+                        (|neg_fcvt_ftoi_shift[8:5]  ?  0 :  // underflow
+                     ({X_frac[49:18]} >> neg_fcvt_ftoi_shift[4:0])) : 
+                     ({X_frac[49:18]} << fcvt_ftoi_shift[4:0]);
+   
+   // ******************* Classification ***************************************
+
+   wire rs1_exp_Z   = (rs1[30:23] == 0  );
+   wire rs1_exp_255 = (rs1[30:23] == 255);
+   wire rs1_frac_Z  = (rs1[22:0]  == 0  );
+   
+   wire [31:0] fclass = {
+      22'b0,				    
+      rs1_exp_255 &  rs1[22],                         // 9: quiet NaN
+      rs1_exp_255 & !rs1[22] & (|rs1[21:0]),          // 8: sig   NaN
+              !rs1[31] &  rs1_exp_255 & rs1_frac_Z,   // 7: +infinity
+              !rs1[31] & !rs1_exp_Z   & !rs1_exp_255, // 6: +normal
+              !rs1[31] &  rs1_exp_Z   & !rs1_frac_Z,  // 5: +subnormal
+              !rs1[31] &  rs1_exp_Z   & rs1_frac_Z,   // 4: +0  
+               rs1[31] &  rs1_exp_Z   & rs1_frac_Z,   // 3: -0
+               rs1[31] &  rs1_exp_Z   & !rs1_frac_Z,  // 2: -subnormal
+               rs1[31] & !rs1_exp_Z   & !rs1_exp_255, // 1: -normal
+               rs1[31] &  rs1_exp_255 & rs1_frac_Z    // 0: -infinity
+   };
 
    /************************************************************************/
    
