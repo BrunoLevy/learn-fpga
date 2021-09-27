@@ -19,6 +19,10 @@
 // TODO: expand A,B,C,D,E as sign,exp,frac and add 1 bit to frac
 //       define `A...`E macros to assign them easily
 //       flush-to-zero done only once when reading rs1,rs2,rs3 to A,B,C
+// TODO: instead of mux between A,B,C and FMA, make FMA always compute
+//       A*B+C and mux rs1,rs2,rs3,1.0,0.0 to A,B,C based on instr (mux
+//       will be more complicated but will probably reduce overall
+//       critical path)
 
 // Check condition and display message in simulation
 `ifdef BENCH
@@ -49,48 +53,49 @@ module PetitBateau(
    // in C++). See SIM/FPU_funcs.{h,cpp}
 //`define FPU_EMUL
 
-   // Five 32-bit registers
+   // Five single-precision floating-point registers for internal use.
    // A,B,C are wired to the FMA that computes either A*B+C or A+B
    // D,E are temporaries used by FDIV and FSQRT
-   reg [31:0] 	 A,B,C,D,E;
+   // Following IEEE754, represented number is +/- frac * 2^(exp-127-23)
+   // (127: bias  23: position of first bit set for normalized numbers)
+   reg A_sign; reg [7:0] A_exp; reg [23:0] A_frac;
+   reg B_sign; reg [7:0] B_exp; reg [23:0] B_frac;
+   reg C_sign; reg [7:0] C_exp; reg [23:0] C_frac;
+   reg D_sign; reg [7:0] D_exp; reg [23:0] D_frac;
+   reg E_sign; reg [7:0] E_exp; reg [23:0] E_frac;
+
+   // Load a 32-bit value in RD
+   // RD:  one of A,B,C,D,E
+   // VAL: a 32-bit value
+   `define FP_LD32(RD,VAL)         \
+         {RD``_sign, RD``_exp, RD``_frac[22:0]} <= VAL; RD``_frac[23] <= 1'b1
+	 
+   // Load floating point value in RD by sign, exponent, fraction
+   // RD: one of A,B,C,D,E
+   // sign: 1'b1 (-) or 1'b0 (+)
+   // exp: 8-bits, biased exponent
+   // frac: 24-bit fraction
+   `define FP_LD(RD,sign,exp,frac) \
+         {RD``_sign, RD``_exp, RD``_frac} <= {sign,exp,frac}
+	 
+   // RD <= RS
+   // RD,RS: one of A,B,C,D,E
+   `define FP_MV(RD,RS)            \
+         {RD``_sign, RD``_exp, RD``_frac} <= {RS``_sign, RS``_exp, RS``_frac}
 
    // Two high-resolution registers for the FMA
    // Register X has the accumulator / shifters / leading zero counter
    // Normalized if first bit set is bit 47
    // Represented number is +/- frac * 2^(exp-127-47)
    
-   reg 	             X_sign;
-   reg signed [8:0]  X_exp;
-   reg signed [49:0] X_frac;
-   
-   reg 	             Y_sign;
-   reg signed [8:0]  Y_exp;
-   reg signed [49:0] Y_frac;
+   reg X_sign; reg signed [8:0] X_exp; reg signed [49:0] X_frac;
+   reg Y_sign; reg signed [8:0] Y_exp; reg signed [49:0] Y_frac;
    
    // FPU output = 32 MSBs of X register (see below)
    // A macro to easily write to it (`FPU_OUT <= ...),
    // used when FPU output is an integer.
-   `define OUT {X_sign, X_exp[7:0], X_frac[46:24]}
-   assign out = `OUT;
-
-   // Expand FMA's input into sign, exponent and fraction.
-   // Normalized, first bit set is bit 23 (addditional bit), or zero.
-   // For now, all denormals are flushed to zero
-   // TODO: denormals and infinities
-   // Following IEEE754, represented number is +/- frac * 2^(exp-127-23)
-   // (127: bias  23: position of first bit set for normalized numbers)
-   
-   wire        A_sign = A[31];
-   wire [7:0]  A_exp  = A[30:23];
-   wire [23:0] A_frac = (A_exp == 0) ? 24'b0 : {1'b1, A[22:0]};
-
-   wire        B_sign = B[31];
-   wire [7:0]  B_exp  = B[30:23];
-   wire [23:0] B_frac = (B_exp == 0) ? 24'b0 : {1'b1, B[22:0]};
-   
-   wire        C_sign = C[31];
-   wire [7:0]  C_exp  = C[30:23];
-   wire [23:0] C_frac = (C_exp == 0) ? 24'b0 : {1'b1, C[22:0]};
+   `define X {X_sign, X_exp[7:0], X_frac[46:24]}
+   assign out = `X;
 
    // Some circuitry used by the FPU micro-instructions:
 
@@ -154,11 +159,11 @@ module PetitBateau(
    // ****************** Reciprocal (1/x), used by FDIV ************************
    // Exponent for reciprocal (1/x)
    // Initial value of x kept in E.
-   wire signed [8:0]  frcp_exp  = 9'd126 + X_exp - $signed({1'b0, E[30:23]});
+   wire signed [8:0]  frcp_exp  = 9'd126 + X_exp - $signed({1'b0, E_exp});
 
    // ****************** Reciprocal square root (1/sqrt(x)) ********************
    // https://en.wikipedia.org/wiki/Fast_inverse_square_root
-   wire [31:0] rsqrt_doom_magic = 32'h5f3759df - {1'b0,A[30:1]};
+   wire [31:0] rsqrt_doom_magic = 32'h5f3759df - {1'b0,A_exp, A_frac[22:1]};
 
    // ****************** Float to Integer conversion ***************************
    // -127-23 is standard exponent bias
@@ -186,8 +191,8 @@ module PetitBateau(
    
    wire [31:0] fclass = {
       22'b0,				    
-      rs1_exp_255 &  rs1[22],                          // 9: quiet NaN
-      rs1_exp_255 & !rs1[22] & (|rs1[21:0]),           // 8: sig   NaN
+      rs1_exp_255 &  rs1[22],                         // 9: quiet NaN
+      rs1_exp_255 & !rs1[22] & (|rs1[21:0]),          // 8: sig   NaN
               !rs1[31] &  rs1_exp_255 & rs1_frac_Z,   // 7: +infinity
               !rs1[31] & !rs1_exp_Z   & !rs1_exp_255, // 6: +normal
               !rs1[31] &  rs1_exp_Z   & !rs1_frac_Z,  // 5: +subnormal
@@ -216,7 +221,7 @@ module PetitBateau(
 
    localparam FPMI_MV_A_X          =  8;  // A <- X
    localparam FPMI_MV_B_D          =  9;  // B <- D
-   localparam FPMI_MV_B_MHD        = 10;  // B <- -0.5*D
+   localparam FPMI_MV_B_NH_D       = 10;  // B <- -0.5*|D|
    localparam FPMI_MV_B_E          = 11;  // B <- E
    localparam FPMI_MV_E_X          = 12;  // E <- X
 
@@ -295,14 +300,14 @@ module PetitBateau(
 
       // ******************** FLT, FLE, FEQ *********************************
       `FPMPROG_BEGIN(FPMPROG_CMP);
-      fpmi_gen(FPMI_LOAD_XY); // X <- A, Y <- B
-      fpmi_gen(FPMI_CMP | FPMI_EXIT_FLAG);
+      fpmi_gen(FPMI_LOAD_XY);              // X <- A, Y <- B
+      fpmi_gen(FPMI_CMP | FPMI_EXIT_FLAG); // X <- compare(X,Y)
       `FPMPROG_END(FPMPROG_CMP);
       
       // ******************** FADD, FSUB ************************************
       `FPMPROG_BEGIN(FPMPROG_ADD);
       fpmi_gen(FPMI_LOAD_XY);               // X <- A, Y <- B
-      fpmi_gen(FPMI_ADD_SWAP);              // if(|X| > |Y|) swap(X,Y) (and sgn)
+      fpmi_gen(FPMI_ADD_SWAP);              // if(|X| > |Y|) swap(X,Y) (,sgn)
       fpmi_gen(FPMI_ADD_SHIFT);             // shift X according to Y exp
       fpmi_gen(FPMI_ADD_ADD);               // X <- X + Y
       fpmi_gen(FPMI_ADD_NORM | FPMI_EXIT_FLAG); // X <- normalize(X)
@@ -310,12 +315,12 @@ module PetitBateau(
       
       // ******************** FMUL ******************************************
       `FPMPROG_BEGIN(FPMPROG_MUL);
-      fpmi_gen(FPMI_LOAD_XY_MUL | FPMI_EXIT_FLAG);
+      fpmi_gen(FPMI_LOAD_XY_MUL | FPMI_EXIT_FLAG); // X <- A*B
       `FPMPROG_END(FPMPROG_MUL);
 
       // ******************** FMADD, FMSUB, FNMADD, FNMSUB ******************
       `FPMPROG_BEGIN(FPMPROG_MADD);
-      fpmi_gen_fma(FPMI_EXIT_FLAG);
+      fpmi_gen_fma(FPMI_EXIT_FLAG); // X <- A*B+C (5 cycles)
       `FPMPROG_END(FPMPROG_MADD);      
 
       // ******************** FDIV ******************************************
@@ -325,28 +330,28 @@ module PetitBateau(
       // floating-point-division
       //
       `FPMPROG_BEGIN(FPMPROG_DIV);      
-      // D' <- rs2 normalized between [0.5,1] (set exp to 126)
-      fpmi_gen(FPMI_FRCP_PROLOG);   // X <- -D'*32/17 + 48/17
-      fpmi_gen_fma(0);
+      // D' = denominator (rs2) normalized between [0.5,1] (set exp to 126)
+      fpmi_gen(FPMI_FRCP_PROLOG); // D<-A; E<-B; A<-(-D'); B<-32/17; C<-48/17
+      fpmi_gen_fma(0);            // X <- A*B+C (= -D'*32/17 + 48/17)
       for(iter=0; iter<3; iter++) begin
 	 if(PRECISE_DIV) begin
 	    // X <- X + X*(1-D'*X)
 	    // (slower more precise iter, but not IEEE754 compliant yet...)
-	    fpmi_gen(FPMI_FRCP_ITER1);
-	    fpmi_gen_fma(0); // 5 cycles
-	    fpmi_gen(FPMI_FRCP_ITER2);
-	    fpmi_gen_fma(0); // 5 cycles	 
+	    fpmi_gen(FPMI_FRCP_ITER1); // A <- -D'; B <- X; C <- 1.0f
+	    fpmi_gen_fma(0);           // X <- A*B+C (5 cycles)
+	    fpmi_gen(FPMI_FRCP_ITER2); // A <- X; C <- B
+	    fpmi_gen_fma(0);           // X <- A*B+C (5 cycles)
 	 end else begin
 	    //  X <- X * (-X*D' + 2)
 	    // (faster but less precise)
-	    fpmi_gen(FPMI_FRCP_ITER1);     
-	    fpmi_gen_fma(0); // 5 cycles
-	    fpmi_gen(FPMI_MV_A_X);
-	    fpmi_gen(FPMI_LOAD_XY_MUL);
+	    fpmi_gen(FPMI_FRCP_ITER1);  // A <- -D'; B <- X; C <- 2.0f    
+	    fpmi_gen_fma(0);            // X <- A*B+C (5 cycles)
+	    fpmi_gen(FPMI_MV_A_X);      // A <- X
+	    fpmi_gen(FPMI_LOAD_XY_MUL); // X <- A*B; Y <- C
 	 end
       end
-      fpmi_gen(FPMI_FRCP_EPILOG); // X  <- rs1 * X
-      fpmi_gen(FPMI_LOAD_XY_MUL | FPMI_EXIT_FLAG);
+      fpmi_gen(FPMI_FRCP_EPILOG); // A <- (E_sign,frcp_exp,X_frac); B <- D
+      fpmi_gen(FPMI_LOAD_XY_MUL | FPMI_EXIT_FLAG); // X <- A*B
       `FPMPROG_END(FPMPROG_DIV);      
       
       // ******************** FCVT.W.S, FCVT.WU.S ***************************
@@ -356,10 +361,10 @@ module PetitBateau(
       `FPMPROG_END(FPMPROG_FP_TO_INT);      
       
       // ******************** FCVT.S.W, FCVT.S.WU ***************************
-      `FPMPROG_BEGIN(FPMPROG_INT_TO_FP);
-      fpmi_gen(FPMI_INT_TO_FP);
-      fpmi_gen(FPMI_ADD_ADD);
-      fpmi_gen(FPMI_ADD_NORM | FPMI_EXIT_FLAG);
+      `FPMPROG_BEGIN(FPMPROG_INT_TO_FP); // Compute A+0 (use CLZ plugged on X)
+      fpmi_gen(FPMI_INT_TO_FP);                 // X <- 0; Y <- A
+      fpmi_gen(FPMI_ADD_ADD);                   // X <- X + Y
+      fpmi_gen(FPMI_ADD_NORM | FPMI_EXIT_FLAG); // X <- normalize(X)
       `FPMPROG_END(FPMPROG_INT_TO_FP);
       
       // ******************** FSQRT *****************************************
@@ -368,30 +373,30 @@ module PetitBateau(
       // http://www.lomont.org/papers/2003/InvSqrt.pdf
       // TODO: IEEE754-compliant version
       // See https://t.co/V1SWQ6N6xD?amp=1 (Method of Switching Constants)
-      // See simple effective fast inverse square root with two magic constants
+      // See simple effective fast inverse square root with two magic 
+      // constants.
       //
       `FPMPROG_BEGIN(FPMPROG_SQRT);
-      // A <- doom_magic - (A >> 1)      
-      fpmi_gen(FPMI_FRSQRT_PROLOG);
+      // D<-rs1; E,A,B<-(doom_magic - (A >> 1)); C<-3/2      
+      fpmi_gen(FPMI_FRSQRT_PROLOG); 
       for(iter=0; iter<2; iter++) begin
-	 // X <- X * (3/2 - (rs1/2 * X * X))      	 
-	 fpmi_gen(FPMI_LOAD_XY_MUL);
-	 fpmi_gen(FPMI_MV_A_X);
-         fpmi_gen(FPMI_MV_B_MHD);
-	 fpmi_gen_fma(0);
-	 fpmi_gen(FPMI_MV_A_X);
-	 fpmi_gen(FPMI_MV_B_E);
-	 fpmi_gen(FPMI_LOAD_XY_MUL);
+	 // X <- X * (3/2 - (0.5*rs1*X*X))      	 
+	 fpmi_gen(FPMI_LOAD_XY_MUL);  // X <- A*B; Y <- C
+	 fpmi_gen(FPMI_MV_A_X);       // A <- X
+         fpmi_gen(FPMI_MV_B_NH_D);    // B <- -0.5*|D|
+	 fpmi_gen_fma(0);             // X <- A*B+C
+	 fpmi_gen(FPMI_MV_A_X);       // A <- X
+	 fpmi_gen(FPMI_MV_B_E);       // B <- E
+	 fpmi_gen(FPMI_LOAD_XY_MUL);  // X <- A*B; Y <- C
 	 if(iter==0) begin
-	    fpmi_gen(FPMI_MV_E_X);
-	    fpmi_gen(FPMI_MV_A_X);
-	    fpmi_gen(FPMI_MV_B_E);
+	    fpmi_gen(FPMI_MV_E_X);    // E <- X
+	    fpmi_gen(FPMI_MV_A_X);    // A <- X
+	    fpmi_gen(FPMI_MV_B_E);    // B <- E
 	 end
-      end // Now X contains an approx of 1/sqrt(rs1)
-      // X <- X * rs1
-      fpmi_gen(FPMI_MV_A_X);
-      fpmi_gen(FPMI_MV_B_D);
-      fpmi_gen(FPMI_LOAD_XY_MUL | FPMI_EXIT_FLAG);
+      end // X contains 1/sqrt(rs1), now compute rs1*X to get sqrt(rs1)
+      fpmi_gen(FPMI_MV_A_X);                       // A <- X
+      fpmi_gen(FPMI_MV_B_D);                       // B <- D
+      fpmi_gen(FPMI_LOAD_XY_MUL | FPMI_EXIT_FLAG); // X <- A*B; Y <- C
       `FPMPROG_END(FPMPROG_SQRT);
       
       // ******************** FMIN, FMAX ************************************
@@ -437,23 +442,24 @@ module PetitBateau(
       fpmi_instr <= fpmi_ROM[fpmi_PC_next];
    end
    
-   // Single-cycle instructions
+
    always @(posedge clk) begin
       if(wr) begin
-	 A <= rs1_flushed;
-	 B <= rs2_flushed;
-	 C <= rs3_flushed;
-	 // D <= rs1_flushed;
-	 // E <= rs2_flushed;
+         // Denormals are flushed to zero
+         `FP_LD(A, rs1[31], rs1[30:23], |rs1[30:23]?{1'b1, rs1[22:0]}:24'b0);
+         `FP_LD(B, rs2[31], rs2[30:23], |rs2[30:23]?{1'b1, rs2[22:0]}:24'b0);
+         `FP_LD(C, rs3[31], rs3[30:23], |rs3[30:23]?{1'b1, rs3[22:0]}:24'b0);
+
+         // Single-cycle instructions
 	 (* parallel_case *)
 	 case(1'b1)
-	   isFSGNJ           : `OUT <= {         rs2[31], rs1[30:0]};
-	   isFSGNJN          : `OUT <= {        !rs2[31], rs1[30:0]};
-	   isFSGNJX          : `OUT <= { rs1[31]^rs2[31], rs1[30:0]};
-	   isFCLASS          : `OUT <= fclass;
-           isFMVXW | isFMVWX : `OUT <= rs1;
+	   isFSGNJ           : `X <= {         rs2[31], rs1[30:0]};
+	   isFSGNJN          : `X <= {        !rs2[31], rs1[30:0]};
+	   isFSGNJX          : `X <= { rs1[31]^rs2[31], rs1[30:0]};
+	   isFCLASS          : `X <= fclass;
+           isFMVXW | isFMVWX : `X <= rs1;
 	 endcase 
-      end else if(busy) begin // if (wr)
+      end else if(busy) begin 
 
 	 // Implementation of the micro-instructions	 
 	 (* parallel_case *)	 
@@ -477,18 +483,6 @@ module PetitBateau(
 	      Y_sign <= C_sign ^ (isFMSUB | isFNMADD);
 	      Y_frac <= {2'b0, C_frac, 24'd0};
 	      Y_exp  <= {1'b0, C_exp};
-	   end
-
-	   // X <- normalize(X) (after ADD_ADD -> norm_lshamt and A_exp_norm)
-	   fpmi_is[FPMI_ADD_NORM]: begin
-	      if(X_exp_norm <= 0 || (X_frac == 0)) begin
-		 X_frac <= 0;
-		 X_exp <= 0;
-	      end else begin
-		 X_frac <= X_frac[48] ? (X_frac >> 1) : X_frac << norm_lshamt;
-		 X_exp  <= X_exp_norm;
-		 // $display("CLZ %b %d",{14'b0,A_frac},A_clz); 
-	      end
 	   end
 
 	   // if(|X| > |Y|) swap(X,Y)
@@ -526,60 +520,74 @@ module PetitBateau(
 	      X_exp_norm <= X_exp + 16 - {3'b000,frac_sum_clz};
 	   end
 
+	   // X <- normalize(X) (after ADD_ADD -> norm_lshamt and A_exp_norm)
+	   fpmi_is[FPMI_ADD_NORM]: begin
+	      if(X_exp_norm <= 0 || (X_frac == 0)) begin
+		 X_frac <= 0;
+		 X_exp <= 0;
+	      end else begin
+		 X_frac <= X_frac[48] ? (X_frac >> 1) : X_frac << norm_lshamt;
+		 X_exp  <= X_exp_norm;
+		 // $display("CLZ %b %d",{14'b0,A_frac},A_clz); 
+	      end
+	   end
+
 	   // X <- result of comparison between X and Y
 	   fpmi_is[FPMI_CMP]: begin
-	      `OUT <= { 31'b0, 
+	      `X <= { 31'b0, 
 			    isFLT && X_LT_Y || 
 			    isFLE && X_LE_Y || 
 			    isFEQ && X_EQ_Y
                           };
 	   end
 
-	   fpmi_is[FPMI_MV_B_D] : B <= D;
-	   fpmi_is[FPMI_MV_B_E] : B <= E;	   
-	   fpmi_is[FPMI_MV_A_X] : A <= {X_sign,X_exp[7:0],X_frac[46:24]};
-	   fpmi_is[FPMI_MV_E_X] : E <= {X_sign,X_exp[7:0],X_frac[46:24]};
+	   fpmi_is[FPMI_MV_B_D] : `FP_MV(B,D);
+	   fpmi_is[FPMI_MV_B_E] : `FP_MV(B,E);
+	   fpmi_is[FPMI_MV_A_X] : `FP_LD(A,X_sign,X_exp[7:0],X_frac[47:24]);
+	   fpmi_is[FPMI_MV_E_X] : `FP_LD(E,X_sign,X_exp[7:0],X_frac[47:24]);
 	   
 	   // B <= -|D| / 2.0
-	   fpmi_is[FPMI_MV_B_MHD]: B<={1'b1,D[30:23]-8'd1,D[22:0]};
+	   fpmi_is[FPMI_MV_B_NH_D]: 
+	                {B_sign, B_exp, B_frac} <= {1'b1,D_exp-8'd1,D_frac};
 
 	   fpmi_is[FPMI_FRCP_PROLOG]: begin
-	      D <= A;
-	      E <= B;
-	      // A <= -D', that is, -(B normalized in [0.5,1])
-	      A  <= {1'b1, 8'd126, B[22:0]}; 
-	      B  <= 32'h3FF0F0F1; // 32/17
-	      C  <= 32'h4034B4B5; // 48/17
+	      `FP_MV(D,A);
+	      `FP_MV(E,B);
+	       // A <= -D', that is, -(B normalized in [0.5,1])	      
+	      `FP_LD(A,1'b1,8'd126, B_frac); 
+	      `FP_LD32(B, 32'h3FF0F0F1); // 32/17
+	      `FP_LD32(C, 32'h4034B4B5); // 48/17
 	   end
 	   
 	   fpmi_is[FPMI_FRCP_ITER1]: begin
-	      A  <= {1'b1, 8'd126, E[22:0]};                   // -D'
-	      B  <= {X_sign, X_exp[7:0], X_frac[46:24]};       // X
-	      C  <= PRECISE_DIV ? 32'h3f800000 : 32'h40000000; //p ? 1.0 : 2.0
+	      `FP_LD(A,1'b1,8'd126, E_frac);             // A <= -D'
+	      `FP_LD(B,X_sign,X_exp[7:0],X_frac[47:24]); // B <= X
+	      // C <= PRECISE_DIV ? 1.0 : 2.0
+	      `FP_LD32(C, PRECISE_DIV ? 32'h3f800000 : 32'h40000000); 
 	   end
 
 	   // This one is used only if PRECISE_DIV is set
 	   fpmi_is[FPMI_FRCP_ITER2]: begin
-	      A <= {X_sign, X_exp[7:0], X_frac[46:24]}; // X
-	      C <= B;
+	      `FP_LD(A,X_sign,X_exp[7:0],X_frac[47:24]); // A <= X
+	      `FP_MV(C,B);
 	   end
 	   
 	   fpmi_is[FPMI_FRCP_EPILOG]: begin
-	      A <= {E[31], frcp_exp[7:0], X_frac[46:24]}; 
-	      B <= D;
+	      `FP_LD(A,E_sign,frcp_exp[7:0],X_frac[47:24]);
+	      `FP_MV(B,D);
 	   end
 	   
 	   fpmi_is[FPMI_FRSQRT_PROLOG]: begin
-	      D <= rs1;
-	      E <= rsqrt_doom_magic;
-	      A <= rsqrt_doom_magic;
-	      B <= rsqrt_doom_magic;
-	      C <= 32'h3fc00000; // 1.5
+	      `FP_LD32(D, rs1);
+	      `FP_LD32(E, rsqrt_doom_magic);
+	      `FP_LD32(A, rsqrt_doom_magic);
+	      `FP_LD32(B, rsqrt_doom_magic);
+	      `FP_LD32(C, 32'h3fc00000); // 1.5
 	   end
 	   
 	   fpmi_is[FPMI_FP_TO_INT]: begin
 	      // TODO: check overflow
-	      `OUT <= 
+	      `X <= 
                (isFCVTWUS | !X_sign) ? X_fcvt_ftoi_shifted 
                                      : -$signed(X_fcvt_ftoi_shifted);
 	   end
@@ -593,13 +601,14 @@ module PetitBateau(
 	      // +6 because it is bit 29 of rs1 that overwrites 
 	      //    bit 47 of A_frac, instead of bit 23 (and 29-23 = 6).
 	      X_exp  <= 127+23+6;
-	      Y_frac <=  (isFCVTSWU | !A[31]) ? {A, 18'd0}
-                                                : {-$signed(A), 18'd0};
-	      Y_sign <= isFCVTSW & A[31];
+	      Y_frac <= 
+	         (isFCVTSWU | !A_sign) ? {A_sign, A_exp, A_frac[22:0], 18'd0}
+                           : {-$signed({A_sign, A_exp, A_frac[22:0]}), 18'd0};
+	      Y_sign <= isFCVTSW & A_sign;
 	   end 
 	   
 	   fpmi_is[FPMI_MIN_MAX]: begin
-	      `OUT <=  (X_LT_Y ^ isFMAX)
+	      `X <=  (X_LT_Y ^ isFMAX)
 		                 ? {X_sign, X_exp[7:0], X_frac[46:24]}
 	 	                 : {Y_sign, Y_exp[7:0], Y_frac[46:24]};
 	   end
@@ -675,9 +684,9 @@ module PetitBateau(
    end
 
 `ifdef FPU_EMUL
- `define FPU_EMUL1(op) `OUT <= $c32(op,"(",rs1,")")
- `define FPU_EMUL2(op) `OUT <= $c32(op,"(",rs1,",",rs2,")")
- `define FPU_EMUL3(op) `OUT <= $c32(op,"(",rs1,",",rs2,",",rs3,")")
+ `define FPU_EMUL1(op) `X <= $c32(op,"(",rs1,")")
+ `define FPU_EMUL2(op) `X <= $c32(op,"(",rs1,",",rs2,")")
+ `define FPU_EMUL3(op) `X <= $c32(op,"(",rs1,",",rs2,",",rs3,")")
    always @(posedge clk) begin
       if(wr) begin
 	 (* parallel_case *)
@@ -704,7 +713,7 @@ module PetitBateau(
 	   isFSGNJ  : `FPU_EMUL2("FSGNJ");
 	   isFSGNJN : `FPU_EMUL2("FSGNJN");
 	   isFSGNJX : `FPU_EMUL2("FSGNJX");
-           isFMVXW | isFMVWX : `OUT <= rs1;
+           isFMVXW | isFMVWX : `X <= rs1;
          endcase		     
       end		     
    end
@@ -719,11 +728,11 @@ module PetitBateau(
 `ifdef VERILATOR   
 
  `define FPU_CHECK1(op) \
-       z <= $c32("CHECK_",op,"(",`OUT,",",rs1,")")
+       z <= $c32("CHECK_",op,"(",`X,",",rs1,")")
  `define FPU_CHECK2(op) \
-       z <= $c32("CHECK_",op,"(",`OUT,",",rs1,",",rs2,")")
+       z <= $c32("CHECK_",op,"(",`X,",",rs1,",",rs2,")")
  `define FPU_CHECK3(op) \
-       z <= $c32("CHECK_",op,"(",`OUT,",",rs1,",",rs2,",",rs3,")")
+       z <= $c32("CHECK_",op,"(",`X,",",rs1,",",rs2,",",rs3,")")
    
    reg [31:0] z;
    reg 	      active;
