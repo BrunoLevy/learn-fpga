@@ -515,6 +515,18 @@ The functions that test the FPU can be used in three different ways:
   you will see clearly that these two instructions are not IEEE-754 compliant
   yet !
 
+The next steps
+--------------
+- find a way of having correct rounding for `FDIV and `FSQRT
+- implement the other rounding modes
+- implement all particular cases (overflow, underflow, NaNs, infinities)
+- implement denormals
+- make a pipelined version 
+- RV32D 'bigmac' version
+- Zfinx support (registers shared by integer and fp units)
+- optimized version that uses DSP primitives (e.g., on ARTY)
+- vector extension, using pipelined version
+
 References 
 ==========
 - [Modern Computer Arithmetics](https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf)
