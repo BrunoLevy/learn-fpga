@@ -514,6 +514,19 @@ The functions that test the FPU can be used in three different ways:
   for `FDIV` and `FSQRT` are commented-out. If you reactivate them,
   you will see clearly that these two instructions are not IEEE-754 compliant
   yet !
+  
+Using this framework was *very* comfortable: I started with a fake
+FPU, completely implemented in C++. In addition, my simulation code
+outputs all the used instructions at the end of the simulation. I 
+adopted a *fake it until you make it* approach: I
+started with `mandel_float` computed with `-O0`, seeing that I needed
+`FLW`,`FSW`,`FADD`,`FSUB`,`FMUL` and `FLE`. So I started implementing
+these 5 ones in Verilog. When it worked on the simulator, I tested on
+my ARTY. Then I computed with `-O3`, tested again in the simulator:
+now uses the `FMADD` functions, so I implemented them, tested in
+Verilator, and then on the ARTY once it worked on the Verilator, and
+so on and so forth (and `tinyraytracer` compiled in `-O3` nearly uses
+the whole instruction set, except `FCLASS`). 
 
 The next steps
 --------------
