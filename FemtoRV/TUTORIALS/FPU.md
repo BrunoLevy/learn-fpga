@@ -482,15 +482,15 @@ Other instructions
 
 The remaining instructions are very easy to implement:
 
-- data movement without conversion: `FMVXW, `FMVWX
-- sign injection: `FSGNJ, `FSGNJN, `FSGNJX
+- data movement without conversion: `FMVXW, `FMVWX`
+- sign injection: `FSGNJ`, `FSGNJN`, `FSGNJX`
 - classification: `FCLASS`
 
 Simulation and Testing
 ----------------------
 
 The FPU is a very complicated piece of hardware, and there was very
-little chances for it to work directly (because *I* have implemented
+little chances for it to work directly (because `I have implemented
 it !!). To ease debugging, it was very important to have a testing framework that lets test the
 FPU in realistic cases (for instance, when running `mandel_float` or
 `tinyraytracer`), and that lets examine what's going on in the FPU.
