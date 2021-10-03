@@ -4,7 +4,7 @@ Notes on Implementing RV32F
 Let us see if we can make tinyraytracer (and other programs) faster on
 FemtoRV, by implementing single-precision floating point instructions.
 
-TL;DR: the FPU is [here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/RTL/PROCESSOR/petitbateau.v).
+TL;DR: the "PetitBateau" FPU is [here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/RTL/PROCESSOR/petitbateau.v).
 
 The RV32F instruction subset
 ----------------------------
@@ -239,6 +239,108 @@ is bit 47. This requires the following four substeps.
   - If LOP=48, then `X_frac` is shifted to the right, and `X_exp` is incremented; 
   - else `X_frac` is shifted to the left LOP times, and `X_exp` is
     decremented by LOP. 
+
+Now we need to determine LOP (leading one position) in `X_frac`. There
+is a smart algorithm described 
+[here](https://electronics.stackexchange.com/questions/196914/verilog-synthesize-high-speed-leading-zero-count)
+that I'm using in "PetitBateau". There is an alternative (Dean
+Gaudet's algorithm) described in "Hacker's Delight", Page 110 (I
+haven't tested it yet). Here is a short description of the algorithm
+in the link above. The algorithm counts the number of leading
+zeroes (CLZ). It works recursively, as follows: CLZ can be defined
+recursively:
+```
+   CLZ({a,b}) = (CLZ(a) == n) ? n + CLZ(b) : CLZ(a)
+```
+where `a` and `b` are both n bits wide. Now if n is a power of two, it
+makes things easier, and the addition `n + CLZ(b)` can be directly
+computed as a trivial bit operation. I was completely amazed to see in 
+the link above (stackoverflow answer) that Verilog accepts recursive
+definitions, like modern C++ !  Note that in our case, the input has
+48 bits (not a power of two), so we need to pad it to the left with
+zeroes to get 64 bits (and Yosys will probably efficiently propagate
+the constants, but I did not check). Then, it is clear that LOP 
+(Leading One Position) can be deduced, as `LOP = 63 - CLZ`.
+
+Side note: the `CLZ` trick is super smart, but it introduces some 
+combinatorial depth in the adder, especially if one wants to compute it
+at the same clock tick as the addition (the input of CLZ is the output
+of the addition). However, there exists some "Leading One Prediction" 
+algorithms that can be executed in parallel with the addition, and that
+give the position of the leading one with at most one bit of error
+(then one can check right after the addition and shift the result
+accordingly). The benefit is that it makes it possible to merge two
+steps of the addition algorithm. I have not tried that yet.
+
+FMA (Fused Multiply Add)
+------------------------
+
+The RV32F subset introduces four FMA instructions. These instructions
+compute `A*B+C` (with all possible sign combinations hence four
+variants). It is interesting that the norm introduces this instruction 
+for two reasons:
+- it lets the implementation optimize it, and have higher performance
+ than doing `FMUL` then `FADD`;
+- the norm specifies that the rounding will be done at the end. The 
+ addition is computed with the full precision.
+ 
+With our multiplier and adder defined in the previous two subsections,
+we are completely equipped to implement FMA. Supposing that `A`,`B` and
+`C` are initialized with `rs1`, `rs2` and `rs3`:
+- the first step will load `A*B` in `X` and `C` in `Y` (and changes
+  the signs depending on the instruction). This can be done
+  in one cycle (remember: computing a product is easy, because it does not
+  need shifting the operands, and post-normalization is simple);
+- then one only needs to apply `ADD_SWAP`, `ADD_SHIFT`, `ADD_ADD` 
+  and `ADD_NORM` as defined in the previous subsection.
+
+FMIN, FMAX, FEQ, FLE, FLT
+-------------------------
+
+To implement `ADD_SWAP`, we have created circuitry to compare
+exponents and fractions. It is easy to complete this circuitry with signs
+comparison to implement these 5 instructions.
+
+FDIV, FSQRT
+-----------
+
+These are the most complicated instrutions to implement. There are
+several options: for FDIV, one can use one of the standard algorithm
+(restoring or non-restoring division), as we have done for the RV32M
+subset, but it will use a significant quantity of additional resources.
+For "PetitBateau", I chose instead to reuse the FMA unit, and compute
+`1/rs2` numerically, using Newton-Raphson iterations, then the product
+with `rs1` using the multiplier. The algorithm is described 
+[here](https://en.wikipedia.org/wiki/Division_algorithm#Newton%E2%80%93Raphson_division).
+To implement the algorithm, we need to create additional things in the
+FPU:
+- two new single-precision registers `D` and `E` to store temporary values;
+- a micro-coded ROM that will contain the algorithm
+
+The micro-coded ROM is associated with a super simple execution unit,
+that uses exactly one cycle per instruction. Instructions are executed
+in a sequential flow: except a special flag `FPMI_EXIT_FLAG` that
+indicates when the last instruction of a micro-program is reached, there
+is no flow control. The Newton-Raphson algorithm for computing the 
+reciprocal `1/rs1` requires three iterations to converge. The three
+iterations are explictly encoded in the ROM (remember, we have no
+branching instructions). The following micro-instructions are
+implemented:
+
+| micro-instruction | algorithm                                 |
+|-------------------|-------------------------------------------|
+| FPMI_LOAD_XY      | X<-A; Y<-B                                |
+| FPMI_LOAD_XY_MUL  | X<-A*B; Y<-C                              |
+| FPMI_ADD_SWAP     | if abs(X)>abs(Y) swap(X,Y)                |
+| FPMI_ADD_SHIFT    | shift X to match Y exponent               | 
+| FPMI_ADD_ADD      | X <- X + Y                                |
+| FPMI_ADD_NORM     | X <- normalize(X)                         |
+| FPMI_FRCP_PROLOG  | D<-A; E<-B; A<-(-D'); B<-32/17; C<-48/17  |
+| FPMI_FRCP_ITER1   | A <- -D'; B <- X; C <- 1.0f               |
+| FPMI_FRCP_ITER2   | A <- X; C <- B                            |
+| FPMI_FRCP_EPILOG  | A <- (E_sign,frcp_exp,X_frac); B <- D     |
+
+where `D'` = denominator (rs2) normalized between [0.5,1] (set exp to 126).
 
 References 
 ==========
