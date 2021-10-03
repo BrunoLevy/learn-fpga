@@ -301,10 +301,10 @@ To implement `ADD_SWAP`, we have created circuitry to compare
 exponents and fractions. It is easy to complete this circuitry with signs
 comparison to implement these 5 instructions.
 
-FDIV, FSQRT
------------
+FDIV
+----
 
-These are the most complicated instrutions to implement. There are
+FDIV is more complicated to implement. There are
 several options: for FDIV, one can use one of the standard algorithm
 (restoring or non-restoring division), as we have done for the RV32M
 subset, but it will use a significant quantity of additional resources.
@@ -341,6 +341,37 @@ implemented:
 | FPMI_FRCP_EPILOG  | A <- (E_sign,frcp_exp,X_frac); B <- D     |
 
 where `D'` = denominator (rs2) normalized between [0.5,1] (set exp to 126).
+
+Using these instructions, `FDIV` is implemented by the following microcode:
+```
+FPMI_FRCP_PROLOG
+FMA
+generate three times
+   FPMI_FRCP_ITER1
+   FMA
+   FPMI_FRCP_ITER2
+   FMA
+FPMI_FRCP_EPILOG
+FPMI_LOAD_XY_MUL
+```
+where `FMA` is expanded into five instructions: `FPMI_LOAD_XY_MUL`, `FPMI_ADD_SWAP`,
+`FPMI_ADD_SHIFT`, `FPMI_ADD_ADD`, `FPMI_ADD_NORM`. 
+
+Side note: there is also a faster but less precise version (set PRECISE_DIV to 0 to enable it).
+None of them has correct IEEE-754 rounding though (this is because we
+compute `round(round(1/y)*x)` instead of `round(x/y)`).
+
+FSQRT
+-----
+
+Similarly, `FSQRT` is computed by a Newton-Raphson algorithm described
+[here](https://en.wikipedia.org/wiki/Fast_inverse_square_root), well
+known for its use in the Quake game (successor of Doom). In our case,
+to gain sufficient precision, we do the second Newton-Raphson
+iteration (that is commented-out in Quake sources). The algorithm needs
+a couple of additional micro-instructions, for moving data between 
+registers and for loading some special constants.
+
 
 References 
 ==========
