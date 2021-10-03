@@ -7,7 +7,7 @@ FemtoRV, by implementing single-precision floating point instructions.
 TL;DR: the "PetitBateau" FPU is [here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/RTL/PROCESSOR/petitbateau.v).
 It does not fully respect the IEEE754 norm (it has
 correct round-to-zero for FADD,FSUB,FMUL,FMADD,FMSUB,FNMADD,FNMSUB,
-but not for the other operations, but not for FDIV and FSQRT). However,
+but not for the other operations, that is, FDIV and FSQRT). However,
 it works well in practice (e.g., with tinyraytracer). 
 
 The RV32F instruction subset
