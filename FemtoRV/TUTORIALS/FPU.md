@@ -58,11 +58,11 @@ There are three instructions to manipulate the sign of a floating point
 number (in rs1) based on the sign of another floating point number (in
 rs2):
 
-|instr  | algo                               |
-|-------|------------------------------------|
-|FSGNJ  | rd <- |rs1| * sign(rs2)            |
-|FSGNJN | rd <- |rs1| * -sign(rs2)           |
-|FSGNJX | rd <- |rs1| * sign(rs1) * sgn(rs2) |
+|instr  | algo                                  |
+|-------|---------------------------------------|
+|FSGNJ  | rd <- abs(rs1) * sign(rs2)            |
+|FSGNJN | rd <- abs(rs1) * -sign(rs2)           |
+|FSGNJX | rd <- abs(rs1) * sign(rs1) * sgn(rs2) |
 
 Instructions for min and max (no big surprise here):
 |instr  | algo                               |
@@ -166,37 +166,38 @@ are going to store X as follows:
 The represented number in X is +/- frac * 2^(exp-127-47):
 
 The product to compute is:
-`
+```
 A*B = (A_sign*B_sign)*(A_frac*B_frac)*2^(A_exp+B_exp-127-127-23-23)
-`
+```
 Equating with:
-`
+```
 X = X_sign*A_frac*2^(X_exp-127-47)
-`
+```
 We obtain, if leading one in (A_frac*B_frac) is bit 47:
-`
+```
 X_exp  = A_exp + B_exp - 127 + 1
-`
+```
+
 It is easy to check that in our case (no denormals), if 
 A and B are different from zero, the leading one in (A_frac*B_frac) 
 can be either bit 47 or bit 46. If it is bit 46, then `X_frac` needs
 to be shifted left by one bit, and `X_exp` needs to be decremented.
 
 Putting everything together, we obtain:
-`
+```
    AB_frac = A_frac * B_frac
    X_frac  = AB_frac[47] ? AB_frac : AB_frac << 1
    X_exp   = A_exp + B_exp - 127 + AB_frac[27]
    X_sign  = A_sign ^ B_sign
-`
+```
 
 Note that one needs also to detect overflows and underflows (by making
 X_exp a signed quantity and using guard bits). 
 
 The truncated 32-bit result can be extracted from X:
-`
+```
   product = {X_sign, X_exp[7:0], X_frac[46:24]}
-`
+```
 This implements the most trivial round-to-zero rounding mode. Other
 rouding modes need more work (we just consider round-to-zero for now).
 
@@ -208,9 +209,9 @@ Sum
 ---
 
 Sum is much mode complicated than product. In our FPU, sum is
-implemented with the double-precision register 'X'. We will see
+implemented with the double-precision register `X`. We will see
 later that is it useful to to so, for the FMA operations. We
-are going to use a second double-precision register 'Y', to store
+are going to use a second double-precision register `Y`, to store
 the other operand of the addition. 
 
 Basically, we are going to compute `X_frac + Y_frac`, but for this to be 
@@ -221,7 +222,8 @@ is bit 47.
 - `ADD_SWAP:`      if |X| > |Y| swap(X,Y)
 - `ADD_SHIFT:`     shift X to make it match Y exponent
 - `ADD_ADD:`       X_frac <- Y_frac + X_frac if same sign, or Y_frac - X_frac if signs differ
-- `ADD_NORMALIZE:` shift X and adjust X_exp in function of leading one position
+- `ADD_NORMALIZE:` shift X and adjust X_exp in function of leading one position in X_frac
+
 
 
 References 
