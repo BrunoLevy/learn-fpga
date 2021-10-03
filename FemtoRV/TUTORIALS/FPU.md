@@ -217,14 +217,28 @@ the other operand of the addition.
 Basically, we are going to compute `X_frac + Y_frac`, but for this to be 
 valid, `X_exp` and `Y_exp` need to match. Once the addition is computed, we need to 
 make sure the result is normalized, that is, that the leading one
-is bit 47. 
+is bit 47. This requires the following four substeps.
 
-- `ADD_SWAP:`      if |X| > |Y| swap(X,Y)
-- `ADD_SHIFT:`     shift X to make it match Y exponent
-- `ADD_ADD:`       X_frac <- Y_frac + X_frac if same sign, or Y_frac - X_frac if signs differ
-- `ADD_NORMALIZE:` shift X and adjust X_exp in function of leading one position in X_frac
+|  step            | algorithm
+|------------------|-----------------------------------------------------------------------|
+| `ADD_SWAP`       | if abs(X) > abs(Y) swap(X,Y)                                          |
+| `ADD_SHIFT`      | shift X to make it match Y exponent                                   |
+| `ADD_ADD`        | X_frac <- Y_frac + X_frac (or Y_frac - X_frac if signs differ)        |
+| `ADD_NORMALIZE`  | shift X and adjust X_exp in function of leading one position in X_frac|
 
-
+- for `ADD_SWAP`, comparing the absolute values of the operands means
+  first compare the exponents, and if they are the same, compare the
+  fractions, that is, lexicographic order with (exponent,fraction);
+- for `ADD_SHIFT`, left shift amount to be applied to `X` is `Y_exp` - `X_exp`
+- for `ADD_ADD`, if signs differ, `X_frac` is replaced with -`X_frac`.
+  Then, `X_frac` is replaced with `X_frac`+`Y_frac`, and `X_exp` is replaced with
+ `Y_exp`;
+- for `ADD_NORMALIZE`, one first needs to determine the leading one
+  position (LOP), then shift `X_frac` (and adjust `X_exp` accordingly)
+  in such a way that LOP becomes 47. There are two cases:
+  - If LOP=48, then `X_frac` is shifted to the right, and `X_exp` is incremented; 
+  - else `X_frac` is shifted to the left LOP times, and `X_exp` is
+    decremented by LOP. 
 
 References 
 ==========
