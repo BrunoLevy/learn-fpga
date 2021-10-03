@@ -274,8 +274,8 @@ module PetitBateau(
       // constants.
       //
       `FPMPROG_BEGIN(FPMPROG_SQRT);
-      // D<-rs1; E,A,B<-(doom_magic - (A >> 1)); C<-3/2      
-      fpmi_gen(FPMI_FRSQRT_PROLOG); 
+      // D<-rs1; E,A,B<-(doom_magic - (A >> 1)); C<-3/2
+      fpmi_gen(FPMI_FRSQRT_PROLOG);
       for(iter=0; iter<2; iter++) begin
 	 // X <- X * (3/2 - (0.5*rs1*X*X))      	 
 	 fpmi_gen(FPMI_LOAD_XY_MUL);  // X <- A*B; Y <- C
@@ -586,7 +586,7 @@ module PetitBateau(
 
    // ****************** Float to Integer conversion ***************************
    // -127-23 is standard exponent bias
-   // -6 because it is bit 29 of A that corresponds to bit 47 of A_frac,
+   // -6 because it is bit 29 of X that corresponds to bit 47 of X_frac,
    //    instead of bit 23 (and 23-29 = -6).
    wire signed [8:0]  fcvt_ftoi_shift = A_exp - 9'd127 - 9'd23 - 9'd6; 
    wire signed [8:0]  neg_fcvt_ftoi_shift = -fcvt_ftoi_shift;

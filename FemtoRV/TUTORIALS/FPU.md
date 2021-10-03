@@ -431,7 +431,7 @@ like:
 | 16   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
 | 17   | FPMI_MV_A_X        | A <- X                                          |
 | 18   | FPMI_MV_B_NH_D     | B <- -0.5*abs(D)                                |
-| 19   | FMA	              | X <- A*B+C                                    |
+| 19   | FMA	            | X <- A*B+C                                      |
 | 24   | FPMI_MV_A_X        | A <- X                                          |
 | 25   | FPMI_MV_B_E        | B <- E                                          |
 | 26   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
@@ -439,11 +439,85 @@ like:
 | 28   | FPMI_MV_B_D        | B <- D                                          |
 | 29   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
 
+As can be seen, there is a couple of new micro-instructions:
+`FPMI_FRSQRT_PROLOG` that computes the initialization (using the
+famous `doom_magic=0x5f3759df` constant), and some micro-instructions
+to copy data between registers A,B,C,D,E,X,Y (plus a special one,
+`MV_B_NH_D` that copies minus half the absolute value of `Ð` into `B`.
+
+Float to int conversion: FCVTWS, FCVTWUS
+----------------------------------------
+
+The two float to int conversion instructions take a floating-point
+register and convert it to an integer, stored in an integer register
+(two versions, one for signed and one for unsigned integers). The
+number to be converted is first loaded in the X register. Then,
+the fraction is shifted (depending on the exponent). 
+The shift is exp - 127 - 23 - 6. The additional bias of -6 comes from
+the fact that this is bit 29 of X that corresponds to bit 47 of X_frac
+instead of bit 23 (and 23 - 29 = -6). We need to test whether it is a
+left shift or a right shift, and test for underflows (we need to test
+for overflows as well, not done yet):
+```
+   wire signed [8:0]  fcvt_ftoi_shift = A_exp - 9'd127 - 9'd23 - 9'd6; 
+   wire signed [8:0]  neg_fcvt_ftoi_shift = -fcvt_ftoi_shift;
+   wire [31:0] 	X_fcvt_ftoi_shifted =  fcvt_ftoi_shift[8] ? // R or L shift
+                        (|neg_fcvt_ftoi_shift[8:5]  ?  0 :  // underflow
+                     ({X_frac[49:18]} >> neg_fcvt_ftoi_shift[4:0])) : 
+                     ({X_frac[49:18]} << fcvt_ftoi_shift[4:0]);
+```
+
+Int to float conversion: FCVTSW, FCVTSWU
+----------------------------------------
+
+Converting from int to float requires to determine the leading one
+position. To do so, we reuse the CLZ circuit used by the adder. That
+is, we load a non-normalized number in Y (with fraction set to the 
+integer number, and exponent set to 1), and load 0 in X. Then we just
+need to call `FPMI_ADD_ADD` (that adds zero !) and `FPMI_ADD_NORM` 
+(to normalize the number). 
+
+Other instructions
+------------------
+
+The remaining instructions are very easy to implement:
+
+- data movement without conversion: `FMVXW, `FMVWX
+- sign injection: `FSGNJ, `FSGNJN, `FSGNJX
+- classification: `FCLASS`
+
+Simulation and Testing
+----------------------
+
+The FPU is a very complicated piece of hardware, and there was very
+little chances for it to work directly (because *I* have implemented
+it !!). To ease debugging, it was very important to have a testing framework that lets test the
+FPU in realistic cases (for instance, when running `mandel_float` or
+`tinyraytracer`), and that lets examine what's going on in the FPU.
+Verilator (simulation) helps a lot ! I implemented a simulation of
+the small SSD1351 OLED display
+[here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/SIM/SSD1351.h),
+and a set of functions to test the FPU
+[here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/SIM/FPU_funcs.cpp).
+The functions that test the FPU can be used in three different ways:
+- *replace the FPU*, if the macro `FPU_EMUL` is defined in `petitbateau.v`, then
+  the FPU instructions are completely emulated by the host's CPU that
+  does the simulation. I used that to test the logic, instruction
+  decoder, and datapath;
+- *test the algorithm*, in `FPU_funcs.cpp`, if `use_soft_fpu` is set,
+  then it will use a C++ implementation of the instructions, that
+  operate at a bit level;
+- *compare the result of the FPU* it can also be used to compare the
+  result computed by the Verilog FPU and the result obtained in the 
+  host CPU. It is interesting to see how far away we are from an
+  IEEE-754 compliant FPU. As you can see in `PetitBateau.v`, the tests
+  for `FDIV` and `FSQRT` are commented-out. If you reactivate them,
+  you will see clearly that these two instructions are not IEEE-754 compliant
+  yet !
 
 References 
 ==========
 - [Modern Computer Arithmetics](https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf)
-
 - [DSP48E1-FP github](https://github.com/fbrosser/DSP48E1-FP)
 - [Iterative FP using DSPs](https://warwick.ac.uk/fac/sci/eng/people/suhaib_fahmy/publications/fpl2013-brosser.pdf)
 - [iDEA SDP-based soft proc](https://warwick.ac.uk/fac/sci/eng/people/suhaib_fahmy/publications/trets2014-cheah.pdf)
