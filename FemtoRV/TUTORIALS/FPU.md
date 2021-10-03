@@ -413,31 +413,31 @@ a couple of additional micro-instructions, for moving data between
 registers and for loading some special constants. The micro-code looks
 like:
 
-
- |--------------------|-------------------------------------------------|
- | FPMI_FRSQRT_PROLOG |  D<-rs1; E,A,B<-(doom_magic - (A >> 1)); C<-3/2 |
- | *first iteration*  |                                                 |
- | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
- | FPMI_MV_A_X        | A <- X                                          |
- | FPMI_MV_B_NH_D     | B <- -0.5*abs(D)                                |
- | FMA	              | X <- A*B+C                                      |
- | FPMI_MV_A_X        | A <- X                                          |
- | FPMI_MV_B_E        | B <- E                                          |
- | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
- | FPMI_MV_E_X        | E <- X                                          |
- | FPMI_MV_A_X        | A <- X                                          |
- | FPMI_MV_B_E        | B <- E                                          |
- | *second iteration* |                                                 |
- | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
- | FPMI_MV_A_X        | A <- X                                          |
- | FPMI_MV_B_NH_D     | B <- -0.5*abs(D)                                |
- | FMA	              | X <- A*B+C                                      |
- | FPMI_MV_A_X        | A <- X                                          |
- | FPMI_MV_B_E        | B <- E                                          |
- | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
- | FPMI_MV_A_X        | A <- X                                          |
- | FPMI_MV_B_D        | B <- D                                          |
- | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
+|Cycle | Micro-instruction  | Algorithm                                       |
+|------|--------------------|-------------------------------------------------|
+|  1   | FPMI_FRSQRT_PROLOG |  D<-rs1; E,A,B<-(doom_magic - (A >> 1)); C<-3/2 |
+|      | *first iteration*  |                                                 |
+|  2   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
+|  3   | FPMI_MV_A_X        | A <- X                                          |
+|  4   | FPMI_MV_B_NH_D     | B <- -0.5*abs(D)                                |
+|  5   | FMA	            | X <- A*B+C                                      |
+| 10   | FPMI_MV_A_X        | A <- X                                          |
+| 11   | FPMI_MV_B_E        | B <- E                                          |
+| 12   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
+| 13   | FPMI_MV_E_X        | E <- X                                          |
+| 14   | FPMI_MV_A_X        | A <- X                                          |
+| 15   | FPMI_MV_B_E        | B <- E                                          |
+|      | *second iteration* |                                                 |
+| 16   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
+| 17   | FPMI_MV_A_X        | A <- X                                          |
+| 18   | FPMI_MV_B_NH_D     | B <- -0.5*abs(D)                                |
+| 19   | FMA	              | X <- A*B+C                                    |
+| 24   | FPMI_MV_A_X        | A <- X                                          |
+| 25   | FPMI_MV_B_E        | B <- E                                          |
+| 26   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
+| 27   | FPMI_MV_A_X        | A <- X                                          |
+| 28   | FPMI_MV_B_D        | B <- D                                          |
+| 29   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
 
 
 References 
