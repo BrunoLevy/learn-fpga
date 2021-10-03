@@ -5,6 +5,10 @@ Let us see if we can make tinyraytracer (and other programs) faster on
 FemtoRV, by implementing single-precision floating point instructions.
 
 TL;DR: the "PetitBateau" FPU is [here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/RTL/PROCESSOR/petitbateau.v).
+It does not fully respect the IEEE754 norm (it has
+correct round-to-zero for FADD,FSUB,FMUL,FMADD,FMSUB,FNMADD,FNMSUB,
+but not for the other operations, but not for FDIV and FSQRT). However,
+it works well in practice (e.g., with tinyraytracer). 
 
 The RV32F instruction subset
 ----------------------------
@@ -12,7 +16,9 @@ The RV32F instruction subset
 The RV32F instruction subset has 26 (!) instructions. We know that 
 implementing them will require some work (to have something that works
 almost took me the same amount of work as creating my first RV32IM core,
-and it is still not fully compliant with the norm !). 
+and it is still not fully compliant with the norm !). In terms of lines
+of code, the FPU (RV32F) and the rest of the RV32IMC core both weight
+around 800 lines of code (including comments and debugging code). 
 
 Let us review the 26 instructions quickly. 
 First the easy ones (+,-,/,sqrt). Here is what they do (as you have guessed !):
@@ -388,12 +394,50 @@ FSQRT
 -----
 
 Similarly, `FSQRT` is computed by a Newton-Raphson algorithm described
-[here](https://en.wikipedia.org/wiki/Fast_inverse_square_root), well
-known for its use in the Quake game (successor of Doom). In our case,
-to gain sufficient precision, we do the second Newton-Raphson
-iteration (that is commented-out in Quake sources). The algorithm needs
+[here](https://en.wikipedia.org/wiki/Fast_inverse_square_root). The
+algorithm is well known for its use in the Quake game (successor of Doom).
+The algorithm computes an approximation of `1/sqrt(x)` (that one can 
+multiply with `x` to get the square root of `x`):
+
+```
+   X2 <- 0.5 * rs1
+   X <- 0x5f3759df - ( X2 >> 1 )
+   X <- X * (3/2 - (X2 * X * X)
+   X <- X * (3/2 - (X2 * X * X)
+   X <- X * rs1
+```
+
+In our case, to gain sufficient precision, we keep two Newton-Raphson
+iteration (the second one  is commented-out in Quake sources). The algorithm needs
 a couple of additional micro-instructions, for moving data between 
-registers and for loading some special constants.
+registers and for loading some special constants. The micro-code looks
+like:
+
+
+ |--------------------|-------------------------------------------------|
+ | FPMI_FRSQRT_PROLOG |  D<-rs1; E,A,B<-(doom_magic - (A >> 1)); C<-3/2 |
+ | *first iteration*  |                                                 |
+ | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
+ | FPMI_MV_A_X        | A <- X                                          |
+ | FPMI_MV_B_NH_D     | B <- -0.5*abs(D)                                |
+ | FMA	              | X <- A*B+C                                      |
+ | FPMI_MV_A_X        | A <- X                                          |
+ | FPMI_MV_B_E        | B <- E                                          |
+ | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
+ | FPMI_MV_E_X        | E <- X                                          |
+ | FPMI_MV_A_X        | A <- X                                          |
+ | FPMI_MV_B_E        | B <- E                                          |
+ | *second iteration* |                                                 |
+ | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
+ | FPMI_MV_A_X        | A <- X                                          |
+ | FPMI_MV_B_NH_D     | B <- -0.5*abs(D)                                |
+ | FMA	              | X <- A*B+C                                      |
+ | FPMI_MV_A_X        | A <- X                                          |
+ | FPMI_MV_B_E        | B <- E                                          |
+ | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
+ | FPMI_MV_A_X        | A <- X                                          |
+ | FPMI_MV_B_D        | B <- D                                          |
+ | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
 
 
 References 
