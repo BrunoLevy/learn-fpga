@@ -312,6 +312,24 @@ For "PetitBateau", I chose instead to reuse the FMA unit, and compute
 `1/rs2` numerically, using Newton-Raphson iterations, then the product
 with `rs1` using the multiplier. The algorithm is described 
 [here](https://en.wikipedia.org/wiki/Division_algorithm#Newton%E2%80%93Raphson_division).
+The algorithm first computes 1/rs2 then multiplies it with rs1. It can be summarized as follows
+(please refer to the link above for the full explanation of the algorithm):
+```
+   D' <- rs2 with exponent scaled (D' in [0.5,1.0])
+   X  <- 48/17 - 32/17 D'
+   repeat 3 times
+      X <- X + X * (1.0 - D' * X)
+   end
+   X <- rs1 (with exponent scaled) * X 
+```
+
+Note that the main loop of the algorithm can be implemented using two
+FMAs:
+```
+   tmp <- FMA(-D',X,1.0)
+   X   <- FMA(X,X,tmp)
+```
+
 To implement the algorithm, we need to create additional things in the
 FPU:
 - two new single-precision registers `D` and `E` to store temporary values;
@@ -357,9 +375,14 @@ FPMI_LOAD_XY_MUL
 where `FMA` is expanded into five instructions: `FPMI_LOAD_XY_MUL`, `FPMI_ADD_SWAP`,
 `FPMI_ADD_SHIFT`, `FPMI_ADD_ADD`, `FPMI_ADD_NORM`. 
 
-Side note: there is also a faster but less precise version (set PRECISE_DIV to 0 to enable it).
-None of them has correct IEEE-754 rounding though (this is because we
-compute `round(round(1/y)*x)` instead of `round(x/y)`).
+Side note: there is also a faster but less precise version (set
+PRECISE_DIV to 0 to enable it). It uses for the main iteration `X <-
+X*(2 - D'X)`, which involves an FMA and a product (instead of two
+FMAs, which saves 4 cycles per iteration). However, although the
+formula is mathematically equivalent as the version with two FMAs, it
+is not computationally equivalent (it is less accurate).  Anyway, none
+of the two versions has correct IEEE-754 rounding though (this is
+because we compute `round(round(1/y)*x)` instead of `round(x/y)`).
 
 FSQRT
 -----
