@@ -564,7 +564,7 @@ module PetitBateau(
 
    // ****************** Normalization *****************************************
    // Count leading zeroes in A+B
-   // Note1: CLZ only work with power of two width (hence 14'b0).
+   // Note1: CLZ only work with power of two width (hence 13'b0 padding).
    // Note2: first bit set = 63 - CLZ (of course !)
    wire [5:0] 	              frac_sum_clz;
    CLZ clz2({13'b0,frac_sum}, frac_sum_clz);

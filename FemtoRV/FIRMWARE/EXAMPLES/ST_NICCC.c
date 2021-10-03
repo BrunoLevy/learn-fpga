@@ -84,7 +84,7 @@ int wireframe = 0;
 
 /*
  * Reads a frame's polygonal description from
- * SPI flash and rasterizes the polygons using
+ * file and rasterizes the polygons using
  * FemtoGL.
  * returns 0 if last frame.
  *   See DATA/scene_description.txt for the 
