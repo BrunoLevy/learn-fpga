@@ -51,7 +51,7 @@ combinations):
 |FNMADD | rd <- -(rs1 * rs2 + rs3) |
 |FNMSUB | rd <- -(rs1 * rs2 + rs3) |
 
-Side note: there is a *big catch* in the official documentation: they
+*Side note: there is a *big catch* in the official documentation: they
 say FNMADD computes -rs1*rs2-rs3 (which is true, it is an equivalent
 formula as what's written in the table above, but it is misleading:
 with this formula, FNMADD computes a subtraction). I spent a couple of
@@ -59,7 +59,7 @@ hours on this ! (thank you @rob-ng15 for pointing this to me, saved
 the day). I think the reason it is written like that in the
 documentation is that from an implementation point of view, it is
 easier to change the sign of the operands when they are loaded than
-the sign of the result in the end.
+the sign of the result in the end.*
 
 There are three instructions to manipulate the sign of a floating point
 number (in rs1) based on the sign of another floating point number (in
@@ -114,13 +114,13 @@ operate on floating point registers:
 |FLW     | rd <- mem[rs1 + Iimm]  |
 |FSW     | mem[rs1 + Simm] <- rs2 |
 
-Side note 1: unlike the other load and store instructions, the address
+*Side note 1: unlike the other load and store instructions, the address
 is not required to be 32-bits aligned. But in practice, it seems that gcc
 always generates 32-bit aligned operands for FLW and FSW (I have not
-implemented unaligned operands for FLW/FSW in my core). 
+implemented unaligned operands for FLW/FSW in my core).* 
 
-Side note 2: for a core that implements the compressed instruction
-subset (RV32C), there are two compressed variants of FLW and FSW.
+*Side note 2: for a core that implements the compressed instruction
+subset (RV32C), there are two compressed variants of FLW and FSW.*
 
 The single-precision IEEE754 representation 
 -------------------------------------------
@@ -269,7 +269,7 @@ zeroes to get 64 bits (and Yosys will probably efficiently propagate
 the constants, but I did not check). Then, it is clear that LOP 
 (Leading One Position) can be deduced, as `LOP = 63 - CLZ`.
 
-Side note: the `CLZ` trick is super smart, but it introduces some 
+*Side note: the `CLZ` trick is super smart, but it introduces some 
 combinatorial depth in the adder, especially if one wants to compute it
 at the same clock tick as the addition (the input of CLZ is the output
 of the addition). However, there exists some "Leading One Prediction" 
@@ -277,7 +277,7 @@ algorithms that can be executed in parallel with the addition, and that
 give the position of the leading one with at most one bit of error
 (then one can check right after the addition and shift the result
 accordingly). The benefit is that it makes it possible to merge two
-steps of the addition algorithm. I have not tried that yet.
+steps of the addition algorithm. I have not tried that yet.*
 
 FMA (Fused Multiply Add)
 ------------------------
@@ -382,14 +382,14 @@ FPMI_LOAD_XY_MUL
 where `FMA` is expanded into five instructions: `FPMI_LOAD_XY_MUL`, `FPMI_ADD_SWAP`,
 `FPMI_ADD_SHIFT`, `FPMI_ADD_ADD`, `FPMI_ADD_NORM`. 
 
-Side note: there is also a faster but less precise version (set
+*Side note: there is also a faster but less precise version (set
 PRECISE_DIV to 0 to enable it). It uses for the main iteration `X <-
 X*(2 - D'X)`, which involves an FMA and a product (instead of two
 FMAs, which saves 4 cycles per iteration). However, although the
 formula is mathematically equivalent as the version with two FMAs, it
 is not computationally equivalent (it is less accurate).  Anyway, none
 of the two versions has correct IEEE-754 rounding though (this is
-because we compute `round(round(1/y)*x)` instead of `round(x/y)`).
+because we compute `round(round(1/y)*x)` instead of `round(x/y)`).*
 
 FSQRT
 -----
