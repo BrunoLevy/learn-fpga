@@ -51,7 +51,7 @@ combinations):
 |FNMADD | rd <- -(rs1 * rs2 + rs3) |
 |FNMSUB | rd <- -(rs1 * rs2 + rs3) |
 
-*Side note: there is a *big catch* in the official documentation: they
+*Side note: there is a big catch in the official documentation: they
 say FNMADD computes -rs1*rs2-rs3 (which is true, it is an equivalent
 formula as what's written in the table above, but it is misleading:
 with this formula, FNMADD computes a subtraction). I spent a couple of
