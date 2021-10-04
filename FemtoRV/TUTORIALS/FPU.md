@@ -32,12 +32,13 @@ First the easy ones (+,-,/,sqrt). Here is what they do (as you have guessed !):
 |FSQRT | rd <- sqrt(rs1) |
 
 The RV32F also introduces 32 additional 32-bit registers to store the
-floating point numbers. 
-Side note: There exists a different version of the instruction 
+floating point numbers.
+
+*Side note: There exists a different version of the instruction 
 subset (Zfinx) that uses a unique register bank for integer and
 floating-point registers. Can be interesting for instance to design
 a minimalistic floating-point able core, used to design for instance
-a GPU-like device with multiple cores.
+a GPU-like device with multiple cores.*
 
 Then there are the FMA instructions (fused-multiply-add) that computes
 rs1*rs2+rs3 in a single instruction (with different sign
