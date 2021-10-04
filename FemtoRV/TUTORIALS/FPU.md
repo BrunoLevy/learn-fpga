@@ -503,31 +503,28 @@ a couple of additional micro-instructions, for moving data between
 registers and for loading some special constants. The micro-code looks
 like:
 
-|Cycle | Micro-instruction  | Algorithm                                       |
-|------|--------------------|-------------------------------------------------|
-|  1   | FPMI_FRSQRT_PROLOG |  D<-rs1; E,A,B<-(doom_magic - (A >> 1)); C<-3/2 |
-|      | *first iteration*  |                                                 |
-|  2   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
-|  3   | FPMI_MV_A_X        | A <- X                                          |
-|  4   | FPMI_MV_B_NH_D     | B <- -0.5*abs(D)                                |
-|  5   | FMA	            | X <- A*B+C                                      |
-| 10   | FPMI_MV_A_X        | A <- X                                          |
-| 11   | FPMI_MV_B_E        | B <- E                                          |
-| 12   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
-| 13   | FPMI_MV_E_X        | E <- X                                          |
-| 14   | FPMI_MV_A_X        | A <- X                                          |
-| 15   | FPMI_MV_B_E        | B <- E                                          |
-|      | *second iteration* |                                                 |
-| 16   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
-| 17   | FPMI_MV_A_X        | A <- X                                          |
-| 18   | FPMI_MV_B_NH_D     | B <- -0.5*abs(D)                                |
-| 19   | FMA	            | X <- A*B+C                                      |
-| 24   | FPMI_MV_A_X        | A <- X                                          |
-| 25   | FPMI_MV_B_E        | B <- E                                          |
-| 26   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
-| 27   | FPMI_MV_A_X        | A <- X                                          |
-| 28   | FPMI_MV_B_D        | B <- D                                          |
-| 29   | FPMI_LOAD_XY_MUL   | X <- A*B; Y <- C                                |
+```
+      // D<-rs1; E,A,B<-(doom_magic - (A >> 1)); C<-3/2
+      fpmi_gen(FPMI_FRSQRT_PROLOG);
+      for(iter=0; iter<2; iter++) begin
+	 // X <- X * (3/2 - (0.5*rs1*X*X))      	 
+	 fpmi_gen(FPMI_LOAD_XY_MUL);  // X <- A*B; Y <- C
+	 fpmi_gen(FPMI_MV_A_X);       // A <- X
+         fpmi_gen(FPMI_MV_B_NH_D);    // B <- -0.5*|D|
+	 fpmi_gen_fma(0);             // X <- A*B+C
+	 fpmi_gen(FPMI_MV_A_X);       // A <- X
+	 fpmi_gen(FPMI_MV_B_E);       // B <- E
+	 fpmi_gen(FPMI_LOAD_XY_MUL);  // X <- A*B; Y <- C
+	 if(iter==0) begin
+	    fpmi_gen(FPMI_MV_E_X);    // E <- X
+	    fpmi_gen(FPMI_MV_A_X);    // A <- X
+	    fpmi_gen(FPMI_MV_B_E);    // B <- E
+	 end
+      end // X contains 1/sqrt(rs1), now compute rs1*X to get sqrt(rs1)
+      fpmi_gen(FPMI_MV_A_X);                       // A <- X
+      fpmi_gen(FPMI_MV_B_D);                       // B <- D
+      fpmi_gen(FPMI_LOAD_XY_MUL | FPMI_EXIT_FLAG); // X <- A*B; Y <- C
+```
 
 As can be seen, there is a couple of new micro-instructions:
 `FPMI_FRSQRT_PROLOG` that computes the initialization (using the
