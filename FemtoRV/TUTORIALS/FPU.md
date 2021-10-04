@@ -401,7 +401,8 @@ where `FMA` is expanded into five instructions: `FPMI_LOAD_XY_MUL`, `FPMI_ADD_SW
 The micro-program ROM is generated in an `initial` block. Here is the extract that
 corresponds to `FDIV`:
 ```
-   interger I; // current generated micro-instruction in ROM
+   integer I;    // current ROM location in initialization
+   integer iter; // iteration variable for Newton-Raphson (FDIV,FSQRT)
    initial begin
        I = 0;
          .
@@ -437,7 +438,6 @@ corresponds to `FDIV`:
  end     
 ```
 
-
 *Side note: there is also a faster but less precise version (set
 PRECISE_DIV to 0 to enable it). It uses for the main iteration `X <-
 X*(2 - D'X)`, which involves an FMA and a product (instead of two
@@ -446,6 +446,34 @@ formula is mathematically equivalent as the version with two FMAs, it
 is not computationally equivalent (it is less accurate).  Anyway, none
 of the two versions has correct IEEE-754 rounding though (this is
 because we compute `round(round(1/y)*x)` instead of `round(x/y)`).*
+
+Under the hood, there is an `fpmi_gen` task, that generates a given
+micro-instruction in the ROM and increments the current ROM location `I`:
+```
+   // Generate a micro-instructions in ROM 
+   task fpmi_gen; input [6:0] instr; begin
+      fpmi_ROM[I] = instr;
+      I = I + 1;
+   end endtask   
+```
+
+We often need to generate FMAs, so there is also a task for that:
+```
+   // Generate a FMA sequence in ROM.
+   // Use fpmi_gen_fma(0) in the middle of a micro-program
+   // Use fpmi_gen_fma(FPMI_EXIT_FLAG) if last instruction of micro-program
+   task fpmi_gen_fma; input [6:0] flags; begin
+      fpmi_gen(FPMI_LOAD_XY_MUL);      // X <- norm(A*B), Y <- C  
+      fpmi_gen(FPMI_ADD_SWAP);         // if(|X| > |Y|) swap(X,Y) (and sgn)
+      fpmi_gen(FPMI_ADD_SHIFT);        // shift X according to Y exp
+      fpmi_gen(FPMI_ADD_ADD);          // X <- X + Y
+      fpmi_gen(FPMI_ADD_NORM | flags); // X <- normalize(X)
+   end endtask
+```
+
+There is also the pair of macros `FPMPROG_BEGIN` and `FPMPROG_END` macros
+that store the starting address of each micro-program and 
+displays the number of micro-instructions.
 
 FSQRT
 -----
