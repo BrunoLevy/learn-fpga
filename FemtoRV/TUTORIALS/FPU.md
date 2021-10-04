@@ -346,7 +346,23 @@ The micro-coded ROM is associated with a super simple execution unit,
 that uses exactly one cycle per instruction. Instructions are executed
 in a sequential flow: except a special flag `FPMI_EXIT_FLAG` that
 indicates when the last instruction of a micro-program is reached, there
-is no flow control. The Newton-Raphson algorithm for computing the 
+is no flow control:
+
+```
+   wire [6:0] fpmi_PC_next = 
+               wr                             ? fpmprog   :
+	       fpmi_instr[FPMI_EXIT_FLAG_bit] ? 0         : 
+                                                fpmi_PC+1 ;
+   always @(posedge clk) begin
+      fpmi_PC <= fpmi_PC_next;
+      fpmi_instr <= fpmi_ROM[fpmi_PC_next];
+   end
+```
+(where fpmprog selects the micro-program to be executed in function of the
+current Risc-V instruction).
+
+
+The Newton-Raphson algorithm for computing the 
 reciprocal `1/rs1` requires three iterations to converge. The three
 iterations are explictly encoded in the ROM (remember, we have no
 branching instructions). The following micro-instructions are
@@ -381,6 +397,46 @@ FPMI_LOAD_XY_MUL
 ```
 where `FMA` is expanded into five instructions: `FPMI_LOAD_XY_MUL`, `FPMI_ADD_SWAP`,
 `FPMI_ADD_SHIFT`, `FPMI_ADD_ADD`, `FPMI_ADD_NORM`. 
+
+The micro-program ROM is generated in an `initial` block. Here is the extract that
+corresponds to `FDIV`:
+```
+   interger I; // current generated micro-instruction in ROM
+   initial begin
+       I = 0;
+         .
+	 .
+	 .
+      `FPMPROG_BEGIN(FPMPROG_DIV);      
+      // D' = denominator (rs2) normalized between [0.5,1] (set exp to 126)
+      fpmi_gen(FPMI_FRCP_PROLOG); // D<-A; E<-B; A<-(-D'); B<-32/17; C<-48/17
+      fpmi_gen_fma(0);            // X <- A*B+C (= -D'*32/17 + 48/17)
+      for(iter=0; iter<3; iter++) begin
+	 if(PRECISE_DIV) begin
+	    // X <- X + X*(1-D'*X)
+	    // (slower more precise iter, but not IEEE754 compliant yet...)
+	    fpmi_gen(FPMI_FRCP_ITER1); // A <- -D'; B <- X; C <- 1.0f
+	    fpmi_gen_fma(0);           // X <- A*B+C (5 cycles)
+	    fpmi_gen(FPMI_FRCP_ITER2); // A <- X; C <- B
+	    fpmi_gen_fma(0);           // X <- A*B+C (5 cycles)
+	 end else begin
+	    //  X <- X * (-X*D' + 2)
+	    // (faster but less precise)
+	    fpmi_gen(FPMI_FRCP_ITER1);  // A <- -D'; B <- X; C <- 2.0f    
+	    fpmi_gen_fma(0);            // X <- A*B+C (5 cycles)
+	    fpmi_gen(FPMI_MV_A_X);      // A <- X
+	    fpmi_gen(FPMI_LOAD_XY_MUL); // X <- A*B; Y <- C
+	 end
+      end
+      fpmi_gen(FPMI_FRCP_EPILOG); // A <- (E_sign,frcp_exp,X_frac); B <- D
+      fpmi_gen(FPMI_LOAD_XY_MUL | FPMI_EXIT_FLAG); // X <- A*B
+      `FPMPROG_END(FPMPROG_DIV);
+      .
+      .
+      .
+ end     
+```
+
 
 *Side note: there is also a faster but less precise version (set
 PRECISE_DIV to 0 to enable it). It uses for the main iteration `X <-
@@ -483,7 +539,7 @@ Other instructions
 
 The remaining instructions are very easy to implement:
 
-- data movement without conversion: `FMVXW, `FMVWX`
+- data movement without conversion: `FMVXW`, `FMVWX`
 - sign injection: `FSGNJ`, `FSGNJN`, `FSGNJX`
 - classification: `FCLASS`
 
