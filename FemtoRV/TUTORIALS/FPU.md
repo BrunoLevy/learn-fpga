@@ -52,7 +52,7 @@ combinations):
 |FNMSUB | rd <- -(rs1 * rs2 + rs3) |
 
 *Side note: there is a big catch in the official documentation: they
-say FNMADD computes -rs1*rs2-rs3 (which is true, it is an equivalent
+say FNMADD computes `-rs1*rs2-rs3` (which is true, it is an equivalent
 formula as what's written in the table above, but it is misleading:
 with this formula, FNMADD computes a subtraction). I spent a couple of
 hours on this ! (thank you @rob-ng15 for pointing this to me, saved
@@ -491,7 +491,7 @@ Simulation and Testing
 ----------------------
 
 The FPU is a very complicated piece of hardware, and there was very
-little chances for it to work directly (because `I have implemented
+little chances for it to work directly (because `I` have implemented
 it !!). To ease debugging, it was very important to have a testing framework that lets test the
 FPU in realistic cases (for instance, when running `mandel_float` or
 `tinyraytracer`), and that lets examine what's going on in the FPU.
