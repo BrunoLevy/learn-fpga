@@ -398,11 +398,16 @@ FPMI_LOAD_XY_MUL
 where `FMA` is expanded into five instructions: `FPMI_LOAD_XY_MUL`, `FPMI_ADD_SWAP`,
 `FPMI_ADD_SHIFT`, `FPMI_ADD_ADD`, `FPMI_ADD_NORM`. 
 
-The micro-program ROM is generated in an `initial` block. Here is the extract that
-corresponds to `FDIV`:
+The micro-program ROM is generated in an `initial` block, executed by Verilog
+(no circuitry is created for that, the result is just the initialization of the ROM).
+The nice thing is that we can do loops to generate the same content several times
+and tests to chose the content of the ROM based on options.
+Here is the extract that corresponds to `FDIV`:
 ```
    integer I;    // current ROM location in initialization
    integer iter; // iteration variable for Newton-Raphson (FDIV,FSQRT)
+   reg [6:0] fpmi_ROM[0:82];
+   
    initial begin
        I = 0;
          .
