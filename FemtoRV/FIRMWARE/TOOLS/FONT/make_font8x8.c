@@ -82,12 +82,12 @@ int main() {
       gen_chars(init_lineno, character);
       character += 4;
    }
-   /*  printf("\n"); */
+   printf("\n"); 
    for(int init_lineno=0; init_lineno<16; ++init_lineno) {
       gen_chars(init_lineno, character);
       character += 4;
    }
-   /*
+   // 128..255
    printf("\n");
    for(int init_lineno=0; init_lineno<16; ++init_lineno) {
       gen_chars(init_lineno, character);
@@ -98,5 +98,4 @@ int main() {
       gen_chars(init_lineno, character);
       character += 4;
    }
-   */ 
 }

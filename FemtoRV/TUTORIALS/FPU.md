@@ -49,7 +49,7 @@ combinations):
 |FMADD  | rd <-   rs1 * rs2 + rs3  |
 |FMSUB  | rd <-   rs1 * rs2 + rs3  |
 |FNMADD | rd <- -(rs1 * rs2 + rs3) |
-|FNMSUB | rd <- -(rs1 * rs2 + rs3) |
+|FNMSUB | rd <- -(rs1 * rs2 - rs3) |
 
 *Side note: there is a big catch in the official documentation: they
 say FNMADD computes `-rs1*rs2-rs3` (which is true, it is an equivalent
@@ -138,7 +138,7 @@ The represented number is +/- frac * 2^(exp-127-23):
   significant position, always set to 1 (except some special cases, 
   including representation of zero). Hence fraction is {1'b1,fraction[22:0]}
 - there is a 127 bias applied to the exponent (0 corresponds to 2^(-127)).
-  The additional (-23) bias is there between it is bit 23 that is the
+  The additional (-23) bias is there because it is bit 23 that is the
   bit set at the most significant position (hence fraction^-23 is always a
   number between 1 and 2).
 
