@@ -166,10 +166,10 @@ module PetitBateau(
    end endtask
    
    integer I;    // current ROM location in initialization
-   integer iter; // iteration variable for Newton-Raphson (FDIV,FSQRT)
+   integer iter; // iteration variable for generate Newton-Raphson (FDIV,FSQRT)
    localparam FPMI_ROM_SIZE=82 + 12*PRECISE_DIV; 
    reg [1+$clog2(FPMI_NB):0] fpmi_ROM[0:FPMI_ROM_SIZE-1];
-
+   
    // Microprograms start addresses
    // Programatically determined when generating the ROM ('initial' block below)
    integer FPMPROG_CMP, FPMPROG_ADD, FPMPROG_MUL, FPMPROG_MADD, FPMPROG_DIV;

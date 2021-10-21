@@ -40,7 +40,7 @@ floating-point registers. Can be interesting for instance to design
 a minimalistic floating-point able core, used to design for instance
 a GPU-like device with multiple cores.*
 
-Then there are the FMA instructions (fused-multiply-add) that computes
+Then there are the FMA instructions (fused-multiply-add) that compute
 rs1*rs2+rs3 in a single instruction (with different sign
 combinations):
 
@@ -59,7 +59,8 @@ hours on this ! (thank you @rob-ng15 for pointing this to me, saved
 the day). I think the reason it is written like that in the
 documentation is that from an implementation point of view, it is
 easier to change the sign of the operands when they are loaded than
-the sign of the result in the end.*
+the sign of the result in the end, especially if there is a pipeline 
+(not my case for now).*
 
 There are three instructions to manipulate the sign of a floating point
 number (in rs1) based on the sign of another floating point number (in
@@ -70,6 +71,9 @@ rs2):
 |FSGNJ  | rd <- abs(rs1) * sign(rs2)            |
 |FSGNJN | rd <- abs(rs1) * -sign(rs2)           |
 |FSGNJX | rd <- abs(rs1) * sign(rs1) * sgn(rs2) |
+* These ones are very easy to implement: just replace
+the sign bit of `rs1` with the sign bit of `rs2`, 
+its negation, or xor-red with the sign bit of `rs1` respectively.*
 
 Instructions for min and max (no big surprise here):
 |instr  | algo                               |
@@ -648,4 +652,4 @@ References
 - [Bogdan Mihai Pasca Ph.D thesis](https://tel.archives-ouvertes.fr/tel-00654121v2/document)
 
 - [A FPU written in system verilog](https://github.com/taneroksuz/riscv-fpu)
-- [How to subtract IEEE-754 numbers](see https://stackoverflow.com/questions/8766237/how-to-subtract-ieee-754-numbers)
+- [Berkeley SoftFloat and HardFloat](http://www.jhauser.us/arithmetic/)
