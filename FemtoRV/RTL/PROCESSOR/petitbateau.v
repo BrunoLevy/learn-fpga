@@ -49,6 +49,10 @@ module PetitBateau(
    output [31:0] out 	
 );
 
+   // Set to 1 for higher-precision FDIV (costs 30 additional cycles per FDIV)
+   parameter PRECISE_DIV = 1;
+
+   
    // Uncomment the line below to emulate all FPU instructions in Verilator
    // (useful to test instruction decoder and implementations of micro-instr
    // in C++). See SIM/FPU_funcs.{h,cpp}
@@ -102,8 +106,6 @@ module PetitBateau(
 
    /** FPU micro-instructions and ROM ****************************************/
 
-   // Set to 1 for higher-precision FDIV (costs 12 additional cycles per FDIV)
-   localparam PRECISE_DIV = 0;
    
    localparam FPMI_READY           = 0; 
    localparam FPMI_LOAD_XY         = 1;   // X <- A; Y <- B
@@ -120,20 +122,24 @@ module PetitBateau(
    localparam FPMI_MV_B_D          =  9;  // B <- D
    localparam FPMI_MV_B_NH_D       = 10;  // B <- -0.5*|D|
    localparam FPMI_MV_B_E          = 11;  // B <- E
-   localparam FPMI_MV_E_X          = 12;  // E <- X
+   localparam FPMI_MV_C_A          = 12;  // C <- A
+   localparam FPMI_MV_E_X          = 13;  // E <- X
 
-   localparam FPMI_FRCP_PROLOG     = 13;  // init reciprocal (1/x) 
-   localparam FPMI_FRCP_ITER1      = 14;  // iteration for reciprocal
-   localparam FPMI_FRCP_ITER2      = 15;  // iteration for reciprocal   
-   localparam FPMI_FRCP_EPILOG     = 16;  // epilog for reciprocal
+   localparam FPMI_FRCP_PROLOG     = 14;  // init reciprocal (1/x) 
+   localparam FPMI_FRCP_ITER1      = 15;  // iteration for reciprocal
+   localparam FPMI_FRCP_ITER2      = 16;  // iteration for reciprocal   
+   localparam FPMI_FRCP_EPILOG     = 17;  // epilog for reciprocal
+   localparam FPMI_FDIV_EPILOG     = 18;  // epilog for fdiv IEEE-754 rounding
    
-   localparam FPMI_FRSQRT_PROLOG   = 17;  // init recipr sqr root (1/sqrt(x))
+   localparam FPMI_FRSQRT_PROLOG   = 19;  // init recipr sqr root (1/sqrt(x))
    
-   localparam FPMI_FP_TO_INT       = 18;  // fpuOut <- fpoint_to_int(A)
-   localparam FPMI_INT_TO_FP       = 19;  // X <- int_to_fpoint(X)
-   localparam FPMI_MIN_MAX         = 20;  // fpuOut <- min/max(X,Y) 
+   localparam FPMI_FP_TO_INT       = 20;  // fpuOut <- fpoint_to_int(A)
+   localparam FPMI_INT_TO_FP       = 21;  // X <- int_to_fpoint(X)
+   localparam FPMI_MIN_MAX         = 22;  // fpuOut <- min/max(X,Y) 
 
-   localparam FPMI_NB              = 21;
+   localparam FPMI_LOAD_Y_ROUND    = 23;  // Y <- round to nearest
+   
+   localparam FPMI_NB              = 24;
 
    // Instruction exit flag (if set in current micro-instr, exit microprogram)
    localparam FPMI_EXIT_FLAG_bit   = 1+$clog2(FPMI_NB);
@@ -167,7 +173,7 @@ module PetitBateau(
    
    integer I;    // current ROM location in initialization
    integer iter; // iteration variable for generate Newton-Raphson (FDIV,FSQRT)
-   localparam FPMI_ROM_SIZE=82 + 12*PRECISE_DIV; 
+   localparam FPMI_ROM_SIZE=82 + (12 + 18)*PRECISE_DIV; 
    reg [1+$clog2(FPMI_NB):0] fpmi_ROM[0:FPMI_ROM_SIZE-1];
    
    // Microprograms start addresses
@@ -246,9 +252,25 @@ module PetitBateau(
 	    fpmi_gen(FPMI_MV_A_X);      // A <- X
 	    fpmi_gen(FPMI_LOAD_XY_MUL); // X <- A*B; Y <- C
 	 end
-      end
+      end 
+      if(PRECISE_DIV) begin             // round X to nearest
+	 fpmi_gen(FPMI_LOAD_Y_ROUND);
+	 fpmi_gen(FPMI_ADD_ADD);
+	 fpmi_gen(FPMI_ADD_NORM);
+      end      
       fpmi_gen(FPMI_FRCP_EPILOG); // A <- (E_sign,frcp_exp,X_frac); B <- D
-      fpmi_gen(FPMI_LOAD_XY_MUL | FPMI_EXIT_FLAG); // X <- A*B
+      if(PRECISE_DIV) begin // error correction
+	 fpmi_gen(FPMI_LOAD_XY_MUL); // X <- A*B
+	 fpmi_gen(FPMI_FDIV_EPILOG); // B <- -E; C <- D; D <- A
+	 fpmi_gen(FPMI_MV_A_X);
+	 fpmi_gen_fma(0);
+	 fpmi_gen(FPMI_MV_C_A);
+	 fpmi_gen(FPMI_MV_B_D);
+	 fpmi_gen(FPMI_MV_A_X);
+	 fpmi_gen_fma(FPMI_EXIT_FLAG);
+      end else begin
+	 fpmi_gen(FPMI_LOAD_XY_MUL | FPMI_EXIT_FLAG); // X <- A*B
+      end
       `FPMPROG_END(FPMPROG_DIV);      
       
       // ******************** FCVT.W.S, FCVT.WU.S ***************************
@@ -431,6 +453,12 @@ module PetitBateau(
 	      end
 	   end
 
+	   fpmi_is[FPMI_LOAD_Y_ROUND]: begin
+	      Y_sign <= X_sign;
+	      Y_exp  <= X_exp;
+	      Y_frac <= X_frac[23] ? (1 << 24) : 50'd0; 
+	   end
+	   
 	   // X <- result of comparison between X and Y
 	   fpmi_is[FPMI_CMP]: begin
 	      `X <= { 31'b0, 
@@ -443,6 +471,7 @@ module PetitBateau(
 	   fpmi_is[FPMI_MV_B_D] : `FP_MV(B,D);
 	   fpmi_is[FPMI_MV_B_E] : `FP_MV(B,E);
 	   fpmi_is[FPMI_MV_A_X] : `FP_LD(A,X_sign,X_exp[7:0],X_frac[47:24]);
+	   fpmi_is[FPMI_MV_C_A] : `FP_MV(C,A);
 	   fpmi_is[FPMI_MV_E_X] : `FP_LD(E,X_sign,X_exp[7:0],X_frac[47:24]);
 	   
 	   // B <= -|D| / 2.0
@@ -474,6 +503,13 @@ module PetitBateau(
 	   fpmi_is[FPMI_FRCP_EPILOG]: begin
 	      `FP_LD(A,E_sign,frcp_exp[7:0],X_frac[47:24]);
 	      `FP_MV(B,D);
+	   end
+
+	   // This one is used only if PRECISE_DIV is set
+	   fpmi_is[FPMI_FDIV_EPILOG]: begin
+	      `FP_LD(B,!E_sign, E_exp, E_frac); // B <= -E
+	      `FP_MV(C,D);
+	      `FP_MV(D,A);
 	   end
 	   
 	   fpmi_is[FPMI_FRSQRT_PROLOG]: begin
@@ -747,7 +783,7 @@ module PetitBateau(
 	   isFMUL :   `FPU_CHECK2("FMUL");
 	   isFADD :   `FPU_CHECK2("FADD");
 	   isFSUB :   `FPU_CHECK2("FSUB");
-	   //isFDIV :   `FPU_CHECK2("FDIV");  // yes I know, not IEEE754 yet
+	   isFDIV :   `FPU_CHECK2("FDIV");  
 	   //isFSQRT:   `FPU_CHECK1("FSQRT"); // yes I know, not IEEE754 yet
 	   isFMADD:   `FPU_CHECK3("FMADD");	  
 	   isFMSUB:   `FPU_CHECK3("FMSUB");	  
