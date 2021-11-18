@@ -210,14 +210,12 @@ module FemtoRV32(
    wire [ADDR_WIDTH-1:0] loadstore_addr = rs1[ADDR_WIDTH-1:0] +
 		   (instr[5] ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
 
-/* verilator lint_off WIDTH */
+   /* verilator lint_off WIDTH */
    // internal address registers and cycles counter may have less than 
    // 32 bits, so we deactivate width test for mem_addr and writeBackData
 
-   assign mem_addr = { 
-		       state[WAIT_INSTR_bit] | state[FETCH_INSTR_bit] ?
-		       PC : loadstore_addr
-		     };
+   assign mem_addr = state[WAIT_INSTR_bit] | state[FETCH_INSTR_bit] ?
+		     PC : loadstore_addr ;
 
    /***************************************************************************/
    // The value written back to the register file.
@@ -231,7 +229,7 @@ module FemtoRV32(
       (isJALR   | isJAL    ? PCplus4    : 32'b0) |  // JAL, JALR
       (isLoad              ? LOAD_data  : 32'b0) ;  // Load
       
-/* verilator lint_on WIDTH */
+   /* verilator lint_on WIDTH */
 
 
    /***************************************************************************/
