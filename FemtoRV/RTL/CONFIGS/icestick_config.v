@@ -11,23 +11,23 @@
 
 /************************* Processor configuration *******************************************************************/
 
+/*
 `define NRV_FEMTORV32_TACHYON       // "Tachyon" (carefully latched for max highfreq). Needs more space (remove MAX7219).
 `define NRV_FREQ 60                 // Validated at 60 MHz on the IceStick. Can overclock to 80-95 MHz.
 `define NRV_RESET_ADDR 32'h00820000 // Jump execution to SPI Flash (800000h, +128k(20000h) for FPGA bitstream)
 `define NRV_COUNTER_WIDTH 24        // Number of bits in cycles counter
 `define NRV_TWOLEVEL_SHIFTER        // Faster shifts
+*/
 // tinyraytracer: 90 MHz, 14:02
 //                95 MHz, 13:18
 
-
-/*
 `define NRV_FEMTORV32_QUARK
 `define NRV_FREQ 50                 // Validated at 50 MHz on the IceStick. Can overclock to 70 MHz.
 `define NRV_RESET_ADDR 32'h00820000 // Jump execution to SPI Flash (800000h, +128k(20000h) for FPGA bitstream)
 `define NRV_COUNTER_WIDTH 24        // Number of bits in cycles counter
 `define NRV_TWOLEVEL_SHIFTER        // Faster shifts
 // tinyraytracer: 70 MHz, 17:30 
-*/
+
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 

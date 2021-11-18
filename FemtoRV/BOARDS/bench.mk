@@ -14,7 +14,7 @@ BENCH.icarus:
 	vvp femtosoc_bench.vvp
 
 BENCH.verilator:
-	verilator -DBENCH --top-module femtoRV32_bench \
+	verilator -DBENCH_VERILATOR -DBENCH --top-module femtoRV32_bench \
          -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL  \
 	 -CFLAGS '-I../SIM' -LDFLAGS '-lglfw -lGL' \
          -FI FPU_funcs.h \

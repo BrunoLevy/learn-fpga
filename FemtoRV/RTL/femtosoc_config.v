@@ -20,7 +20,7 @@
 `include "CONFIGS/arty_config.v"
 `endif
 
-`ifdef BENCH
+`ifdef BENCH_VERILATOR
 `include "CONFIGS/bench_config.v"
 `endif
 

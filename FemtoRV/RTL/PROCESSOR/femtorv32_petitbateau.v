@@ -238,7 +238,7 @@ module FemtoRV32(
       end else begin
 	 if(aluBusy) div_cnt <= div_cnt - 1;
       end
-      if(|div_cnt[5:1]) begin
+      if(|div_cnt[5:1]) begin 
          divisor <= divisor >> 1;
 	 if(divisor <= {31'b0, dividend}) begin
 	    quotient <= {quotient[30:0],1'b1};

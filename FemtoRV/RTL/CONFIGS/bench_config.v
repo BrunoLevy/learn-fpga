@@ -1,7 +1,9 @@
+
 `define NRV_IO_LEDS
 `define NRV_IO_UART
 `define NRV_IO_SSD1351
 `define NRV_FREQ 1
+
 
 //`define NRV_FEMTORV32_QUARK       // RV32I (the most elementary femtorv)
 //`define NRV_FEMTORV32_ELECTRON    // RV32IM

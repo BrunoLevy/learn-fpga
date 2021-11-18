@@ -26,8 +26,8 @@
 
 // Uncomment one of the following lines depending
 // on the type of IR remote you have:
-  #define IR_PROTOCOL_NEC
-//#define IR_PROTOCOL_SHARP
+//#define IR_PROTOCOL_NEC
+#define IR_PROTOCOL_SHARP
 
 #if defined(IR_PROTOCOL_NEC)
 #define ir_init nec_init
