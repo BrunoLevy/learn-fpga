@@ -32,3 +32,7 @@ ARTY.prog:
 ARTY.firmware_config:
 	BOARD=arty TOOLS/make_config.sh -DARTY
 	(cd FIRMWARE; make libs)
+
+ARTY.lint:
+	verilator -DARTY -DBENCH --lint-only --top-module $(PROJECTNAME) \
+         -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL $(VERILOGS)

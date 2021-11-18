@@ -1,5 +1,9 @@
 // Configuration file for femtosoc/femtorv32
 
+`ifdef BENCH_VERILATOR
+`define BENCH
+`endif
+
 `ifdef ULX3S
 `include "CONFIGS/ulx3s_config.v"
 `endif

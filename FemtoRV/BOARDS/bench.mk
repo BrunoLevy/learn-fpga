@@ -5,7 +5,7 @@
 BENCH: BENCH.verilator
 
 BENCH.firmware_config:
-	BOARD=testbench TOOLS/make_config.sh -DBENCH
+	BOARD=testbench TOOLS/make_config.sh -DBENCH_VERILATOR
 	(cd FIRMWARE; make libs)
 
 BENCH.icarus:
@@ -14,7 +14,7 @@ BENCH.icarus:
 	vvp femtosoc_bench.vvp
 
 BENCH.verilator:
-	verilator -DBENCH_VERILATOR -DBENCH --top-module femtoRV32_bench \
+	verilator -DBENCH_VERILATOR --top-module femtoRV32_bench \
          -IRTL -IRTL/PROCESSOR -IRTL/DEVICES -IRTL/PLL  \
 	 -CFLAGS '-I../SIM' -LDFLAGS '-lglfw -lGL' \
          -FI FPU_funcs.h \
