@@ -51,8 +51,6 @@ module FemtoRV32(
    parameter RESET_ADDR       = 32'h00000000;
    parameter ADDR_WIDTH       = 24;
 
-//   localparam ADDR_PAD = {(32-ADDR_WIDTH){1'b0}}; // 32-bits padding for addrs
-
  /***************************************************************************/
  // Instruction decoding.
  /***************************************************************************/
