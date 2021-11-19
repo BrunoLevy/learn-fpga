@@ -25,6 +25,11 @@
 // TODO: the necessity to copy rs1 in E without flushing denormals for
 //       the int-to-fp instructions is unelegant.
 
+
+// Include guard for LiteX
+`ifndef PETITBATEAU_INCLUDED
+`define PETITBATEAU_INCLUDED
+
 // Check condition and display message in simulation
 `ifdef BENCH
  `define ASSERT(cond,msg) if(!(cond)) $display msg
@@ -837,3 +842,5 @@ module CLZ #(
      end
   endgenerate
 endmodule   
+
+`endif
