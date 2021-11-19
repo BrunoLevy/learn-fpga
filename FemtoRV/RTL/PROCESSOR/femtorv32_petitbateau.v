@@ -574,10 +574,17 @@ module FemtoRV32(
 
    wire jumpToPCplusImm = isJAL | (isBranch & predicate);
 
+`ifdef NRV_IS_IO_ADDR
    wire needToWait = isLoad | 
                     (isStore & `NRV_IS_IO_ADDR(mem_addr)) | 
                      isALUreg & funcM  /* isDivide */ | 
                      isFPU;  
+`else
+   wire needToWait = isLoad  | 
+                     isStore | 
+                     isALUreg & funcM  /* isDivide */ | 
+                     isFPU;  
+`endif
 
    wire [ADDR_WIDTH-1:0] PC_new = 
            isJALR           ? {aluPlus[ADDR_WIDTH-1:1],1'b0} :
