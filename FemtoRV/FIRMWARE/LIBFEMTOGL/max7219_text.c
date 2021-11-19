@@ -11,7 +11,6 @@ void MAX7219_shift() {
        }
        buff[i] = buff[i+1];
    }
-//   delay(30);
    delay(60);
 }
 

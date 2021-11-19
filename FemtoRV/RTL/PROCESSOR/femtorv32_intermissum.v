@@ -40,8 +40,6 @@ module FemtoRV32(
    parameter RESET_ADDR       = 32'h00000000;
    parameter ADDR_WIDTH       = 24;
 
-   localparam ADDR_PAD = {(32-ADDR_WIDTH){1'b0}}; // 32-bits padding for addrs
-
    /***************************************************************************/
    // Instruction decoding.
    /***************************************************************************/
@@ -256,10 +254,10 @@ module FemtoRV32(
    wire [ADDR_WIDTH-1:0] loadstore_addr = rs1[ADDR_WIDTH-1:0] +
                    (instr[5] ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
 
-   assign mem_addr = {ADDR_PAD,
-                       state[WAIT_INSTR_bit] | state[FETCH_INSTR_bit] ?
-                       PC : loadstore_addr
-                     };
+   /* verilator lint_off WIDTH */
+   assign mem_addr =   state[WAIT_INSTR_bit] | state[FETCH_INSTR_bit] ?
+                       PC : loadstore_addr ;
+   /* verilator lint_on WIDTH */
 
    /***************************************************************************/
    // Interrupt logic, CSR registers and opcodes.
@@ -301,14 +299,15 @@ module FemtoRV32(
    wire sel_cyclesh = (instr[31:20] == 12'hC80);
 
    // Read CSRs:
+   /* verilator lint_off WIDTH */
    wire [31:0] CSR_read =
-     (sel_mstatus ?    {28'b0, mstatus, 3'b0}  : 32'b0) |
-     (sel_mtvec   ? {ADDR_PAD, mtvec}          : 32'b0) |
-     (sel_mepc    ? {ADDR_PAD, mepc }          : 32'b0) |
-     (sel_mcause  ?            {mcause, 31'b0} : 32'b0) |
-     (sel_cycles  ?            cycles[31:0]    : 32'b0) |
-     (sel_cyclesh ?            cycles[63:32]   : 32'b0) ;
-
+     (sel_mstatus ? {28'b0, mstatus, 3'b0}  : 32'b0) |
+     (sel_mtvec   ? mtvec                   : 32'b0) |
+     (sel_mepc    ? mepc                    : 32'b0) |
+     (sel_mcause  ? {mcause, 31'b0}         : 32'b0) |
+     (sel_cycles  ? cycles[31:0]            : 32'b0) |
+     (sel_cyclesh ? cycles[63:32]           : 32'b0) ;
+   /* verilator lint_on WIDTH */
 
    // Write CSRs: 5 bit unsigned immediate or content of RS1
    wire [31:0] CSR_modifier = instr[14] ? {27'd0, instr[19:15]} : rs1; 
@@ -333,13 +332,15 @@ module FemtoRV32(
    // The value written back to the register file.
    /***************************************************************************/
 
+   /* verilator lint_off WIDTH */
    wire [31:0] writeBackData  =
-      (isSYSTEM            ? CSR_read             : 32'b0) |  // SYSTEM
-      (isLUI               ? Uimm                 : 32'b0) |  // LUI
-      (isALU               ? aluOut               : 32'b0) |  // ALUreg, ALUimm
-      (isAUIPC             ? {ADDR_PAD,PCplusImm} : 32'b0) |  // AUIPC
-      (isJALR   | isJAL    ? {ADDR_PAD,PCplus4  } : 32'b0) |  // JAL, JALR
-      (isLoad              ? LOAD_data            : 32'b0);   // Load
+      (isSYSTEM            ? CSR_read  : 32'b0) |  // SYSTEM
+      (isLUI               ? Uimm      : 32'b0) |  // LUI
+      (isALU               ? aluOut    : 32'b0) |  // ALUreg, ALUimm
+      (isAUIPC             ? PCplusImm : 32'b0) |  // AUIPC
+      (isJALR   | isJAL    ? PCplus4   : 32'b0) |  // JAL, JALR
+      (isLoad              ? LOAD_data : 32'b0) ;  // Load
+   /* verilator lint_on WIDTH */
 
    /***************************************************************************/
    // LOAD/STORE

@@ -36,8 +36,6 @@ module FemtoRV32(
    parameter RESET_ADDR       = 32'h00000000;
    parameter ADDR_WIDTH       = 24;
 
-   localparam ADDR_PAD = {(32-ADDR_WIDTH){1'b0}}; // 32-bits padding for addrs
-
    /***************************************************************************/
    // Instruction decoding.
    /***************************************************************************/
@@ -251,10 +249,12 @@ module FemtoRV32(
    wire [ADDR_WIDTH-1:0] loadstore_addr = rs1[ADDR_WIDTH-1:0] +
                    (instr[5] ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
 
-   assign mem_addr = {ADDR_PAD,
-                       state[WAIT_INSTR_bit] | state[FETCH_INSTR_bit] ?
-                       PC : loadstore_addr
-                     };
+   /* verilator lint_off WIDTH */
+   // internal address registers and cycles counter may have less than 
+   // 32 bits, so we deactivate width test for mem_addr and writeBackData
+
+   assign mem_addr = state[WAIT_INSTR_bit] | state[FETCH_INSTR_bit] ?
+                     PC : loadstore_addr;
 
    /***************************************************************************/
    // Counter.
@@ -271,12 +271,14 @@ module FemtoRV32(
    /***************************************************************************/
 
    wire [31:0] writeBackData  =
-      (isSYSTEM            ? CSR_read             : 32'b0) |  // SYSTEM
-      (isLUI               ? Uimm                 : 32'b0) |  // LUI
-      (isALU               ? aluOut               : 32'b0) |  // ALUreg, ALUimm
-      (isAUIPC             ? {ADDR_PAD,PCplusImm} : 32'b0) |  // AUIPC
-      (isJALR   | isJAL    ? {ADDR_PAD,PCplus4  } : 32'b0) |  // JAL, JALR
-      (isLoad              ? LOAD_data            : 32'b0);   // Load
+      (isSYSTEM            ? CSR_read  : 32'b0) |  // SYSTEM
+      (isLUI               ? Uimm      : 32'b0) |  // LUI
+      (isALU               ? aluOut    : 32'b0) |  // ALUreg, ALUimm
+      (isAUIPC             ? PCplusImm : 32'b0) |  // AUIPC
+      (isJALR   | isJAL    ? PCplus4   : 32'b0) |  // JAL, JALR
+      (isLoad              ? LOAD_data : 32'b0) ;  // Load
+
+   /* verilator lint_on WIDTH */
 
    /***************************************************************************/
    // LOAD/STORE
