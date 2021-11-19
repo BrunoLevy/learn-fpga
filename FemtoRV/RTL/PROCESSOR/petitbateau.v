@@ -763,7 +763,8 @@ module PetitBateau(
 // what's computed on the host CPU. 
 // Note: my FDIV and FSQRT are not IEEE754 compliant (yet) ! 
 // (checks commented-out for now)
-   
+
+`ifdef NRV_FEMTORV32_PETITBATEAU // makes sure we are in the learn-FPGA fmwk
 `ifdef VERILATOR   
 
  `define FPU_CHECK1(op) \
@@ -789,7 +790,7 @@ module PetitBateau(
 	   isFADD :   `FPU_CHECK2("FADD");
 	   isFSUB :   `FPU_CHECK2("FSUB");
 	   isFDIV :   `FPU_CHECK2("FDIV");  
-	   //isFSQRT:   `FPU_CHECK1("FSQRT"); // yes I know, not IEEE754 yet
+	   // isFSQRT:   `FPU_CHECK1("FSQRT"); // yes I know, not IEEE754 yet
 	   isFMADD:   `FPU_CHECK3("FMADD");	  
 	   isFMSUB:   `FPU_CHECK3("FMSUB");	  
 	   isFNMADD:  `FPU_CHECK3("FNMADD");	  
@@ -806,7 +807,10 @@ module PetitBateau(
 	 endcase
       end
    end 
+
 `endif
+`endif
+
 endmodule   
    
 /**********************************************************************/
