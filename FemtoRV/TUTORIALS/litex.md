@@ -47,10 +47,10 @@ Instructions for ULX3S:
 -----------------------
 ![](Images/ULX3S_SDRAM.jpg)
 
--1 determine FPGA variant: one of LFE5U-12F, LFE5U-25F, LFE5U-45F or LFE5U-85F
--2 determine SDRAM chip (see image): one of MT48LC16M16, AS4C32M16 or AS4C16M16
--3 plug the board
--4 synthethize and load design (in the command, replace FPGA variant and SDRAM chip with your own):
+- determine FPGA variant: one of LFE5U-12F, LFE5U-25F, LFE5U-45F or LFE5U-85F
+- determine SDRAM chip (see image): one of MT48LC16M16, AS4C32M16 or AS4C16M16
+- plug the board
+- synthethize and load design (in the command, replace FPGA variant and SDRAM chip with your own):
 ```
 $ python3 -m litex_boards.targets.radiona_ulx3s --cpu-type=femtorv --build --load --device LFE5U-85F --sdram-module AS4C32M16
 ```
