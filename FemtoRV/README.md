@@ -3,14 +3,15 @@ FEMTORV32 / FEMTOSOC: a minimalistic RISC-V CPU
 
 _(Everything fit on the IceStick < 1280 LUTs)_
  
-Quick links: 
+Quick links:
 - [IceStick tutorial](TUTORIALS/IceStick.md)
 - [IceBreaker tutorial](TUTORIALS/IceBreaker.md)
 - [ULX3S tutorial](TUTORIALS/ULX3S.md)
 - [ECP5 eval board tutorial](TUTORIALS/ECP5_EVN.md)
 - [FOMU tutorial](TUTORIALS/FOMU.md)
 - [ARTY tutorial](TUTORIALS/arty.md)
-- [Adding a new board](TUTORIALS/newboard.md) 
+- [LiteX tutorial](TUTORIALS/litex.md)
+- [Adding a new board](TUTORIALS/newboard.md)
 - [More documentation...](TUTORIALS/README.md)
 
 Features
