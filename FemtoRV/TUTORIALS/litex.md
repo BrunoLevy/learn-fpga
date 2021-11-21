@@ -85,7 +85,7 @@ LiteX can use all the variants of FemtoRV, from the tiniest: femtorv-quark (RV32
 the bigest one with an FPU: femtorv-petitbateau (RV32IMFC+irq).
 
 |variant     | instruction set |
-+------------+-----------------+
+|------------|-----------------|
 |quark       | RV32I           |
 |electron    | RV32IM          |
 |intermissum | RV32IM+irq      |
