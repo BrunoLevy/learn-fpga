@@ -3,6 +3,7 @@
 /* Bruno Levy, 2021                                                */
 /* Original tinyraytracer: https://github.com/ssloy/tinyraytracer  */
 
+#include "demos.h"
 #include "lite_oled.h"
 #include <generated/soc.h>
 #include <stdio.h>
@@ -14,6 +15,8 @@ typedef int BOOL;
 
 static inline float max(float x, float y) { return x>y?x:y; }
 static inline float min(float x, float y) { return x<y?x:y; }
+
+static int tty_output_active = 0;
 
 /*******************************************************************/
 
@@ -53,10 +56,21 @@ static void graphics_set_pixel(int x, int y, float r, float g, float b) {
    r = max(0.0f, min(1.0f, r));
    g = max(0.0f, min(1.0f, g));
    b = max(0.0f, min(1.0f, b));
+
    uint8_t R = (uint8_t)(255.0f * r);
    uint8_t G = (uint8_t)(255.0f * g);
    uint8_t B = (uint8_t)(255.0f * b);
+
    oled_setpixel_RGB(x,y,R,G,B);
+
+   if(tty_output_active) {
+     // See: https://stackoverflow.com/questions/4842424/
+     //          list-of-ansi-color-escape-sequences   
+     printf("\033[48;2;%d;%d;%dm ",R,G,B);
+     if(x==OLED_WIDTH-1) {
+       puts("\033[48;2;0;0;0m");
+     }
+   }
 }
 
 // 64-bit cycles counter that detects
@@ -115,14 +129,29 @@ static inline void stats_end_pixel(void) {
 static inline void stats_end_frame(void) {
   // Not using floats because my own version of printf()
   // in libfemtorv does not support them.
-  uint32_t seconds = frame_Kticks /= (CONFIG_CLOCK_FREQUENCY / 1000);
+  uint32_t seconds = frame_Kticks / (CONFIG_CLOCK_FREQUENCY / 1000);
   uint32_t minutes = seconds / 60;
-  seconds = seconds % 60;
+  uint32_t rem_seconds = seconds % 60;
+  uint32_t MHz = CONFIG_CLOCK_FREQUENCY / 1000000;
+  uint32_t pixels = OLED_WIDTH*OLED_HEIGHT;
+  float raystones = 1000.0 * ((float)pixels / (float)(seconds*MHz));
+  
   printf(
       "Elapsed time=%d:%s%d\n", 
       (int)minutes, 
-      seconds >= 10 ? "" : "0", (int)seconds
+      rem_seconds >= 10 ? "" : "0", (int)rem_seconds
   );
+
+  printf(
+     "%s@%ldMHz: %ld.%ld raystones (pixels/s/MHz)\n",
+     CONFIG_CPU_HUMAN_NAME,  MHz,
+     (uint32_t)raystones / 1000, (uint32_t)raystones % 1000
+  );
+    
+  if(tty_output_active) {
+    puts("  Note: \"graphic\" tty output active (takes time)");    
+    puts("  to do benchmarking, use \'raystones\' instead");
+  }
 }
 
 // Normally you will not need to modify anything beyond that point.
@@ -426,8 +455,9 @@ static void init_scene(void) {
     lights[2] = make_Light(make_vec3( 30, 20,  30), 1.7);
 }
 
-void tinyraytracer(void);
-void tinyraytracer(void) {
+
+void tinyraytracer(int tty_output) {
+    tty_output_active = tty_output;
     printf("===== TINYRAYTRACER ====\n");
     init_scene();
     graphics_init();

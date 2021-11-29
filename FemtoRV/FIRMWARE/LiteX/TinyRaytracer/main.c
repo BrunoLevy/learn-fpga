@@ -10,7 +10,7 @@
 #include <libbase/console.h>
 #include <generated/csr.h>
 
-void tinyraytracer(void);
+#include "demos.h"
 
 /*-----------------------------------------------------------------------*/
 /* Uart                                                                  */
@@ -72,7 +72,7 @@ static char *get_token(char **str)
 
 static void prompt(void)
 {
-	printf("\e[92;1mlitex-demo-app\e[0m> ");
+	printf("\e[92;1mlitex-raytracing\e[0m> ");
 }
 
 /*-----------------------------------------------------------------------*/
@@ -81,11 +81,12 @@ static void prompt(void)
 
 static void help(void)
 {
-	puts("\nLiteX OLED demo app, built "__DATE__" "__TIME__"\n");
+	puts("\nLiteX raytracing benchmark, built "__DATE__" "__TIME__"\n");
 	puts("Available commands:");
-	puts("help               - Show this command");
-	puts("reboot             - Reboot CPU");
-	puts("tinyraytracer      - Raytracing demo");
+	puts("help          - Show this command");
+	puts("reboot        - Reboot CPU");
+	puts("tinyraytracer - Raytracing demo");
+	puts("raystones     - Raytracing benchmark");	
 }
 
 /*-----------------------------------------------------------------------*/
@@ -115,8 +116,10 @@ static void console_service(void)
 	else if(strcmp(token, "reboot") == 0)
 		reboot_cmd();
 	else if(strcmp(token, "tinyraytracer") == 0)
-		tinyraytracer();
-        else puts("Unknown command\n");
+		tinyraytracer(1);
+	else if(strcmp(token, "raystones") == 0)
+		tinyraytracer(0);
+        else if(*token != '\0') puts("Unknown command");
 	prompt();
 }
 
