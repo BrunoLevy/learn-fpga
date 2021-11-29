@@ -24,7 +24,7 @@ Alternatively, you can edit `Makefile` and hardwire `LITEX_DIR` and `LITEX_PLATF
 
 If everything goes well, this will generate `demo.bin`.
 
-Step 3: execute
+Step 2: execute
 ---------------
 
 ```
