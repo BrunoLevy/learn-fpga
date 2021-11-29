@@ -83,12 +83,13 @@ static void help(void)
 {
 	puts("\nLiteX raytracing benchmark, built "__DATE__" "__TIME__"\n");
 	puts("Available commands:");
-	puts("help          - Show this command");
-	puts("reboot        - Reboot CPU");
-	puts("tinyraytracer - Raytracing demo");
-	puts("raystones     - Raytracing benchmark");
+	puts("help            - Show this command");
+	puts("reboot          - Reboot CPU");
+	puts("tinyraytracer   - Raytracing demo");
+	puts("raystones       - Raytracing benchmark");
 #ifdef CSR_OLED_SPI_BASE
-	puts("oled_test     - Displays pattern on OLED screen");
+	puts("oled_test       - Displays pattern on OLED screen");
+	puts("oled_riscv_logo - Displays rotating RISC-V logo on OLED screen");
 #endif   
 }
 
@@ -125,6 +126,8 @@ static void console_service(void)
 #ifdef CSR_OLED_SPI_BASE
 	else if(!strcmp(token, "oled_test"))
 		oled_test();
+	else if(!strcmp(token, "oled_riscv_logo"))
+		oled_riscv_logo();
 #endif   
         else if(*token != '\0') puts("Unknown command");
 	prompt();

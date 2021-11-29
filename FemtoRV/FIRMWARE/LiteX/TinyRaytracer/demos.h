@@ -9,8 +9,11 @@ void tinyraytracer(int tty_output);
 
 
 /**
- * \brief Displays a moving pattern on the OLED 
- *  screen.
+ * \brief Displays a moving pattern on the OLED screen.
  */ 
 void oled_test(void);
 
+/**
+ * \brief Displays a rotating RISCV logo on the OLED screen.
+ */ 
+void oled_riscv_logo(void);
