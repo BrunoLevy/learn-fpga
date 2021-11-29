@@ -45,7 +45,7 @@ COMMONFLAGS:=$(COMMONFLAGS:-fexceptions=)
 CFLAGS:=$(CFLAGS:-fexceptions=)
 CXXFLAGS:=$(CXXFLAGS:-fexceptions=)
 
-OBJECTS   = isr.o main.o lite_oled.o tinyraytracer.o crt0.o
+OBJECTS   = isr.o main.o lite_oled.o tinyraytracer.o oled_test.o crt0.o
 
 all: demo.bin
 

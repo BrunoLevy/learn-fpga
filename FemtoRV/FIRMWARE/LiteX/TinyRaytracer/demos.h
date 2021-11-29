@@ -6,3 +6,11 @@
  *  sequences. Deactivate it for benchmarking.
  */
 void tinyraytracer(int tty_output);
+
+
+/**
+ * \brief Displays a moving pattern on the OLED 
+ *  screen.
+ */ 
+void oled_test(void);
+

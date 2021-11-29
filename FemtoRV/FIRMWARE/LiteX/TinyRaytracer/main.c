@@ -86,7 +86,10 @@ static void help(void)
 	puts("help          - Show this command");
 	puts("reboot        - Reboot CPU");
 	puts("tinyraytracer - Raytracing demo");
-	puts("raystones     - Raytracing benchmark");	
+	puts("raystones     - Raytracing benchmark");
+#ifdef CSR_OLED_SPI_BASE
+	puts("oled_test     - Displays pattern on OLED screen");
+#endif   
 }
 
 /*-----------------------------------------------------------------------*/
@@ -111,14 +114,18 @@ static void console_service(void)
 	str = readstr();
 	if(str == NULL) return;
 	token = get_token(&str);
-	if(strcmp(token, "help") == 0)
+	if(!strcmp(token, "help"))
 		help();
-	else if(strcmp(token, "reboot") == 0)
+	else if(!strcmp(token, "reboot"))
 		reboot_cmd();
-	else if(strcmp(token, "tinyraytracer") == 0)
+	else if(!strcmp(token, "tinyraytracer"))
 		tinyraytracer(1);
-	else if(strcmp(token, "raystones") == 0)
+	else if(!strcmp(token, "raystones"))
 		tinyraytracer(0);
+#ifdef CSR_OLED_SPI_BASE
+	else if(!strcmp(token, "oled_test"))
+		oled_test();
+#endif   
         else if(*token != '\0') puts("Unknown command");
 	prompt();
 }

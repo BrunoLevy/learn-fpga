@@ -75,6 +75,13 @@ static inline void oled2(uint8_t cmd, uint8_t arg1, uint8_t arg2) {
 void oled_init(void);
 
 /**
+ * \brief Switches the display on.
+ */ 
+static inline void oled_on(void) {
+   oled0(0xaf); // display on   
+}
+
+/**
  * \brief Switches the display off.
  */ 
 static inline void oled_off(void) {
