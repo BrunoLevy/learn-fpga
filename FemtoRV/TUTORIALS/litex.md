@@ -3,7 +3,7 @@ LiteX
 
 FemtoRV can be used with LiteX.
 
-[https://github.com/enjoy-digital/litex](LiteX) is an easy-to-use
+[LiteX](https://github.com/enjoy-digital/litex) is an easy-to-use
 framework for creating SoCs.
 - it supports many different FPGA boards
 - it includes gateware for many different devices (SDRAM, HDMI, SDCard,
@@ -61,6 +61,11 @@ compile the BIOS, syntethize the gateware and send it to the
 device. If everything went well, you will see the colorful 'knight
 driver' blinky of victory on the LEDs.
 
+
+Instructions for ARTY:
+----------------------
+TODO, for symbiflow, use `--toolchain=symbiflow`.
+
 Talk to the device
 ==================
 
@@ -101,7 +106,12 @@ Coming next
 
 Compiling RiscV software for the device
 ---------------------------------------
-TODO (once I know how to do that !)
+See LiteX demo [here](https://github.com/enjoy-digital/litex/tree/master/litex/soc/software/demo)
+
+```
+$ cd <LiteX installation directory>
+$ litex_bare_metal_demo --build-path build/radiona_ulx3s/
+```
 
 Sending software to the device
 ------------------------------
@@ -112,4 +122,38 @@ $lxterm --kernel <software.bin> --speed 115200 /dev/ttyUSB0
 
 Graphics and HDMI
 -----------------
-TODO (once I know how to do that !)
+
+SSD1331 OLED screen
+-------------------
+- Syntethize with `--with-oled` option.
+- Generated include file for hw control registers: `build/radiona_ulx3s/software/include/generated/csr.h`
+  (Many macros there to access SPI or to do bitbanging with control signals).
+- In `litex-boards/litex_boards/targets/radiona_ulx3s.py`, oled uses standard `SPIMaster` module.
+- control signals (RESET,CS,DC) are mapped to `"oled_ctl"` (which one is LSB ?)
+- `"oled_ctl"` is defined in `litex-boards/litex_boards/platforms/radiona_ulx3s.py`: `dc,resn,csn`
+- oled_ctl_out_write(), oled_spi_mosi_write() if using bitbanging
+- Example of LiteX SPI usage in `litex/litex/soc/software/liblitesdcard/spisdcard.c`
+- How to know which bit is (dc,resn,csn) in ctl ? Write cs, then read ctl !
+
+
+```
+void ssd1331_command(uint8_t cmd) {
+   // how to specify command/data ? (dc) -> oled_ctl_out_write()
+   oled_spi_cs_write(SPI_CS_LOW);
+   oled_spi_mosi_write(byte);
+   oled_spi_control_write(8*SPI_LENGTH | SPI_START);
+   while(oled_spi_status_read() != SPI_DONE);
+   oled_spi_cs_write(SPI_CS_HIGH);
+}
+```
+
+
+
+Notes - LiteX cheatcodes and files
+==================================
+- simulation: `litex_sim --cpu-type=femtorv --with-sdram`
+- ULX3S pins: `litex-boards/litex_boards/platforms/radiona_ulx3s.py`
+- ULX3S: `litex-boards/litex_boards/targets/radiona_ulx3s.py`
+- femtorv: `litex/litex/soc/cores/cpu/femtorv/core.py`
+- bios: `litex/litex/soc/software/bios/main.c`
+- framebuffer: `litex/litex/soc/cores/video.py`

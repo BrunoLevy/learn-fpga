@@ -1,0 +1,12 @@
+0) get rid of all these pythoneries, use plain old Make:
+
+    LITEX_DIR=/home/blevy/Programming/LiteX
+    LITEX_PLATFORM=radiona_ulx3s
+    BUILD_DIR=$(LITEX_DIR)/build/$(LITEX_PLATFORM)
+
+1) replace libcompiler_rt with libgcc bundled with compiler:
+     LIBS_FIXED=$(LIBS:libcompiler_rt=libgcc)
+     
+2) recompile crt0.o whenever configuration changes:
+     (make it depend on one of the generated files)
+     crt0.o: $(CPU_DIRECTORY)/crt0.S $(BUILD_DIR)/software/include/generated/variables.mak

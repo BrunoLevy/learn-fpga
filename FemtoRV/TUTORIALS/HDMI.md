@@ -119,7 +119,7 @@ changing the clocks and resolutions of course:
 
 ```
 
-- [Complete sources for ULX3S](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S/ULX3S_hdmi/HDMI_test.v)
+- [Complete sources for ULX3S](https://github.com/BrunoLevy/learn-fpga/tree/master/Basic/ULX3S/ULX3S_hdmi)
 - [Version with DDR](https://github.com/BrunoLevy/learn-fpga/blob/master/Basic/ULX3S/ULX3S_hdmi/HDMI_test_DDR.v)
 
 Now we are ready to implement arbitrary modes. Timings can be found [here](http://tinyvga.com/vga-timing).
