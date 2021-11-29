@@ -3,8 +3,9 @@ Raytracing firmware for LiteX
 
 This directory contains a C version of Dmitry Sokolov's [tinyraytracer](https://github.com/ssloy/tinyraytracer), adapted to LiteX.
 It can be used to benchmark different cores running on LiteX.
-Raytracing is an interesting operation for benching cores, because it
-uses massively the floating point operations. 
+Raytracing is interesting for benchmarking cores, because it
+massively uses floating point operations, either implemented in
+software or by an FPU.
 
 Step 0: synthethize
 -------------------
