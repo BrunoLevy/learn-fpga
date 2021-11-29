@@ -3,8 +3,15 @@
 // SSD1331 OLED screen driver
 
 #include "lite_oled.h"
+#include <stdio.h>
 
 void oled_init(void) {
+#ifndef CSR_OLED_SPI_BASE
+   int trigger_warning; // LiteX synthesized without OLED support (graphics commands will be ignored)   
+   printf("Warning: OLED screen unsupported\n");
+   printf("To activate, when synthesizing LiteX, use option --with-oled\n");
+   printf("(graphics commands will be ignored)\n");
+#endif
    oled0(0xae);       // display off
    oled1(0x81, 0x91); // contrast A
    oled1(0x82, 0x50); // contrast B

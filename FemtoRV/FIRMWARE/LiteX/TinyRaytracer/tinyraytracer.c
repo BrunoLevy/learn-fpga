@@ -1,6 +1,6 @@
 /* A port of Dmitry Sokolov's tiny raytracer to C and to FemtoRV32 */
 /* Displays on the small OLED display and/or HDMI                  */
-/* Bruno Levy, 2020                                                */
+/* Bruno Levy, 2021                                                */
 /* Original tinyraytracer: https://github.com/ssloy/tinyraytracer  */
 
 #include "lite_oled.h"
@@ -85,6 +85,11 @@ uint64_t pixel_ticks;  // clock ticks taken to render pixel
 // Leave emtpy if not needed.
 static inline void stats_begin_frame(void) {
   frame_Kticks = 0;
+  printf(
+      "Running on %s %d MHz\n",
+      CONFIG_CPU_HUMAN_NAME, 
+      CONFIG_CLOCK_FREQUENCY / 1000000
+  );
 }
 
 // Begins statistics collection for current pixel
@@ -113,11 +118,6 @@ static inline void stats_end_frame(void) {
   uint32_t seconds = frame_Kticks /= (CONFIG_CLOCK_FREQUENCY / 1000);
   uint32_t minutes = seconds / 60;
   seconds = seconds % 60;
-  printf(
-      "%s %d MHz\n",
-      CONFIG_CPU_HUMAN_NAME, 
-      CONFIG_CLOCK_FREQUENCY / 1000000
-  );
   printf(
       "Elapsed time=%d:%s%d\n", 
       (int)minutes, 
@@ -426,8 +426,9 @@ static void init_scene(void) {
     lights[2] = make_Light(make_vec3( 30, 20,  30), 1.7);
 }
 
-void oled_raytrace(void);
-void oled_raytrace(void) {
+void tinyraytracer(void);
+void tinyraytracer(void) {
+    printf("===== TINYRAYTRACER ====\n");
     init_scene();
     graphics_init();
     render(spheres, nb_spheres, lights, nb_lights);

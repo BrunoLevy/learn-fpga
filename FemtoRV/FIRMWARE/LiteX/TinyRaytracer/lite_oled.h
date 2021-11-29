@@ -26,12 +26,14 @@
  * \param[in] b the byte to be written
  */ 
 static inline void oled_byte(uint8_t cmd_or_dat, uint8_t b) {
+#ifdef CSR_OLED_SPI_BASE
    oled_ctl_out_write(cmd_or_dat); // dc, resn, csn
    oled_spi_cs_write(OLED_SPI_CS_LOW);
    oled_spi_mosi_write(b);
    oled_spi_control_write(8*OLED_SPI_LENGTH | OLED_SPI_START);
    while(oled_spi_status_read() != OLED_SPI_DONE);
    oled_spi_cs_write(OLED_SPI_CS_HIGH);
+#endif
 }
 
 /**

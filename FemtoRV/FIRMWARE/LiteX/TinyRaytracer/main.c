@@ -10,7 +10,7 @@
 #include <libbase/console.h>
 #include <generated/csr.h>
 
-void oled_raytrace(void);
+void tinyraytracer(void);
 
 /*-----------------------------------------------------------------------*/
 /* Uart                                                                  */
@@ -85,7 +85,7 @@ static void help(void)
 	puts("Available commands:");
 	puts("help               - Show this command");
 	puts("reboot             - Reboot CPU");
-	puts("raytrace           - Raytracing");
+	puts("tinyraytracer      - Raytracing demo");
 }
 
 /*-----------------------------------------------------------------------*/
@@ -114,8 +114,9 @@ static void console_service(void)
 		help();
 	else if(strcmp(token, "reboot") == 0)
 		reboot_cmd();
-	else if(strcmp(token, "raytrace") == 0)
-		oled_raytrace();
+	else if(strcmp(token, "tinyraytracer") == 0)
+		tinyraytracer();
+        else puts("Unknown command\n");
 	prompt();
 }
 
