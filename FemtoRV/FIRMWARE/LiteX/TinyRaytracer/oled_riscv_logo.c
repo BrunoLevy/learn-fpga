@@ -79,9 +79,12 @@ void oled_riscv_logo(void) {
         int Vx = -Uy;                                
         int Vy =  Ux;                                
 
-        int X0 = -64*(Ux+Vx); 
-        int Y0 = -64*(Uy+Vy);
+//        int X0 = -64*(Ux+Vx); 
+//        int Y0 = -64*(Uy+Vy);
 
+        int X0 = -(OLED_WIDTH/2)*(Ux+Vx); 
+        int Y0 = -(OLED_HEIGHT/2)*(Uy+Vy);
+       
 	for(int y=0; y<OLED_HEIGHT; ++y) {
 	    int X = X0;
 	    int Y = Y0;

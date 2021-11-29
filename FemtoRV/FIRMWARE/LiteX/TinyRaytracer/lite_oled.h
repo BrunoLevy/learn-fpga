@@ -107,8 +107,11 @@ static inline void oled_data_uint16(uint16_t RGB) {
    // Note: is it possible to send 16 bits in one go ?
    // Probably yes, using something like:
    //  oled_spi_control_write(16*OLED_SPI_LENGTH | OLED_SPI_START);
-   // I tried but it did not work...
-   oled_byte(OLED_SPI_DAT,(uint8_t)(RGB>>8));   
+   // But OLED spi is configured to have a 8-bits shift register only.
+   // Tryed to extend it to 16 bits, with no success
+   // (for now, keeping two 8-bit sends).
+   
+   oled_byte(OLED_SPI_DAT,(uint8_t)(RGB>>8));
    oled_byte(OLED_SPI_DAT,(uint8_t)(RGB));
 }
 
