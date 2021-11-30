@@ -39,7 +39,7 @@ static int tty_output_active = 0;
 // Size of the screen
 // Replace with your own variables or values
 #define graphics_width  OLED_WIDTH
-#define graphics_height OLED_HEIGHT
+#define graphics_height OLED_HEIGHT 
 
 // Replace with your own stuff to initialize graphics
 static inline void graphics_init(void) {
@@ -77,6 +77,9 @@ static void graphics_set_pixel(int x, int y, float r, float g, float b) {
 // overflows (provided that it is called
 // sufficiently often !), because all 
 // cores do not support rdcycleh
+// (not used, because not all cores support
+//  it, replaced with LiteX timer).
+/*
 static uint64_t cycles(void) {
   static uint64_t cycles_=0;
   static uint32_t last_cycles32_=0;
@@ -91,9 +94,10 @@ static uint64_t cycles(void) {
   last_cycles32_ = cycles32_;
   return cycles_;
 }
+*/
 
 uint32_t frame_Kticks; // clock Kilo-ticks taken to render frame
-uint64_t pixel_ticks;  // clock ticks taken to render pixel
+uint32_t pixel_ticks;  // clock ticks taken to render pixel
 
 // Begins statistics collection for current frame.
 // Leave emtpy if not needed.
@@ -113,14 +117,27 @@ static inline void stats_begin_frame(void) {
 // have sufficient bits and will wrap during the time taken by
 // rendering a frame (up to several minutes).
 static inline void stats_begin_pixel(void) {
-  pixel_ticks = cycles();
+   // Init timer.
+   // (copied from LiTex libbase/memtest.c,
+   //  I do not fully understand what I'm doing)
+   timer0_en_write(0);
+   timer0_reload_write(0);
+   timer0_load_write(0xffffffff);
+   timer0_en_write(1);
+   // Start timer
+   timer0_update_value_write(1);
+   pixel_ticks = timer0_value_read();
 }
 
 // Ends statistics collection for current pixel
 // Leave emtpy if not needed.
 static inline void stats_end_pixel(void) {
-  pixel_ticks = cycles() - pixel_ticks;
-  frame_Kticks += (uint32_t)pixel_ticks/1000;  
+  // Stop timer
+  // (copied from LiTex libbase/memtest.c,
+  //  I do not fully understand what I'm doing)
+  timer0_update_value_write(1);
+  pixel_ticks -= timer0_value_read();
+  frame_Kticks += (pixel_ticks/1000);
 }
 
 // Ends statistics collection for current frame
@@ -129,7 +146,7 @@ static inline void stats_end_pixel(void) {
 static inline void stats_end_frame(void) {
   // Not using floats because my own version of printf()
   // in libfemtorv does not support them.
-  uint32_t seconds = frame_Kticks / (CONFIG_CLOCK_FREQUENCY / 1000);
+  uint32_t seconds = (uint32_t)(frame_Kticks / (CONFIG_CLOCK_FREQUENCY / 1000));
   uint32_t minutes = seconds / 60;
   uint32_t rem_seconds = seconds % 60;
   uint32_t MHz = CONFIG_CLOCK_FREQUENCY / 1000000;

@@ -57,7 +57,7 @@ $ python3 -m litex_boards.targets.radiona_ulx3s --cpu-type=femtorv --build --loa
 
 This will download the dependencies (including the latest version of
 FemtoRV directly from its github repository, great !). It will also
-compile the BIOS, syntethize the gateware and send it to the
+compile the BIOS, synthesize the gateware and send it to the
 device. If everything went well, you will see the colorful 'knight
 driver' blinky of victory on the LEDs.
 
