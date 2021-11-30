@@ -90,6 +90,7 @@ static void help(void)
 #ifdef CSR_OLED_SPI_BASE
 	puts("oled_test       - Displays pattern on OLED screen");
 	puts("oled_riscv_logo - Displays rotating RISC-V logo on OLED screen");
+	puts("oled_julia      - Displays animated Julia set on OLED screen");   
 #endif   
 }
 
@@ -128,6 +129,8 @@ static void console_service(void)
 		oled_test();
 	else if(!strcmp(token, "oled_riscv_logo"))
 		oled_riscv_logo();
+	else if(!strcmp(token, "oled_julia"))
+		oled_julia();
 #endif   
         else if(*token != '\0') puts("Unknown command");
 	prompt();
