@@ -19,7 +19,9 @@ Quick links:
 Features
 --------
 
-- Implements the RV32I, RV32IM, RV32IMC or RV32IMFC instruction sets
+- Comes in different variants: quark (RV32I), electron (RV32IM),
+  intermissum (RV32IM + irq), gracilis (RV32IMC + irq), 
+  petitbateau (RV32IMFC + irq).
 - Synthesis using the freeware tools (Yosys and nextpnr).    
 - Main goal: to be used for teaching, easy to read, fitting on the ICEstick, 
       fun demos (graphics), equip students for approx. $40.
