@@ -70,22 +70,24 @@ static inline void oled2(uint8_t cmd, uint8_t arg1, uint8_t arg2) {
 
 /**
  * \brief Sends the initialization sequence to the SSD1331 OLED display.
- * \details Display content is random at startup.
+ * \details Clears the screen (set to black).
  */ 
 void oled_init(void);
 
 /**
  * \brief Switches the display on.
+ * \details Screen content is not changed.
  */ 
 static inline void oled_on(void) {
-   oled0(0xaf); // display on   
+   oled0(0xaf); 
 }
 
 /**
  * \brief Switches the display off.
+ * \details Screen content is not changed.
  */ 
 static inline void oled_off(void) {
-   oled0(0xae); // display off   
+   oled0(0xae); 
 }
 
 /**
@@ -110,6 +112,7 @@ static inline void oled_data_uint16(uint16_t RGB) {
    // But OLED spi is configured to have a 8-bits shift register only.
    // Tryed to extend it to 16 bits, with no success
    // (for now, keeping two 8-bit sends).
+   // Note: could save two calls to oled_spi_cs_write() (but not worth it).
    
    oled_byte(OLED_SPI_DAT,(uint8_t)(RGB>>8));
    oled_byte(OLED_SPI_DAT,(uint8_t)(RGB));

@@ -38,10 +38,10 @@ $ pip3 install meson ninja
 $ ./litex_setup.py --gcc=riscv
 ```
 
-Synthetize
+Synthesize
 ==========
 
-Instructions to synthetize are different, depending on the board you have.
+Instructions to synthesize are different, depending on the board you have.
 
 Instructions for ULX3S:
 -----------------------

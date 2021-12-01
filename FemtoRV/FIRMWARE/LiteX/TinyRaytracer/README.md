@@ -49,6 +49,10 @@ as precise as possible).
 Performance is measured in "raystones", i.e. pixels per seconds per
 MHz (not an official unit !).
 
+If you have the small SSD1331 OLED screen connected on the ULX3S, and if
+you have synthesized LiteX with the flag to support it (`--with-oled`), 
+then the firmware comes with other graphic demos, type `help` to see the list.
+
 If you test multiple cores, do not forget to recompile the software:
 ```
 $ make clean all

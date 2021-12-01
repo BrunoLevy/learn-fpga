@@ -65,10 +65,10 @@ void oled_julia(void) {
    
   while (1) {
     oled_write_window(0,0,OLED_WIDTH-1,OLED_HEIGHT-1);
-    int j_f = -64;
+    int j_f = -OLED_HEIGHT/2;
     int pix = 0;
     for (int j = 0 ; j < OLED_HEIGHT ; ++j) {
-      int i_f = -64;
+      int i_f = -OLED_WIDTH/2;
       for (int i = 0 ; i < OLED_WIDTH ; ++i) {
         int x_f  = i_f;
         int y_f  = j_f;
