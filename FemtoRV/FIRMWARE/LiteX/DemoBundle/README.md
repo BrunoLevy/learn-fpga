@@ -1,7 +1,22 @@
-Raytracing firmware for LiteX
-=============================
+Demo bundle firmware for LiteX
+===============================
 
-This directory contains a C version of Dmitry Sokolov's [tinyraytracer](https://github.com/ssloy/tinyraytracer), adapted to LiteX.
+This firmware for LiteX contains a bundle of small demo programs, that can be used to
+test and benchmark different cores. Some of them display graphic effects on the SSD1331
+OLED display if it is plugged and configured. 
+
+| demo           | description                            | comments                       |
+|----------------|----------------------------------------|--------------------------------|
+|tinyraytracer   | raytracer by Dmitry Sololov            | textmode (+ OLED if configured)|
+|raystones       | raytracer perf test                    | can be used to benchmark cores |
+|oled_test       | tests OLED screen                      | only if OLED configured        |
+|oled_riscv_logo | 90-ish rotozoom demo                   | only if OLED configured        |
+|oled_julia      | animated Julia set by Sylvain Lefebvre | only if OLED configured        |
+
+
+tinyraytracer / raystones
+-------------------------
+It is a C version of Dmitry Sokolov's [tinyraytracer](https://github.com/ssloy/tinyraytracer), adapted to LiteX.
 It can be used to benchmark different cores running on LiteX.
 Raytracing is interesting for benchmarking cores, because it
 massively uses floating point operations, either implemented in
@@ -30,7 +45,7 @@ Step 2: execute
 ```
 $ lxterminal --kernel demo.bin /dev/ttyUSBnn
 litex> reboot
-litex-raytracing> tinyraytracer
+litex-demo-bundle> tinyraytracer
 ```
 This will display the result in the terminal window (with BIG pixels
 !). This is text mode, with escape sequences to change the background
@@ -39,7 +54,7 @@ you will see also the image on it.
 
 Alternatively, you can use:
 ```
-litex-raytracing> raystones
+litex-demo-bundle> raystones
 ```
 This will compute the image without rendering in the terminal
 (rendering in the terminal takes time for some reasons, and if you 

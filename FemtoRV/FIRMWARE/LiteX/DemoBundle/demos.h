@@ -24,3 +24,9 @@ void oled_riscv_logo(void);
  * \details Demo by Sylvain Lefebvre.
  */ 
 void oled_julia(void);
+
+/**
+ * \brief Displays and computes the decimals of pi.
+ * \details By Fabrice Bellard.
+ */ 
+void pi(void);

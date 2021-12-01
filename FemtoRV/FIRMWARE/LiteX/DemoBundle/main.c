@@ -72,7 +72,7 @@ static char *get_token(char **str)
 
 static void prompt(void)
 {
-	printf("\e[92;1mlitex-raytracing\e[0m> ");
+	printf("\e[92;1mlitex-demo-bundle\e[0m> ");
 }
 
 /*-----------------------------------------------------------------------*/
@@ -87,6 +87,7 @@ static void help(void)
 	puts("reboot          - Reboot CPU");
 	puts("tinyraytracer   - Raytracing demo");
 	puts("raystones       - Raytracing benchmark");
+	puts("pi              - Compute the decimals of pi");
 #ifdef CSR_OLED_SPI_BASE
 	puts("oled_test       - Displays pattern on OLED screen");
 	puts("oled_riscv_logo - Displays rotating RISC-V logo on OLED screen");
@@ -124,6 +125,8 @@ static void console_service(void)
 		tinyraytracer(1);
 	else if(!strcmp(token, "raystones"))
 		tinyraytracer(0);
+	else if(!strcmp(token, "pi"))
+		pi();
 #ifdef CSR_OLED_SPI_BASE
 	else if(!strcmp(token, "oled_test"))
 		oled_test();

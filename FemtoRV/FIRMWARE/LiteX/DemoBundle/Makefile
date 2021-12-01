@@ -45,7 +45,7 @@ COMMONFLAGS:=$(COMMONFLAGS:-fexceptions=)
 CFLAGS:=$(CFLAGS:-fexceptions=)
 CXXFLAGS:=$(CXXFLAGS:-fexceptions=)
 
-OBJECTS   = isr.o main.o lite_oled.o tinyraytracer.o oled_test.o oled_riscv_logo.o oled_julia.o crt0.o
+OBJECTS   = isr.o main.o lite_oled.o tinyraytracer.o pi.o oled_test.o oled_riscv_logo.o oled_julia.o crt0.o
 
 all: demo.bin
 
@@ -95,4 +95,7 @@ helloc.o: CFLAGS += -w
 clean:
 	$(RM) $(OBJECTS) $(OBJECTS:.o=.d) demo.elf demo.bin demo.list .*~ *~
 
+terminal:
+	lxterm --kernel demo.bin /dev/ttyUSB0; reset
+	
 .PHONY: all main.o clean load
