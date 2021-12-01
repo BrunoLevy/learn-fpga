@@ -101,8 +101,8 @@ the bigest one with an FPU: femtorv-petitbateau (RV32IMFC+irq).
 $ python3 -m litex_boards.targets.radiona_ulx3s --cpu-type=femtorv --cpu-variant=petitbateau --build --load --device LFE5U-85F --sdram-module AS4C32M16
 ```
 
-Coming next
-===========
+Software
+========
 
 Compiling RiscV software for the device
 ---------------------------------------
@@ -120,40 +120,20 @@ lxterm can be used to send a binary to the device, as follows:
 $lxterm --kernel <software.bin> --speed 115200 /dev/ttyUSB0
 ```
 
-Graphics and HDMI
+LiteX demo bundle
 -----------------
-
-SSD1331 OLED screen
--------------------
-- Syntethize with `--with-oled` option.
-- Generated include file for hw control registers: `build/radiona_ulx3s/software/include/generated/csr.h`
-  (Many macros there to access SPI or to do bitbanging with control signals).
-- In `litex-boards/litex_boards/targets/radiona_ulx3s.py`, oled uses standard `SPIMaster` module.
-- control signals (RESET,CS,DC) are mapped to `"oled_ctl"` (which one is LSB ?)
-- `"oled_ctl"` is defined in `litex-boards/litex_boards/platforms/radiona_ulx3s.py`: `dc,resn,csn`
-- oled_ctl_out_write(), oled_spi_mosi_write() if using bitbanging
-- Example of LiteX SPI usage in `litex/litex/soc/software/liblitesdcard/spisdcard.c`
-- How to know which bit is (dc,resn,csn) in ctl ? Write cs, then read ctl !
-
-
-```
-void ssd1331_command(uint8_t cmd) {
-   // how to specify command/data ? (dc) -> oled_ctl_out_write()
-   oled_spi_cs_write(SPI_CS_LOW);
-   oled_spi_mosi_write(byte);
-   oled_spi_control_write(8*SPI_LENGTH | SPI_START);
-   while(oled_spi_status_read() != SPI_DONE);
-   oled_spi_cs_write(SPI_CS_HIGH);
-}
-```
-
-
+see files and instructions [here](https://github.com/BrunoLevy/learn-fpga/tree/master/FemtoRV/FIRMWARE/LiteX/DemoBundle)
 
 Notes - LiteX cheatcodes and files
 ==================================
+
+If you want to learn more about how LiteX works, reading the
+sourcecode is a good idea ! Some important links and files:
+
 - simulation: `litex_sim --cpu-type=femtorv --with-sdram`
 - ULX3S pins: `litex-boards/litex_boards/platforms/radiona_ulx3s.py`
 - ULX3S: `litex-boards/litex_boards/targets/radiona_ulx3s.py`
 - femtorv: `litex/litex/soc/cores/cpu/femtorv/core.py`
 - bios: `litex/litex/soc/software/bios/main.c`
 - framebuffer: `litex/litex/soc/cores/video.py`
+- [wishbone-utils](https://github.com/litex-hub/wishbone-utils/releases)

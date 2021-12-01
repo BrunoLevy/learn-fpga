@@ -45,7 +45,9 @@ COMMONFLAGS:=$(COMMONFLAGS:-fexceptions=)
 CFLAGS:=$(CFLAGS:-fexceptions=)
 CXXFLAGS:=$(CXXFLAGS:-fexceptions=)
 
-OBJECTS   = isr.o main.o lite_oled.o tinyraytracer.o pi.o oled_test.o oled_riscv_logo.o oled_julia.o crt0.o
+
+OBJECTS = isr.o main.o lite_oled.o tinyraytracer.o mandelbrot.o \
+          pi.o oled_test.o oled_riscv_logo.o oled_julia.o crt0.o
 
 all: demo.bin
 
@@ -78,10 +80,6 @@ main.o: main.c
 # swapping femtorv variants)
 crt0.o: $(CPU_DIRECTORY)/crt0.S $(BUILD_DIR)/software/include/generated/variables.mak
 	$(assemble)
-
-donut.o: CFLAGS += -w
-
-helloc.o: CFLAGS += -w
 
 %.o: %.cpp
 	$(compilexx)

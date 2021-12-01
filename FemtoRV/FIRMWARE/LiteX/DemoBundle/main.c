@@ -86,6 +86,7 @@ static void help(void)
 	puts("help            - Show this command");
 	puts("reboot          - Reboot CPU");
 	puts("tinyraytracer   - Raytracing demo");
+	puts("mandelbrot      - Mandelbrot set");   
 	puts("raystones       - Raytracing benchmark");
 	puts("pi              - Compute the decimals of pi");
 #ifdef CSR_OLED_SPI_BASE
@@ -123,6 +124,8 @@ static void console_service(void)
 		reboot_cmd();
 	else if(!strcmp(token, "tinyraytracer"))
 		tinyraytracer(1);
+	else if(!strcmp(token, "mandelbrot"))
+		mandelbrot();
 	else if(!strcmp(token, "raystones"))
 		tinyraytracer(0);
 	else if(!strcmp(token, "pi"))

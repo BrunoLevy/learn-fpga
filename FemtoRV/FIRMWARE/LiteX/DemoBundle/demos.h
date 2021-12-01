@@ -8,6 +8,10 @@
  */
 void tinyraytracer(int tty_output);
 
+/**
+ * mandelbrot set, using fixed point.
+ */ 
+void mandelbrot(void);
 
 /**
  * \brief Displays a moving pattern on the OLED screen.
@@ -30,3 +34,4 @@ void oled_julia(void);
  * \details By Fabrice Bellard.
  */ 
 void pi(void);
+

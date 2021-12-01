@@ -3,11 +3,14 @@ Demo bundle firmware for LiteX
 
 This firmware for LiteX contains a bundle of small demo programs, that can be used to
 test and benchmark different cores. Some of them display graphic effects on the SSD1331
-OLED display if it is plugged and configured. 
+OLED display if it is plugged and configured. Some others (tinyraytracer and mandebrot)
+display the result on the OLED screen (if configured) and in the 
+console (using ANSI color codes, this makes BIG pixels !).
 
 | demo           | description                            | comments                       |
 |----------------|----------------------------------------|--------------------------------|
 |tinyraytracer   | raytracer by Dmitry Sololov            | textmode (+ OLED if configured)|
+|mandelbrot      | fixed-point Mandelbrot set             | textmode (+ OLED if configured)|
 |raystones       | raytracer perf test                    | can be used to benchmark cores |
 |oled_test       | tests OLED screen                      | only if OLED configured        |
 |oled_riscv_logo | 90-ish rotozoom demo                   | only if OLED configured        |
