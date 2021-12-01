@@ -1,7 +1,9 @@
 FEMTORV32 / FEMTOSOC: a minimalistic RISC-V CPU 
 ===============================================
 
-_(Everything fit on the IceStick < 1280 LUTs)_
+![](FemtoRV/TUTORIALS/Images/IceStick_hello.gif)
+
+_(Everything can fit on the IceStick < 1280 LUTs)_
  
 Quick links:
 - [IceStick tutorial](TUTORIALS/IceStick.md)
@@ -17,7 +19,7 @@ Quick links:
 Features
 --------
 
-- Implements the RV32I or RV32IM instruction set (minus FENCE and SYSTEM).
+- Implements the RV32I, RV32IM, RV32IMC or RV32IMFC instruction sets
 - Synthesis using the freeware tools (Yosys and nextpnr).    
 - Main goal: to be used for teaching, easy to read, fitting on the ICEstick, 
       fun demos (graphics), equip students for approx. $40.
@@ -31,18 +33,8 @@ Features
 - includes @ultraembedded's fat_io_lib (access to FAT filesystem on SDCards).
 - "femtOS" virtual output support: redirects printf() to UART, OLED screen (or led matrix, WIP).
 - many RISC-V assembly and C demo programs, including graphics for the OLED display.
-
-Performance (Dhrystones test)
------------------------------
-
-|Configuration                            | CPI   | Dhrystones/s/MHz | DMIPS/MHz |
-|-----------------------------------------|-------|------------------|-----------|
-|FemroRV32 with RV32I and simple shifter  | 3.434 |      956         |   0.544   |
-|FemroRV32 with RV32I and 2-stage shifter | 3.062 |     1072         |   0.610   |
-|FemroRV32 with RV32I and barrel shifter  | 2.786 |     1178         |   0.670   |
-|FemroRV32 with RV32IM and barrel shifter | 2.934 |     1241         |   0.706   |
-
-_last line (RV32IM) using ECP5 DSP blocs_
+- now directly available in [LiteX](https://github.com/enjoy-digital/litex), 
+  see [tutorial](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/TUTORIALS/litex.md)
 
 LUT count (FemtoRV32 + FemtoSOC)
 --------------------------------

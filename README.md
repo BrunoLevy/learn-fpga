@@ -7,21 +7,10 @@ Mission statement: create teaching material for FPGAs, processor design and RISC
 
 FemtoRV: a minimalistic RISC-V CPU
 ----------------------------------- 
-FemtoRV is a minimalistic RISC-V design, with easy-to-read Verilog sources (less than 1000 lines), directly written
+[FemtoRV](FemtoRV/README.md) is a minimalistic RISC-V design, with easy-to-read Verilog sources (less than 1000 lines), directly written
 from the RISC-V specification. It includes a companion SOC, with drivers for an UART, a led matrix, a small OLED display,
 SPI RAM and SDCard. Its most basic configuration fits on the Lattice IceStick (< 1280 LUTs). It can be used for teaching
 processor design and RISC-V programming.
-
-Quick links:
-  - [FemtoRV](FemtoRV/README.md)
-  - [IceStick tutorial](FemtoRV/TUTORIALS/IceStick.md)
-  - [IceBreaker tutorial](FemtoRV/TUTORIALS/IceBreaker.md)
-  - [ULX3S tutorial](FemtoRV/TUTORIALS/ULX3S.md)
-  - [ECP5 eval board tutorial](FemtoRV/TUTORIALS/ECP5_EVN.md)
-  - [FOMU tutorial](FemtoRV/TUTORIALS/FOMU.md)
-  - [ARTY tutorial](FemtoRV/TUTORIALS/arty.md)  
-  - [Designing a RISC-V processor - the FemtoRV32](FemtoRV/TUTORIALS/DESIGN/FemtoRV32.md)      
-  - [Notes on RISC-V software compilation](FemtoRV/TUTORIALS/software.md)
 
 Basic: more basic things I wrote during May 2020 - June 2020  
 ------------------------------------------------------------
