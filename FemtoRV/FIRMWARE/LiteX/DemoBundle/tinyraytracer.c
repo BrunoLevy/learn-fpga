@@ -146,17 +146,17 @@ static inline void stats_end_pixel(void) {
 static inline void stats_end_frame(void) {
   // Not using floats because my own version of printf()
   // in libfemtorv does not support them.
-  uint32_t seconds = (uint32_t)(frame_Kticks / (CONFIG_CLOCK_FREQUENCY / 1000));
+  uint32_t milliseconds = (uint32_t)(frame_Kticks / (CONFIG_CLOCK_FREQUENCY / 1000000));
+  uint32_t seconds = milliseconds / 1000;
   uint32_t minutes = seconds / 60;
   uint32_t rem_seconds = seconds % 60;
   uint32_t MHz = CONFIG_CLOCK_FREQUENCY / 1000000;
   uint32_t pixels = OLED_WIDTH*OLED_HEIGHT;
-  float raystones = 1000.0 * ((float)pixels / (float)(seconds*MHz));
+  float raystones = 1000000.0 * ((float)pixels / (float)(milliseconds*MHz));
   
   printf(
-      "Elapsed time=%d:%s%d\n", 
-      (int)minutes, 
-      rem_seconds >= 10 ? "" : "0", (int)rem_seconds
+      "Elapsed time=%02d:%02d (%d milliseconds)\n", 
+      (int)minutes, (int)rem_seconds, (int)milliseconds
   );
 
   printf(
