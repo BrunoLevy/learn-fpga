@@ -2,10 +2,16 @@
 // FemtoRV32, a collection of minimalistic RISC-V RV32 cores.
 //
 // PetitBateau (make it float): a simple single-precision RISC-V FPU
+//   Mission statement: achieve a good area/performance ratio, by
+//   implementing a full-precision FMA (48 bits), and micro-programmed
+//   Newton-Raphson for FDIV and FSQRT (that reuse the FMA).
+// 
 // Rounding works as follows:
 // - all subnormals are flushed to zero
 // - FADD, FSUB, FMUL, FMADD, FMSUB, FNMADD, FNMSUB: IEEE754 round to zero
 // - FDIV and FSQRT do not have correct rounding
+//   if PRECISE_DIV is set (default), then FDIV rounding is validated in 
+//      tinyraytracer test. Complete proof remains to be done
 //
 // [TODO] add FPU CSR (and instret for perf stat)]
 // [TODO] correct IEEE754 round to zero for FDIV and FSQRT
@@ -19,12 +25,12 @@
 // TODO: instead of mux between A,B,C and FMA, make FMA always compute
 //       A*B+C and mux rs1,rs2,rs3,1.0,0.0 to A,B,C based on instr (mux
 //       will be more complicated but will probably reduce overall
-//       critical path)
+//       critical path) ?
 // TODO: there are too many different paths between the internal registers,
 //       maybe micro-instructions could be redesigned with this in mind.
+//       A could be the MSBs of X, avoiding all MV_A_X instructions.
 // TODO: the necessity to copy rs1 in E without flushing denormals for
 //       the int-to-fp instructions is unelegant.
-
 
 // Include guard for LiteX
 `ifndef PETITBATEAU_INCLUDED
@@ -495,7 +501,7 @@ module PetitBateau(
 	   fpmi_is[FPMI_FRCP_ITER1]: begin
 	      `FP_LD(A,1'b1,8'd126, E_frac);             // A <= -D'
 	      `FP_LD(B,X_sign,X_exp[7:0],X_frac[47:24]); // B <= X
-	      // C <= PRECISE_DIV ? 1.0 : 2.0
+	       //                           1.0            2.0
 	      `FP_LD32(C, PRECISE_DIV ? 32'h3f800000 : 32'h40000000); 
 	   end
 

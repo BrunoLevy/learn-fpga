@@ -82,3 +82,40 @@ because you executed code compiled with flags that are not supported
 by the configured core (for instance, play with femtorv32-petitbateau
 that supports RV32IMFC, then switch to femtorv32-quark but load the
 software that was compiled for petitbateau).
+
+
+Other cores with FPU
+--------------------
+
+VexRiscV is a more efficient core that optionally has a FPU. To
+generate LiteX with VexRiscV and a FPU, you will need to modify a
+bit the core definition file (because there is currently no way
+of passing the options to generate the FPU), but it is easy:
+
+- edit `litex/litex/soc/cores/cpu/vexriscv_smp/core.py`
+- set `dcache_width` and `icache_width` to `64` (lines 52 and 53)
+- set `with_fpu` to `True` (line 57)
+
+Then generate LiteX with the `vexriscv_smp` processor (adapt to your own device and sdram module):
+```
+python3 -m litex_boards.targets.radiona_ulx3s --cpu-type=vexriscv_smp --build --load --device LFE5U-85F --sdram-module AS4C32M16 --with-oled
+```
+
+Recompile the firmware (`make clean all`) and load it (`make terminal` then `reboot`).
+
+RayStones performances of various cores
+---------------------------------------
+
+The table below show the "raystones" score (pixel/s/MHz) for several cores. 
+LUTs and FFs measured on an ULX3S (ECP5) (note: LUT and FF count also
+includes the LiteX SOC, that costs around 3000 LUTs and 2000 FFs).
+
+ | core                 | instr set  | raystones |  LUTs | FFs   | 
+ |----------------------|------------|-----------|-------|-------|
+ | serv                 | rv32i      |   0.111   |  3453 |  2668 |
+ | femtorv-quark        | rv32i      |   1.99    |  3995 |  2902 |
+ | femtorv-electron     | rv32im     |   3.373   |  5632 |  3274 |
+ | femtorv-gracilis     | rv32imc    |   3.516   |  6333 |  3532 |
+ | vexriscv imac        | rv32imac   |   7.987   |  7005 |  5808 |
+ | femtorv-petitbateau  | rv32imfc   |  45.159   | 10522 |  4238 |
+ | vexriscv_smp         | rv32imafd  | 124.121   | 19317 | 19482 |
