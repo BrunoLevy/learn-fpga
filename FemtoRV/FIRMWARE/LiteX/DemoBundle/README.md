@@ -1,6 +1,9 @@
 Demo bundle firmware for LiteX
 ===============================
 
+![](FemtoRV/TUTORIALS/Images/raystones_tty.gif)
+
+
 This firmware for LiteX contains a bundle of small demo programs, that can be used to
 test and benchmark different cores. Some of them display graphic effects on the SSD1331
 OLED display if it is plugged and configured. Some others (tinyraytracer and mandebrot)
