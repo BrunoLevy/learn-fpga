@@ -116,7 +116,9 @@ includes the LiteX SOC, that costs around 3000 LUTs and 2000 FFs).
  | core                 | instr set  | raystones |  LUTs | FFs   | 
  |----------------------|------------|-----------|-------|-------|
  | serv                 | rv32i      |   0.111   |  3453 |  2668 |
+ | picorv32-minimal     | rv32i      |   1.45    |  4535 |  3584 |
  | femtorv-quark        | rv32i      |   1.99    |  3995 |  2902 |
+ | picorv32-standard    | rv32im     |   2.352   |  6460 |  4896 |
  | femtorv-electron     | rv32im     |   3.373   |  5632 |  3274 |
  | femtorv-gracilis     | rv32imc    |   3.516   |  6333 |  3532 |
  | vexriscv imac        | rv32imac   |   7.987   |  7005 |  5808 |
