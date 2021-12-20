@@ -1,7 +1,7 @@
 Demo bundle firmware for LiteX
 ===============================
 
-![](FemtoRV/TUTORIALS/Images/raystones_tty.gif)
+![](raystones_tty.gif)
 
 
 This firmware for LiteX contains a bundle of small demo programs, that can be used to
