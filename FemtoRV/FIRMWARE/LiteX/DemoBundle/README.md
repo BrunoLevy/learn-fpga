@@ -119,15 +119,15 @@ python3 -m litex_boards.targets.radiona_ulx3s --cpu-type=xxxx --cpu-variant=yyyy
  | core                 | instr set  | raystones |  total LUTs | total FFs   | 
  |----------------------|------------|-----------|-------------|-------------|
  | serv                 | rv32i      |   0.111   |  3381       |  2664       |
- |----------------------|------------|-----------|-------------|-------------| 
+ |                      |            |           |             |             |
  | picorv32-minimal     | rv32i      |   1.45    |  4333       |  3320       |
  | picorv32-standard    | rv32im     |   2.352   |  5974       |  4632       |
- |----------------------|------------|-----------|-------------|-------------| 
+ |                      |            |           |             |             | 
  | femtorv-quark        | rv32i      |   1.99    |  3721       |  2898       | 
  | femtorv-electron     | rv32im     |   3.373   |  4874       |  3270       | 
  | femtorv-gracilis     | rv32imc    |   3.516   |  5416       |  3528       | 
- | femtorv-petitbateau  | rv32imfc   |  45.159   |  8677       |  4234       | 
- |----------------------|------------|-----------|-------------|-------------| 
+ | femtorv-petitbateau  | rv32imfc   |  45.159   |  8677       |  4234       |
+ |                      |            |           |             |             | 
  | vexriscv imac        | rv32imac   |   7.987   |  6348       |  5804       |
  | vexriscv_smp         | rv32imafd  | 124.121   |  9792       | 10024       |
 
@@ -140,20 +140,20 @@ python3 -m litex_boards.targets.radiona_ulx3s --cpu-type=xxxx --cpu-variant=yyyy
 | gracilis    | 2799  | 1018  | 
 | petitbateau | 6197  | 1724  | 
 
-comparing with LiteX numbers, LiteX SOC weights approximatively 2500 LUTs and 2500 FFs. Then we can
-measure "raystones density", that is, `pixel/s/MHz/(LUT+FF)*10^6`:
+comparing with LiteX numbers, we can deduce that LiteX SOC weights approximatively 2500 LUTs
+and 2500 FFs. Then we can measure "raystones density", that is, `raystones/(LUT+FF)*10^6`:
 
  | core                 | instr set  | raystones |  core LUTs  |  core FFs   | raystones density | 
  |----------------------|------------|-----------|-------------|-------------|-------------------|
  | serv                 | rv32i      |   0.111   |   881       |   164       | 106               |
- |----------------------|------------|-----------|-------------|-------------|-------------------| 
+ |                      |            |           |             |             |                   | 
  | picorv32-minimal     | rv32i      |   1.45    |  1833       |   820       | 546               |
  | picorv32-standard    | rv32im     |   2.352   |  3474       |  2132       | 419               |
- |----------------------|------------|-----------|-------------|-------------|-------------------|  
+ |                      |            |           |             |             |                   | 
  | femtorv-quark        | rv32i      |   1.99    |  1221       |   398       | 1229              | 
  | femtorv-electron     | rv32im     |   3.373   |  2364       |   770       | 1076              | 
  | femtorv-gracilis     | rv32imc    |   3.516   |  2916       |  1028       | 891               | 
- | femtorv-petitbateau  | rv32imfc   |  45.159   |  6177       |  1734       | 5708              | 
- |----------------------|------------|-----------|-------------|-------------|-------------------|  
+ | femtorv-petitbateau  | rv32imfc   |  45.159   |  6177       |  1734       | 5708              |
+ |                      |            |           |             |             |                   |  
  | vexriscv imac        | rv32imac   |   7.987   |  3848       |  3304       | 1116              |
  | vexriscv_smp         | rv32imafd  | 124.121   |  7292       |  7524       | 8377              |
