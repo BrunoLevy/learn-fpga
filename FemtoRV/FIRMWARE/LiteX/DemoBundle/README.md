@@ -157,3 +157,8 @@ and 2500 FFs. Then we can measure "raystones density", that is, `raystones/(LUT+
  |                      |            |           |             |             |                   |  
  | vexriscv imac        | rv32imac   |   7.987   |  3848       |  3304       | 1116              |
  | vexriscv_smp         | rv32imafd  | 124.121   |  7292       |  7524       | 8377              |
+
+(note: since I estimated the weight of the SOC and subtracted it, 
+these numbers are probably wrong, especially for SERV that is super
+small, and that has probably at least 200 raytsones density I'd have
+expected).
