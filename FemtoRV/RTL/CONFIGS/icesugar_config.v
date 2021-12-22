@@ -5,8 +5,8 @@
 
 `define NRV_IO_LEDS      // Mapped IO, LEDs D1,D2,D3,D4 (D5 is used to display errors)
 `define NRV_IO_UART      // Mapped IO, virtual UART (USB)
-`define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
-`define NRV_IO_MAX7219   // Mapped IO, 8x8 led matrix
+//`define NRV_IO_SSD1351   // Mapped IO, 128x128x64K OLed screen
+//`define NRV_IO_MAX7219   // Mapped IO, 8x8 led matrix
 `define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. Can be used with MINIRV32 to run code from SPI flash.
 
 /************************* Processor configuration ******************************************************************/
@@ -18,7 +18,7 @@
 //`define NRV_FEMTORV32_PETITBATEAU     // RV32IMFC + IRQ, does not fit on IceBreaker
 
 `define NRV_FREQ 12                 // Frequency in MHz. Recomm: 15 MHz   Overclocking: 20-25 MHz
-`define NRV_RESET_ADDR 32'h00820000 // Jump execution to SPI Flash (800000h, +128k(20000h) for FPGA bitstream)
+`define NRV_RESET_ADDR 32'h00420000 // Jump execution to SPI Flash (400000h, +128k(20000h) for FPGA bitstream)
 // tinyraytracer: 30 MHz RV32IM  electron 3:12
 //                20 MHz RV32IM  gracilis 3:44
 //                20 MHz RV32IMC gracilis 3:32
