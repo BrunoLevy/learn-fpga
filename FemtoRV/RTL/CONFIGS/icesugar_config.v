@@ -11,9 +11,10 @@
 
 /************************* Processor configuration ******************************************************************/
 
+`define NRV_FEMTORV32_QUARK
 //`define NRV_FEMTORV32_ELECTRON      // RV32IM
 //`define NRV_FEMTORV32_INTERMISSUM   // RV32IM  + IRQ
-`define NRV_FEMTORV32_GRACILIS      // RV32IMC + IRQ
+//`define NRV_FEMTORV32_GRACILIS      // RV32IMC + IRQ
 //`define NRV_FEMTORV32_PETITBATEAU     // RV32IMFC + IRQ, does not fit on IceBreaker
 
 `define NRV_FREQ 12                 // Frequency in MHz. Recomm: 15 MHz   Overclocking: 20-25 MHz
