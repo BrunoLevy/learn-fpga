@@ -84,6 +84,7 @@
 
 `ifdef ICE_SUGAR
  `define ICE40
+ `define PASSTHROUGH_PLL
 `endif
 
 `ifdef ICE_SUGAR_NANO

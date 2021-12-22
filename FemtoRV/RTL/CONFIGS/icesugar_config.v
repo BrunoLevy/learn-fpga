@@ -16,7 +16,7 @@
 `define NRV_FEMTORV32_GRACILIS      // RV32IMC + IRQ
 //`define NRV_FEMTORV32_PETITBATEAU     // RV32IMFC + IRQ, does not fit on IceBreaker
 
-`define NRV_FREQ 20                 // Frequency in MHz. Recomm: 15 MHz   Overclocking: 20-25 MHz
+`define NRV_FREQ 12                 // Frequency in MHz. Recomm: 15 MHz   Overclocking: 20-25 MHz
 `define NRV_RESET_ADDR 32'h00820000 // Jump execution to SPI Flash (800000h, +128k(20000h) for FPGA bitstream)
 // tinyraytracer: 30 MHz RV32IM  electron 3:12
 //                20 MHz RV32IM  gracilis 3:44
