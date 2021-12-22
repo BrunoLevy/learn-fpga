@@ -6,14 +6,14 @@ NEXTPNR_ICESUGAR_OPT=--force --json $(PROJECTNAME).json --pcf BOARDS/icesugar.pc
 
 ICESUGAR: ICESUGAR.firmware_config ICESUGAR.synth ICESUGAR.prog
 
-ICESUGAR.synth: FIRMWARE/firmware.hex 
+ICESUGAR.synth:
 	TOOLS/make_config.sh -DICE_SUGAR
 	yosys $(YOSYS_ICESUGAR_OPT) $(VERILOGS)
 	nextpnr-ice40 $(NEXTPNR_ICESUGAR_OPT)
 	icetime -p BOARDS/icesugar.pcf -P sg48 -r $(PROJECTNAME).timings -d up5k -t $(PROJECTNAME).asc
 	icepack -s $(PROJECTNAME).asc $(PROJECTNAME).bin
 
-ICESUGAR.show: FIRMWARE/firmware.hex 
+ICESUGAR.show:
 	yosys $(YOSYS_ICESUGAR_OPT) $(VERILOGS)
 	nextpnr-ice40 $(NEXTPNR_ICESUGAR_OPT) --gui
 

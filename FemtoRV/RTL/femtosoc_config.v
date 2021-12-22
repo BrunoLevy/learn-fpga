@@ -16,6 +16,10 @@
 `include "CONFIGS/icebreaker_config.v"
 `endif
 
+`ifdef ICE_SUGAR
+`include "CONFIGS/icesugar_config.v"
+`endif
+
 `ifdef ECP5_EVN
 `include "CONFIGS/ecp5evn_config.v"
 `endif
