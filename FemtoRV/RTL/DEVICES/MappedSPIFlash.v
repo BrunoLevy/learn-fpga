@@ -51,6 +51,12 @@
  `define SPI_FLASH_CONFIGURED
 `endif
 
+`ifdef ICE_SUGAR
+ `define SPI_FLASH_FAST_READ_DUAL_IO
+ `define SPI_FLASH_DUMMY_CLOCKS 4 // Winbond SPI chips on icebreaker uses 4 dummy clocks
+ `define SPI_FLASH_CONFIGURED
+`endif
+
 `ifdef ULX3S
  `define SPI_FLASH_FAST_READ // TODO check whether dual IO mode can be done / dummy clocks
  `define SPI_FLASH_CONFIGURED
