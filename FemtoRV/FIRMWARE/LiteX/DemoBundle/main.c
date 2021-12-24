@@ -10,7 +10,7 @@
 #include <libbase/console.h>
 #include <generated/csr.h>
 
-#include "demos.h"
+#include "demos/demos.h"
 
 /*-----------------------------------------------------------------------*/
 /* Uart                                                                  */

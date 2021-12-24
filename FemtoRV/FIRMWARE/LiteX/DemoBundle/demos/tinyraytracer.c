@@ -5,7 +5,12 @@
 
 #include "demos.h"
 #include "lite_oled.h"
+#include "lite_fb.h"
+
 #include <generated/soc.h>
+#include <libbase/uart.h>
+#include <libbase/console.h>
+
 #include <stdio.h>
 #include <math.h>
 
@@ -17,6 +22,7 @@ static inline float max(float x, float y) { return x>y?x:y; }
 static inline float min(float x, float y) { return x<y?x:y; }
 
 static int tty_output_active = 0;
+static BOOL with_fb = 0;
 
 /*******************************************************************/
 
@@ -38,12 +44,17 @@ static int tty_output_active = 0;
 
 // Size of the screen
 // Replace with your own variables or values
-#define graphics_width  OLED_WIDTH
-#define graphics_height OLED_HEIGHT 
+int graphics_width  = OLED_WIDTH;
+int graphics_height = OLED_HEIGHT; 
 
 // Replace with your own stuff to initialize graphics
 static inline void graphics_init(void) {
    oled_init();
+   with_fb = fb_init();
+   if(with_fb) {
+      graphics_width  = FB_WIDTH;
+      graphics_height = FB_HEIGHT;
+   }
 }
 
 // Replace with your own stuff to terminate graphics or leave empty
@@ -61,6 +72,11 @@ static void graphics_set_pixel(int x, int y, float r, float g, float b) {
    uint8_t G = (uint8_t)(255.0f * g);
    uint8_t B = (uint8_t)(255.0f * b);
 
+   if(with_fb && tty_output_active) {
+      fb_setpixel_RGB(x,y,R,G,B);
+      return;
+   } 
+     
    oled_setpixel_RGB(x,y,R,G,B);
 
    if(tty_output_active) {
@@ -151,7 +167,7 @@ static inline void stats_end_frame(void) {
   uint32_t minutes = seconds / 60;
   uint32_t rem_seconds = seconds % 60;
   uint32_t MHz = CONFIG_CLOCK_FREQUENCY / 1000000;
-  uint32_t pixels = OLED_WIDTH*OLED_HEIGHT;
+  uint32_t pixels = graphics_width*graphics_height;
   float raystones = 1000000.0 * ((float)pixels / (float)(milliseconds*MHz));
   
   printf(
@@ -437,6 +453,11 @@ static void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights
 	);
 	graphics_set_pixel(i,j,C.x,C.y,C.z);
 	stats_end_pixel();
+      }
+      flush_l2_cache(); // needed for femtorv32 + LiteX (L2 cache -> framebuffer transfer)
+      if (readchar_nonblock()) {
+	 getchar();
+	 return;
       }
    }
    stats_end_frame();

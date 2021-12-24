@@ -9,11 +9,11 @@
 # Started from litex/litex/soc/software/demo/Makefile
 # My changes indicated by [BL] tags.
 
-# [BL] I'm used to 'make VERBOSE=1' to see commands
+# I'm used to 'make VERBOSE=1' to see commands
 # (and LiteX uses 'make V=1' for this). Makes both work.
 V?=$(VERBOSE)
 
-# [BL] find BUILD_DIR without using Python wrapper
+# find BUILD_DIR without using Python wrapper
 LITEX_DIR?=/home/blevy/Programming/LiteX
 LITEX_PLATFORM?=radiona_ulx3s
 BUILD_DIR?=$(LITEX_DIR)/build/$(LITEX_PLATFORM)
@@ -21,33 +21,42 @@ BUILD_DIR?=$(LITEX_DIR)/build/$(LITEX_PLATFORM)
 include $(BUILD_DIR)/software/include/generated/variables.mak
 include $(SOC_DIRECTORY)/software/common.mak
 
-# [BL] replace LiteX-provided libcompiler_rt (that misses
+# replace LiteX-provided libcompiler_rt (that misses
 # some functions, e.g. floating-point) with libgcc (that has everything)
 LIBS:=$(LIBS:libcompiler_rt=libgcc)
 
-# [BL] optimize for speed ! (I *LOVE* speed !!!)
+# Include path
+CFLAGS:=$(CFLAGS) -Ilibs 
+CXXFLAGS:=$(CXXFLAGS) -Ilibs
+
+# optimize for speed ! (I *LOVE* speed !!!)
 COMMONFLAGS:=$(COMMONFLAGS:-Os=-O3)
 CFLAGS:=$(CFLAGS:-Os=-O3)
 CXXFLAGS:=$(CXXFLAGS:-Os=-O3)
 
-# [BL] no debug info (prevents some optimizations)
+# no debug info (prevents some optimizations)
 COMMONFLAGS:=$(COMMONFLAGS:-g3=)
 CFLAGS:=$(CFLAGS:-g3=)
 CXXFLAGS:=$(CXXFLAGS:-g3=)
 
-# [BL] use builtins (except for printf)
+# use builtins (except for printf)
 COMMONFLAGS:=$(COMMONFLAGS:-fno-builtin=-fno-builtin-printf)
 CFLAGS:=$(CFLAGS:-fno-builtin=-fno-builtin-printf)
 CXXFLAGS:=$(CXXFLAGS:-fno-builtin=-fno-builtin-printf)
 
-# [BL] no exceptions
+# no exceptions
 COMMONFLAGS:=$(COMMONFLAGS:-fexceptions=)
 CFLAGS:=$(CFLAGS:-fexceptions=)
 CXXFLAGS:=$(CXXFLAGS:-fexceptions=)
 
 
-OBJECTS = isr.o main.o lite_oled.o tinyraytracer.o mandelbrot.o \
-          pi.o oled_test.o oled_riscv_logo.o oled_julia.o crt0.o
+LIBS_OBJECTS=lite_oled.o lite_fb.o 
+
+DEMOS_OBJECTS=tinyraytracer.o mandelbrot.o \
+              oled_test.o oled_riscv_logo.o oled_julia.o \
+	      pi.o
+
+OBJECTS = $(DEMOS_OBJECTS) $(LIBS_OBJECTS) isr.o main.o crt0.o
 
 all: demo.bin
 
@@ -85,6 +94,12 @@ crt0.o: $(CPU_DIRECTORY)/crt0.S $(BUILD_DIR)/software/include/generated/variable
 	$(compilexx)
 
 %.o: %.c
+	$(compile)
+
+%.o: demos/%.c
+	$(compile)
+
+%.o: libs/%.c
 	$(compile)
 
 %.o: %.S

@@ -10,28 +10,31 @@
 //   void sdcard_read(uint32_t sector, uint32_t count, uint8_t* buf);
 //   void sdcard_write(uint32_t sector, uint32_t count, uint8_t* buf);
 
-#include <liblitesdcard/sdcard.h>
+#include <liblitesdcard/spisdcard.h>
 #include <stdio.h>
 
-#ifndef CSR_SDCORE_BASE
+#ifndef CSR_SPISDCARD_BASE
 #error Need to configure LiteX with SDCard support
 #endif
 
 static int sdcard_read_adaptor(uint32_t start_block, uint8_t *buffer, uint32_t sector_count) {
-   sdcard_read(start_block, sector_count, buffer);
+   //spisdcard_read(start_block, sector_count, buffer);
    return 1; // How to check errors after sdcard_read ?
 }
 
 static int sdcard_write_adaptor(uint32_t start_block, uint8_t *buffer, uint32_t sector_count) {
-   sdcard_write(start_block, sector_count, buffer);
+   //spisdcard_write(start_block, sector_count, buffer);
    return 1; // How to check errors after sdcard_write ?
 }
 
 int filesystem_init(void) {
-  if(!sdcard_init()) {
-    printf("ERROR:\nCould not init\n SDCard\n");
-    return -1;
+  if(!spisdcard_init()) {
+     printf("ERROR:\nCould not init\n SDCard\n");
+     return -1;
+  } else {
+     printf("SDCard OK\n");	
   }
+   
   fl_init();
   if(fl_attach_media(
       (fn_diskio_read)sdcard_read_adaptor,
