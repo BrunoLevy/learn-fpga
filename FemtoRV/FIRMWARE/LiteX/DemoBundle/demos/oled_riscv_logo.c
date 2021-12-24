@@ -66,7 +66,7 @@ int sintab[64] = {
 };
 
 
-void oled_riscv_logo(void) {
+static void oled_riscv_logo(int nb_args, char** args) {
     oled_init();
     puts("Press any key to exit");
     int frame = 0;
@@ -78,9 +78,6 @@ void oled_riscv_logo(void) {
         int Uy = scaling*sintab[(frame + 16) & 63];  
         int Vx = -Uy;                                
         int Vy =  Ux;                                
-
-//        int X0 = -64*(Ux+Vx); 
-//        int Y0 = -64*(Uy+Vy);
 
         int X0 = -(OLED_WIDTH/2)*(Ux+Vx); 
         int Y0 = -(OLED_HEIGHT/2)*(Uy+Vy);
@@ -105,3 +102,7 @@ void oled_riscv_logo(void) {
     }
     oled_off();
 }
+
+#ifdef CSR_OLED_SPI_BASE
+define_demo(oled_riscv_logo, "Animated RISC-V logo on OLED screen");
+#endif

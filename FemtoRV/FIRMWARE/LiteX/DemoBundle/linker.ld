@@ -30,6 +30,23 @@ SECTIONS
 		_erodata = .;
 	} > main_ram
 
+        /* [BL] added this to be able to reuse BIOS cmd system */
+        .commands :
+        {
+	        PROVIDE_HIDDEN (__bios_cmd_start = .);
+	        KEEP(*(.bios_cmd))
+	        PROVIDE_HIDDEN (__bios_cmd_end = .);
+        } > main_ram
+
+	.init :
+	{
+		PROVIDE_HIDDEN (__bios_init_start = .);
+		KEEP(*(.bios_init))
+		PROVIDE_HIDDEN (__bios_init_end = .);
+	} > main_ram
+
+
+
 	.data :
 	{
 		. = ALIGN(8);

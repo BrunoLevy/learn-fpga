@@ -176,7 +176,7 @@ int digits(int n) {
 }
 
 
-void pi(void) {
+static void pi(int nb_args, char** args) {
     puts("press any key to exit");
     printf("pi = 3.");
     for(int n=1; ;n+=9) {
@@ -188,3 +188,6 @@ void pi(void) {
     }
     printf("\n");
 }
+
+define_demo(pi,"compute PI decimals (by Fabrice Beillard)");
+

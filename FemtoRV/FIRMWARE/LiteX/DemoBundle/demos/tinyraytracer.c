@@ -494,7 +494,7 @@ static void init_scene(void) {
 }
 
 
-void tinyraytracer(int tty_output) {
+static void run_tinyraytracer(int tty_output) {
     tty_output_active = tty_output;
     printf("===== TINYRAYTRACER ====\n");
     init_scene();
@@ -502,5 +502,16 @@ void tinyraytracer(int tty_output) {
     render(spheres, nb_spheres, lights, nb_lights);
     graphics_terminate();
 }
+
+static void tinyraytracer(int nb_args, char** args) {
+   run_tinyraytracer(1);
+}
+define_demo(tinyraytracer, "tinyraytracer (by Dmitry Sokolov)");
+
+static void raystones(int nb_args, char** args) {
+   run_tinyraytracer(0);
+}
+define_demo(raystones, "raystones (uses tinyraytracer by Dmitry Sokolov)");
+
 
 

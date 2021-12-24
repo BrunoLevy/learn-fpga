@@ -21,13 +21,15 @@ BUILD_DIR?=$(LITEX_DIR)/build/$(LITEX_PLATFORM)
 include $(BUILD_DIR)/software/include/generated/variables.mak
 include $(SOC_DIRECTORY)/software/common.mak
 
+BIOS_SRC_DIR=$(LITEX_DIR)/litex/litex/soc/software/bios
+
 # replace LiteX-provided libcompiler_rt (that misses
 # some functions, e.g. floating-point) with libgcc (that has everything)
 LIBS:=$(LIBS:libcompiler_rt=libgcc)
 
-# Include path
-CFLAGS:=$(CFLAGS) -Ilibs 
-CXXFLAGS:=$(CXXFLAGS) -Ilibs
+# Include path 
+CFLAGS:=$(CFLAGS) -Ilibs -Iframework -I$(BIOS_SRC_DIR)
+CXXFLAGS:=$(CXXFLAGS) -Ilibs -Iframework -I$(BIOS_SRC_DIR)
 
 # optimize for speed ! (I *LOVE* speed !!!)
 COMMONFLAGS:=$(COMMONFLAGS:-Os=-O3)
@@ -56,7 +58,9 @@ DEMOS_OBJECTS=tinyraytracer.o mandelbrot.o \
               oled_test.o oled_riscv_logo.o oled_julia.o \
 	      pi.o
 
-OBJECTS = $(DEMOS_OBJECTS) $(LIBS_OBJECTS) isr.o main.o crt0.o
+BIOS_OBJECTS=complete.o helpers.o readline.o cmd_bios.o
+
+OBJECTS = $(DEMOS_OBJECTS) $(LIBS_OBJECTS) $(BIOS_OBJECTS) isr.o main.o crt0.o
 
 all: demo.bin
 
@@ -87,6 +91,7 @@ main.o: main.c
 # [BL] made crt0.o dependent on one of the generated files to make sure it
 # is recompiled whenever configuration is changed (for instance, when
 # swapping femtorv variants)
+
 crt0.o: $(CPU_DIRECTORY)/crt0.S $(BUILD_DIR)/software/include/generated/variables.mak
 	$(assemble)
 
@@ -100,6 +105,12 @@ crt0.o: $(CPU_DIRECTORY)/crt0.S $(BUILD_DIR)/software/include/generated/variable
 	$(compile)
 
 %.o: libs/%.c
+	$(compile)
+
+%.o: $(BIOS_SRC_DIR)/%.c
+	$(compile)
+
+%.o: $(BIOS_SRC_DIR)/cmds/%.c
 	$(compile)
 
 %.o: %.S

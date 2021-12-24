@@ -46,7 +46,7 @@ unsigned short sq[] = {
  115,112,110,107,105,102,100,97,95,92,90,87,85,83,81,78,76,74,72,70,68,66,64,62,60,58,56,54,52,50,49,47,45,43,42,40,39,37,36,34,33,31,30,28,27,26,25,23,
  22,21,20,19,18,17,16,15,14,13,12,11,10,9,9,8,7,6,6,5,5,4,4,3,3,2,2,1,1,1,1,0,0,0,0,0,0,0,0};
 
-void oled_julia(void) {
+static void oled_julia(int nb_args, char** args) {
    
 #define MASK   ((1<<(IP+1))-1)
 #define CLAMP  ((1<<(IP-1))-1)
@@ -107,6 +107,10 @@ void oled_julia(void) {
   }
   oled_off();
 }
+
+#ifdef CSR_OLED_SPI_BASE
+define_demo(oled_julia, "Animated Juia set on OLED screen (by Sylvain Lefebvre)");
+#endif
 
 
 #else

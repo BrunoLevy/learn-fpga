@@ -16,7 +16,7 @@
 #define dy (ymax-ymin)/OLED_HEIGHT
 #define norm_max (4 << mandel_shift)
 
-void mandelbrot(void) {
+static void mandelbrot(int nb_args, char** args) {
    oled_init();
    oled_write_window(0,0,OLED_WIDTH-1,OLED_HEIGHT-1);
    int Ci = ymin;
@@ -45,5 +45,7 @@ void mandelbrot(void) {
       Ci += dy;
    }
 }
+
+define_demo(mandelbrot, "Draws Mandelbrot set");
 
 

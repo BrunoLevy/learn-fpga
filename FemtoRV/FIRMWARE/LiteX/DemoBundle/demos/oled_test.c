@@ -5,7 +5,7 @@
 #include <libbase/uart.h>
 #include <libbase/console.h>
 
-void oled_test(void) {
+static void oled_test(int nb_args, char** args) {
    uint32_t frame;
    puts("Press any key to exit");
    oled_init();
@@ -29,3 +29,6 @@ void oled_test(void) {
    oled_off();
 }
 
+#ifdef CSR_OLED_SPI_BASE
+define_demo(oled_test, "simple test for OLED screen");
+#endif
