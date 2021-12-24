@@ -51,13 +51,15 @@ COMMONFLAGS:=$(COMMONFLAGS:-fexceptions=)
 CFLAGS:=$(CFLAGS:-fexceptions=)
 CXXFLAGS:=$(CXXFLAGS:-fexceptions=)
 
-
+# Compiled from the sources in libs/
 LIBS_OBJECTS=lite_oled.o lite_fb.o 
 
+# Compiled from the sources in demos/
 DEMOS_OBJECTS=tinyraytracer.o mandelbrot.o \
               oled_test.o oled_riscv_logo.o oled_julia.o \
 	      pi.o
 
+# These ones are compiled from the sources in LiteX/litex/litex/soc/software/bios/
 BIOS_OBJECTS=complete.o helpers.o readline.o cmd_bios.o
 
 OBJECTS = $(DEMOS_OBJECTS) $(LIBS_OBJECTS) $(BIOS_OBJECTS) commands.o isr.o main.o crt0.o
@@ -71,7 +73,7 @@ all: demo.bin
 	$(OBJCOPY) -O binary $< $@
 	chmod -x $@
 
-# [BL] added rule to examine generated assembly (make demo.list)
+# added rule to examine generated assembly (make demo.list)
 # Rem: $(OBJDUMP) not defined, so "deducing" it from $(OBJCOPY) (substituting)
 %.list: %.elf
 	$(OBJCOPY:objcopy=objdump) -Mnumeric -D $< > $@
@@ -88,10 +90,9 @@ demo.elf: $(OBJECTS)
 main.o: main.c
 	$(compile)
 
-# [BL] made crt0.o dependent on one of the generated files to make sure it
+# Made crt0.o dependent on one of the generated files to make sure it
 # is recompiled whenever configuration is changed (for instance, when
 # swapping femtorv variants)
-
 crt0.o: $(CPU_DIRECTORY)/crt0.S $(BUILD_DIR)/software/include/generated/variables.mak
 	$(assemble)
 
@@ -122,4 +123,4 @@ clean:
 terminal:
 	lxterm --kernel demo.bin /dev/ttyUSB0; reset
 	
-.PHONY: all main.o clean load
+.PHONY: all clean load

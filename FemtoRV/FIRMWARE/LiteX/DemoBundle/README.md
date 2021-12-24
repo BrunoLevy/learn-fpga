@@ -106,6 +106,39 @@ python3 -m litex_boards.targets.radiona_ulx3s --cpu-type=vexriscv_smp --build --
 
 Recompile the firmware (`make clean all`) and load it (`make terminal` then `reboot`).
 
+
+LiteX framebuffer on the ULX3S
+------------------------------
+
+Depending on your version of ULX3S and version of LiteX, you may have to tinker a bit
+before having a framebuffer that works:
+- `litex-boards/litex_boards/platforms/radiona_ulx3s.py`: if your board
+  is a recent one (ver >= 1.7), which is very likely, make sure `data0_p` 
+  is mapped to pin `A16` and `data2_p` is mapped to pin `A12`. This
+  made me bang my head against the wall ! (R,G,B) wires were swapped
+  between early versions and more recent ones. Since `dataO_p` also
+  transmits hsync and vsync, you will get no image if it is wrong !
+- `litex/litex/soc/integration/soc.py`: in `add_video_framebuffer()`,
+   add `fifo_depth = 25600` to the parameters of `VideoFrameBuffer`
+   constructor (I think this fifo determines the latency of DMA,
+   25600 or any multiple of 640x4 bytes will result in shifting 
+   the image vertically instead of wrecking the scanlines)
+- it seems LiteX DMA will not respect timings for a 64MBytes SDRAM.
+  If you have an `AS4C32M16` SDRAM chip, pretend it is an `AS4C16M16`
+  (`--sdram-module AS4C16M16` on LiteX command line when synthesizing).
+- `litex-boards/litex_boards/targets/radiona_ulx3s.py`: on my monitor,
+   `640x480@74Hz` is more stable than `640x480@60Hz`.
+- `--sdram-rate 1:2` results in slightly improved performance. Note:
+  there may be a bug that swaps RGB/BGR when you do that.
+
+To summarize, here is the command line I'm using to synthesize LiteX:
+```
+python3 -m litex_boards.targets.radiona_ulx3s --cpu-type femtorv --cpu-variant petitbateau --build --load --device LFE5U-85F --sdram-module AS4C16M16 --sdram-rate 1:2 --with-video-framebuffer --with-oled --ecppack-compress
+
+```
+(replace `--device LFE5U-85F` and `--sdram-module AS4C16M16` with values adapted to your board).
+
+
 RayStones performances of various cores
 ---------------------------------------
 
