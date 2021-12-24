@@ -21,7 +21,7 @@ typedef int BOOL;
 static inline float max(float x, float y) { return x>y?x:y; }
 static inline float min(float x, float y) { return x<y?x:y; }
 
-static int tty_output_active = 0;
+static int benchmark = 0;
 static BOOL with_fb = 0;
 
 /*******************************************************************/
@@ -50,7 +50,9 @@ int graphics_height = OLED_HEIGHT;
 // Replace with your own stuff to initialize graphics
 static inline void graphics_init(void) {
    oled_init();
-   with_fb = fb_init();
+   if(!benchmark) {
+      with_fb = fb_init();
+   }
    if(with_fb) {
       graphics_width  = FB_WIDTH;
       graphics_height = FB_HEIGHT;
@@ -72,14 +74,14 @@ static void graphics_set_pixel(int x, int y, float r, float g, float b) {
    uint8_t G = (uint8_t)(255.0f * g);
    uint8_t B = (uint8_t)(255.0f * b);
 
-   if(with_fb && tty_output_active) {
+   if(with_fb) {
       fb_setpixel_RGB(x,y,R,G,B);
       return;
    } 
      
    oled_setpixel_RGB(x,y,R,G,B);
 
-   if(tty_output_active) {
+   if(!benchmark) {
      // See: https://stackoverflow.com/questions/4842424/
      //          list-of-ansi-color-escape-sequences   
      printf("\033[48;2;%d;%d;%dm ",R,G,B);
@@ -88,29 +90,6 @@ static void graphics_set_pixel(int x, int y, float r, float g, float b) {
      }
    }
 }
-
-// 64-bit cycles counter that detects
-// overflows (provided that it is called
-// sufficiently often !), because all 
-// cores do not support rdcycleh
-// (not used, because not all cores support
-//  it, replaced with LiteX timer).
-/*
-static uint64_t cycles(void) {
-  static uint64_t cycles_=0;
-  static uint32_t last_cycles32_=0;
-  uint32_t cycles32_;
-  asm volatile ("rdcycle %0" : "=r"(cycles32_));
-  // Detect counter overflow
-  if(cycles32_ < last_cycles32_) {
-    cycles_ += ~0u;
-  }
-  cycles_ += cycles32_;
-  cycles_ -= last_cycles32_;
-  last_cycles32_ = cycles32_;
-  return cycles_;
-}
-*/
 
 uint32_t frame_Kticks; // clock Kilo-ticks taken to render frame
 uint32_t pixel_ticks;  // clock ticks taken to render pixel
@@ -181,7 +160,7 @@ static inline void stats_end_frame(void) {
      (uint32_t)raystones / 1000, (uint32_t)raystones % 1000
   );
     
-  if(tty_output_active) {
+  if(!benchmark) {
     puts("  Note: \"graphic\" tty output active (takes time)");    
     puts("  to do benchmarking, use \'raystones\' instead");
   }
@@ -494,8 +473,7 @@ static void init_scene(void) {
 }
 
 
-static void run_tinyraytracer(int tty_output) {
-    tty_output_active = tty_output;
+static void run_tinyraytracer(void) {
     printf("===== TINYRAYTRACER ====\n");
     init_scene();
     graphics_init();
@@ -504,12 +482,14 @@ static void run_tinyraytracer(int tty_output) {
 }
 
 static void tinyraytracer(int nb_args, char** args) {
-   run_tinyraytracer(1);
+   benchmark = 0;
+   run_tinyraytracer();
 }
 define_demo(tinyraytracer, "tinyraytracer (by Dmitry Sokolov)");
 
 static void raystones(int nb_args, char** args) {
-   run_tinyraytracer(0);
+   benchmark = 1;   
+   run_tinyraytracer();
 }
 define_demo(raystones, "raystones (uses tinyraytracer by Dmitry Sokolov)");
 

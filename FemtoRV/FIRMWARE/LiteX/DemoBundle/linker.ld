@@ -30,7 +30,10 @@ SECTIONS
 		_erodata = .;
 	} > main_ram
 
-        /* [BL] added this to be able to reuse BIOS cmd system */
+        /* 
+ 	 * [BL] added this (as well as  the following one)
+	 * to be able to reuse BIOS cmd system 
+	 */
         .commands :
         {
 	        PROVIDE_HIDDEN (__bios_cmd_start = .);

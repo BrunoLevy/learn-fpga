@@ -26,6 +26,9 @@
 #include "helpers.h"
 #include "command.h"
 
+#undef PROMPT
+#define PROMPT "\e[92;1mlitex demo bundle\e[0m> "
+
 #include <generated/csr.h>
 #include <generated/soc.h>
 #include <generated/mem.h>
@@ -124,7 +127,7 @@ int main(int i, char **c)
 			if (!cmd)
 				printf("Command not found");
 		}
-		printf("\ndemos4%s", PROMPT);
+		printf("\n%s", PROMPT);
 	}
 	return 0;
 }

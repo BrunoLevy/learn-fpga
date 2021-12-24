@@ -60,7 +60,7 @@ DEMOS_OBJECTS=tinyraytracer.o mandelbrot.o \
 
 BIOS_OBJECTS=complete.o helpers.o readline.o cmd_bios.o
 
-OBJECTS = $(DEMOS_OBJECTS) $(LIBS_OBJECTS) $(BIOS_OBJECTS) isr.o main.o crt0.o
+OBJECTS = $(DEMOS_OBJECTS) $(LIBS_OBJECTS) $(BIOS_OBJECTS) commands.o isr.o main.o crt0.o
 
 all: demo.bin
 
