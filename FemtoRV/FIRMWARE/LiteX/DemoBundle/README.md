@@ -138,6 +138,92 @@ python3 -m litex_boards.targets.radiona_ulx3s --cpu-type femtorv --cpu-variant p
 ```
 (replace `--device LFE5U-85F` and `--sdram-module AS4C16M16` with values adapted to your board).
 
+SDCard access
+-------------
+
+If you have a recent ULX3S, you will also need to tinker a bit to enable SDCard access. The SDCard
+can be either driven by the on-board ESP32 (for instance to be able to send files on it through
+Wifi, cool feature) or by the FPGA. For now, let us see how to hardwire FPGA more:
+
+- `litex-boards/litex_boards/platforms/radiona_ulx3s.py`: add the end of the `_io_2_0` block,
+add the following pin:
+```
+  ("wifi_en", 0, Pins("F1"), IOStandard("LVCMOS33"), Misc("PULLMODE=UP"), Misc("DRIVE=4")),
+```
+- `litex-boards/litex_boards/targets/radiona_ulx3s.py`, at the end of the `__init__()` function
+  of `BaseSoc`, add the following one:
+```
+    self.comb += platform.request("wifi_en").eq(0)  
+```
+
+Now you can synthesize the bitstream, with the `--with-spi-sdcard` flag. Note: there is also a `--with-sdcard` mode,
+that has faster transfer rate, but I did not manage to make it work (so we'll stick to spi mode for now).
+
+Then you can re-build the demo program, this will add a new `catalog` command that lists the files
+present on the SDCard.
+
+LiteX system libraries have everything necessary to access files on
+the SDCard, wonderful ! Take a look at `commands.c`, function
+`catalog()` that implements the eponym command. The filesystem API is in
+`litex/litex/soc/software/libfats/ff.h`. It has all the `<stdio.h>` functions you are
+used to, except that you need to insert an underscore: `f_open()` instead of `fopen()`.
+
+Let us see now how we can add a CSR to switch-on / switch-off the ESP32.
+We first create a new class in `litex-boards/litex_boards/targets/radiona_ulx3s.py`:
+
+```
+class ESP32(Module, AutoCSR):
+    def __init__(self, platform):
+       self._enable = CSRStorage()
+       self.comb += platform.request("wifi_en").eq(self._enable.storage)
+```
+
+In the `__init__()` function of `BaseSoc`, replace the 
+line we added right before(`self.comb += platform.request("wifi_en").eq(0)`)
+with creating an instance of `ESP32`:
+```
+  self.submodules.esp32 = ESP32(platform)
+```
+
+Re-synthesize the design. If you take a look now at `build/radiona-ulx3s/software/include/generated/csr.h`,
+you will see that LiteX has automatically generated functions to manipulate the CSR for you:
+```
+...
+/* esp32 */
+#define CSR_ESP32_BASE (CSR_BASE + 0x800L)
+#define CSR_ESP32_ENABLE_ADDR (CSR_BASE + 0x800L)
+#define CSR_ESP32_ENABLE_SIZE 1
+static inline uint32_t esp32_enable_read(void) {
+	return csr_read_simple(CSR_BASE + 0x800L);
+}
+static inline void esp32_enable_write(uint32_t v) {
+	csr_write_simple(v, CSR_BASE + 0x800L);
+}
+...
+```
+
+So we can create a new command (in `commands.c`):
+```
+#ifdef CSR_ESP32_BASE
+static void esp32(int nb_args, char** args) {
+   if (nb_args < 1) {
+      printf("esp32 on|off\n");
+      return;
+   }
+   if(!strcmp(args[0],"on")) {
+       esp32_enable_write(1);
+   } else if(!strcmp(args[0],"off")) {
+       esp32_enable_write(0);
+   } else {
+       printf("esp32 on|off");
+   }
+}
+define_command(esp32, esp32, "turn ESP32 on/off", 0);
+#endif
+```
+
+Now we are able to switch the ESP32 on and off, and to access files on the SDCard. Note that if the ESP32
+is switched on, SDCard file access will fail.
 
 RayStones performances of various cores
 ---------------------------------------
@@ -146,8 +232,10 @@ The table below show the "raystones" score (pixel/s/MHz) for several cores.
 LUTs and FFs measured on an ULX3S (ECP5) with the following command:
 
 ```
-python3 -m litex_boards.targets.radiona_ulx3s --cpu-type=xxxx --cpu-variant=yyyy --build --load --device LFE5U-85F --sdram-module AS4C32M16 
+python3 -m litex_boards.targets.radiona_ulx3s --cpu-type=xxxx --cpu-variant=yyyy --build --load --device LFE5U-85F --sdram-module AS4C32M16
 ```
+TODO: need to recompute the stats with framebuffer active and AS4C16M16
+
 
  | core                 | instr set  | raystones |  total LUTs | total FFs   | 
  |----------------------|------------|-----------|-------------|-------------|
