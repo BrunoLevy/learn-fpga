@@ -1,11 +1,15 @@
 #include "command.h"
-#include <generated/csr.h>
-#include <stdio.h>
-#include <string.h>
+
+#include <lite_elf.h>
+
 #include <liblitesdcard/sdcard.h>
 #include <liblitesdcard/spisdcard.h>
 #include <libfatfs/ff.h>
 
+#include <generated/csr.h>
+
+#include <stdio.h>
+#include <string.h>
 
 static void reboot(int nb_args, char** args) {
    ctrl_reset_write(1);
@@ -62,7 +66,6 @@ static void catalog(int nb_args, char** args) {
 	printf("Could not mount filesystem\n");
 	return;
     }
-    
     printf("Filesystem OK\n");
 
     fr = f_opendir(&dir,"/");
@@ -78,4 +81,32 @@ static void catalog(int nb_args, char** args) {
     f_closedir(&dir);
 }
 define_command(catalog, catalog, "list files on SDCard", 0);
+
+static void elf_stat(int nb_args, char** args) {
+   FRESULT fr;
+   FATFS fs;
+   Elf32Info info;
+   
+   if(nb_args != 1) {
+      printf("elf_stat <filename>\n");
+      return;
+   }
+   
+   fr = f_mount(&fs,"",1);
+   if(fr != FR_OK) {
+      printf("Could not mount filesystem\n");
+      return;
+   }
+   printf("Filesystem OK\n");
+
+   if(elf32_stat(args[0],&info) != ELF32_OK) {
+      printf("could not stat %s\n",args[0]);
+      return;
+   }
+   printf("text address=0x%lx\n",info.text_address);
+   printf("max  address=0x%lx\n",info.max_address);   
+}
+define_command(elf_stat, elf_stat, "display stats on ELF file", 0);
+
+
 #endif

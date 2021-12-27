@@ -52,7 +52,7 @@ CFLAGS:=$(CFLAGS:-fexceptions=)
 CXXFLAGS:=$(CXXFLAGS:-fexceptions=)
 
 # Compiled from the sources in libs/
-LIBS_OBJECTS=lite_oled.o lite_fb.o 
+LIB_OBJECTS=lite_oled.o lite_fb.o lite_elf.o
 
 # Compiled from the sources in demos/
 DEMOS_OBJECTS=tinyraytracer.o mandelbrot.o \
@@ -62,7 +62,7 @@ DEMOS_OBJECTS=tinyraytracer.o mandelbrot.o \
 # These ones are compiled from the sources in LiteX/litex/litex/soc/software/bios/
 BIOS_OBJECTS=complete.o helpers.o readline.o cmd_bios.o
 
-OBJECTS = $(DEMOS_OBJECTS) $(LIBS_OBJECTS) $(BIOS_OBJECTS) commands.o isr.o main.o crt0.o
+OBJECTS = $(DEMOS_OBJECTS) $(BIOS_OBJECTS) commands.o isr.o main.o crt0.o
 
 all: demo.bin
 
@@ -78,14 +78,18 @@ all: demo.bin
 %.list: %.elf
 	$(OBJCOPY:objcopy=objdump) -Mnumeric -D $< > $@
 
-demo.elf: $(OBJECTS)
+demo.elf: $(OBJECTS) libliteos.a
 	$(CC) $(LDFLAGS) \
 		-T linker.ld \
 		-N -o $@ \
 		$(OBJECTS) \
 		$(PACKAGES:%=-L$(BUILD_DIR)/software/%) \
-		$(LIBS:lib%=-l%)
+		$(LIBS:lib%=-l%) -L. -lliteos
 	chmod -x $@
+
+libliteos.a: $(LIB_OBJECTS)
+	ar cq libliteos.a $(LIB_OBJECTS)
+	ranlib libliteos.a
 
 main.o: main.c
 	$(compile)
@@ -118,7 +122,7 @@ crt0.o: $(CPU_DIRECTORY)/crt0.S $(BUILD_DIR)/software/include/generated/variable
 	$(assemble)
 
 clean:
-	$(RM) $(OBJECTS) $(OBJECTS:.o=.d) demo.elf demo.bin demo.list .*~ *~
+	$(RM) $(OBJECTS) $(OBJECTS:.o=.d) demo.elf demo.bin demo.list libliteos.a .*~ *~
 
 terminal:
 	lxterm --kernel demo.bin /dev/ttyUSB0; reset

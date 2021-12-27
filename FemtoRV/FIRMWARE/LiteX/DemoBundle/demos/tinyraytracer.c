@@ -50,8 +50,12 @@ int graphics_height = OLED_HEIGHT;
 // Replace with your own stuff to initialize graphics
 static inline void graphics_init(void) {
    oled_init();
-   if(!benchmark) {
-      with_fb = fb_init();
+   if(benchmark) {
+       with_fb = 0;
+       graphics_width  = OLED_WIDTH;
+       graphics_height = OLED_HEIGHT; 
+   } else {
+       with_fb = fb_init();
    }
    if(with_fb) {
       graphics_width  = FB_WIDTH;
