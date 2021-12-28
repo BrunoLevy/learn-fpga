@@ -3,7 +3,11 @@ ENTRY(_start)
 
 __DYNAMIC = 0;
 
-INCLUDE generated/regions.ld
+/* 
+ * We include our own 'regions.ld', with main_ram that starts 256 KB
+ * later (the first 256 KBs are kept fo the OS).
+ */
+INCLUDE regions.ld
 
 SECTIONS
 {
@@ -28,24 +32,6 @@ SECTIONS
 		*(.rodata1)
 		. = ALIGN(8);
 		_erodata = .;
-	} > main_ram
-
-        /* 
- 	 * This rule and the following one
-	 * to be able to reuse BIOS command system 
-	 */
-        .commands :
-        {
-	        PROVIDE_HIDDEN (__bios_cmd_start = .);
-	        KEEP(*(.bios_cmd))
-	        PROVIDE_HIDDEN (__bios_cmd_end = .);
-        } > main_ram
-
-	.init :
-	{
-		PROVIDE_HIDDEN (__bios_init_start = .);
-		KEEP(*(.bios_init))
-		PROVIDE_HIDDEN (__bios_init_end = .);
 	} > main_ram
 
 	.data :
@@ -74,16 +60,4 @@ SECTIONS
 	} > main_ram
 }
 
-PROVIDE(_fstack = ORIGIN(main_ram) + LENGTH(main_ram));
 
-/*
- * The CRT copies initialization data from rom to sram, 
- * that is, it copies
- * _fdata_rom ... _edata_rom-1 ----> _fdata ... e_data-1
- * since we put everything in main_ram directly, we 
- * do not need to do that.
- */
-PROVIDE(_fdata_rom = 0);
-PROVIDE(_edata_rom = 0);
-PROVIDE(_fdata = 0);
-PROVIDE(_edata = 0);

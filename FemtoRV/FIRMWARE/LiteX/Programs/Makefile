@@ -3,11 +3,8 @@
 #   (for instance, LiteX/build/radiona_ulx3s)
 #   Alternatively you can edit this file and change LITEX_DIR and
 #   LITEX_PLATFORM below.
-# 2) lxterm /dev/ttyUSBnnn --kernel demo.bin
+# 2) lxterm /dev/ttyUSBnnn --kernel boot.bin
 # 3) litex> reboot
-#
-# Started from litex/litex/soc/software/demo/Makefile
-# My changes indicated by [BL] tags.
 
 # I'm used to 'make VERBOSE=1' to see commands
 # (and LiteX uses 'make V=1' for this). Makes both work.
@@ -28,8 +25,8 @@ BIOS_SRC_DIR=$(LITEX_DIR)/litex/litex/soc/software/bios
 LIBS:=$(LIBS:libcompiler_rt=libgcc)
 
 # Include path 
-CFLAGS:=$(CFLAGS) -I../Libs -Iframework -I$(BIOS_SRC_DIR)
-CXXFLAGS:=$(CXXFLAGS) -Ilibs -Iframework -I$(BIOS_SRC_DIR)
+CFLAGS:=$(CFLAGS) -I../Libs -I$(BIOS_SRC_DIR)
+CXXFLAGS:=$(CXXFLAGS) -I../Libs -I$(BIOS_SRC_DIR)
 
 # optimize for speed ! (I *LOVE* speed !!!)
 COMMONFLAGS:=$(COMMONFLAGS:-Os=-O3)
@@ -54,51 +51,26 @@ CXXFLAGS:=$(CXXFLAGS:-fexceptions=)
 # Compiled from the sources in libs/
 LIB_OBJECTS=lite_oled.o lite_fb.o lite_elf.o
 
-# Compiled from the sources in demos/
-DEMOS_OBJECTS=tinyraytracer.o mandelbrot.o \
-              oled_test.o oled_riscv_logo.o oled_julia.o \
-	      pi.o
+PROGRAMS=hello.elf tinyraytracer.elf
 
-# These ones are compiled from the sources in LiteX/litex/litex/soc/software/bios/
-BIOS_OBJECTS=complete.o helpers.o readline.o cmd_bios.o
+all: $(PROGRAMS)
 
-OBJECTS = $(DEMOS_OBJECTS) $(BIOS_OBJECTS) commands.o isr.o main.o crt0.o
-
-all: demo.bin
-
-# pull in dependency info for *existing* .o files
--include $(OBJECTS:.o=.d)
-
-%.bin: %.elf
-	$(OBJCOPY) -O binary $< $@
-	chmod -x $@
-
-# added rule to examine generated assembly (make demo.list)
+# added rule to examine generated assembly (make boot.list)
 # Rem: $(OBJDUMP) not defined, so "deducing" it from $(OBJCOPY) (substituting)
 %.list: %.elf
 	$(OBJCOPY:objcopy=objdump) -Mnumeric -D $< > $@
 
-demo.elf: $(OBJECTS) libliteos.a
-	$(CC) $(LDFLAGS) \
+%.elf: %.o libliteos.a crt0.o
+	$(CC) ./crt0.o $< $(LDFLAGS) \
 		-T linker.ld \
 		-N -o $@ \
-		$(OBJECTS) \
 		$(PACKAGES:%=-L$(BUILD_DIR)/software/%) \
-		$(LIBS:lib%=-l%) -L. -lliteos
+		-L. -lliteos $(LIBS:lib%=-l%) 
 	chmod -x $@
 
 libliteos.a: $(LIB_OBJECTS)
 	ar cq libliteos.a $(LIB_OBJECTS)
 	ranlib libliteos.a
-
-main.o: main.c
-	$(compile)
-
-# Made crt0.o dependent on one of the generated files to make sure it
-# is recompiled whenever configuration is changed (for instance, when
-# swapping femtorv variants)
-crt0.o: $(CPU_DIRECTORY)/crt0.S $(BUILD_DIR)/software/include/generated/variables.mak
-	$(assemble)
 
 %.o: %.cpp
 	$(compilexx)
@@ -106,25 +78,16 @@ crt0.o: $(CPU_DIRECTORY)/crt0.S $(BUILD_DIR)/software/include/generated/variable
 %.o: %.c
 	$(compile)
 
-%.o: demos/%.c
-	$(compile)
-
 %.o: ../Libs/%.c
-	$(compile)
-
-%.o: $(BIOS_SRC_DIR)/%.c
-	$(compile)
-
-%.o: $(BIOS_SRC_DIR)/cmds/%.c
 	$(compile)
 
 %.o: %.S
 	$(assemble)
 
 clean:
-	$(RM) $(OBJECTS) $(OBJECTS:.o=.d) $(LIB_OBJECTS) $(LIB_OBJECTS:.o=.d) demo.elf demo.bin demo.list libliteos.a .*~ *~
+	$(RM) *.d *.o *.a *.elf *.list .*~ *~
 
 terminal:
-	lxterm --kernel demo.bin /dev/ttyUSB0; reset
+	lxterm --kernel boot.bin /dev/ttyUSB0; reset
 	
 .PHONY: all clean load
