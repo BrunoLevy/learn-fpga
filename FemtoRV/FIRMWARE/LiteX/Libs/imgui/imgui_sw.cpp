@@ -21,6 +21,13 @@ namespace std {
    inline float floor(float x) {
       return floorf(x);
    }
+   
+   template <class T> inline void swap(T& x, T&y) {
+      T tmp = x;
+      x = y;
+      y = tmp;
+   }
+   
 }
 
 namespace imgui_sw {
@@ -133,12 +140,10 @@ bool operator!=(const ImVec2& a, const ImVec2& b)
 	return a.x != b.x || a.y != b.y;
 }
 
-/*   
 bool operator==(const ImVec2& a, const ImVec2& b)
 {
 	return a.x == b.x && a.y == b.y;
 }
-*/
    
 ImVec4 operator*(const float f, const ImVec4& v)
 {
@@ -240,9 +245,6 @@ void paint_uniform_rectangle(
 	const ColorInt&    color,
 	Stats*             stats)
 {
-   
-        printf("fillrect\n");
-   
 	// Integer bounding box [min, max):
 	int min_x_i = static_cast<int>(target.scale.x * min_f.x + 0.5f);
 	int min_y_i = static_cast<int>(target.scale.y * min_f.y + 0.5f);
@@ -259,9 +261,8 @@ void paint_uniform_rectangle(
 
         // [BL] no transparency -> fast fillrect 
 	if(color.a == 255) {
-	   printf("  fast fillrect\n");
 	   uint32_t  c = color.toUint32();
-	   uint32_t* p_line = target.pixels + min_y_i*target.width;
+	   uint32_t* p_line = target.pixels + min_y_i*target.width + min_x_i;
 	   for (int y = min_y_i; y < max_y_i; ++y) {
 	      uint32_t* p = p_line;
 	      for (int x = min_x_i; x < max_x_i; ++x) {
@@ -320,6 +321,12 @@ void paint_uniform_textured_rectangle(
 	int max_x_i = static_cast<int>(max_x_f + 1.0f);
 	int max_y_i = static_cast<int>(max_y_f + 1.0f);
 
+        // [BL]
+        if(min_x_i > max_x_i) std::swap(min_x_i, max_x_i);
+        if(min_y_i > max_y_i) std::swap(min_y_i, max_y_i);
+        if(max_x_i == min_x_i) ++max_x_i; 
+        if(max_y_i == min_y_i) ++max_y_i; 
+   
 	// Clip against render target:
 	min_x_i = std::max(min_x_i, 0);
 	min_y_i = std::max(min_y_i, 0);
@@ -328,6 +335,24 @@ void paint_uniform_textured_rectangle(
 
 	stats->font_pixels += (max_x_i - min_x_i) * (max_y_i - min_y_i);
 
+        // [BL] optimization if single uv texture coord, lookup texture
+	// color and do uniform fillrect
+        if(min_v.uv == max_v.uv) {
+	   const uint8_t texel = sample_texture(texture, min_v.uv);
+	   if(texel == 0) { return; }
+	   uint32_t  c = min_v.col;
+	   uint32_t* p_line = target.pixels + min_y_i*target.width + min_x_i;
+	   for (int y = min_y_i; y < max_y_i; ++y) {
+	      uint32_t* p = p_line;
+	      for (int x = min_x_i; x < max_x_i; ++x) {
+		 *p = c;
+		 ++p;
+	      }
+	      p_line += target.width;
+	   }
+	   return;
+	}
+   
 	const auto topleft = ImVec2(min_x_i + 0.5f * target.scale.x,
 	                            min_y_i + 0.5f * target.scale.y);
 
@@ -341,10 +366,6 @@ void paint_uniform_textured_rectangle(
 	};
 	ImVec2 current_uv = uv_topleft;
 
-   
-//      printf("P %d %d    %d %d\n", int(min_p.x*1000.0), int(min_p.y*1000.0), int(max_p.x*1000.0), int(max_p.y*1000.0));
-//      printf("T %d %d    %d %d\n", int(min_v.uv.x*1000.0), int(min_v.uv.y*1000.0), int(max_v.uv.x*1000.0), int(max_v.uv.y*1000.0));
-   
 	for (int y = min_y_i; y < max_y_i; ++y, current_uv.y += delta_uv_per_pixel.y) {
 		current_uv.x = uv_topleft.x;
 		for (int x = min_x_i; x < max_x_i; ++x, current_uv.x += delta_uv_per_pixel.x) {
@@ -590,13 +611,12 @@ void paint_draw_cmd(
 					v1.uv != white_uv ||
 					v2.uv != white_uv ||
 					v3.uv != white_uv;
-			   
-				if (has_uniform_color && has_texture)  
+
+				if (has_uniform_color && has_texture) // HERE
 				{
-//				        printf("uniform_textured_rectangle\n");
-					paint_uniform_textured_rectangle(target, *texture, pcmd.ClipRect, v0, v2, stats);
-					i += 6;
-					continue;
+				   paint_uniform_textured_rectangle(target, *texture, pcmd.ClipRect, v0, v2, stats);
+				   i += 6;
+				   continue;
 				}
 			}
 		}
@@ -658,7 +678,6 @@ void paint_draw_cmd(
 					if (has_texture) {
 						stats->textured_rectangle_pixels += num_pixels;
 					} else {
-//					        printf("uniform_rectangle\n");
 						paint_uniform_rectangle(target, min, max, ColorInt(v0.col), stats);
 						i += 6;
 						continue;
@@ -666,7 +685,6 @@ void paint_draw_cmd(
 				} else {
 					if (has_texture) {
 						// I have never encountered these.
-//					        printf("gradient_textured_rectangle\n");
 						stats->gradient_textured_rectangle_pixels += num_pixels;
 					} else {
 						// Color picker. TODO: Optimize
@@ -677,7 +695,6 @@ void paint_draw_cmd(
 		}
 
 		const bool has_texture = (v0.uv != white_uv || v1.uv != white_uv || v2.uv != white_uv);
-//	        printf("paint_triangle, texture=%d\n",has_texture);
 		paint_triangle(target, has_texture ? texture : nullptr, pcmd.ClipRect, v0, v1, v2, stats);
 		i += 3;
 	}
