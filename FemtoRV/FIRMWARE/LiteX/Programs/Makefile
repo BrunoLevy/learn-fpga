@@ -25,8 +25,8 @@ BIOS_SRC_DIR=$(LITEX_DIR)/litex/litex/soc/software/bios
 LIBS:=$(LIBS:libcompiler_rt=libgcc)
 
 # Include path 
-CFLAGS:=$(CFLAGS) -I../Libs -I$(BIOS_SRC_DIR)
-CXXFLAGS:=$(CXXFLAGS) -I../Libs -I$(BIOS_SRC_DIR)
+CFLAGS:=$(CFLAGS) -I../Libs  -I$(BIOS_SRC_DIR)
+CXXFLAGS:=$(CXXFLAGS) -I../Libs -I../Libs/imgui -I$(BIOS_SRC_DIR) -fno-threadsafe-statics -fno-rtti 
 
 # optimize for speed ! (I *LOVE* speed !!!)
 COMMONFLAGS:=$(COMMONFLAGS:-Os=-O3)
@@ -45,13 +45,14 @@ CXXFLAGS:=$(CXXFLAGS:-fno-builtin=-fno-builtin-printf)
 
 # no exceptions
 COMMONFLAGS:=$(COMMONFLAGS:-fexceptions=)
-CFLAGS:=$(CFLAGS:-fexceptions=)
-CXXFLAGS:=$(CXXFLAGS:-fexceptions=)
+CFLAGS:=$(CFLAGS:-fexceptions=-fno-exceptions)
+CXXFLAGS:=$(CXXFLAGS:-fexceptions=-fno-exceptions)
 
 # Compiled from the sources in libs/
-LIB_OBJECTS=lite_oled.o lite_fb.o lite_elf.o
+LIB_OBJECTS=lite_oled.o lite_fb.o lite_elf.o\
+            imgui.o imgui_demo.o imgui_draw.o imgui_tables.o imgui_widgets.o imgui_sw.o
 
-PROGRAMS=hello.elf tinyraytracer.elf
+PROGRAMS=hello.elf tinyraytracer.elf imgui_test.elf
 
 all: $(PROGRAMS)
 
@@ -60,8 +61,8 @@ all: $(PROGRAMS)
 %.list: %.elf
 	$(OBJCOPY:objcopy=objdump) -Mnumeric -D $< > $@
 
-%.elf: %.o libliteos.a crt0.o
-	$(CC) ./crt0.o $< $(LDFLAGS) \
+%.elf: %.o libliteos.a crt0.o sbrk.o
+	$(CC) ./crt0.o sbrk.o $< $(LDFLAGS) \
 		-T linker.ld \
 		-N -o $@ \
 		$(PACKAGES:%=-L$(BUILD_DIR)/software/%) \
@@ -80,6 +81,9 @@ libliteos.a: $(LIB_OBJECTS)
 
 %.o: ../Libs/%.c
 	$(compile)
+
+%.o: ../Libs/imgui/%.cpp
+	$(compilexx)
 
 %.o: %.S
 	$(assemble)
