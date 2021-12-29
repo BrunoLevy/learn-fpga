@@ -8,7 +8,7 @@ void *sbrk(ptrdiff_t incr) {
            extern unsigned char _end[];   // Defined by linker
            static unsigned long heap_end = 0;
    
-           printf("SBRK %d\n",(int)incr);
+//         printf("SBRK %d\n",(int)incr);
    
            if (heap_end == 0)
                      heap_end = (long)_end;

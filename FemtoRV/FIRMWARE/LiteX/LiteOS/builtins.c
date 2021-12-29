@@ -66,8 +66,12 @@ static void esp32_off(void) {
 	printf("esp32 is on, stopping it\n");
 	printf("(mutually exclusive with SDCard access)\n");
 	printf("use \'esp32 on\' to reactive it\n");
+        printf("\n");
     }
     esp32_enable_write(0);
+#ifdef CSR_SPISDCARD_BASE
+       spisdcard_init();
+#endif      
 #endif    
 }
 

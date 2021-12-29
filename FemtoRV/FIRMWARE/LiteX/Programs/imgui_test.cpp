@@ -20,8 +20,10 @@ void* operator new(size_t size) {
 
 int main(int, char**)
 {
+    printf("Initializing framebuffer...\n");
     fb_init();
    
+    printf("Initializing ImGui...\n");
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -29,7 +31,9 @@ int main(int, char**)
     imgui_sw::bind_imgui_painting();
     imgui_sw::make_style_fast();
    
-    for (int n = 0; n < 5; n++) {
+    printf("Starting ImGui...\n");
+   
+    for (int n = 0; n < 20; n++) {
         printf("=========> NewFrame() %d\n", n);
         io.DisplaySize = ImVec2(640, 480);
         io.DeltaTime = 1.0f / 60.0f;
