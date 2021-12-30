@@ -52,7 +52,7 @@ CXXFLAGS:=$(CXXFLAGS:-fexceptions=-fno-exceptions)
 LIB_OBJECTS=lite_oled.o lite_fb.o lite_elf.o\
             imgui.o imgui_demo.o imgui_draw.o imgui_tables.o imgui_widgets.o imgui_sw.o
 
-PROGRAMS=hello.elf tinyraytracer.elf imgui_test.elf
+PROGRAMS=hello.elf tinyraytracer.elf spirograph.elf ST_NICCC.elf imgui_test.elf
 
 all: $(PROGRAMS)
 
@@ -66,7 +66,7 @@ all: $(PROGRAMS)
 		-T linker.ld \
 		-N -o $@ \
 		$(PACKAGES:%=-L$(BUILD_DIR)/software/%) \
-		-L. -lliteos $(LIBS:lib%=-l%) 
+		-L. -lliteos $(LIBS:lib%=-l%) -lbase
 	chmod -x $@
 
 libliteos.a: $(LIB_OBJECTS)
