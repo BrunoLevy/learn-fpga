@@ -6,6 +6,10 @@
 
 #include "imgui_sw.h"
 #include "imgui.h"
+extern "C" {
+#include "lite_fb.h"
+}
+
 #include <math.h>
 #include <stdio.h>
 
@@ -262,6 +266,8 @@ void paint_uniform_rectangle(
         // [BL] no transparency -> fast fillrect 
 	if(color.a == 255) {
 	   uint32_t  c = color.toUint32();
+	   fb_fillrect(min_x_i, min_y_i, max_x_i-1, max_y_i-1, c);
+	   /*
 	   uint32_t* p_line = target.pixels + min_y_i*target.width + min_x_i;
 	   for (int y = min_y_i; y < max_y_i; ++y) {
 	      uint32_t* p = p_line;
@@ -271,6 +277,7 @@ void paint_uniform_rectangle(
 	      }
 	      p_line += target.width;
 	   }
+	   */ 
 	   return;
 	}
       
@@ -341,6 +348,8 @@ void paint_uniform_textured_rectangle(
 	   const uint8_t texel = sample_texture(texture, min_v.uv);
 	   if(texel == 0) { return; }
 	   uint32_t  c = min_v.col;
+	   fb_fillrect(min_x_i, min_y_i, max_x_i-1,max_y_i-1,c); 
+	   /*
 	   uint32_t* p_line = target.pixels + min_y_i*target.width + min_x_i;
 	   for (int y = min_y_i; y < max_y_i; ++y) {
 	      uint32_t* p = p_line;
@@ -350,6 +359,7 @@ void paint_uniform_textured_rectangle(
 	      }
 	      p_line += target.width;
 	   }
+	   */ 
 	   return;
 	}
    

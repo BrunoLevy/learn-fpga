@@ -15,10 +15,20 @@
 #include <libbase/uart.h>
 #include <libbase/console.h>
 #include <stdio.h>
+#include <string.h>
 
 FATFS fs;
 FIL F;
 int cur_byte_address = 0;
+
+
+// Default fullres if blitter is there, else default is 
+// small res.
+#ifdef CSR_BLITTER_BASE
+int fullres = 1;
+#else
+int fullres = 0;
+#endif
 
 static uint8_t next_byte(void) {
     uint8_t result;
@@ -40,16 +50,25 @@ static uint16_t next_word(void) {
 
 
 static inline void map_vertex(int16_t* X, int16_t* Y) {
-//   *X = *X << 1; // for a larger picture (but too slow)
-//   *Y = *Y << 1;
-   *X += 150;
-   *Y += 150;
+   if(fullres) {
+      *X = *X << 1; // for a larger picture (but too slow)
+      *Y = *Y << 1;
+   } else {
+      *X += 160;
+      *Y += 100;
+   }
 }
 
+
 static void clear(void) {
-// fb_clear(); // for a larger picture (but too slow)
-   fb_fillrect(150, 150, 150+320, 150+200, 0);
+   if(fullres) {
+      fb_clear();
+   } else {
+      fb_fillrect(160,100,480,300,0);
+   }
 }
+
+
 
 /* 
  * The colormap, encoded in such a way that it
@@ -115,7 +134,7 @@ static int read_frame(void) {
        clear();
     } else {
         if(frame_flags & CLEAR_BIT) {
-	   // clear(); // Too much flickering, commented-out for now
+	   clear(); 
 	}
     }
    
@@ -173,12 +192,21 @@ static int read_frame(void) {
 }
 
 
-int main(void) {
+int main(int argc, char** argv) {
    int run = 1;
    fb_init();
    fb_set_dual_buffering(1);
    wireframe = 0;
 
+   
+   if(argc == 2 && !strcmp(argv[1],"-small")) {
+      fullres = 0;
+   }
+
+   if(argc == 2 && !strcmp(argv[1],"-large")) {
+      fullres = 1;
+   }
+   
    if(f_mount(&fs,"",1) != FR_OK) {
       printf("Could not mount filesystem\n");
       return -1;

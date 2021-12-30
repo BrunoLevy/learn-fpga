@@ -1,6 +1,38 @@
 #include "lite_fb.h"
 #include <string.h>
 
+
+/*
+ * fb_clear(), fb_fillrect() and fb_fill_poly() can be made *much faster* by 
+ * adding a very crude "blitter" to the LiteX SOC. The Blitter can fill a
+ * contiguous zone of memory with a 32 bit value using DMA (much faster than
+ * with the CPU !). When the Blitter is declared, then CSR_BLITTER_BASE is
+ * defined in <generated/csr.h>. Else a (much slower) software fallback is
+ * used.
+ * 
+ * class Blitter(Module, AutoCSR):
+ *     def __init__(self,port): # port = self.sdram.crossbar.get_port()
+ *         self._value = CSRStorage(32)
+ *         from litedram.frontend.dma import LiteDRAMDMAWriter
+ *         dma_writer = LiteDRAMDMAWriter(
+ *             port=port,fifo_depth=16,fifo_buffered=False,with_csr=True
+ *         )
+ *         self.submodules.dma_writer = dma_writer
+ *         self.comb += dma_writer.sink.data.eq(self._value.storage)
+ *         self.comb += dma_writer.sink.valid.eq(1)
+ * 
+ *  ....
+ * 
+ *     if with_video_framebuffer:
+ *          self.add_video_framebuffer(
+ *              phy=self.videophy, timings="640x480@75Hz", 
+ *              format="rgb888", clock_domain="hdmi"
+ *          )
+ *          blitter = Blitter(port=self.sdram.crossbar.get_port())
+ *          self.submodules.blitter = blitter
+ *  ...
+ */ 
+
 #define FB_MIN(x,y) ((x) < (y) ? (x) : (y))
 #define FB_MAX(x,y) ((x) > (y) ? (x) : (y))
 #define FB_SGN(x)   (((x) > (0)) ? 1 : ((x) ? -1 : 0))
@@ -30,9 +62,9 @@ void fb_off(void) {
 
 int fb_init(void) {
     fb_off();
-    fb_clear();
     fb_set_read_page(FB_PAGE1);
-    fb_set_read_page(FB_PAGE2);   
+    fb_set_write_page(FB_PAGE1);
+    fb_clear();
     fb_on();
     fb_set_cliprect(0,0,FB_WIDTH-1,FB_HEIGHT-1);
     fb_set_poly_mode(FB_POLY_FILL);
@@ -41,7 +73,16 @@ int fb_init(void) {
 }
 
 void fb_clear(void) {
+#ifdef CSR_BLITTER_BASE
+    blitter_value_write(0x000000);
+    blitter_dma_writer_base_write((uint32_t)(fb_base));
+    blitter_dma_writer_length_write(FB_WIDTH*FB_HEIGHT*4);
+    blitter_dma_writer_enable_write(1);
+    while(!blitter_dma_writer_done_read());
+    blitter_dma_writer_enable_write(0);    
+#else
     memset((void*)fb_base, 0, FB_WIDTH*FB_HEIGHT*4);
+#endif    
 }
 
 #else
@@ -55,7 +96,7 @@ void     fb_clear(void) {}
 
 #endif
 
-/************************************************************************************/
+/*****************************************************************************/
 
 void fb_set_dual_buffering(int doit) {
    if(doit) {
@@ -78,7 +119,7 @@ void fb_swap_buffers(void) {
    }
 }
 
-/************************************************************************************/
+/******************************************************************************/
 
 static int fb_clip_x1 = 0;
 static int fb_clip_y1 = 0;
@@ -92,21 +133,47 @@ void fb_set_cliprect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2) {
     fb_clip_y2 = y2;    
 }
 
-/************************************************************************************/
+/******************************************************************************/
 
-void fb_fillrect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t RGB) {
+static inline void fb_hline_no_wait_dma(uint32_t* pix_start, uint32_t len, uint32_t RGB) {
+#ifdef CSR_BLITTER_BASE
+    blitter_value_write(RGB);
+    blitter_dma_writer_base_write((uint32_t)(pix_start));
+    blitter_dma_writer_length_write(len*4);
+    blitter_dma_writer_enable_write(1);
+#else
+    for(uint32_t i=0; i<len; ++i) {
+	*pix_start = RGB;
+	++pix_start;
+    }
+#endif    
+}
+
+static inline void fb_hline_wait_dma(void) {
+#ifdef CSR_BLITTER_BASE   
+    while(!blitter_dma_writer_done_read());
+    blitter_dma_writer_enable_write(0);    
+#endif
+}
+
+static inline void fb_hline(uint32_t* pix_start, uint32_t len, uint32_t RGB) {
+   fb_hline_no_wait_dma(pix_start, len, RGB);
+   fb_hline_wait_dma();
+}
+
+void fb_fillrect(
+    uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t RGB
+) {
+    uint32_t w = x2-x1+1;
     uint32_t* line_ptr = fb_pixel_address(x1,y1);
-    for(int y=y1; y<y2; ++y) {
+    for(int y=y1; y<=y2; ++y) {
 	uint32_t* pix_ptr = line_ptr;
-	for(int x=x1; x<x2; ++x){
-	    *pix_ptr = RGB;
-	    ++pix_ptr;
-	}
+	fb_hline(pix_ptr,w,RGB);
 	line_ptr += FB_WIDTH;
     }
 }
 
-/************************************************************************************/
+/******************************************************************************/
 
 #define INSIDE 0
 #define LEFT   1
@@ -432,16 +499,19 @@ void fb_fill_poly(uint32_t nb_pts, int* points, uint32_t RGB) {
     for(int y = miny; y <= maxy; ++y) {
 	int x1 = x_left[y];
 	int x2 = x_right[y];
-	uint32_t* pixel_ptr = line_ptr + x1;
-	for(int x=x1; x<=x2; ++x) {
-	    *pixel_ptr = RGB;
-	    ++pixel_ptr;
+        // swap x1,x2 (may happen with non-convex polygons)
+        if(x2 < x1) { 
+	   x1 = x1 ^ x2;
+	   x2 = x2 ^ x1;
+	   x1 = x1 ^ x2;
 	}
+        if(y != miny) fb_hline_wait_dma();
+        fb_hline_no_wait_dma(line_ptr+x1, x2-x1+1, RGB);
 	line_ptr += FB_WIDTH;
     }
-    
+    fb_hline_wait_dma();
 }
 
-/************************************************************************************/
+/******************************************************************************/
 
 

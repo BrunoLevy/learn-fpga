@@ -13,6 +13,8 @@ extern "C" {
 #include <libbase/uart.h>
 #include <libbase/console.h>
 
+#include <generated/csr.h>
+
 void* operator new(size_t size) {
    return ImGui::MemAlloc(size);
 }
@@ -22,6 +24,7 @@ int main(int, char**)
 {
     printf("Initializing framebuffer...\n");
     fb_init();
+    fb_set_dual_buffering(1);
    
     printf("Initializing ImGui...\n");
     IMGUI_CHECKVERSION();
@@ -33,16 +36,20 @@ int main(int, char**)
    
     printf("Starting ImGui...\n");
    
-    for (int n = 0; n < 20; n++) {
-        printf("=========> NewFrame() %d\n", n);
+    int n = 0;
+    for (;;) {
+        ++n;
         io.DisplaySize = ImVec2(640, 480);
         io.DeltaTime = 1.0f / 60.0f;
         ImGui::NewFrame();
 
-        //ImGui::SetNextWindowSize(ImVec2(320, 200));
-        //ImGui::Begin("Test");
-        //ImGui::Text("Hello, world!");
-        //ImGui::End();
+        ImGui::ShowDemoWindow(NULL);
+       
+        ImGui::SetNextWindowSize(ImVec2(150, 100));
+        ImGui::Begin("Test");
+        ImGui::Text("Hello, world!");
+        ImGui::Text("Frame: %d",n);       
+        ImGui::End();
        
         /*
         static float f = 0.0f;
@@ -51,13 +58,15 @@ int main(int, char**)
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         */
 
-        ImGui::ShowDemoWindow(NULL);
-	
         ImGui::Render();
         imgui_sw::paint_imgui((uint32_t*)fb_base,640,480);
-        // imgui_sw::show_stats_in_terminal();
-       
-        flush_l2_cache(); // needed for femtorv32 + LiteX (L2 cache -> framebuffer transfer)
+        fb_swap_buffers();
+        fb_clear();
+
+        if (readchar_nonblock()) {
+	   getchar();
+	   break;;
+        }
     }
 
     printf("DestroyContext()\n");
