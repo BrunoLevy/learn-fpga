@@ -11,7 +11,10 @@
 #define FB_HEIGHT 480
 
 /** \brief base memory address of the framebuffer */
-#define FB_BASE 0x40c00000
+extern uint32_t* fb_base;
+#define FB_PAGE1 0x40c00000
+#define FB_PAGE2 0x40d2c000
+
 
 /**
  * \brief Initializes framebuffer
@@ -19,7 +22,33 @@
  * \retval 1 on succes
  * \retval 0 on error
  */ 
-int  fb_init(void);
+int fb_init(void);
+
+
+/**
+ * \brief activates or deactivates dual buffering.
+ * \param[in] doit true if dual buffering should be activated.
+ */ 
+void fb_set_dual_buffering(int doit);
+
+/**
+ * \brief if dual buffering is activated, swaps the buffers.
+ * \see fb_set_dualbuffering()
+ */ 
+void fb_swap_buffers(void);
+
+/**
+ * \brief Sets the page displayed by the screen.
+ * \param[in] addr one of FB_PAGE1 , FB_PAGE2
+ */ 
+void fb_set_read_page(uint32_t addr);
+
+/**
+ * \brief Sets the page written by graphic commands.
+ * \param[in] addr one of FB_PAGE1 , FB_PAGE2
+ */ 
+void fb_set_write_page(uint32_t addr);
+
 
 /**
  * \brief Activates the framebuffer.
@@ -50,7 +79,7 @@ static inline uint32_t fb_RGB(uint8_t R, uint8_t G, uint8_t B) {
  * \return the address of the pixel in the framebuffer.
  */ 
 static inline uint32_t* fb_pixel_address(uint32_t x, uint32_t y) {
-   return ((uint32_t*)FB_BASE) + y * FB_WIDTH + x;
+   return ((uint32_t*)fb_base) + y * FB_WIDTH + x;
 }
 
 /**

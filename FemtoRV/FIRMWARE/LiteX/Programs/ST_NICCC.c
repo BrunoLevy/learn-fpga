@@ -176,6 +176,7 @@ static int read_frame(void) {
 int main(void) {
    int run = 1;
    fb_init();
+   fb_set_dual_buffering(1);
    wireframe = 0;
 
    if(f_mount(&fs,"",1) != FR_OK) {
@@ -189,11 +190,9 @@ int main(void) {
 	    printf("Could not open scene1.dat\n");
 	    return -1;
 	}
-        fb_set_poly_mode(wireframe ? FB_POLY_LINES: FB_POLY_FILL);	
+        fb_set_poly_mode(wireframe ? FB_POLY_LINES: FB_POLY_FILL);
 	while(read_frame()) {
-	   flush_l2_cache();
-	   // delay(50); // If GL_clear() is uncommented, uncomment as well
-	   //            // to reduce flickering.
+	   fb_swap_buffers();
 	   if (readchar_nonblock()) {
 	      getchar();
 	      run = 0;

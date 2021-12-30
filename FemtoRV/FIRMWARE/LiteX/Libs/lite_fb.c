@@ -5,7 +5,17 @@
 #define FB_MAX(x,y) ((x) > (y) ? (x) : (y))
 #define FB_SGN(x)   (((x) > (0)) ? 1 : ((x) ? -1 : 0))
 
+uint32_t* fb_base = (uint32_t*)FB_PAGE1;
+
 #ifdef CSR_VIDEO_FRAMEBUFFER_BASE
+
+void fb_set_read_page(uint32_t addr) {
+    video_framebuffer_dma_base_write(addr);
+}
+
+void fb_set_write_page(uint32_t addr) {
+    fb_base = (uint32_t*)addr;
+}
 
 void fb_on(void) {
     video_framebuffer_vtg_enable_write(1);
@@ -21,6 +31,8 @@ void fb_off(void) {
 int fb_init(void) {
     fb_off();
     fb_clear();
+    fb_set_read_page(FB_PAGE1);
+    fb_set_read_page(FB_PAGE2);   
     fb_on();
     fb_set_cliprect(0,0,FB_WIDTH-1,FB_HEIGHT-1);
     fb_set_poly_mode(FB_POLY_FILL);
@@ -29,17 +41,42 @@ int fb_init(void) {
 }
 
 void fb_clear(void) {
-    memset((void*)FB_BASE, 0, FB_WIDTH*FB_HEIGHT*4);
+    memset((void*)fb_base, 0, FB_WIDTH*FB_HEIGHT*4);
 }
 
 #else
 
+void     fb_set_read_page(uint32_t addr) {}
+void     fb_set_write_page(uint32_t addr) {}
 int      fb_init(void) { return 0; }
 void     fb_on(void) {}
 void     fb_off(void) {}
 void     fb_clear(void) {}
 
 #endif
+
+/************************************************************************************/
+
+void fb_set_dual_buffering(int doit) {
+   if(doit) {
+      fb_set_write_page(FB_PAGE2);
+      fb_clear();
+   } else {
+      fb_set_read_page(FB_PAGE1);
+      fb_set_write_page(FB_PAGE1);
+   }
+}
+
+void fb_swap_buffers(void) {
+   flush_l2_cache();
+   if((uint32_t)fb_base == FB_PAGE1) {
+      fb_set_read_page(FB_PAGE1);
+      fb_set_write_page(FB_PAGE2);
+   } else {
+      fb_set_read_page(FB_PAGE2);
+      fb_set_write_page(FB_PAGE1);
+   }
+}
 
 /************************************************************************************/
 
@@ -391,7 +428,7 @@ void fb_fill_poly(uint32_t nb_pts, int* points, uint32_t RGB) {
 	return;
     }
 
-    uint32_t* line_ptr = (uint32_t*)(FB_BASE) + miny * FB_WIDTH;
+    uint32_t* line_ptr = (uint32_t*)(fb_base) + miny * FB_WIDTH;
     for(int y = miny; y <= maxy; ++y) {
 	int x1 = x_left[y];
 	int x2 = x_right[y];

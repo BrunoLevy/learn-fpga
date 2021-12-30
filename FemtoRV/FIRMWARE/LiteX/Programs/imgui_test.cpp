@@ -54,7 +54,7 @@ int main(int, char**)
         ImGui::ShowDemoWindow(NULL);
 	
         ImGui::Render();
-        imgui_sw::paint_imgui((uint32_t*)FB_BASE,640,480);
+        imgui_sw::paint_imgui((uint32_t*)fb_base,640,480);
         // imgui_sw::show_stats_in_terminal();
        
         flush_l2_cache(); // needed for femtorv32 + LiteX (L2 cache -> framebuffer transfer)
