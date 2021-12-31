@@ -37,7 +37,7 @@ you can add the `--with-oled` option to the command line.
 Step 1: compile
 ---------------
 ```
-$ make BUILD_DIR=<path where you synthesized LiteX> 
+$ make LITEX_DIR=<path where you synthesized LiteX> 
 ```
 (for instance, `LiteX/build/radiona_ulx3s`). 
 
