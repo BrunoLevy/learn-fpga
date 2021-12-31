@@ -250,16 +250,16 @@ $ sudo make install
 
 To see the list of supported boards:
 ```
-$ openFLGALoader --list-boards
+$ openFPGALoader --list-boards
 ```
 To send bitstream to SRAM (program temporarily)
 ```
-$ openFLGALoader --board my_board my_design.bit
+$ openFPGALoader --board my_board my_design.bit
 ```
 
 To send bitstream to FLASH (program permanently)
 ```
-$ openFLGALoader --board my_board -f my_design.bit
+$ openFPGALoader --board my_board -f my_design.bit
 ```
 
 Wow, super simple ! Love it !

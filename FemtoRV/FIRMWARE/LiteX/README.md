@@ -49,7 +49,7 @@ Step 2: execute
 ---------------
 
 ```
-$ lxterminal --kernel demo.bin /dev/ttyUSBnn
+$ lxterm --kernel demo.bin /dev/ttyUSBnn
 litex> reboot
 litex-demo-bundle> tinyraytracer
 ```
