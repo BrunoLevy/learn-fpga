@@ -10,6 +10,9 @@
  * defined in <generated/csr.h>. Else a (much slower) software fallback is
  * used.
  * 
+ * The Blitter can be added to 
+ *                litex-boards/litex_boards/targets/radiona_ulx3s.py:
+ * 
  * class Blitter(Module, AutoCSR):
  *     def __init__(self,port): # port = self.sdram.crossbar.get_port()
  *         self._value = CSRStorage(32)
@@ -74,6 +77,10 @@ int fb_init(void) {
 
 void fb_clear(void) {
 #ifdef CSR_BLITTER_BASE
+    /* 
+     * If blitter is available, clear screen using DMA
+     * transfer (much much faster !) 
+     */ 
     blitter_value_write(0x000000);
     blitter_dma_writer_base_write((uint32_t)(fb_base));
     blitter_dma_writer_length_write(FB_WIDTH*FB_HEIGHT*4);
@@ -109,7 +116,7 @@ void fb_set_dual_buffering(int doit) {
 }
 
 void fb_swap_buffers(void) {
-   flush_l2_cache();
+   flush_l2_cache(); // There may be some pixels still in l2 and not in SDRAM.
    if((uint32_t)fb_base == FB_PAGE1) {
       fb_set_read_page(FB_PAGE1);
       fb_set_write_page(FB_PAGE2);
@@ -135,6 +142,13 @@ void fb_set_cliprect(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2) {
 
 /******************************************************************************/
 
+/**
+ * \brief Draws a line using DMA transfer.
+ * \details Does not wait for DMA transfer completion.
+ * \param[in] pix_start address of the first pixel
+ * \param[in] len number of pixels
+ * \param[in] RGB color
+ */ 
 static inline void fb_hline_no_wait_dma(uint32_t* pix_start, uint32_t len, uint32_t RGB) {
 #ifdef CSR_BLITTER_BASE
     blitter_value_write(RGB);
@@ -149,6 +163,13 @@ static inline void fb_hline_no_wait_dma(uint32_t* pix_start, uint32_t len, uint3
 #endif    
 }
 
+/**
+ * \brief Waits for DMA transfer completion.
+ * \see fb_hline_no_wait_dma()
+ * \details With fb_hline_no_wait_dma(), can be
+ *   used to overlap computations between 
+ *   initiation of DMA transfer and its completion.
+ */ 
 static inline void fb_hline_wait_dma(void) {
 #ifdef CSR_BLITTER_BASE   
     while(!blitter_dma_writer_done_read());
@@ -156,6 +177,13 @@ static inline void fb_hline_wait_dma(void) {
 #endif
 }
 
+/**
+ * \brief Draws a line using DMA transfer.
+ * \details Waits for DMA transfer completion
+ * \param[in] pix_start address of the first pixel
+ * \param[in] len number of pixels
+ * \param[in] RGB color
+ */ 
 static inline void fb_hline(uint32_t* pix_start, uint32_t len, uint32_t RGB) {
    fb_hline_no_wait_dma(pix_start, len, RGB);
    fb_hline_wait_dma();
@@ -167,8 +195,7 @@ void fb_fillrect(
     uint32_t w = x2-x1+1;
     uint32_t* line_ptr = fb_pixel_address(x1,y1);
     for(int y=y1; y<=y2; ++y) {
-	uint32_t* pix_ptr = line_ptr;
-	fb_hline(pix_ptr,w,RGB);
+	fb_hline(line_ptr,w,RGB);
 	line_ptr += FB_WIDTH;
     }
 }
@@ -189,8 +216,13 @@ void fb_line(int x1, int y1, int x2, int y2, uint32_t RGB) {
     int code1 = code(x1,y1);
     int code2 = code(x2,y2);
     int codeout;
+    /* Bresenham */
     int x,y,dx,dy,sx,sy;
-
+    /* Pixel pointer */
+    uint8_t* pix_ptr;
+    int sx_ptr;
+    int sy_ptr;
+    
     for(;;) {
 	/* Both points inside. */
 	if(code1 == 0 && code2 == 0) {
@@ -247,16 +279,38 @@ void fb_line(int x1, int y1, int x2, int y2, uint32_t RGB) {
 	dx = -dx;
     }
 
-    x = x1;
-    y = y1;
+    // Pointer increments for x,y displacements
+    sx_ptr = sx*sizeof(uint32_t);
+    sy_ptr = sy*sizeof(uint32_t)*FB_WIDTH;
+   
+    // Next line equivalent to: x = x1; y = y1;
+    pix_ptr = (uint8_t*)(fb_base + y1 * FB_WIDTH + x1);
+   
+    // Instead of updating x,y and computing pixel pointer
+    // from x,y, we update pixel pointer (gains a few ticks
+    // per pixel).
+    // 
+    //   fb_set_pixel(x,y,RGB) --> *(uint32_t*)pix_ptr = RGB
+    //   x += sx               --> pix_ptr += sx_ptr
+    //   y += sy               --> pix_ptr += sy_ptr
+   
     if(dy > dx) {
 	int ex = (dx << 1) - dy;
 	for(int u=0; u<dy; u++) {
-	    fb_setpixel(x,y,RGB);
-	    y += sy;
+	   
+	    // Next two lines equivalent to:
+	    //  fb_setpixel(x,y,RGB);
+	    //  y += sy;
+	    *(uint32_t*)pix_ptr = RGB;
+	    pix_ptr += sy_ptr;
+	   
 	    while(ex >= 0)  {
-		fb_setpixel(x,y,RGB);		
-		x += sx;
+	       
+	        // Next two lines equivalent to:	       
+		//  fb_setpixel(x,y,RGB);		
+		//  x += sx;
+		*(uint32_t*)pix_ptr = RGB;
+		pix_ptr += sx_ptr;
 		ex -= dy << 1;
 	    }
 	    ex += dx << 1;
@@ -264,11 +318,19 @@ void fb_line(int x1, int y1, int x2, int y2, uint32_t RGB) {
     } else {
 	int ey = (dy << 1) - dx;
 	for(int u=0; u<dx; u++) {
-	    fb_setpixel(x,y,RGB);
-	    x += sx;
+	   
+	    // Next two lines equivalent to:
+	    //  fb_setpixel(x,y,RGB);
+	    //  x += sx;
+	    *(uint32_t*)pix_ptr = RGB;
+	    pix_ptr += sx_ptr;
+	   
 	    while(ey >= 0) {
-		fb_setpixel(x,y,RGB);
-		y += sy;
+	        // Next two lines equivalent to:
+		//   fb_setpixel(x,y,RGB);
+		//   y += sy;
+		*(uint32_t*)pix_ptr = RGB;
+		pix_ptr += sy_ptr;
 		ey -= dx << 1;
 	    }
 	    ey += dy << 1;
@@ -396,43 +458,49 @@ void fb_fill_poly(uint32_t nb_pts, int* points, uint32_t RGB) {
     static uint32_t x_left[FB_HEIGHT];
     static uint32_t x_right[FB_HEIGHT];
 
-    /* Determine clockwise, miny, maxy */
+    /* determine miny, maxy */
     int clockwise = 0;
     int minx =  10000;
     int maxx = -10000;
     int miny =  10000;
     int maxy = -10000;
-    for(int i1=0; i1<nb_pts; ++i1) {
-	int i2=(i1==nb_pts-1) ? 0 : i1+1;
-	int i3=(i2==nb_pts-1) ? 0 : i2+1;
-	int x1 = points[2*i1];
-	int y1 = points[2*i1+1];
-	int dx1 = points[2*i2]   - x1;
-	int dy1 = points[2*i2+1] - y1;
-	int dx2 = points[2*i3]   - x1;
-	int dy2 = points[2*i3+1] - y1;
-	clockwise += dx1 * dy2 - dx2 * dy1;
-	minx = FB_MIN(minx,x1);
-	maxx = FB_MAX(maxx,x1);
-	miny = FB_MIN(miny,y1);
-	maxy = FB_MAX(maxy,y1);
+   
+    for(int i=0; i<nb_pts; ++i) {
+	int x = points[2*i];
+	int y = points[2*i+1];
+	minx = FB_MIN(minx,x);
+	maxx = FB_MAX(maxx,x);
+	miny = FB_MIN(miny,y);
+	maxy = FB_MAX(maxy,y);
     }
 
-    /* culling */
-    if((fb_poly_culling == FB_POLY_CW) && (clockwise < 0)) {
-	return;
+    /* Culling */
+    if(fb_poly_culling != FB_POLY_NO_CULLING) {
+       for(int i1=0; i1<nb_pts; ++i1) {
+	  int i2=(i1==nb_pts-1) ? 0 : i1+1;
+	  int i3=(i2==nb_pts-1) ? 0 : i2+1;
+	  int x1 = points[2*i1];
+	  int y1 = points[2*i1+1];
+	  int dx1 = points[2*i2]   - x1;
+	  int dy1 = points[2*i2+1] - y1;
+	  int dx2 = points[2*i3]   - x1;
+	  int dy2 = points[2*i3+1] - y1;
+	  clockwise += dx1 * dy2 - dx2 * dy1;
+       }
+       if((fb_poly_culling == FB_POLY_CW) && (clockwise < 0)) {
+	  return;
+       }
+       if((fb_poly_culling == FB_POLY_CCW) && (clockwise > 0)) {
+	  return;
+       }
     }
-    if((fb_poly_culling == FB_POLY_CCW) && (clockwise > 0)) {
-	return;
-    }
-
-    /* clipping */
+   
+    /* Clipping */
     if((minx < fb_clip_x1) || (miny < fb_clip_y1) || (maxx > fb_clip_x2) || (maxy > fb_clip_y2)) {
 	nb_pts = fb_clip(nb_pts, (int**)&points);
 	miny =  10000;
 	maxy = -10000;
 	for(int i1=0; i1<nb_pts; ++i1) {
-	    // int x1 = points[2*i1];
 	    int y1 = points[2*i1+1];
 	    miny = FB_MIN(miny,y1);
 	    maxy = FB_MAX(maxy,y1);
@@ -440,6 +508,11 @@ void fb_fill_poly(uint32_t nb_pts, int* points, uint32_t RGB) {
     }
 
     /* Determine x_left and x_right for each scaline */
+    // Note: x_left and x_right may be swapped depending
+    // on polygon orientation (we no longer compute orientation
+    // systematically, and swap line extremities instead). 
+    // Extremities test and swapping is overlapped with previous
+    // line's DMA transfer (costs nothing).
     for(int i1=0; i1<nb_pts; ++i1) {
 	int i2=(i1==nb_pts-1) ? 0 : i1+1;
 
@@ -453,7 +526,11 @@ void fb_fill_poly(uint32_t nb_pts, int* points, uint32_t RGB) {
 	    continue;
 	}
 
-	uint32_t* x_buffer = ((clockwise > 0) ^ (y2 > y1)) ? x_left : x_right;
+        // uint32_t* x_buffer = ((clockwise > 0) ^ (y2 > y1)) ? x_left : x_right;
+	// No need to consult clockwise: we swap extremities in the end if needed
+	//  (need the test anyway in the case there is a non-convex polygon)
+        uint32_t* x_buffer = (y2 > y1) ? x_left : x_right;
+       
 	int dx = x2 - x1;
 	int sx = 1;
 	int dy = y2 - y1;
@@ -499,16 +576,29 @@ void fb_fill_poly(uint32_t nb_pts, int* points, uint32_t RGB) {
     for(int y = miny; y <= maxy; ++y) {
 	int x1 = x_left[y];
 	int x2 = x_right[y];
-        // swap x1,x2 (may happen with non-convex polygons)
+       
+        /* swap x1,x2 (may happen with non-convex polygons) */
         if(x2 < x1) { 
 	   x1 = x1 ^ x2;
 	   x2 = x2 ^ x1;
 	   x1 = x1 ^ x2;
 	}
-        if(y != miny) fb_hline_wait_dma();
+       
+        /* wait end of DMA transfer for previous line */
+        if(y != miny) {
+	   fb_hline_wait_dma();
+	}
+       
+        /* 
+	 * Initiate DMA transfer for current line. Next 
+	 * line fetch and x1,x2 swap are overlapped with
+	 * DMA transfer.
+	 */ 
         fb_hline_no_wait_dma(line_ptr+x1, x2-x1+1, RGB);
 	line_ptr += FB_WIDTH;
     }
+   
+    /* Wait end of DMA transfer for last line. */
     fb_hline_wait_dma();
 }
 
