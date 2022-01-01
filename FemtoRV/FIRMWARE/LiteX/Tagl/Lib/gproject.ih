@@ -1,0 +1,76 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * gproject.ih
+ *
+ */
+
+#ifndef GPROJECT_I_H
+#define GPROJECT_I_H
+
+
+inline void 
+GMatrix::LoadPerspective(gAngle _fov,  gfloat _aspect, 
+                         gfloat _near, gfloat _far)
+{
+#ifdef EBUG
+  assert(_aspect != 0.0);
+  assert(_gnear  != _gfar);
+  assert((_fov != 0) && (_fov != 1800));
+#endif
+
+   LoadZero();
+
+  _x[0][0].cot(_fov / 2);
+  _x[1][1].lod(_x[0][0]);
+  _x[0][0].div(_aspect);
+
+  _x[2][2].lod(-(_far + _near) / (_far - _near));
+  _x[2][3].lod(-1);
+  _x[3][2].lod(-2.0 * _far * _near / (_far - _near));
+}
+
+inline void
+GMatrix::LoadOrtho(gfloat _left, gfloat _right, gfloat _bottom, gfloat _top, 
+                   gfloat _near, gfloat _far)
+{
+#ifdef EBUG
+  assert(_left   != _right);
+  assert(_bottom != _top);
+  assert(_near   != _gfar);
+#endif
+
+LoadZero();
+
+_x[0][0].lod( 2.0 / (_right - _left  ));
+_x[1][1].lod( 2.0 / (_top   - _bottom));
+_x[2][2].lod(-2.0 / (_far   - _near  ));
+_x[3][0].lod(-(_right + _left   )/(_right - _left  ));
+_x[3][1].lod(-(_top   + _bottom )/(_top   - _bottom));
+_x[3][2].lod(-(_far   + _near   )/(_far   - _near  ));
+_x[3][3].lod(1.0);
+
+}
+
+#endif

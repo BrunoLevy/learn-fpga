@@ -1,0 +1,70 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+
+/*
+ *
+ * rect_i.h
+ *
+ */
+
+#ifndef RECT_I_H
+#define RECT_I_H
+
+inline Rect::Rect(const ScrCoord x1, const ScrCoord y1, const ScrCoord x2, const ScrCoord y2)
+{
+  _x1 = x1;
+  _y1 = y1;
+  _x2 = x2;
+  _y2 = y2;
+}
+
+inline void Rect::Set(const ScrCoord x1, const ScrCoord y1, 
+		      const ScrCoord x2, const ScrCoord y2)
+{
+  _x1 = x1;
+  _y1 = y1;
+  _x2 = x2;
+  _y2 = y2;
+}
+
+inline void Rect::Set(const ZCoord z1, const ZCoord z2)
+{
+  _z1 = z1;
+  _z2 = z2;
+}
+  
+inline void Rect::Get(ScrCoord *x1, ScrCoord *y1, ScrCoord *x2, ScrCoord *y2) const
+{
+  *x1 = _x1;
+  *y1 = _y1;
+  *x2 = _x2;
+  *y2 = _y2;
+}
+
+inline void Rect::Get(ZCoord *z1, ZCoord *z2)
+{
+  *z1 = (ZCoord)_z1;
+  *z2 = (ZCoord)_z2;
+}
+
+#endif

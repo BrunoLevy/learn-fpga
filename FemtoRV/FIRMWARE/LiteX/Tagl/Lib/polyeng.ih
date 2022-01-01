@@ -1,0 +1,107 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * polyeng_i.h
+ *
+ */
+
+#ifndef POLYENG_I_H
+#define POLYENG_I_H
+
+
+inline void PolygonEngine::Push(GVertex *v)
+{
+  _p1.Push(v);
+}
+
+inline void PolygonEngine::Reset(void)
+{
+  _p1.Reset();
+}
+
+inline GVertexAttributes& PolygonEngine::VAttributes(void)
+{
+  return _va;
+}
+
+inline void PolygonEngine::FillPoly(void)
+{
+  ClipPoly();
+  if(_p1.Size())
+    _fillpoly(&VAttributes());
+}
+
+inline void PolygonEngine::DrawPoly(void)
+{
+  int i,j;
+  ClipPoly();
+  for(i=0; i<_p1.Size(); i++)
+    {
+      j = i + 1;
+      if(j == _p1.Size())
+	j = 0;
+
+      _drawline(&VAttributes(), _p1[i], _p1[j]);
+    }
+}
+
+inline void PolygonEngine::SetPixel(GVertex* v)
+{
+  if(
+       (v->x >= _clip._x1) && (v->x <= _clip._x2) &&
+       (v->y >= _clip._y1) && (v->y <= _clip._y2) &&
+       (!Attributes().Get(PEA_ZCLIP) ||
+         ((v->z >= _clip._z1) && (v->z <= _clip._z2))
+       )
+    ) 
+  _setpixel(v,v->x,v->y);
+}
+
+inline void PolygonEngine::SetPixel(ScrCoord x, ScrCoord y)
+{
+  if(
+       (x >= _clip._x1) && (x <= _clip._x2) &&
+       (y >= _clip._y1) && (y <= _clip._y2) 
+    ) 
+    _setpixel(&VAttributes(),x,y);
+}
+
+inline void PolygonEngine::SetPixel(ScrCoord x, ScrCoord y, ColorCode c)
+{
+  VAttributes().c = c;
+  SetPixel(x,y);
+}
+
+inline void PolygonEngine::SetPixel(ScrCoord x, ScrCoord y, 
+				    ColorComponent r, ColorComponent g, ColorComponent b)
+{
+  VAttributes().r = r;
+  VAttributes().g = g;
+  VAttributes().b = b;
+  SetPixel(x,y);
+}
+
+
+#endif
+

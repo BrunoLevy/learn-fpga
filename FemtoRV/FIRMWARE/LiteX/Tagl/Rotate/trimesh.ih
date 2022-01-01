@@ -1,0 +1,94 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * trimesh.ih
+ *
+ */
+
+#ifndef TRIMESH_I_H
+#define TRIMESH_I_H
+
+inline int 
+TriMesh::TIndex(int n, int u, int v)
+{
+  return (n-1 - u) * (n-1 - u + 1) / 2 + v;
+}
+
+inline int 
+TriMesh::TIndex(int u, int v)
+{
+  return TIndex(_n, u, v);
+}
+
+inline void    
+TriMesh::TVertex(int n, VectorF& V,
+	         double u, double v, double w, double h)
+{
+  u /= (double)(n - 1);
+  v /= (double)(n - 1);
+  w /= (double)(n - 1);
+  V.x = u * _P0.x + v * _P1.x + w * _P2.x + h * _N.x;
+  V.y = u * _P0.y + v * _P1.y + w * _P2.y + h * _N.y;
+  V.z = u * _P0.z + v * _P1.z + w * _P2.z + h * _N.z;
+}
+
+inline void    
+TriMesh::TVertex(VectorF& V,
+	         double u, double v, double w, double h)
+{
+  TVertex(_n, V, u, v, w, h);
+}
+
+inline MVertex& 
+TriMesh::operator()(int u, int v)
+{
+  return _vertex[TIndex(u,v)];
+}
+
+
+inline VectorF& 
+TriMesh::GetP0(void)
+{
+  return _P0;
+}
+
+inline VectorF& 
+TriMesh::GetP1(void)
+{
+  return _P1;
+}
+
+inline VectorF& 
+TriMesh::GetP2(void)
+{
+  return _P2;
+}
+
+inline VectorF& 
+TriMesh::GetN(void)
+{
+  return _N;
+}
+
+#endif

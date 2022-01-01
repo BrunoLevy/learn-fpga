@@ -1,0 +1,120 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * gvector.ih
+ *
+ */
+
+#ifndef GVECTOR_I_H
+#define GVECTOR_I_H
+
+#include <string.h>
+
+// Direct access.
+
+inline GCoord& 
+GVector::operator()(int i)
+{
+#ifdef EBUG
+  assert((i >= 0) && (i < 4));
+#endif
+  return _x[i];
+}
+
+
+// constructors
+
+inline GVector& 
+GVector::operator= (const GVector& V)
+{
+  memcpy((char *)_x, (char *)V._x, sizeof(_x));
+  return *this;
+}
+
+inline 
+GVector::GVector(const GVector& V)
+{
+  memcpy((char *)_x, (char *)V._x, sizeof(_x));
+}
+
+inline
+GVector::GVector(void)
+{
+}
+
+// Initialize
+
+inline void 
+GVector::PointLoadZero(void)
+{
+  _x[0].lod(0);
+  _x[1].lod(0);
+  _x[2].lod(0);
+  _x[3].lod(1);
+}
+
+inline void 
+GVector::VectorLoadZero(void)
+{
+  _x[0].lod(0);
+  _x[1].lod(0);
+  _x[2].lod(0);
+  _x[3].lod(0);
+}
+
+// Vector-Matrix product.
+
+inline void 
+GVector::mld(GVector &V, GMatrix &M)
+{
+  int i,j;
+  for(i=0; i<4; i++)
+     {
+     _x[i].mld(V(0),M(0,i));
+     for(j=1; j<4; j++)
+        _x[i].mac(V(j),M(j,i));
+     }
+}
+
+inline void 
+GVector::mul(GMatrix &M)
+{
+  GVector tmp=*this;
+  mld(tmp,M);
+}
+
+
+/*
+inline ostream& 
+operator<<(ostream& output, GVector& V)
+{
+  int i;
+  output << "[ ";
+  for(i=0; i<4; i++)
+     output << setw(5) << V(i) << ' '; 
+  return output << ']';
+}
+*/
+
+#endif

@@ -1,0 +1,81 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * mesh_i.h
+ *
+ */
+
+
+#ifndef MESH_I_H
+#define MESH_I_H
+
+
+inline MFace::MFace(void)
+{
+  nvertex = 0;
+  vertex  = NULL;
+}
+
+inline MFace::~MFace(void)
+{
+  if(vertex)
+    delete[] vertex;
+}
+
+
+inline Flag Mesh::ErrorCode(void)
+{
+  return _error_code;
+}
+
+inline Flags& Mesh::Resources(void)
+{
+  return _resources;
+}
+
+inline MVertex*& 
+Mesh::Vertex(void)
+{
+  return _vertex;
+}
+
+inline int&      
+Mesh::NVertex(void)
+{
+  return _nvertex;
+}
+
+inline MFace*&   
+Mesh::Face(void)
+{
+  return _face;
+}
+
+inline int&
+Mesh::NFace(void)
+{
+  return _nface;
+}
+
+#endif

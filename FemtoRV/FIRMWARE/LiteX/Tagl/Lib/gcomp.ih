@@ -1,0 +1,193 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * gcomp_i.h
+ *
+ */
+
+#ifndef GCOMP_I_H
+#define GCOMP_I_H
+
+#include <stdlib.h>
+#include <stdio.h>
+
+inline void
+RenderContext::Deactivate(void)
+{
+  _active = 0;
+}
+
+inline void
+RenderContext::Activate(void)
+{
+  if(_current)
+     _current->Deactivate();
+  _current = this;
+  _active = 1;
+}
+
+inline int
+RenderContext::Active(void)
+{
+  return _active;
+}
+
+inline 
+RenderContext::RenderContext(void)
+{
+}
+
+inline 
+RenderContext::~RenderContext(void)
+{
+  if(_current == this)
+     _current = NULL;
+}
+
+inline Flags& 
+GraphicComponent::Attributes(void)
+{
+  return _attrib_stack[_attrib_stack_idx];
+}
+
+inline 
+GraphicComponent::GraphicComponent()
+{
+  _verbose_level    = 0;
+  _verbose_request  = 0;
+  _attrib_stack_idx = 0;
+  _last_attributes  = 0;
+  _tex_mem          = 0; 
+  _proc_name        = "Unknown component";
+  _tex_cmap = _local_tex_cmap; 
+}
+
+inline void GraphicComponent::Verbose(const int verbose_level)
+{
+  char *tmp;
+  _verbose_level = verbose_level;
+  if(_verbose_level == MSG_ENV)
+     _verbose_level = (tmp = getenv("GVERBOSE")) ? atoi(tmp) : MSG_NONE;
+}
+
+inline GraphicComponent& GraphicComponent::operator[](const int verbose_request)
+{
+  _verbose_request = verbose_request;
+
+  if(_verbose_level >= _verbose_request)
+    printf("[TAGL] %s::",_proc_name);
+  return *this;
+}
+
+inline GraphicComponent& GraphicComponent::operator<<(const char *str) 
+{
+  if(_verbose_level >= _verbose_request)
+    printf("%s",str);
+  return *this;
+}
+
+inline GraphicComponent& GraphicComponent::operator<<(const char c) 
+{
+  if(_verbose_level >= _verbose_request)
+    printf("%c",c);
+  return *this;
+}
+
+
+inline GraphicComponent& GraphicComponent::operator<<(const int i) 
+{
+  if(_verbose_level >= _verbose_request)
+    printf("%d",i);
+  return *this;
+}
+
+
+inline GraphicComponent& GraphicComponent::operator<<(const long i) 
+{
+  if(_verbose_level >= _verbose_request)
+    printf("%ld",i);
+  return *this;
+}
+
+
+inline GraphicComponent& GraphicComponent::operator<<(const float f)
+{
+  if(_verbose_level >= _verbose_request)
+    printf("%f",f);
+  return *this;
+}
+
+inline GraphicComponent& GraphicComponent::operator<<(const double f)
+{
+  if(_verbose_level >= _verbose_request)
+    printf("%f",f);  
+  return *this;
+}
+
+inline void GraphicComponent::PushAttributes(void)
+{
+  if(_attrib_stack_idx >= ATTRIB_STACK_SZ - 1)
+    {
+      (*this)[MSG_ERROR] << "attribute stack overflow error\n";
+      exit(0);
+    }
+
+  _attrib_stack_idx++;
+  _attrib_stack[_attrib_stack_idx] = _attrib_stack[_attrib_stack_idx - 1];
+}
+
+inline void GraphicComponent::PopAttributes(void)
+{
+  _last_attributes = Attributes();
+  if(!_attrib_stack_idx)
+    {
+      (*this)[MSG_ERROR] << "attribute stack underflow error\n";
+      exit(0);
+    }
+  _attrib_stack_idx--;
+  CommitAttributes();
+}
+
+inline OpCode GraphicComponent::UniqueOpCode(void)
+{
+  return _max_op_code++;
+}
+
+inline void GraphicComponent::SetCommandLine(int argc, char **argv)
+{
+  _argc = argc;
+  _argv = argv;
+}
+
+inline int GraphicComponent::ArgC(void)
+{
+  return _argc;
+}
+
+inline char** GraphicComponent::ArgV(void)
+{
+  return _argv;
+}
+
+#endif

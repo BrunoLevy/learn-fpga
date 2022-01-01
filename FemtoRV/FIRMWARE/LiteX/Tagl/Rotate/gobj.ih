@@ -1,0 +1,338 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * gobj_i.h
+ *
+ */
+
+
+#ifndef GOBJ_I_H
+#define GOBJ_I_H
+
+#include <math.h>
+
+// ----------------------------------------------------------------
+//
+// MVector ops
+//
+// ----------------------------------------------------------------
+
+inline VectorF& operator<<(VectorF& V1, MVector& V2)
+{
+  V1.x = (double)V2.x * M_DIV;
+  V1.y = (double)V2.y * M_DIV;
+  V1.z = (double)V2.z * M_DIV;
+  return V1;
+}
+
+
+// ----------------------------------------------------------------
+
+inline MVector::MVector(int xx, int yy, int zz)
+{
+  x = xx;
+  y = yy;
+  z = zz;
+}
+
+
+inline void MVector::Normalize(void)
+{
+  double xx = x; 
+  double yy = y; 
+  double zz = z; 
+
+  double k = sqrt(xx*xx + yy*yy + zz*zz);
+  if(k)
+    {
+      k = (double)M_BIG / k;
+      x = (int)(k * xx);
+      y = (int)(k * yy);
+      z = (int)(k * zz);
+    }
+}
+
+
+inline void MVector::RotX(Angle r)
+{
+   long t1 = y;
+   long t2 = z;
+   long s = Sin(r),c = Cos(r);
+
+   y = (int)(( c * t1 + s * t2) >> SIN_SHIFT);
+   z = (int)((-s * t1 + c * t2) >> SIN_SHIFT);
+}
+
+inline void MVector::RotY(Angle r)
+{
+  long t1 = x;
+  long t2 = z;
+  long s = Sin(r),c = Cos(r);
+
+  x = (int)(( c * t1 + s * t2) >> SIN_SHIFT);
+  z = (int)((-s * t1 + c * t2) >> SIN_SHIFT);
+ }
+
+inline void MVector::RotZ(Angle r)
+{
+   long t1 = x;
+   long t2 = y;
+   long s = Sin(r),c = Cos(r);
+
+   x = (int)(( c * t1 + s * t2) >> SIN_SHIFT);
+   y = (int)((-s * t1 + c * t2) >> SIN_SHIFT);
+}
+
+inline void MVector::Rotate(Angle rx, Angle ry, Angle rz)
+{
+  RotX(rx);
+  RotY(ry);
+  RotZ(rz);
+}
+
+inline void MVector::Translate(int tx, int ty, int tz)
+{
+  x += tx;
+  y += ty;
+  z += tz;
+}
+
+inline void MVector::Scale(double sx, double sy, double sz)
+{
+  x = (int)(sx *(double)x);  
+  y = (int)(sy *(double)y);
+  z = (int)(sz *(double)z);
+}
+
+inline void MVector::Scale(double s)
+{
+  Scale(s,s,s);
+}
+
+/*
+inline istream& operator >> (istream& input,  MVector& V)
+{
+  double x,y,z;
+  input >> x >> y >> z;
+  V.x = (int)(x);
+  V.y = (int)(y);
+  V.z = (int)(z);
+  return input;
+}
+
+inline MVector& MVector::operator<<(VectorF& V)
+{
+  x = (int)(V.x * M_MUL);
+  y = (int)(V.y * M_MUL);
+  z = (int)(V.z * M_MUL);
+  return *this;
+}
+
+inline ostream& operator << (ostream& output, MVector& V)
+{
+  double x = V.x, y = V.y, z = V.z;
+  return output << x << ' ' << y << ' ' << z << endl;
+}
+*/
+
+// ----------------------------------------------------------------
+//
+// MVertex
+//
+// ----------------------------------------------------------------
+
+
+inline MVertex::MVertex(int xx, int yy, int zz) : MVector(xx,yy,zz)
+{
+}
+
+// ----------------------------------------------------------------
+//
+// GraphicObject
+//
+// ----------------------------------------------------------------
+
+inline void GraphicObject::Rotate(char axis, Angle r)
+{
+  switch(axis)
+    {
+    case 'x':
+    case 'X':
+      RotX(r);
+      break;
+    case 'y':
+    case 'Y':
+      RotY(r);
+      break;
+    case 'z':
+    case 'Z':
+      RotZ(r);
+      break;
+    default:
+      printf("GraphicObject::Rotate : invalid axis\n");
+      break;
+    }
+}
+ 
+
+inline void GraphicObject::Rotate(Angle rx, Angle ry, Angle rz)
+{
+  RotX(rx);
+  RotY(ry);
+  RotZ(rz);
+}
+ 
+inline void GraphicObject::Scale(double s)
+{
+  Scale(s,s,s);
+}
+
+
+inline PolygonEngine* operator << (PolygonEngine* output, GraphicObject& O)
+{
+  O.Draw(output);
+  return output;
+}
+
+// ----------------------------------------------------------------
+//
+// Shading parameters (will move later on ...)
+//
+// ----------------------------------------------------------------
+
+
+inline void GraphicObject::SetGeometry(int width, int height)
+{
+  _width  = width;
+  _height = height;
+}
+
+inline int Clamp(int v, int m, int M)
+{
+  return (v < m) ? m : ((v > M) ? M : v);
+}
+
+inline void GraphicObject::SetZoom(int  zoom)
+{
+  _zoom = Clamp(zoom, 1, 100);
+}
+
+inline int  GraphicObject::GetZoom(void)
+{
+  return _zoom;
+}
+
+inline void GraphicObject::SetZoomStep(int zoom_step)
+{
+  _zoom_step = Clamp(zoom_step, 1, 10);
+}
+
+inline int GraphicObject::GetZoomStep(void)
+{
+  return _zoom_step;
+}
+
+inline void GraphicObject::ZoomIn(void)
+{
+  _zoom += _zoom_step;
+  _zoom = Clamp(_zoom, 1, 100);
+}
+
+inline void GraphicObject::ZoomOut(void)
+{
+  _zoom -= _zoom_step;
+  _zoom = Clamp(_zoom, 1, 100);
+}
+
+inline void GraphicObject::SetLightDirection(int  Lx, int  Ly, int  Lz)
+{
+  _L = MVector(Lx, Ly, Lz);
+}
+
+inline void GraphicObject::GetLightDirection(int *Lx, int *Ly, int *Lz)
+{
+  *Lx = _L.x;
+  *Ly = _L.y;
+  *Lz = _L.z;
+}
+
+inline void GraphicObject::SetLightColor(int  Lr, int  Lg, int  Lb)
+{
+  _Lr = Lr;
+  _Lg = Lg;
+  _Lb = Lb;
+}
+
+inline void GraphicObject::GetLightColor(int *Lr, int *Lg, int *Lb)
+{
+  *Lr = _Lr;
+  *Lg = _Lg;
+  *Lb = _Lb;
+}
+
+inline void GraphicObject::SetLightColor(int  Lc)
+{
+  _Lc = Lc;
+}
+
+inline void GraphicObject::GetLightColor(int *Lc)
+{
+  *Lc = _Lc;
+}
+
+inline void GraphicObject::Project(MVertex *V)
+{
+  const long YE = 65536 >> 9;
+  
+  V->Projection.x = (ScrCoord)((_width  >> 1) + 
+                 (((((V->x*YE*3) / ((1 << 23)/_width ))) * _zoom) >> 4));
+  V->Projection.y = (ScrCoord)((_height >> 1) + 
+                 (((((V->y*YE*3) / ((1 << 23)/_width ))) * _zoom) >> 4));
+  V->Projection.z = (M_BIG - V->z ) >> 5;
+}
+
+
+inline MVector& GraphicObject::LightDirection(void)
+{
+  return _L;
+}
+
+inline Flags& GraphicObject::Mode()
+{
+  return _flags;	
+}
+
+inline int GraphicObject::Specular(int x)
+{
+  return (x > SPEC_MAX) ? _specular[SPEC_MAX >> SPEC_SHIFT]
+                        : _specular[x >> SPEC_SHIFT];
+}
+
+inline int GraphicObject::Gamma(int x)
+{
+  return (x > GAMMA_MAX) ? _gamma_ramp[GAMMA_MAX >> GAMMA_SHIFT]
+                         : _gamma_ramp[x >> GAMMA_SHIFT];
+}
+
+#endif

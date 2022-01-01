@@ -1,0 +1,246 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * vectorf.ih
+ *
+ */
+
+#ifndef VECTORF_I_H
+#define VECTORF_I_H
+
+inline VectorF::VectorF(void)
+{
+}
+
+inline VectorF::VectorF(double xx)
+{
+  x = xx;
+  y = xx;
+  z = xx;
+}
+
+inline VectorF& 
+VectorF::operator=(double xx)
+{
+  x = xx;
+  y = xx;
+  z = xx;
+  return *this;
+}
+
+
+inline VectorF& 
+VectorF::operator=(const VectorF& V)
+{
+  x = V.x;
+  y = V.y;
+  z = V.z;
+  return *this;
+}
+
+inline VectorF::VectorF(double xx, double yy, double zz)
+{
+  x = xx;
+  y = yy;
+  z = zz;
+}
+
+inline  int      
+VectorF::operator==(double xx)
+{
+  return (x == xx) && (y == xx) && (z == xx);
+}
+
+
+
+inline void VectorF::RotX(Angle r)
+{
+   double t1 = y;
+   double t2 = z;
+   double s = Sin(r) * SIN_DIV; 
+   double c = Cos(r) * SIN_DIV;
+
+   y =  c * t1 + s * t2;
+   z = -s * t1 + c * t2;
+}
+
+
+inline void VectorF::RotY(Angle r)
+{
+  double t1 = x;
+  double t2 = z;
+  double s = Sin(r) * SIN_DIV;
+  double c = Cos(r) * SIN_DIV;
+
+  x =  c * t1 + s * t2;
+  z = -s * t1 + c * t2;
+ }
+
+
+inline void VectorF::RotZ(Angle r)
+{
+   double t1 = x;
+   double t2 = y;
+   double s = Sin(r) * SIN_DIV;
+   double c = Cos(r) * SIN_DIV;
+
+   x =  c * t1 + s * t2;
+   y = -s * t1 + c * t2;
+}
+
+
+inline void VectorF::Rotate(Angle rx, Angle ry, Angle rz)
+{
+  RotX(rx);
+  RotY(ry);
+  RotZ(rz);
+}
+
+inline void VectorF::Translate(int tx, int ty, int tz)
+{
+  x += tx * M_DIV;
+  y += ty * M_DIV;
+  z += tz * M_DIV;
+}
+
+inline void VectorF::Scale(double sx, double sy, double sz)
+{
+  x *= sx;
+  y *= sy;
+  z *= sz;
+}
+
+inline void VectorF::Scale(double s)
+{
+  Scale(s,s,s);
+}
+
+
+inline VectorF& VectorF::operator+=(const VectorF& V)
+{
+  x += V.x;
+  y += V.y;
+  z += V.z;
+  return *this;
+}
+
+inline VectorF& VectorF::operator-=(const VectorF& V)
+{
+  x -= V.x;
+  y -= V.y;
+  z -= V.z;
+  return *this;
+}
+
+inline VectorF& VectorF::operator*=(double a)
+{
+  x *= a;
+  y *= a;
+  z *= a;
+  return *this;
+}
+
+inline VectorF& VectorF::operator/=(double a)
+{
+  x /= a;
+  y /= a;
+  z /= a;
+  return *this;
+}
+
+inline VectorF operator+(const VectorF& V1, const VectorF& V2)
+{
+  VectorF result = V1;
+  result += V2;
+  return result;
+}
+
+inline VectorF operator-(const VectorF& V1, const VectorF& V2)
+{
+  VectorF result = V1;
+  result -= V2;
+  return result;
+}
+
+inline VectorF operator*(double a, const VectorF& V)
+{
+  VectorF result = V;
+  result *= a;
+  return result;
+}
+
+inline VectorF operator/(const VectorF& V, double a)
+{
+  VectorF result = V;
+  result /= a;
+  return result;
+}
+
+inline double  operator*(const VectorF& V1, const VectorF& V2)
+{
+  return V1.x*V2.x + V1.y*V2.y + V1.z*V2.z;
+}
+
+inline VectorF operator^(const VectorF& V1, const VectorF& V2)
+{
+  VectorF result;
+  result.x = V1.y*V2.z-V1.z*V2.y;
+  result.y = V1.z*V2.x-V1.x*V2.z;
+  result.z = V1.x*V2.y-V1.y*V2.x;
+  return result;
+}
+
+inline  double 
+VectorF::Length2(void)
+{
+  return x*x + y*y + z*z;
+}
+
+inline  double 
+VectorF::Length(void)
+{
+  return sqrt(Length2());
+}
+
+
+inline void VectorF::Normalize(void)
+{
+  double norm = Length();
+  if(norm)
+    {
+    x /= norm;
+    y /= norm;
+    z /= norm;
+    }
+}
+
+
+/*
+inline ostream& operator << (ostream& output, const VectorF& V)
+{
+  return output << '[' << V.x << ' ' << V.y << ' ' << V.z << ']' << endl;
+}
+*/
+
+#endif

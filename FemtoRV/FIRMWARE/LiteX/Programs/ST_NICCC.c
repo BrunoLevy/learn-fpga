@@ -193,6 +193,7 @@ static int read_frame(void) {
 
 
 int main(int argc, char** argv) {
+   
    int run = 1;
    fb_init();
    fb_set_dual_buffering(1);

@@ -1,0 +1,108 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * locgman.ih
+ *
+ */
+
+#ifndef LOCGMAN_I_H
+#define LOCGMAN_I_H
+
+inline GMatrix& 
+LocalGeometryManager::GetModelView(void)
+{
+  return _stack_modelview[_stack_modelview_idx];
+}
+ 
+inline GMatrix&
+LocalGeometryManager::GetProject(void)
+{
+  return _project;
+}
+
+inline GMatrix& 
+LocalGeometryManager::GetTexture(void)
+{
+  return _texture;
+}
+
+inline Rect&
+LocalGeometryManager::GetViewport(void)
+{
+  return _stack_viewport[_stack_viewport_idx];
+}
+
+inline GMatrix&
+LocalGeometryManager::GetSingle(void)
+{
+  return _stack_single[_stack_single_idx]; 
+}
+
+inline ScrCoord
+LocalGeometryManager::GetWidth(void)
+{
+  return _graphic_port->Width();
+}
+
+inline ScrCoord
+LocalGeometryManager::GetHeight(void)
+{
+  return _graphic_port->Height();
+}
+
+inline GVertexAttributes&
+LocalGeometryManager::VAttributes(void)
+{
+  return _polygon_engine->VAttributes();
+}
+
+
+inline void
+LocalGeometryManager::DoPoints(void)
+{
+int i;
+for(i=0; i<_vpool.Size(); i++)
+   _polygon_engine->SetPixel(&(_vpool[i]));
+}
+
+inline void
+LocalGeometryManager::DoClosedLine(void)
+{
+  _polygon_engine->DrawPoly();
+}
+
+inline void
+LocalGeometryManager::DoPolygon(void)
+{
+  _polygon_engine->FillPoly();
+}
+
+
+inline void
+LocalGeometryManager::CommitSingle(void)
+{
+   if(_m_mode == GMM_SINGLE )
+     GetSingle().mld(GetModelView(), _project_viewport);
+}
+#endif

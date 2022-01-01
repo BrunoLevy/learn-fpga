@@ -1,0 +1,410 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * gnumbers_i.h
+ *
+ */
+
+#ifndef GNUMBERS_I_H
+#define GNUMBERS_I_H
+
+#include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265
+#endif
+
+using namespace std;
+
+// ----------- GCoeff operations
+
+inline GCoeff::GCoeff(void)
+{
+}
+
+inline void GCoeff::mul(gfloat x)
+{
+  _x = (ginternal)((gfloat)_x * x);
+}
+
+inline void GCoeff::mld(GCoeff x1, GCoeff x2)
+{
+#ifdef GINT
+  _x = ((x1._x * x2._x) >> GCOEFF_SHIFT);
+#else
+  _x = (x1._x * x2._x);
+#endif
+}
+
+inline void GCoeff::mld(GCoeff x1, gfloat x2)
+{
+_x = (ginternal)((gfloat)x1._x * x2);
+}
+
+inline void GCoeff::mac(GCoeff x1, GCoeff x2)
+{
+#ifdef GINT
+  _x += ((x1._x * x2._x) >> GCOEFF_SHIFT);
+#else
+  _x += (x1._x * x2._x);
+#endif
+}
+
+inline void GCoeff::mac(GCoeff x1, gfloat x2)
+{
+  _x += (ginternal)((gfloat)x1._x * x2);
+}
+
+inline void GCoeff::msb(GCoeff x1, GCoeff x2)
+{
+#ifdef GINT
+  _x -= ((x1._x * x2._x) >> GCOEFF_SHIFT);
+#else
+  _x -= (x1._x * x2._x);
+#endif
+}
+  
+inline void GCoeff::lod(GCoeff x)
+{
+  _x = x._x;
+}
+
+inline void GCoeff::ldo(GCoeff x)
+{
+  _x = -x._x;
+}
+
+inline void GCoeff::lod(gint   x)
+{
+#ifdef GINT
+  _x = (x << GCOEFF_SHIFT);
+#else
+  _x = (ginternal)x;
+#endif
+}
+
+inline void GCoeff::lod(gfloat x)
+{
+#ifdef GINT
+  _x = (ginternal)(x * GCOEFF_MUL);
+#else
+  _x = (ginternal)x;
+#endif
+}
+
+inline void GCoeff::lod(double x)
+{
+#ifdef GINT
+  _x = (ginternal)(x * GCOEFF_MUL);
+#else
+  _x = (ginternal)x;
+#endif
+}
+
+inline void GCoeff::sto(GCoeff &x)
+{
+  x._x =_x;
+}
+
+inline  void GCoeff::sto(gint   &x)
+{
+#ifdef GINT
+  x = (gint)(_x >> GCOEFF_SHIFT);
+#else
+  x = (gint)_x;
+#endif
+}
+
+inline  void GCoeff::sto(gfloat &x)
+{
+#ifdef GINT
+  x = (gfloat)_x * GCOEFF_DIV;
+#else
+  x = (gfloat)_x;
+#endif
+}
+
+inline  void GCoeff::div(gfloat &x)
+{
+  _x = (ginternal)((gfloat)_x / x);
+}
+
+inline ginternal& GCoeff::data(void)
+{
+  return _x;
+}
+
+inline void GCoeff::set(ginternal x)
+{
+  _x = x;
+}
+
+inline gint GCoeff::iget(void)
+{
+#ifdef GINT
+  return (gint)(_x >> GCOEFF_SHIFT);
+#else
+  return (gint)_x;
+#endif
+}
+
+inline gfloat GCoeff::fget(void)
+{
+#ifdef GINT
+  return (gfloat)_x * GCOEFF_DIV;
+#else
+  return (gfloat)_x;
+#endif
+}
+
+
+// sin and cos will use a table later on ...
+
+inline void GCoeff::sin(gAngle alpha)
+{
+  gfloat a = ((gfloat)alpha) * 2.0 * M_PI / 3600.0;
+
+#ifdef GINT
+  _x = (ginternal)(::sin(a) * GCOEFF_MUL);
+#else
+  _x = (ginternal)(::sin(a));
+#endif
+}
+ 
+inline void GCoeff::cos(gAngle alpha)
+{
+  gfloat a = ((gfloat)alpha) * 2.0 * M_PI / 3600.0;
+
+#ifdef GINT
+  _x = (ginternal)(::cos(a) * GCOEFF_MUL);
+#else
+  _x = (ginternal)(::cos(a));
+#endif
+}
+
+ 
+inline void GCoeff::tan(gAngle alpha)
+{
+  gfloat a = ((gfloat)alpha) * 2.0 * M_PI / 3600.0;
+
+#ifdef GINT
+  _x = (ginternal)(::tan(a) * GCOEFF_MUL);
+#else
+  _x = (ginternal)(::tan(a));
+#endif
+}
+
+ 
+inline void GCoeff::cot(gAngle alpha)
+{
+  gfloat a = ((gfloat)alpha) * 2.0 * M_PI / 3600.0;
+
+#ifdef GINT
+  _x = (ginternal)(1.0 / ::tan(a) * GCOEFF_MUL);
+#else
+  _x = (ginternal)(1.0 / ::tan(a));
+#endif
+}
+
+
+/*
+inline ostream& operator<<(ostream& output, GCoeff x)
+{
+
+#ifdef GINT
+  return output << ((gfloat)x.data()*GCOEFF_DIV);
+#else
+  return output << x.data();
+#endif
+}
+*/
+
+// ----------- GCoord operations
+
+inline GCoord::GCoord(void)
+{
+}
+
+inline void GCoord::mld(GCoord x1, GCoeff x2)
+{
+#ifdef GINT
+  _x = (x1._x * x2._x) >> GCOEFF_SHIFT;
+#else
+  _x = (x1._x * x2._x);
+#endif
+}
+
+inline void GCoord::mac(GCoord x1, GCoeff x2)
+{
+#ifdef GINT
+  _x += (x1._x * x2._x) >> GCOEFF_SHIFT;
+#else
+  _x += (x1._x * x2._x);
+#endif
+}
+  
+inline void GCoord::mld(GCoord x1, GCoord x2)
+{
+#ifdef GINT
+  _x = (x1._x * x2._x) >> GCOORD_SHIFT;
+#else
+  _x = (x1._x * x2._x);
+#endif
+}
+
+inline void GCoord::mac(GCoord x1, GCoord x2)
+{
+#ifdef GINT
+  _x += (x1._x * x2._x) >> GCOORD_SHIFT;
+#else
+  _x += (x1._x * x2._x);
+#endif
+}
+
+inline void GCoord::msb(GCoord x1, GCoord x2)
+{
+#ifdef GINT
+  _x -= (x1._x * x2._x) >> GCOORD_SHIFT;
+#else
+  _x -= (x1._x * x2._x);
+#endif
+}
+
+inline void GCoord::sub(GCoord x)
+{
+  _x -= x._x;
+}
+
+inline int  GCoord::ge(void)
+{
+  return (_x >= 0);
+}
+
+inline void GCoord::lod(GCoord x)
+{
+  _x = x._x;
+}
+
+inline void GCoord::lod(gint   x)
+{
+#ifdef GINT
+  _x = x << GCOORD_SHIFT;
+#else
+  _x = (ginternal)x;
+#endif
+}
+
+inline void GCoord::lod(gfloat x)
+{
+#ifdef GINT
+  _x = (ginternal)(x * GCOORD_MUL);
+#else
+  _x = (ginternal)x;
+#endif
+}
+
+inline void GCoord::sto(GCoord &x)
+{
+  x._x = _x;
+}
+
+inline void GCoord::sto(gint   &x)
+{
+#ifdef GINT
+  x = (gint)(_x >> GCOORD_SHIFT);
+#else
+  x = (gint)_x;
+#endif
+}
+
+inline void GCoord::sto(gfloat &x)
+{
+#ifdef GINT
+  x = (gfloat)_x * GCOORD_DIV;
+#else
+  x = (gfloat)_x;
+#endif
+}
+
+/*
+inline void GCoord::sto(long int &x)
+{
+#ifdef GINT
+  x = (long int)(_x >> GCOORD_SHIFT);
+#else
+  x = (long int)_x;
+#endif
+}
+*/
+
+inline void GCoord::div(GCoord x)
+{
+#ifdef GINT
+  _x = (_x << GCOORD_SHIFT)/x._x;
+#else
+  _x /= x._x;
+#endif
+}
+
+inline ginternal& GCoord::data(void)
+{
+  return _x;
+}
+
+inline void GCoord::set(ginternal x)
+{
+  _x = x;
+}
+
+inline gint GCoord::iget(void)
+{
+#ifdef GINT
+  return (gint)(_x >> GCOORD_SHIFT);
+#else
+  return (gint)_x;
+#endif
+}
+
+inline gfloat GCoord::fget(void)
+{
+#ifdef GINT
+  return (gfloat)_x * GCOORD_DIV;
+#else
+  return (gfloat)_x;
+#endif
+}
+
+
+/*
+inline ostream& operator<<(ostream& output, GCoord x)
+{
+#ifdef GINT
+  return output << ((gfloat)x.data() * GCOORD_DIV);
+#else
+  return output << x.data();
+#endif
+}
+*/
+
+#endif

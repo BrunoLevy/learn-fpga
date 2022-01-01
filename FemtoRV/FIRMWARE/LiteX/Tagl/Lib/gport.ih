@@ -1,0 +1,132 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * gport_i.h
+ *
+ */
+
+#ifndef GPORT_I_H
+#define GPORT_I_H
+
+inline GraphicPort::GraphicPort(const char *name, ScrCoord width, 
+				ScrCoord height, int verbose_level)
+    {
+      _name            = name;
+      _width           = width;
+      _height          = height;
+      _graph_mem       = NULL;
+      _z_mem           = NULL;
+      _error_code      = GPE_OK;
+      _bits_per_pixel  = 0;
+      _bytes_per_pixel = 0;
+      _proc_name       = "GraphicPort";
+      _R_mask          = 0;
+      _G_mask          = 0;
+      _B_mask          = 0;
+      _tex_mem         = 0; 
+      Verbose(verbose_level);
+    }
+
+// RGB to ColorCode translation using graphic endianness
+
+inline 
+UColorCode GraphicPort::RGB2ColorCode(ColorComponent R, 
+				      ColorComponent G,
+				      ColorComponent B)
+{
+int r_shift = firstbit(_R_mask);
+int g_shift = firstbit(_G_mask);
+int b_shift = firstbit(_B_mask);
+
+int r_shift_2 = 8 - nbrbits(_R_mask);
+int g_shift_2 = 8 - nbrbits(_G_mask);
+int b_shift_2 = 8 - nbrbits(_B_mask);
+
+return   ((((UColorCode)R) >> r_shift_2) << r_shift) |
+         ((((UColorCode)G) >> g_shift_2) << g_shift) |
+	 ((((UColorCode)B) >> b_shift_2) << b_shift);
+
+}
+
+
+
+
+inline void GraphicPort::StoreColor(ColorIndex idx,
+				    ColorComponent R, 
+				    ColorComponent G,
+				    ColorComponent B)
+{
+  _truecolormap[idx] = RGB2ColorCode(R,G,B);
+}
+
+
+inline void GraphicPort::Clear(ColorComponent R,
+                               ColorComponent G,
+                               ColorComponent B)
+{
+  if(_bytes_per_pixel == 1)
+    Clear(_truecolormap[RGB2ColorCode(R,G,B)]);
+  else
+    Clear(RGB2ColorCode(R,G,B));
+}
+
+inline void GraphicPort::Clear(ColorIndex idx)
+{
+  Clear(_truecolormap[idx]);
+}
+
+inline ColorIndex* GraphicPort::GraphMem(void)     const {return _graph_mem;       }
+inline ColorIndex* GraphicPort::Colormap(void)     const {return _colormap;        }
+inline UColorCode* GraphicPort::TrueColormap(void) const {return _truecolormap;    }
+inline ColorCell*  GraphicPort::Colortable(void)         {return _colortable;      }
+inline ZCoord*     GraphicPort::ZMem(void)         const {return _z_mem;           }
+
+inline ScrCoord    GraphicPort::Width(void)        const {return _width;     } 
+inline ScrCoord    GraphicPort::Height(void)       const {return _height;    } 
+inline void        GraphicPort::GetGeometry(ScrCoord *w, ScrCoord *h) const 
+{
+  *w = _width;
+  *h = _height;
+}
+
+inline int         GraphicPort::BytesPerLine(void)  const {return _bytes_per_line; }
+inline int         GraphicPort::BitsPerPixel(void)  const {return _bits_per_pixel; }
+inline int         GraphicPort::BytesPerPixel(void) const {return _bytes_per_pixel;}
+
+inline int         GraphicPort::RMask(void)         const {return _R_mask;}
+inline int         GraphicPort::GMask(void)         const {return _G_mask;}
+inline int         GraphicPort::BMask(void)         const {return _B_mask;}
+
+inline Rect&       GraphicPort::Clip(void) {return _clip;}
+inline int         GraphicPort::ErrorCode(void) const { return _error_code; }
+
+
+inline int
+GraphicPort::ContextIsActive(void)
+{
+   return _tgc.Active();	
+}
+
+#endif
+

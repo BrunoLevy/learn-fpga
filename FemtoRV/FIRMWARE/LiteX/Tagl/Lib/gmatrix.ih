@@ -1,0 +1,112 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * gmath_i.h
+ *
+ */
+
+#ifndef GMTX_I_H
+#define GMTX_I_H
+
+#include <string.h>
+
+// Let g++ unroll all these loops for us !!!
+
+inline GMatrix::GMatrix(void)
+{
+}
+
+
+inline GMatrix::GMatrix(const GMatrix& M)
+{
+  memcpy((char *)_x, (char *)M._x, sizeof(_x));
+}
+
+inline GMatrix& GMatrix::operator=(const GMatrix& M)
+{
+  memcpy((char *)_x, (char *)M._x, sizeof(_x));
+  return *this;
+}
+
+
+// Loading transforms
+
+inline void 
+GMatrix::LoadZero(void)
+{
+  memset((char *)_x,0,sizeof(_x));
+}
+
+inline void 
+GMatrix::LoadIdentity(void)
+{
+  int i,j;
+
+   for(i=0; i<4; i++)
+    for(j=0; j<4; j++)
+      _x[i][j].lod((i==j) ? 1 : 0);
+}
+
+// Matrix multiply
+  
+inline void GMatrix::mld(GMatrix &M1, GMatrix &M2)
+{
+  int i,j,k;
+  for(i=0; i<4; i++)
+    for(j=0; j<4; j++)
+      {
+	_x[i][j].mld(M1._x[i][0],M2._x[0][j]);
+
+	for(k=1; k<4; k++)
+	  _x[i][j].mac(M1._x[i][k], M2._x[k][j]);
+      }
+}
+
+inline void GMatrix::mul(GMatrix &M)
+{
+  GMatrix tmp = *this;
+  mld(M,tmp);
+}
+
+inline GCoeff& GMatrix::operator()(int i, int j)
+{
+  return _x[i][j];
+}
+
+/*
+inline ostream& operator<<(ostream& output, GMatrix& M)
+{
+  int i,j;
+  output << endl;
+  for(i=0; i<4; i++)
+    {
+      for(j=0; j<4; j++)
+	output << setw(5) << M(i,j) << " ";
+      output << endl;
+    }
+  return output;
+}
+*/
+
+#endif

@@ -1,0 +1,99 @@
+/*
+ * This software is copyrighted as noted below.  It may be freely copied,
+ * modified, and redistributed, provided that the copyright notice is
+ * preserved on all copies.
+ *
+ * There is no warranty or other guarantee of fitness for this software,
+ * it is provided solely "as is".  Bug reports or fixes may be sent
+ * to the author, who may or may not act on them as he desires.
+ *
+ * You may not include this software in a program or other software product
+ * without supplying the source, or without informing the end-user that the
+ * source is available for no extra charge.
+ *
+ * If you modify this software, you should include a notice giving the
+ * name of the person performing the modification, the date of modification,
+ * and the reason for such modification.
+ *
+ * Author:      Bruno Levy
+ *
+ * Copyright (c) 1996, Bruno Levy.
+ *
+ */
+/*
+ *
+ * gview.ih
+ *
+ */
+
+#ifndef GVIEW_I_H
+#define GVIEW_I_H
+
+inline gfloat __gsqr(gfloat x)
+{
+  return x*x;
+}
+
+inline void 
+GMatrix::PolarView(gfloat dist, gAngle azim, gAngle inc, gAngle twist)
+{
+  Translate(0,0,-dist);
+  Rotate(-twist,'z');
+  Rotate(-inc,'x');
+  Rotate(-azim,'z');
+}
+
+inline void 
+GMatrix::LookAt(gfloat vx, gfloat vy, gfloat vz,
+               	gfloat px, gfloat py, gfloat pz)
+{
+	gfloat	l2, l3, sintheta, sinphi, costheta, cosphi;
+	GMatrix	tmp;
+
+	l2 = sqrt(__gsqr(px - vx) + __gsqr(pz - vz));
+	l3 = sqrt(__gsqr(px - vx) + __gsqr(py - vy) + __gsqr(pz - vz));
+
+	if (l3) 
+            {
+	    sinphi = (vy - py) / l3;
+	    cosphi = l2 / l3;
+
+            // Rotate about X by phi
+
+            tmp.LoadIdentity();
+	    tmp(1,1).lod(cosphi);
+            tmp(2,2).lod(cosphi);
+            tmp(1,2).lod(sinphi);
+            tmp(2,1).lod(-sinphi);
+	    mul(tmp);
+	}
+
+	if (l2) 
+            {
+	    sintheta = (px - vx) / l2;
+	    costheta = (vz - pz) / l2;
+
+	    // Rotate about Y by theta
+
+	    tmp.LoadIdentity();
+
+            tmp(0,0).lod( costheta);
+            tmp(2,2).lod( costheta);
+            tmp(0,2).lod(-sintheta);
+            tmp(2,0).lod( sintheta);
+            mul(tmp);
+	}
+}
+
+inline void 
+GMatrix::LookAt(gfloat vx, gfloat vy, gfloat vz,
+               	gfloat px, gfloat py, gfloat pz,
+                gAngle twist)
+{
+   Rotate(-twist,'z');
+   LookAt(vx, vy, vz, px, py, pz);
+   Translate(-vx, -vy, -vz);
+}
+
+#endif
+
