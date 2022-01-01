@@ -720,6 +720,8 @@ void Mesh::load_geometry(const char* filename) {
   int j;
 
    
+  (void)dummy; // silence a warning.
+   
   if(f_open(&input, filename, FA_READ) != FR_OK) {
      printf("could not open file: %s\n",filename);
      M._error_code = ME_EOF;

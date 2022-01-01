@@ -682,7 +682,7 @@ int main(int argc, char *argv[])
       PE << *m;
       GP->SwapBuffers();
       frames++;
-      printf("frame: %d\n",frames);
+      // printf("frame: %d\n",frames);
     }
 
 
