@@ -17,13 +17,13 @@
  *
  * Author:      Bruno Levy
  *
- * Copyright (c) 1996, Bruno Levy.
+ * Copyright (c) 1996-2021 Bruno Levy.
  *
  */
 /*
  *
  * Xgport.h
- * A GraphicPort for Unix/X11
+ * A GraphicPort for the LiteX framebuffer
  *
  */
 
@@ -89,6 +89,8 @@ class LiteXGraphicPort : public GraphicPort
   Flags    _resources;
 
   char _key;
+  bool _double_buffer;
+   
   // virtual constructor stuff
 
  public:

@@ -33,7 +33,11 @@
 
 int GraphicObject::_gamma_ramp[GAMMA_VALUES];
 
-MVector GraphicObject::_L(0,0,-M_BIG);
+MVector GraphicObject::_L(0,0,-M_BIG); 
+
+GraphicObject::GraphicObject() {
+   _L = MVector(0,0,-M_BIG);
+}
 
 int GraphicObject::_Lr = 0;
 int GraphicObject::_Lg = 0;
@@ -85,10 +89,4 @@ GraphicObject::Dull(void)
 {
   _flags.Reset(GF_SPECULAR);
 }
-
-static class Stub
-{
-public:
-  Stub() {GraphicObject::GammaRamp(1.0);}
-} Dummy;
 

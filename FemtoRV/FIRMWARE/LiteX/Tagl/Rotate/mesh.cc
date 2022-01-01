@@ -339,6 +339,8 @@ void Mesh::Lighting(void)
 	        _L.y * _face[i].N.y +
                 _L.z * _face[i].N.z ;
 
+//	printf("%d    %d %d %d    %d %d %d    %d\n",i,_L.x,_L.y,_L.z,_face[i].N.x,_face[i].N.y,_face[i].N.z,c);
+	 
 	int s = 0;
 
 	if(c<0)
@@ -389,6 +391,7 @@ void Mesh::Lighting(void)
 	      }
 	    _face[i].c = Gamma((int)_face[i].c) >> (M_SHIFT - 6 - D_SHIFT);
 	  }
+	 // printf("%d     %d %d %d   %d\n",i,_face[i].r, _face[i].g, _face[i].b, _face[i].c);
       }
 }
 

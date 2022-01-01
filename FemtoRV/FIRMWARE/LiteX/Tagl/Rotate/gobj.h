@@ -103,6 +103,7 @@ class GraphicObject
 {
 
  public:
+  GraphicObject();
   virtual ~GraphicObject();
 
   Flags& Mode(void);

@@ -202,6 +202,16 @@ inline void Toggle(int &flag)
   flag = flag ? 0 : 1;
 }
 
+
+int oldx = 0, oldy = 0;
+int btn;
+int dx, dy;
+int translating    = 0;
+int rotating       = 0;
+int rotating_light = 0;
+int running = 1;
+
+
 void DoCommand(char q)
 {
   static gfloat gamma = 1.0;
@@ -209,59 +219,73 @@ void DoCommand(char q)
   switch(q)
     {
     case '+':
+      printf("Zoom in\n");
       m->ZoomIn();
       break;
        
     case '-':
+      printf("Zoom out\n");
       m->ZoomOut();
       break;
        
     case 'w':
+      printf("Toggle smooth shading\n");
       Toggle(m, MF_SMOOTH);
       break;
        
     case 'n':
+      printf("Invert normals\n");
       m->InvertNormals();
       break;
        
     case 'd':
+      printf("Toggle dithering\n");
       Toggle(PE,GA_DITHER);
       break;
        
     case 'z':
+      printf("Toggle Z buffer\n");
       Toggle(m, MF_CONVEX);
       break;
        
     case 'c':
+      printf("Toggle backfaces\n");
       Toggle(m, MF_CLOSED);
       break;
        
     case 'a':
+      printf("Toggle wireframe\n");
       Toggle(m, MF_WIREFRAME);
       break;
        
     case 'l':
+      printf("Toggle lighting\n");
       Toggle(do_lighting);
       break;
        
     case 'r':
+      printf("Reset colors\n");
       m->ResetColors();
       break;
        
     case 'm':
+      printf("Toggle light rotation\n");
       Toggle(rlight);
       break;
        
     case 'C':   
     case ' ':
+      printf("Toggle color rendering\n");
       ColorToggle(m);
       break;
        
     case 's':
+      printf("Toggle specular lighting\n");
       Toggle(m, GF_SPECULAR);
       break;
        
     case 'g':
+      printf("Increase gamma\n");
       gamma += 0.1;
       if(gamma > 3.0)
 	gamma = 3.0;
@@ -269,6 +293,7 @@ void DoCommand(char q)
       break;
        
     case 'h':
+      printf("Decrease gamma\n");       
       gamma -= 0.1;
       if(gamma < 0.1)
 	gamma = 0.1;
@@ -276,6 +301,7 @@ void DoCommand(char q)
       break;
 
     case 'Z':
+      printf("Toggle Z clipping\n");
       Toggle(PE,PEA_ZCLIP);
       break;
 
@@ -294,6 +320,38 @@ void DoCommand(char q)
       clip_plane -= 10;
       break;
 
+    case 'R':
+      if(ry == 0) {
+	 ry = 10;
+      } else {
+	 ry = 0;
+      }
+      break;
+
+    case 'E':
+      if(ry == 0) {
+	 ry = -10;
+      } else {
+	 ry = 0;
+      }
+      break;
+
+    case 'O':
+      if(rx == 0) {
+	 rx = 10;
+      } else {
+	 rx = 0;
+      }
+      break;
+
+    case 'P':
+      if(rx == 0) {
+	 rx = -10;
+      } else {
+	 rx = 0;
+      }
+      break;
+       
     case '1':
       if(rlight)
 	rlx += rlrx;
@@ -401,6 +459,8 @@ int main(int argc, char *argv[])
   time_t elapsed = 0;
   int frames  = 0;
 
+  GraphicObject::GammaRamp(1.0);
+   
   if(!CmdLineParse(argc, argv, args))
      {
 	printf("%s: invalid command line",argv[0]); 
@@ -504,6 +564,8 @@ int main(int argc, char *argv[])
 
 
   m->TextureMap('x',1.0);
+
+  GP->DoubleBuffer();
    
    
   char* command_ptr = command_string; 
@@ -512,13 +574,6 @@ int main(int argc, char *argv[])
 
   char q = 0;
 
-  int oldx = 0, oldy = 0;
-  int btn;
-  int dx, dy;
-  int translating    = 0;
-  int rotating       = 0;
-  int rotating_light = 0;
-  int running = 1;
 
   while(running)
     {

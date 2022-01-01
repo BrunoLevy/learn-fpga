@@ -60,7 +60,7 @@ LiteXGraphicPort::LiteXGraphicPort(const char *name, int verbose_level)
    _clip.Set(0,0,_width-1,_height-1);
    SaveContext();
    _tgc.Activate();
-   _bytes_per_pixel = 4;
+   _double_buffer = false;
 }
 
 ////
@@ -161,7 +161,7 @@ void LiteXGraphicPort::MapColor(const ColorIndex idx,
 {
   _colortable[idx].Set(r,g,b);
   _colortable[idx].Stat().Set(CC_USED);
-  //_truecolormap[idx] = lastcolor;
+  _truecolormap[idx] = (r << 16) | (g << 8) | (b);
 }  
 
 void LiteXGraphicPort::RGBMode(void)
@@ -195,18 +195,22 @@ void LiteXGraphicPort::ColormapMode(void)
 int LiteXGraphicPort::SingleBuffer(void)
 {
    fb_set_dual_buffering(0);
+   _double_buffer = false;
    return 1;
 }
 
 int LiteXGraphicPort::DoubleBuffer(void)
 {
   fb_set_dual_buffering(1);
+  _double_buffer = true;   
   return 1;
 }
 
 int LiteXGraphicPort::SwapBuffers(void)
 {
-   fb_swap_buffers();
+   if(_double_buffer) {
+      fb_swap_buffers();
+   }
    _graph_mem = (ColorIndex*)fb_base;   
    return 1;
 }
@@ -285,7 +289,7 @@ void LiteXGraphicPort::ZClear(ZCoord z) {
 void 
 LiteXGraphicPort::Clear(UColorCode c)
 {
-    blitter_value_write(0xff0000);
+    blitter_value_write(c);
     blitter_dma_writer_base_write((uint32_t)(fb_base));
     blitter_dma_writer_length_write(FB_WIDTH*FB_HEIGHT*4);
     blitter_dma_writer_enable_write(1);
