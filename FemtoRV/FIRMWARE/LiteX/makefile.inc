@@ -30,10 +30,10 @@ COMMONFLAGS:=$(COMMONFLAGS:-g3=)
 CFLAGS:=$(CFLAGS:-g3=)
 CXXFLAGS:=$(CXXFLAGS:-g3=)
 
-# use builtins (except for printf)
+# use builtins (except for printf and malloc)
 COMMONFLAGS:=$(COMMONFLAGS:-fno-builtin=-fno-builtin-printf)
-CFLAGS:=$(CFLAGS:-fno-builtin=-fno-builtin-printf)
-CXXFLAGS:=$(CXXFLAGS:-fno-builtin=-fno-builtin-printf)
+CFLAGS:=$(CFLAGS:-fno-builtin=-fno-builtin-printf -fno-builtin-malloc)
+CXXFLAGS:=$(CXXFLAGS:-fno-builtin=-fno-builtin-printf -fno-builtin-malloc)
 
 # no exceptions
 COMMONFLAGS:=$(COMMONFLAGS:-fexceptions=)

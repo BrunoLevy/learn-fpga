@@ -49,6 +49,11 @@ Instructions for ULX3S:
 
 - determine FPGA variant: one of LFE5U-12F, LFE5U-25F, LFE5U-45F or LFE5U-85F
 - determine SDRAM chip (see image): one of MT48LC16M16, AS4C32M16 or AS4C16M16
+
+_Note: there exists variants of the ULX3S equipped with a IS42S16160G
+SDRAM chip. For this one, use `--sdram-module MT48LC16M16` 
+(thank you @darkstar007)._
+
 - plug the board
 - synthethize and load design (in the command, replace FPGA variant and SDRAM chip with your own):
 ```
