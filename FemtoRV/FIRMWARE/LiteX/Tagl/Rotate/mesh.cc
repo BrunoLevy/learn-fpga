@@ -663,13 +663,14 @@ Mesh::TextureMap(char axis, float mult)
 
 int check_eof(FIL& input,  Mesh& M)
 {
-  int retval = 0;
-  if(f_eof(&input))
+    int retval = 0;
+    if(f_eof(&input))
     {
-      M._error_code = ME_EOF;
-      retval = 1;
+	f_close(&input);
+	M._error_code = ME_EOF;
+	retval = 1;
     }
-  return retval;
+    return retval;
 }
 
 
@@ -699,13 +700,11 @@ static char* my_fgets(FIL* input) {
 
 static int read_int(FIL& input) {
     int result = atoi(my_fgets(&input));
-//  printf("read int: %d\n",result);
     return result;
 }
 
 static float read_float(FIL& input) {
     float result = atof(my_fgets(&input));
-//  printf("read float: %d\n",(int)(result * 100000));
     return result;
 }
 
@@ -721,17 +720,13 @@ void Mesh::load_geometry(const char* filename) {
 
    
   (void)dummy; // silence a warning.
-   
+
   if(f_open(&input, filename, FA_READ) != FR_OK) {
      printf("could not open file: %s\n",filename);
      M._error_code = ME_EOF;
      return;
   }
    
-   
-  if(!M._resources.Get(MR_VERTICES))
-    {
-
       if(check_eof(input, M))
 	return;
 
@@ -850,8 +845,6 @@ void Mesh::load_geometry(const char* filename) {
 
       double scaling_factor = r ? 10000.0 / r : 0.0;
 
-//      if(verbose)
-//	cerr << "scaling factor = " << scaling_factor << endl;
 
       for(i=0; i<M._nvertex; i++)
 	{
@@ -880,52 +873,66 @@ void Mesh::load_geometry(const char* filename) {
       if(verbose)
 	 printf("sucessfully loaded.\n");
 
-    }
-/*  
-  else
-    {
-      int ncolor;
-      int nface;
-      ColorF *colorf;
+      f_close(&input);
+ }
 
-      if(verbose)
-	cerr << "loading object colors ..." << endl;
+void Mesh::load_colors(const char* filename) {
+    int ncolor;
+    int nface;
+    ColorF *colorf;
+    Mesh& M = *this;
+    FIL input;
+    
+    if(f_open(&input, filename, FA_READ) != FR_OK) {
+	printf("could not open file: %s\n",filename);
+	M._error_code = ME_EOF;
+	return;
+    }
+
+    if(check_eof(input, M))
+	return;
+    
+    if(verbose)
+	printf("loading object colors ...\n");
       
       if(check_eof(input, M))
-	return input;
+	  return;
 
-      input >> ncolor >> nface;
-
+      ncolor = read_int(input);
+      nface  = read_int(input);
+      
       if(verbose)
-	cerr << ncolor << " color entries" << endl;
-
+	  printf("%d color entries",ncolor);
+      
       if(nface != M._nface)
 	{
 	  M._error_code = ME_MATCH;
-	  return input;
+	  f_close(&input);
+	  return;
 	}
 
       if(!(colorf = new ColorF[ncolor]))
 	{
 	  M._error_code = ME_MALLOC;
-	  return input;
+	  f_close(&input);
+	  return;
 	}
 
-      for(i=0; i<ncolor; i++)
+      for(int i=0; i<ncolor; i++)
 	{
 	  if(check_eof(input, M))
-	    return input;
-	  input >> colorf[i].r >> colorf[i].g >> colorf[i].b;
+	      return;
+	  colorf[i].b = read_float(input);
+	  colorf[i].g = read_float(input);
+	  colorf[i].r = read_float(input);	  
 	}
       
-      for(i=0; i<nface; i++)
-	{
+      for(int i=0; i<nface; i++)
+      {
 	  int idx;
-
 	  if(check_eof(input, M))
-	    return input;
-
-	  input >> idx;
+	      return;
+	  idx = read_int(input);
 	  M._face[i].or_ = (int)(colorf[idx - 1].r * 255.0);
 	  M._face[i].og = (int)(colorf[idx - 1].g * 255.0);
 	  M._face[i].ob = (int)(colorf[idx - 1].b * 255.0);
@@ -934,14 +941,10 @@ void Mesh::load_geometry(const char* filename) {
       delete[] colorf;
 
       if(verbose)
-	cerr << "sucessfully loaded" << endl;
+	  printf("colors successfully loaded\n");
 
       M._resources.Set(MR_COLORS);
-    }
-*/
- }
 
-void Mesh::load_colors(const char* filename) {
-   // TODO
+      f_close(&input);
 }
 

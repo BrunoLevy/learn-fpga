@@ -30,6 +30,7 @@
 #include "gport.h"
 #include "polyeng.h"
 #include "texture.h"
+#include <libfatfs/ff.h>
 
 int size;
 
@@ -65,40 +66,46 @@ unsigned char R;
 
 int LoadTexture(const char* filename, GraphicPort* GP)
 {
-   // TODO
-   /*
-   FILE* f = fopen(filename,"r");
+   FIL f;
+   UINT br;
+   if(f_open(&f, filename, FA_READ) != FR_OK) {
+      printf("could not open %s\n",filename);      
+      return 0;
+   }
+   
    TGA_Header H;
    TGA_Pixel *Line;
    int x,y;
    
-   
-   if(!f)
+   f_read(&f, (char *)&H, sizeof(TGA_Header), &br);
+   if(br != sizeof(TGA_Header)) {
+      printf("could not read TGA header\n");
+      f_close(&f);
       return 0;
+   }
    
-   fread((char *)&H, sizeof(TGA_Header), 1, f);
    
    if(memcmp(TGA_Signature, H.Signature, (unsigned int)sizeof(TGA_Signature)))
      {
-	cerr << "invalid TGA signature" << endl;
+	printf("invalid TGA signature\n");
 	return 0;
      }
    
    if(H.mode != 32)
      {
-	cerr << "Sorry, vtga cannot handle this kind of TGA file" << endl;
+	printf("Sorry, vtga cannot handle this kind of TGA file\n");
 	return 0;
      }
 
    if(H.bpp != 24)
      {
-	cerr << "Sorry, vtga can handle 24bpp TGA files only" << endl;
+	printf("Sorry, vtga can handle 24bpp TGA files only\n");
 	return 0;
      }
 
    int Width     = (int)H.Width_L     + (((int)H.Width_H)     << 8);
    int Height    = (int)H.Height_L    + (((int)H.Height_H)    << 8);
-   int FirstLine = (int)H.FirstLine_L + (((int)H.FirstLine_H) << 8);
+// int FirstLine = (int)H.FirstLine_L + (((int)H.FirstLine_H) << 8);
    
    size = Width;
    
@@ -108,21 +115,18 @@ int LoadTexture(const char* filename, GraphicPort* GP)
    
    for(y = 0; (y < Height) && (y < size); y++)
      {
-	fread((char *)Line, Width * sizeof(TGA_Pixel), 1, f);
-	
+	f_read(&f, (char *)Line, Width * sizeof(TGA_Pixel), &br);
 	for(x=0; (x < Width) && (x < size); x++)
-	   texture[y*size+x] = GTexel(Line[x].R, Line[x].G, Line[x].B, 255); 
+	   texture[y*size+x] = GTexel(Line[x].B, Line[x].G, Line[x].R, 255);
    }
    
    delete[] Line;
 
    GP->TextureBind((uint32 *)texture, size);
 
-   fclose(f);
+   f_close(&f);
 
    return 1;
-   */
-   return 0;
 }
 
 
