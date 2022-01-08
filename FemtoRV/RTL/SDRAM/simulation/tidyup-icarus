@@ -1,0 +1,6 @@
+#!/bin/sh
+
+rm -f *.vvp
+rm -f *.vcd
+
+
