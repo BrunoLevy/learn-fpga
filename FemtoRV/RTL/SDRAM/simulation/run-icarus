@@ -1,0 +1,6 @@
+#!/bin/sh
+
+iverilog -o test_sdram.vvp -s test_sdram test_sdram.v ../muchtoremember.v mt48lc16m16a2.v
+vvp *.vvp
+
+
