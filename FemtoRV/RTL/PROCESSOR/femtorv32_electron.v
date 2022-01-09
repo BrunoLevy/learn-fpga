@@ -15,6 +15,32 @@
 // Bruno Levy, Matthias Koch, 2020-2021
 /*******************************************************************/
 
+/*******************************************************************/
+// Custom vector extension
+//
+//  The two least significant bits of the instruction word controls
+//  the scalar/vector operation:
+//
+//    2'b00: vector <- vector,vector (extension)
+//    2'b01: vector <- vector,scalar (extension)
+//    2'b10: vector <- scalar,vector (extension)
+//    2'b11: scalar <- scalar,scalar (standard RV32I)
+//
+//  Vector registers are mapped onto the scalar register file:
+//
+//    V0 = [ X0, X1, X2, X3] (avoid! clobbers RA, SP, GP!)
+//    V1 = [ X4, X5, X6, X7] (clobbers TP)
+//    V2 = [ X8, X9,X10,X11] (clobbers FP)
+//    V3 = [X12,X13,X14,X15]
+//    V4 = [X16,X17,X18,X19]
+//    V5 = [X20,X21,X22,X23]
+//    V6 = [X24,X25,X26,X27]
+//    V7 = [X28,X29,X30,X31] (clobbers VL!)
+//
+//  Furthermore, scalar register X31 maps the the VL (Vector Length)
+//  register.
+/*******************************************************************/
+
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32im"
 `define NRV_ABI      "ilp32"
@@ -45,7 +71,7 @@ module FemtoRV32(
    // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
 
    // The destination register
-   wire [4:0] rdId = instr[11:7];
+   wire [4:0] rdId = dstIsVec ? {instr[9:7],vecIdx} : instr[11:7];
 
    // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
    // It is used as follows: funct3Is[val] <=> funct3 == val
@@ -236,6 +262,10 @@ module FemtoRV32(
    reg  [31:2] instr;        // Latched instruction. Note that bits 0 and 1 are
                              // ignored (not used in RV32I base instr set).
 
+   reg  src1IsVec;           // Source operand 1 is vector?
+   reg  src2IsVec;           // Source operand 2 is vector?
+   wire dstIsVec = src1IsVec | src2IsVec;
+
    wire [ADDR_WIDTH-1:0] PCplus4 = PC + 4;
 
    // An adder used to compute branch address, JAL address and AUIPC.
@@ -378,10 +408,17 @@ module FemtoRV32(
                          jumpToPCplusImm  ? PCplusImm :
                          PCplus4;
 
+   // Vector state.
+   reg [1:0] vecIdx;
+   reg [1:0] vecLen;
+   wire [1:0] vecIdx_new = vecIdx + 1;
+   wire vecOpDone = (vecIdx == vecLen) | !(src1IsVec | src2IsVec);
+
    always @(posedge clk) begin
       if(!reset) begin
          state      <= WAIT_ALU_OR_MEM; // Just waiting for !mem_wbusy
          PC         <= RESET_ADDR[ADDR_WIDTH-1:0];
+         vecLen     <= 2'b00;
       end else
 
       // See note [1] at the end of this file.
@@ -390,19 +427,37 @@ module FemtoRV32(
 
         state[WAIT_INSTR_bit]: begin
            if(!mem_rbusy) begin // may be high when executing from SPI flash
-              rs1 <= registerFile[mem_rdata[19:15]];
-              rs2 <= registerFile[mem_rdata[24:20]];
-              instr <= mem_rdata[31:2]; // Bits 0 and 1 are ignored (see
-              state <= EXECUTE;         // also the declaration of instr).
+              // Bits 0 and 1 of the instruction word indicate vector mode of the source operands.
+              src1IsVec <= !mem_rdata[0];
+              src2IsVec <= !mem_rdata[1];
+              rs1 <= mem_rdata[0] ? registerFile[mem_rdata[19:15]] :
+                                    registerFile[{mem_rdata[17:15],2'b00}];
+              rs2 <= mem_rdata[1] ? registerFile[mem_rdata[24:20]]:
+                                    registerFile[{mem_rdata[22:20],2'b00}];
+
+              // Restart vector element counter.
+              vecIdx <= 2b'00;
+
+              // Latch instruction word.
+              instr <= mem_rdata[31:2]; // (see declaration of instr).
+              state <= EXECUTE;
            end
         end
 
         state[EXECUTE_bit]: begin
-           PC <= PC_new;
+           if(vecOpDone) PC <= PC_new;
+
+           // Iterate over the source vector registers.
+           rs1 <= registerFile[{instr[17:15],vecIdx_new}];
+           rs2 <= registerFile[{instr[22:20],vecIdx_new}];
+           vecIdx <= vecIdx_new;
+
+           // TODO(m): Handle state transitions for vector operations!
            state <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
         end
 
         state[WAIT_ALU_OR_MEM_bit]: begin
+           // TODO(m): Handle state transitions for vector operations!
            if(!aluBusy & !mem_rbusy & !mem_wbusy) state <= FETCH_INSTR;
         end
 
