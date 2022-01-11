@@ -1,0 +1,5 @@
+out*
+CMake*.user
+*.wad
+*.dsg
+.doomrc

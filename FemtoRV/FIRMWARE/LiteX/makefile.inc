@@ -41,7 +41,7 @@ CFLAGS:=$(CFLAGS:-fexceptions=-fno-exceptions)
 CXXFLAGS:=$(CXXFLAGS:-fexceptions=-fno-exceptions)
 
 # Compiled from the sources in libs/
-LIB_OBJECTS=lite_oled.o lite_fb.o lite_elf.o\
+LIB_OBJECTS=lite_oled.o lite_fb.o lite_elf.o lite_stdio.o\
             imgui.o imgui_demo.o imgui_draw.o imgui_tables.o imgui_widgets.o imgui_sw.o 
 
 # added rule to examine generated assembly (make boot.list)

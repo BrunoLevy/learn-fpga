@@ -1,0 +1,15 @@
+---
+Language: Cpp
+BasedOnStyle: Chromium
+AccessModifierOffset: -2
+AllowShortFunctionsOnASingleLine: None
+BinPackArguments: false
+BreakBeforeBraces: Allman
+ColumnLimit: 80
+IndentWidth: 4
+TabWidth: 8
+UseTab: Never
+SortIncludes: false
+SpaceBeforeParens: Always
+...
+

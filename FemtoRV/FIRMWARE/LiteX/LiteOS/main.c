@@ -40,6 +40,33 @@
 
 #include <liblitedram/sdram.h>
 
+#include "lite_fb.h"
+
+#define I 0xffffffff
+#define O 0x00000000
+
+static uint32_t pattern[4][4] = {
+   {I,O,O,O},
+   {O,I,O,O},
+   {O,O,O,I},
+   {O,O,I,O}
+};
+
+
+/* X11 memories :-) */
+#ifdef CSR_VIDEO_FRAMEBUFFER_BASE
+static void init_framebuffer(void) {
+   uint32_t* ptr = fb_base;
+   fb_off();
+   for(int y=0; y<FB_HEIGHT; ++y) {   
+      for(int x=0; x<FB_WIDTH; ++x) {
+	 *ptr++ = pattern[x&3][y&3];
+      }
+   }
+   fb_on();   
+}
+#endif
+
 int main(int i, char **c)
 {
 	char buffer[CMD_LINE_BUFFER_SIZE];
@@ -111,6 +138,10 @@ int main(int i, char **c)
 	printf("\n");
 
 
+#ifdef CSR_VIDEO_FRAMEBUFFER_BASE
+        init_framebuffer();
+#endif   
+   
 	init_dispatcher();
 
 	printf("--============= \e[1mConsole\e[0m ================--\n");

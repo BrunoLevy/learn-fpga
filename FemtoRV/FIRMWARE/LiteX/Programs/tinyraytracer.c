@@ -21,8 +21,10 @@ typedef int BOOL;
 static inline float max(float x, float y) { return x>y?x:y; }
 static inline float min(float x, float y) { return x<y?x:y; }
 
+static int small = 0;
 static int benchmark = 0;
 static BOOL with_fb = 0;
+
 
 /*******************************************************************/
 
@@ -60,6 +62,10 @@ static inline void graphics_init(void) {
    if(with_fb) {
       graphics_width  = FB_WIDTH;
       graphics_height = FB_HEIGHT;
+      if(small)	{
+	 graphics_width  = 320;
+	 graphics_height = 240;
+      }
    }
 }
 
@@ -487,8 +493,12 @@ static void run_tinyraytracer(void) {
 
 int main(int argc, char** argv) {
    benchmark = 0;
+   small = 0;
    if(argc == 2 && !strcmp(argv[1],"-benchmark")) {
       benchmark = 1;
+   }
+   if(argc == 2 && !strcmp(argv[1],"-small")) {
+      small = 1;
    }
    run_tinyraytracer();
    return 0;
