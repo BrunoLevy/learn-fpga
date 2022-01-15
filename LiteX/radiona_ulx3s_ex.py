@@ -35,21 +35,66 @@ ulx3s_platform.Platform.__init__ = new_platform_init
 
 #--------------------------------------------------------------------------------------------------------
 
+from litex.soc.cores.video import VideoFrameBuffer
+
+old_videoframebuffer_init = VideoFrameBuffer.__init__
+
+def new_videoframebuffer_init(self, dram_port, hres=800, vres=600, base=0x00000000, fifo_depth=25600, clock_domain="sys", clock_faster_than_sys=False, format="rgb888"):
+     old_videoframebuffer_init(self, dram_port, hres, vres, base, fifo_depth, clock_domain, clock_faster_than_sys, format)
+
+VideoFrameBuffer.__init__ = new_videoframebuffer_init
+
+#--------------------------------------------------------------------------------------------------------
+
 from litex.build.lattice.trellis import trellis_args, trellis_argdict
 from litex.soc.cores.clock import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 from litex.soc.interconnect.csr import *
 
-# Add ESP32 module, with CSR that controls wifi_en pin
+# ESP32 module, with CSR that controls wifi_en pin ------------------------------------------------------
 
 class ESP32(Module, AutoCSR):
     def __init__(self, platform):
        self._enable = CSRStorage()
        self.comb += platform.request("wifi_en").eq(self._enable.storage)
 
-        
-# Build --------------------------------------------------------------------------------------------
+# Blitter -----------------------------------------------------------------------------------------------
+# For now, it just has fast memory fill
+
+class Blitter(Module, AutoCSR):
+    def __init__(self,port): # port = self.sdram.crossbar.get_port()
+        self._value = CSRStorage(32)
+        from litedram.frontend.dma import LiteDRAMDMAWriter
+        dma_writer = LiteDRAMDMAWriter(port=port,fifo_depth=16,fifo_buffered=False,with_csr=True)
+        self.submodules.dma_writer = dma_writer
+        self.comb += dma_writer.sink.data.eq(self._value.storage)
+        self.comb += dma_writer.sink.valid.eq(1)
+
+# BaseSoC -----------------------------------------------------------------------------------------------
+
+class BaseSoC(ulx3s.BaseSoC):
+    def __init__(self, device="LFE5U-45F", revision="2.0", toolchain="trellis",
+        sys_clk_freq=int(50e6), sdram_module_cls="MT48LC16M16", sdram_rate="1:1",
+        with_led_chaser=True, with_video_terminal=False, with_video_framebuffer=False,
+        with_spi_flash=False, **kwargs):
+
+        ulx3s.BaseSoC.__init__(
+            self, device, revision, toolchain, sys_clk_freq, sdram_module_cls, sdram_rate,
+            with_led_chaser, with_video_terminal, with_video_framebuffer, with_spi_flash,
+            **kwargs)
+
+    def add_blitter(self):        
+        self.blitter = Blitter(port=self.sdram.crossbar.get_port())
+        self.submodules.blitter = self.blitter
+            
+    def add_ESP32(self):
+       self.esp32 = ESP32(self.platform)
+       self.submodules.esp32 = self.esp32
+       if hasattr(self,'spisdcard_tristate'):
+           self.comb += self.spisdcard_tristate.eq(self.esp32._enable.storage)    
+            
+# Build -------------------------------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="LiteX SoC on ULX3S")
@@ -68,7 +113,7 @@ def main():
     trellis_args(parser)
     args = parser.parse_args()
 
-    soc = ulx3s.BaseSoC(
+    soc = BaseSoC(
         device                 = args.device,
         revision               = args.revision,
         toolchain              = args.toolchain,
@@ -84,9 +129,16 @@ def main():
     if args.with_oled:
         soc.add_oled()
 
-    soc.esp32 = ESP32(soc.platform)        
-    soc.submodules.esp32 = soc.esp32
-    soc.comb += soc.spisdcard_tristate.eq(soc.esp32._enable.storage)    
+    # add blitter
+    soc.add_blitter()
+    #blitter = Blitter(port=soc.sdram.crossbar.get_port())
+    #soc.submodules.blitter = blitter
+        
+    # add esp32 control + spisdcard tristate control
+    soc.add_ESP32()
+    #soc.esp32 = ESP32(soc.platform)        
+    #soc.submodules.esp32 = soc.esp32
+    #soc.comb += soc.spisdcard_tristate.eq(soc.esp32._enable.storage)    
     
     builder = Builder(soc, **builder_argdict(args))
     builder_kargs = trellis_argdict(args) if args.toolchain == "trellis" else {}
