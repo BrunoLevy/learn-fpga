@@ -3,8 +3,8 @@
 # Extended Radiona ULX3S support
 # Bruno Levy, January 2022
 #
-# - ESP32 control (and TODO three-state SPI-SDCard)
-# - TODO Blitter
+# - ESP32 control and three-state SPI-SDCard
+# - Blitter
 
 
 import os
@@ -35,8 +35,8 @@ ulx3s_platform.Platform.__init__ = new_platform_init
 
 #--------------------------------------------------------------------------------------------------------
 
-# Need to change fifo depth in video framebuffer
-# (needs to be a multiple of 640*4, else display is shifted)
+# We need to change fifo depth in video framebuffer (a multiple of 640*4, else display is shifted)
+# To do that, replace VideoFrameBuffer constructor (just change default value for fifo_depth)
 
 from litex.soc.cores.video import VideoFrameBuffer
 
