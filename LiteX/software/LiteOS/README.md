@@ -3,8 +3,12 @@ LiteOS
 
 LiteOS is a super minimalistic operating system for LiteX SoCs. It has
 two commands:
-- catalog <dir>: lists the files on the SDCard
-- run <filename.elf>: runs a program
+- `catalog <dir>`: lists the files on the SDCard
+- `run <filename.elf>`: runs a program
+It optionally has two additional commands to switch the framebuffer
+and the ESP32 on and off:
+- `esp32 <on|off>`
+- `framebuffer <on|off>`
 
 Step 1: compile
 ---------------
@@ -25,8 +29,9 @@ slot of your FPGA board.
 
 Step 3: run
 -----------
-Reboot the board. Connect to it using `lxterm /dev/ttyUSBnnn` where
-`nnn` depends on the circumstances (0 in most cases). If everything
+Reboot the board. The LiteX BIOS automatically finds `boot.bin` on the
+SDCard and loads it. Connect to it using `lxterm /dev/ttyUSBnnn` where
+`nnn` depends on the circumstances (it is 0 in most cases). If everything
 went well, you will see the LiteOS prompt.
 
 ```
@@ -49,16 +54,16 @@ How it works
 ------------
 
 The idea behind LiteOS is to provide the bare necessary
-functionalities while pulling the minimal amount of dependencies.
+functionalities while writing as little code as possible.
 LiteX libraries already have nearly everything necessary. The main
-missing components that I needed to create are:
+missing component that I needed to create is:
 
 - a loader for the ELF format. I wrote a super
 simple one [here](https://github.com/BrunoLevy/learn-fpga/blob/master/LiteX/software/Libs/lite_elf.c).
 The technical details are described [here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/TUTORIALS/software.md).
-The result is a few hundred lines of C with no dependencies that can
-directly load statically-linked ELFs
+The result is a few hundred lines of with no dependencies that can directly load statically-linked ELFs.
 
+Then the rest works as follows:
 
 - the Makefile: I created a [makefile.inc](https://github.com/BrunoLevy/learn-fpga/blob/master/LiteX/software/makefile.inc),
   included by all my LiteX software projects, that selects the right compiling options, and that can pull dependencies
