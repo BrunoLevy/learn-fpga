@@ -86,7 +86,7 @@ def main():
         **soc_core_argdict(args))
 
     if args.with_spi_sdcard:
-        soc.add_spi_sdcard()
+        soc.add_spi_sdcard(with_tristate=True)
     if args.with_sdcard:
         soc.add_sdcard()
     if args.with_oled:
@@ -94,7 +94,8 @@ def main():
 
     soc.esp32 = ESP32(soc.platform)        
     soc.submodules.esp32 = soc.esp32
-        
+    soc.comb += soc.spisdcard_tristate.eq(soc.esp32._enable.storage)    
+    
     builder = Builder(soc, **builder_argdict(args))
     builder_kargs = trellis_argdict(args) if args.toolchain == "trellis" else {}
     builder.build(**builder_kargs, run=args.build)
