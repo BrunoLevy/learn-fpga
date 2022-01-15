@@ -7,10 +7,25 @@ Mission statement: create teaching material for FPGAs, processor design and RISC
 
 FemtoRV: a minimalistic RISC-V CPU
 ----------------------------------- 
-[FemtoRV](FemtoRV/README.md) is a minimalistic RISC-V design, with easy-to-read Verilog sources (less than 1000 lines), directly written
-from the RISC-V specification. It includes a companion SOC, with drivers for an UART, a led matrix, a small OLED display,
-SPI RAM and SDCard. Its most basic configuration fits on the Lattice IceStick (< 1280 LUTs). It can be used for teaching
-processor design and RISC-V programming.
+[FemtoRV](FemtoRV/README.md) is a minimalistic RISC-V design, with
+easy-to-read Verilog sources (less than 1000 lines), directly written
+from the RISC-V specification. It includes a companion SoC, with
+drivers for an UART, a led matrix, a small OLED display, SPI RAM and
+SDCard. Its most basic configuration fits on the Lattice IceStick (<
+1280 LUTs). It can be used for teaching processor design and RISC-V
+programming.
+
+
+Playing with LiteX: plug-and-play system to assemble SOCs
+---------------------------------------------------------
+The repository includes [LiteX examples](LiteX/README.md).
+The [LiteX](https://github.com/enjoy-digital/litex) framework 
+is a well designed and an easy-to-use framework to create SoCs. 
+It lets you create a SoC by assembling components (processor, 
+SDRAM controller, SDCard controller, USB, ...) in Python.
+FemtoRV is directly supported by LiteX (that directly downloads
+it from this repository when selected as the SoC's processor). 
+
 
 Basic: more basic things I wrote during May 2020 - June 2020  
 ------------------------------------------------------------
