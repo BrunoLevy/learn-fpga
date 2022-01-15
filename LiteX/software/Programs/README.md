@@ -37,15 +37,9 @@ Creating your own program
 Just create `my_program.c` or `my_program.cpp` and add `my_program.elf` to the list in the
 `all:` target.
 
-There are some libraries you can use [here](https://github.com/BrunoLevy/learn-fpga/tree/master/LiteX/software/Libs):
+There are some libraries you can use
+[here](https://github.com/BrunoLevy/learn-fpga/tree/master/LiteX/software/Libs).
 
-|Library    | Description                                 |
-|-----------|---------------------------------------------|
-|lite_fb    | graphic functions (for framebuffer)         |
-|lite_oled  | graphic functions (for SSD1331 oled screen) |
-|lite_stdio | (incomplete) emulation layer for stdio      |
-|lite_elf   | load and execute ELF binaries               |
-|imgui      | Dear Imgui graphic user interface           |
 
 How it works
 ------------
