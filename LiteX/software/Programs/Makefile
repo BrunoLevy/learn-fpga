@@ -1,6 +1,10 @@
 include ../makefile.inc
 
-all: hello.elf tinyraytracer.elf spirograph.elf ST_NICCC.elf imgui_test.elf 
+all: hello.elf \
+     tinyraytracer.elf \
+     spirograph.elf \
+     ST_NICCC.elf \
+     imgui_test.elf 
 
 %.elf: %.o libliteos.a crt0.o sbrk.o
 	$(CC) ./crt0.o $< sbrk.o $(LDFLAGS) \

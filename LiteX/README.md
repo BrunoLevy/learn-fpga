@@ -46,9 +46,9 @@ Synthesize
 Instructions to synthesize are different, depending on the board you have.
 
 - [ULX3S](ULX3S.md)
-- ARTY: use `--toolchain=symbiflow` (TODO: write tutorial)
+- [Other boards](litex-boards.md)
 
-Talk to the device
+Connect to the SoC
 ==================
 
 Start a terminal emulator. You can use the one bundled with LiteX
@@ -57,7 +57,7 @@ of `/dev/ttyUSBnnn`), use `$dmesg` right after plugging it (or try
 different values). Supposing it is `ttyUSB0`, do:
 
 ```
-  lxterm /dev/ttyUSB0
+  $lxterm /dev/ttyUSB0
 ```
 
 Then press `<enter>`. You will see the `litex>` prompt.
