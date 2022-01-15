@@ -9,6 +9,6 @@ This directory contains libraries and software packages for LiteX SoCs:
 - [LiteOS](LiteOS/): a minimalistic OS that lets you load and execute
     programs (ELF binaries) stored on the SDCard;
 - [Programs](Programs/): simple example programs for LiteOS
-- [Doom](Doom/): a port of Doom for LiteX
-- [Tagl](Tagl/): a 3D software renderer (that I wrote in the 90s) ported to LiteX
+- [Doom](Doom/): a port of Doom for LiteOS
+- [Tagl](Tagl/): a 3D software renderer (that I wrote in the 90s) ported to LiteOS
 - [Libs](Libs/): common libraries (ELF support, OLED screen, framebuffer, Dear ImGui port, stdio adapter)

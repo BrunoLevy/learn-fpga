@@ -54,8 +54,10 @@ $ lxterm --kernel demo.bin /dev/ttyUSBnn
 litex> reboot
 litex-demo-bundle> tinyraytracer
 ```
-This will display the result in the terminal window (with BIG pixels
-!). This is text mode, with escape sequences to change the background
+This will display the result in the framebuffer (plug a monitor to the
+HDMI video connector), or to the terminal window if SoC was synthesized 
+without framebuffer support (this will create BIG pixels !). This is text mode, 
+with escape sequences to change the background
 color. If you have the small OLED display plugged in and configured, 
 you will see also the image on it. 
 

@@ -86,6 +86,9 @@ $ python3 -m litex_boards.targets.radiona_ulx3s --cpu-type=femtorv --cpu-variant
 Software
 ========
 
+Time to [compile and install software](https://github.com/BrunoLevy/learn-fpga/tree/master/LiteX/software)
+on your SoC. 
+
 Compiling RiscV software for the device
 ---------------------------------------
 See LiteX demo [here](https://github.com/enjoy-digital/litex/tree/master/litex/soc/software/demo)
