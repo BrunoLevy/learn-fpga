@@ -5,7 +5,9 @@ V?=$(VERBOSE)
 # find BUILD_DIR without using Python wrapper
 LITEX_DIR?=/home/blevy/Programming/LiteX
 LITEX_PLATFORM?=radiona_ulx3s
-BUILD_DIR?=$(LITEX_DIR)/build/$(LITEX_PLATFORM)
+#BUILD_DIR?=$(LITEX_DIR)/build/$(LITEX_PLATFORM)
+BUILD_DIR?=/home/blevy/Programming/learn-fpga/LiteX/build/$(LITEX_PLATFORM)
+
 
 include $(BUILD_DIR)/software/include/generated/variables.mak
 include $(SOC_DIRECTORY)/software/common.mak

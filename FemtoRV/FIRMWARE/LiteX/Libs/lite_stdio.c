@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <generated/csr.h>
+
 static int filesystem_init = 0;
 #define FILDES_NB 4
 static int fildes_used[FILDES_NB] = { -1, -1, -1, -1 };
@@ -73,7 +75,7 @@ int lx_feof(LX_FILE* stream) {
 
 /*****************************************************************************/
 
-static void lx_mount() {
+static void lx_mount(void) {
     static FATFS fs;
     if(!filesystem_init) {
 	filesystem_init = 1;
@@ -153,7 +155,7 @@ int lx_fstat(int fd, struct lx_stat *statbuf) {
 
 int lx_stat(const char *pathname, struct lx_stat *statbuf) {
     FIL fil;
-    FILINFO info;
+//  FILINFO info;
     lx_mount();
 
     if(*pathname == '.') {
@@ -175,11 +177,28 @@ int lx_stat(const char *pathname, struct lx_stat *statbuf) {
    return -1;
 }
 
+
 int lx_gettimeofday(struct lx_timeval *tv, struct lx_timezone *tz) {
-   static int val = 0;
+   static uint32_t val = 0;
    tv->tv_usec = val;
    tv->tv_sec  = 0;
-   val+=10;
+   val += 100;
+   /*
+   static int first_time = 1;
+   uint32_t ticks;
+
+   if(first_time) {
+      timer0_en_write(0);
+      timer0_reload_write(0xffffffff);
+      timer0_load_write(0xffffffff);
+      timer0_en_write(1);
+   }
+   
+   timer0_update_value_write(1);
+   ticks = 0xffffffff - timer0_value_read();
+   tv->tv_usec = ticks / (CONFIG_CLOCK_FREQUENCY / 1000000);
+   tv->tv_sec  = 0;
+   */
    return 0;
 }
 

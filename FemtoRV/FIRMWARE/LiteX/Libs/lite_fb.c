@@ -53,6 +53,7 @@ void fb_set_write_page(uint32_t addr) {
 }
 
 void fb_on(void) {
+    flush_l2_cache();    
     video_framebuffer_vtg_enable_write(1);
     video_framebuffer_dma_enable_write(1);
 }

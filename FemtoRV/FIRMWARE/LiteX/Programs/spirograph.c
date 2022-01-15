@@ -61,6 +61,7 @@ int main(void) {
 	uint32_t color = fb_RGB((comp == 0)*frame,(comp == 1)*frame,(comp == 2)*frame); 
 
         fb_fill_poly(4, pts, color);
+        flush_l2_cache();        
 	fb_set_poly_mode((frame & (1 << 5)) ? FB_POLY_LINES : FB_POLY_FILL);
 	
         //delay(50);
