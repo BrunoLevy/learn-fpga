@@ -35,12 +35,20 @@ ulx3s_platform.Platform.__init__ = new_platform_init
 
 #--------------------------------------------------------------------------------------------------------
 
+# Need to change fifo depth in video framebuffer
+# (needs to be a multiple of 640*4, else display is shifted)
+
 from litex.soc.cores.video import VideoFrameBuffer
 
 old_videoframebuffer_init = VideoFrameBuffer.__init__
 
-def new_videoframebuffer_init(self, dram_port, hres=800, vres=600, base=0x00000000, fifo_depth=25600, clock_domain="sys", clock_faster_than_sys=False, format="rgb888"):
-     old_videoframebuffer_init(self, dram_port, hres, vres, base, fifo_depth, clock_domain, clock_faster_than_sys, format)
+def new_videoframebuffer_init( \
+      self, dram_port, hres=800, vres=600, base=0x00000000, \
+      fifo_depth=25600, clock_domain="sys", clock_faster_than_sys=False, format="rgb888"):
+     old_videoframebuffer_init( \
+          self, dram_port, hres, vres, base, fifo_depth, \
+          clock_domain, clock_faster_than_sys, format \
+     )
 
 VideoFrameBuffer.__init__ = new_videoframebuffer_init
 
@@ -101,10 +109,10 @@ def main():
     parser.add_argument("--build",           action="store_true",   help="Build bitstream.")
     parser.add_argument("--load",            action="store_true",   help="Load bitstream.")
     parser.add_argument("--toolchain",       default="trellis",     help="FPGA toolchain (trellis or diamond).")
-    parser.add_argument("--device",          default="LFE5U-85F",   help="FPGA device (LFE5U-12F, LFE5U-25F, LFE5U-45F or LFE5U-85F).")
+    parser.add_argument("--device",          default="LFE5U-45F",   help="FPGA device (LFE5U-12F, LFE5U-25F, LFE5U-45F or LFE5U-85F).")
     parser.add_argument("--revision",        default="2.0",         help="Board revision (2.0 or 1.7).")
     parser.add_argument("--sys-clk-freq",    default=50e6,          help="System clock frequency.")
-    parser.add_argument("--sdram-module",    default="AS4C16M16",   help="SDRAM module (MT48LC16M16, AS4C32M16 or AS4C16M16).")
+    parser.add_argument("--sdram-module",    default="MT48LC16M16", help="SDRAM module (MT48LC16M16, AS4C32M16 or AS4C16M16).")
     parser.add_argument("--with-spi-flash",  action="store_true",   help="Enable SPI Flash (MMAPed).")
     parser.add_argument("--with-oled",       action="store_true",   help="Enable SDD1331 OLED support.")
     parser.add_argument("--sdram-rate",      default="1:2",         help="SDRAM Rate (1:1 Full Rate or 1:2 Half Rate).")
@@ -113,6 +121,10 @@ def main():
     trellis_args(parser)
     args = parser.parse_args()
 
+    # AS4C32M16 not supported (refresh timings will not be met with framebuffer DMA active), 
+    # use AS4C16M16 instead
+    assert args.sdram_module != 'AS4C32M16'
+    
     soc = BaseSoC(
         device                 = args.device,
         revision               = args.revision,
@@ -129,16 +141,9 @@ def main():
     if args.with_oled:
         soc.add_oled()
 
-    # add blitter
-    soc.add_blitter()
-    #blitter = Blitter(port=soc.sdram.crossbar.get_port())
-    #soc.submodules.blitter = blitter
-        
-    # add esp32 control + spisdcard tristate control
-    soc.add_ESP32()
-    #soc.esp32 = ESP32(soc.platform)        
-    #soc.submodules.esp32 = soc.esp32
-    #soc.comb += soc.spisdcard_tristate.eq(soc.esp32._enable.storage)    
+    # add my own modules
+    soc.add_blitter() # provides fast memory fill
+    soc.add_ESP32()   # esp32 on/off + spisdcard tristate control (access SDCard with ftp through wifi !)
     
     builder = Builder(soc, **builder_argdict(args))
     builder_kargs = trellis_argdict(args) if args.toolchain == "trellis" else {}
