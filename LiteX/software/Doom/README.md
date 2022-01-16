@@ -13,7 +13,7 @@ Compile the programs:
 $ make
 ```
 Then copy `doom.elf` to the SDCard. Connect to the SoC (`lxterm
-/dev/ttyUSBnnn`), and verify that the programs are there:
+/dev/ttyUSBnnn`), and start the program:
 ```
 liteOS> run doom.elf
 ```
@@ -28,7 +28,6 @@ It is based on [mc1-doom](https://github.com/mbitsnbites/mc1-doom), a
 port of Doom for SoCs. Doom is very easy to port in general (it is why 
 you will see versions running on so many different machines). In our
 case, there were two diffent things to do:
-
 
 - LiteX has a `libfatfs` library to access files stored on a SDCard
 (great !). However, it uses an API that is different from the standard
