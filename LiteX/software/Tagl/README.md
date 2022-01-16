@@ -70,5 +70,5 @@ liteOS> run rotate.elf -geom vw.geom -tex sunset2.tga
 ```
 
 Then press `<spacebar>` to toggle color mode, then `t` to toggle texture
-mode, `T` to toggle normal mapping, and `R` to spin the objects.
+mode, `T` to toggle normal mapping, and `R` to spin the object.
 

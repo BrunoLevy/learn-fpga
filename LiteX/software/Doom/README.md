@@ -12,7 +12,10 @@ Compile the programs:
 ```
 $ make
 ```
-Then copy `doom.elf` to the SDCard. Connect to the SoC (`lxterm
+- Then copy `doom.elf` to the SDCard.
+- Download [`DOOM1.WAD`](https://doomwiki.org/wiki/DOOM1.WAD) and copy it to the SDCard.
+
+Connect to the SoC (`lxterm
 /dev/ttyUSBnnn`), and start the program:
 ```
 liteOS> run doom.elf
