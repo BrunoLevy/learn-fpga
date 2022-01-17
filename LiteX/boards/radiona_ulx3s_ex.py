@@ -35,25 +35,6 @@ ulx3s_platform.Platform.__init__ = new_platform_init
 
 #--------------------------------------------------------------------------------------------------------
 
-# We need to change fifo depth in video framebuffer (a multiple of 640*4, else display is shifted)
-# To do that, replace VideoFrameBuffer constructor (just change default value for fifo_depth)
-
-from litex.soc.cores.video import VideoFrameBuffer
-
-old_videoframebuffer_init = VideoFrameBuffer.__init__
-
-def new_videoframebuffer_init( \
-      self, dram_port, hres=800, vres=600, base=0x00000000, \
-      fifo_depth=25600, clock_domain="sys", clock_faster_than_sys=False, format="rgb888"):
-     old_videoframebuffer_init( \
-          self, dram_port, hres, vres, base, fifo_depth, \
-          clock_domain, clock_faster_than_sys, format \
-     )
-
-VideoFrameBuffer.__init__ = new_videoframebuffer_init
-
-#--------------------------------------------------------------------------------------------------------
-
 from litex.build.lattice.trellis import trellis_args, trellis_argdict
 from litex.soc.cores.clock import *
 from litex.soc.integration.soc_core import *
@@ -71,7 +52,7 @@ class ESP32(Module, AutoCSR):
 # For now, it just has fast memory fill
 
 class Blitter(Module, AutoCSR):
-    def __init__(self,port): # port = self.sdram.crossbar.get_port()
+    def __init__(self,port): # for instance, port = soc.sdram.crossbar.get_port()
         self._value = CSRStorage(32)
         from litedram.frontend.dma import LiteDRAMDMAWriter
         dma_writer = LiteDRAMDMAWriter(port=port,fifo_depth=16,fifo_buffered=False,with_csr=True)

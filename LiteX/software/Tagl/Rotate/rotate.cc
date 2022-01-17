@@ -43,7 +43,11 @@
 #include <time.h>
 #include "texture.h"
 #include "cmdline.h"
+
+extern "C" {
 #include <libfatfs/ff.h>
+#include <liblitesdcard/spisdcard.h>
+}
 
 extern "C" {
    void init_gport_X() ;
@@ -497,6 +501,7 @@ int main(int argc, char *argv[])
 
   GP->ZBuffer(1);
 
+   fatfs_set_ops_spisdcard();
    if(f_mount(&fs,"",1) != FR_OK) {
       printf("Could not mount filesystem\n");
       return -1;

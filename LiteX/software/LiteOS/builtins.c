@@ -83,7 +83,10 @@ static void catalog(int nb_args, char** args) {
     DIR dir;
     FILINFO filinfo;
 
+    printf("switching ESP32 off\n");
     esp32_off();
+   
+    fatfs_set_ops_spisdcard(); 
     fr = f_mount(&fs,"",1);
     if(fr != FR_OK) {
 	printf("Could not mount filesystem\n");
@@ -118,6 +121,7 @@ static void run(int nb_args, char** args) {
       return;
    }
    
+   fatfs_set_ops_spisdcard();
    fr = f_mount(&fs,"",1);
    if(fr != FR_OK) {
       printf("Could not mount filesystem\n");

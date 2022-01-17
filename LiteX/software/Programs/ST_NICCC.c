@@ -208,6 +208,7 @@ int main(int argc, char** argv) {
       fullres = 1;
    }
    
+   fatfs_set_ops_spisdcard();
    if(f_mount(&fs,"",1) != FR_OK) {
       printf("Could not mount filesystem\n");
       return -1;

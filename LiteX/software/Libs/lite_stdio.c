@@ -1,7 +1,7 @@
 #include <lite_stdio.h>
 #include <libfatfs/ff.h>
 #include <libfatfs/diskio.h>
-
+#include <liblitesdcard/spisdcard.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -79,6 +79,7 @@ static void lx_mount(void) {
     static FATFS fs;
     if(!filesystem_init) {
 	filesystem_init = 1;
+        fatfs_set_ops_spisdcard();
 	printf("Mounting filesystem\n");
 	if(f_mount(&fs,"",1) != FR_OK) {
 	    printf("Could not mount filesystem\n");
