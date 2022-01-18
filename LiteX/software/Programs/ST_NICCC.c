@@ -14,6 +14,7 @@
 #include <libfatfs/ff.h>
 #include <libbase/uart.h>
 #include <libbase/console.h>
+#include <liblitesdcard/spisdcard.h>
 #include <stdio.h>
 #include <string.h>
 

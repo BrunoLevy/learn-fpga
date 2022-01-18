@@ -55,7 +55,7 @@ class Blitter(Module, AutoCSR):
     def __init__(self,port): # for instance, port = soc.sdram.crossbar.get_port()
         self._value = CSRStorage(32)
         from litedram.frontend.dma import LiteDRAMDMAWriter
-        dma_writer = LiteDRAMDMAWriter(port=port,fifo_depth=16,fifo_buffered=False,with_csr=True)
+        dma_writer = LiteDRAMDMAWriter(port=port,with_csr=True)
         self.submodules.dma_writer = dma_writer
         self.comb += dma_writer.sink.data.eq(self._value.storage)
         self.comb += dma_writer.sink.valid.eq(1)
@@ -76,7 +76,7 @@ class BaseSoC(ulx3s.BaseSoC):
     def add_blitter(self):        
         self.blitter = Blitter(port=self.sdram.crossbar.get_port())
         self.submodules.blitter = self.blitter
-            
+
     def add_ESP32(self):
        self.esp32 = ESP32(self.platform)
        self.submodules.esp32 = self.esp32
