@@ -1,12 +1,12 @@
 #include <femtorv32.h>
 
+// é = 130
+// smileys = 1,2
+
 int main() {
    MAX7219_tty_init(); // redirect printf() to led matrix scroller   
    for(;;) {
-//      printf("Hello, RISC-V world !!! ");
-//      printf("Vive le Lyc%ce Poincar%c de Nancy !!! ....",130,130);
-//      printf("Hello, LiteX world !!! ");
-        printf("T%cl%ccom Nancy RULZ !!!",130,130);
+      printf("Hello, RISC-V world !!! %c %c %c %c ",1,2,1,2);
    }
    return 0;
 }
