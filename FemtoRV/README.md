@@ -16,6 +16,9 @@ Quick links:
 - [Adding a new board](TUTORIALS/newboard.md)
 - [More documentation...](TUTORIALS/README.md)
 
+External links:
+- [A tutorial on YouTube by Shawn Hymel](https://www.youtube.com/watch?v=gJno9TloDj8)
+
 Features
 --------
 
