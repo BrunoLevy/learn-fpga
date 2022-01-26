@@ -12,7 +12,7 @@ Quick links:
 - [ECP5 eval board tutorial](TUTORIALS/ECP5_EVN.md)
 - [FOMU tutorial](TUTORIALS/FOMU.md)
 - [ARTY tutorial](TUTORIALS/arty.md)
-- [LiteX tutorial](TUTORIALS/litex.md)
+- [LiteX tutorial](https://github.com/BrunoLevy/learn-fpga/tree/master/LiteX)
 - [Adding a new board](TUTORIALS/newboard.md)
 - [More documentation...](TUTORIALS/README.md)
 
