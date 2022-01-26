@@ -61,6 +61,7 @@ static void catalog(int nb_args, char** args) {
     DIR dir;
     FILINFO filinfo;
     
+    fatfs_set_ops_spisdcard(); 
     fr = f_mount(&fs,"",1);
     if(fr != FR_OK) {
 	printf("Could not mount filesystem\n");
@@ -91,7 +92,8 @@ static void elf_stat(int nb_args, char** args) {
       printf("elf_stat <filename>\n");
       return;
    }
-   
+
+   fatfs_set_ops_spisdcard(); 
    fr = f_mount(&fs,"",1);
    if(fr != FR_OK) {
       printf("Could not mount filesystem\n");
