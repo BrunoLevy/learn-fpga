@@ -21,38 +21,43 @@ show_config:
 
 ################################################################################
 
-# Website to get the RISCV toolchain
-TOOLCHAIN_WEB=https://static.dev.sifive.com/dev-tools
-
-# Version of the RISCV toolchain to get
-#TOOLCHAIN_VER=riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6
-#TOOLCHAIN_GCC_VER=7.2.0
-TOOLCHAIN_VER=riscv64-unknown-elf-gcc-8.3.0-2020.04.0-x86_64-linux-ubuntu14
-TOOLCHAIN_GCC_VER=8.3.0
-
-RVTOOLCHAIN_DIR=$(FIRMWARE_DIR)/TOOLCHAIN/$(TOOLCHAIN_VER)
-RVTOOLCHAIN_BIN_DIR=$(RVTOOLCHAIN_DIR)/bin
-RVTOOLCHAIN_BIN_PREFIX=riscv64-unknown-elf
-
+uname := $(shell uname)
 uname_m := $(shell uname -m)
 
-ifeq ($(uname_m),aarch64)
-    $(info Configuring for ARM64)
+ifeq ($(uname),Darwin)
+    $(info Configuring for Mac)
     TOOLCHAIN_WEB=https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/download/v10.1.0-1.1
     TOOLCHAIN_VER=xpack-riscv-none-embed-gcc-10.1.0-1.1
-    TOOLCHAIN_DL_SUFFIX=-linux-arm64
+    TOOLCHAIN_DL_SUFFIX=-darwin-x64
     TOOLCHAIN_GCC_VER=10.1.0
     RVTOOLCHAIN_BIN_PREFIX=riscv-none-embed
+else
+    ifeq ($(uname_m),aarch64)
+        $(info Configuring for ARM64)
+        TOOLCHAIN_WEB=https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/download/v10.1.0-1.1
+        TOOLCHAIN_VER=xpack-riscv-none-embed-gcc-10.1.0-1.1
+        TOOLCHAIN_DL_SUFFIX=-linux-arm64
+        TOOLCHAIN_GCC_VER=10.1.0
+        RVTOOLCHAIN_BIN_PREFIX=riscv-none-embed
+    else ifeq ($(uname_m),armv7l)
+        $(info Configuring for Raspberry Pi)
+        TOOLCHAIN_WEB=https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/download/v8.3.0-2.3
+        TOOLCHAIN_VER=xpack-riscv-none-embed-gcc-8.3.0-2.3
+        TOOLCHAIN_DL_SUFFIX=-linux-arm
+        TOOLCHAIN_GCC_VER=8.3.0
+        RVTOOLCHAIN_BIN_PREFIX=riscv-none-embed
+    else
+        $(info Configuring for Linux x86_64)
+        TOOLCHAIN_WEB=https://static.dev.sifive.com/dev-tools
+        TOOLCHAIN_DL_SUFFIX=-x86_64-linux-ubuntu14
+        TOOLCHAIN_VER=riscv64-unknown-elf-gcc-8.3.0-2020.04.0
+        TOOLCHAIN_GCC_VER=8.3.0
+        RVTOOLCHAIN_BIN_PREFIX=riscv64-unknown-elf
+    endif
 endif
 
-ifeq ($(uname_m),armv7l)
-    $(info Configuring for Raspberry Pi)
-    TOOLCHAIN_WEB=https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/download/v8.3.0-2.3
-    TOOLCHAIN_VER=xpack-riscv-none-embed-gcc-8.3.0-2.3
-    TOOLCHAIN_DL_SUFFIX=-linux-arm
-    TOOLCHAIN_GCC_VER=8.3.0
-    RVTOOLCHAIN_BIN_PREFIX=riscv-none-embed
-endif
+RVTOOLCHAIN_DIR=$(FIRMWARE_DIR)/TOOLCHAIN/$(TOOLCHAIN_VER)$(TOOLCHAIN_DL_SUFFIX)
+RVTOOLCHAIN_BIN_DIR=$(RVTOOLCHAIN_DIR)/bin
 
 RVTOOLCHAIN_LIB_DIR=$(RVTOOLCHAIN_DIR)/$(RVTOOLCHAIN_BIN_PREFIX)/lib/$(ARCH)/$(ABI)
 RVTOOLCHAIN_GCC_LIB_DIR=$(RVTOOLCHAIN_DIR)/lib/gcc/$(RVTOOLCHAIN_BIN_PREFIX)/$(TOOLCHAIN_GCC_VER)/$(ARCH)/$(ABI)
@@ -198,7 +203,9 @@ $(RVRANLIB):
 
 get_riscv_toolchain:
 	mkdir -p $(FIRMWARE_DIR)/TOOLCHAIN
-	@echo "Installing RISC-V toolchain in $(FIRMWARE_DIR)/TOOLCHAIN"
+	@echo "Installing RISC-V toolchain for $(uname) $(uname_m) in $(FIRMWARE_DIR)/TOOLCHAIN"
 	(cd $(FIRMWARE_DIR)/TOOLCHAIN; \
-	    wget $(TOOLCHAIN_WEB)/$(TOOLCHAIN_VER)$(TOOLCHAIN_DL_SUFFIX).tar.gz; \
-	    tar xfz $(TOOLCHAIN_VER)$(TOOLCHAIN_DL_SUFFIX).tar.gz)
+	    wget $(TOOLCHAIN_WEB)/$(TOOLCHAIN_VER)$(TOOLCHAIN_DL_SUFFIX).tar.gz -O \
+	        $(TOOLCHAIN_VER)$(TOOLCHAIN_DL_SUFFIX).tar.gz; \
+	    tar xfz $(TOOLCHAIN_VER)$(TOOLCHAIN_DL_SUFFIX).tar.gz; \
+	    mv $(TOOLCHAIN_VER) $(TOOLCHAIN_VER)$(TOOLCHAIN_DL_SUFFIX))
