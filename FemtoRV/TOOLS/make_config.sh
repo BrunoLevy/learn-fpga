@@ -1,7 +1,7 @@
 # Extracts compilation flags from selected board, and
 # write them to FIRMWARE/config.mk
 cd RTL
-iverilog -I PROCESSOR $1 get_config.v -o tmp.vvp 
+iverilog -I PROCESSOR $1 -o tmp.vvp get_config.v
 vvp tmp.vvp > ../FIRMWARE/config.mk
 rm -f tmp.vvp
 echo BOARD=$BOARD >> ../FIRMWARE/config.mk
