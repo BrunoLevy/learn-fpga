@@ -8,8 +8,11 @@ Mission statement: create teaching material for FPGAs, processor design and RISC
 FemtoRV: a minimalistic RISC-V CPU
 ----------------------------------- 
 [FemtoRV](FemtoRV/README.md) is a minimalistic RISC-V design, with
-easy-to-read Verilog sources (less than 1000 lines), directly written
-from the RISC-V specification. It includes a companion SoC, with
+easy-to-read Verilog sources directly written from the RISC-V specification. 
+The most elementary version (quark), an RV32I core, weights 400 lines of VERILOG
+(documented version), and 100 lines if you remove the comments. There
+are also more elaborate versions, the biggest one (petitbateau) is an RV32IMFC
+core. The repository also includes a companion SoC, with
 drivers for an UART, a led matrix, a small OLED display, SPI RAM and
 SDCard. Its most basic configuration fits on the Lattice IceStick (<
 1280 LUTs). It can be used for teaching processor design and RISC-V

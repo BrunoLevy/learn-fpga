@@ -5,6 +5,7 @@ LiteOS is a super minimalistic operating system for LiteX SoCs. It has
 two commands:
 - `catalog <dir>`: lists the files on the SDCard
 - `run <filename.elf>`: runs a program
+
 It optionally has two additional commands to switch the framebuffer
 and the ESP32 on and off:
 - `esp32 <on|off>`
