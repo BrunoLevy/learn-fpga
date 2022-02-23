@@ -16,7 +16,7 @@
 #include "v_video.h"
 
 
-static uint32_t s_palette[256];
+static uint32_t s_palette[256] __attribute((section(".fastdata")));
 
 static inline uint32_t color_to_argb8888 (
    unsigned int r,

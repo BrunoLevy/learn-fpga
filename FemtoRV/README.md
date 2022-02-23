@@ -18,6 +18,7 @@ Quick links:
 
 External links:
 - [A tutorial on YouTube by Shawn Hymel](https://www.youtube.com/watch?v=gJno9TloDj8)
+- [A tutorial on YouTube (episode 2)](https://t.co/MG9aPi1l3h)
 
 Features
 --------

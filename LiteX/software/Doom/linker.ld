@@ -58,6 +58,25 @@ SECTIONS
 		_ebss = .;
 		_end = .;
 	} > main_ram
+	
+
+	/* Put colormap in BRAM, for faster indexed-to-colormapped conversion */
+	.fastdata :
+	{
+	   . = ALIGN(8);
+	   *(.fastdata*)
+	   . = ALIGN(8);
+	} > sram
+	
+	.fastcode :
+	{
+	   . = ALIGN(8);
+	   *(.fastcode*)
+	   . = ALIGN(8);
+	} > sram
+
+
+
 }
 
 

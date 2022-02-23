@@ -20,7 +20,7 @@ Install open-source FPGA development toolchain
 
 Before starting, you will need to install the open-source FPGA
 development toolchain (Yosys, NextPNR etc...), instructions to
-do so are given [here](toolchain.md).
+do so are given [here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/TUTORIALS/toolchain.md).
 
 
 Install LiteX
