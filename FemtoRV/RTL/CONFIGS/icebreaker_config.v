@@ -11,6 +11,7 @@
 
 /************************* Processor configuration ******************************************************************/
 
+//`define NRV_FEMTORV32_QUARK_BICYCLE // RV32I 
 //`define NRV_FEMTORV32_ELECTRON      // RV32IM
 //`define NRV_FEMTORV32_INTERMISSUM   // RV32IM  + IRQ
 `define NRV_FEMTORV32_GRACILIS      // RV32IMC + IRQ

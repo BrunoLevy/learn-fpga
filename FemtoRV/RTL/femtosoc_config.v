@@ -110,6 +110,10 @@
  `include "PROCESSOR/femtorv32_quark.v" // Minimalistic version of the processor for IceStick (RV32I)
 `endif
 
+`ifdef NRV_FEMTORV32_QUARK_BICYCLE
+ `include "PROCESSOR/femtorv32_quark_bicycle.v" // Quark with Matthias's 2 CPI mode and barrel shifter (RV32I)
+`endif
+
 `ifdef NRV_FEMTORV32_TACHYON
  `include "PROCESSOR/femtorv32_tachyon.v" // Version for the IceStick with higher maxfreq (RV32I)
 `endif
