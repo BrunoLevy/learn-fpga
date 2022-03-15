@@ -38,7 +38,10 @@ floating point numbers.
 subset (Zfinx) that uses a unique register bank for integer and
 floating-point registers. Can be interesting for instance to design
 a minimalistic floating-point able core, used to design for instance
-a GPU-like device with multiple cores.*
+a GPU-like device with multiple cores. [NeoRV](https://github.com/stnolting/neorv32) implements it. It is
+more painful to use, since there is no gcc support yet. See
+[this article on hackaday](https://hackaday.io/project/174167-the-neorv32-risc-v-processor/log/190808-an-ieee-754-floating-point-unit-for-the-neorv32)
+*
 
 Then there are the FMA instructions (fused-multiply-add) that compute
 rs1*rs2+rs3 in a single instruction (with different sign

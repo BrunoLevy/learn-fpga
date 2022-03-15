@@ -78,7 +78,7 @@ module PetitBateau(
    reg Y_sign; reg signed [8:0] Y_exp; reg signed [49:0] Y_frac;
    
    // FPU output = 32 MSBs of X register (see below)
-   // A macro to easily write to it (`FPU_OUT <= ...),
+   // A macro to easily write to it (`X <= ...),
    // used when FPU output is an integer.
    `define X {X_sign, X_exp[7:0], X_frac[46:24]}
    assign out = `X;
