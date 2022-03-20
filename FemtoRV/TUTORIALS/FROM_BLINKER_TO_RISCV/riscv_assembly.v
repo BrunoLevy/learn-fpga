@@ -25,14 +25,23 @@
 //    end
 //
 // There are 8 predefined labels L0_ ... L7_
-// Sadly, this only works if Label() is
-//    before LabelRef() :-( (I don't know how
-//    to make forward refs work, because this
-//    would need two passes...)
 // You can add your own labels as follows:
 //    integer my_label;
 // Needs to be done before the initial block that
 // generates assembly.
+// If you do a forward reference to a label, it will
+// fail with an error, but will indicate the address of
+// the label, then you'll need to set the address of the
+// label at the beginning of the "initial" block. When
+// you re-run, it checks for you whether the value is
+// correct.
+// See step14.v for an example.
+// At the beginning of the "initial" block with ASM code,
+// there is:
+// L2 = 420;
+// If you remove the line, it will fail with an error, but
+// will display the value (420) to be used.
+//
 //
 // You can change the address where code is generated
 //   by assigning to memPC (needs to be a word boundary).
