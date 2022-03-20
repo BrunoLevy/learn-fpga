@@ -1,8 +1,8 @@
 /**
- * Step 12: Creating a RISC-V processor
- *         Load
+ * Step 13: Creating a RISC-V processor
+ *         Store (WIP)
  * Usage:
- *    iverilog step12.v
+ *    iverilog step13.v
  *    vvp a.out
  *    to exit: <ctrl><c> then finish
  */
@@ -14,7 +14,9 @@ module Memory (
    input clock,
    input      [31:0] mem_addr,  
    output reg [31:0] mem_rdata, 
-   input   	     mem_rstrb
+   input   	     mem_rstrb,
+   input      [31:0] mem_wdata,
+   output     [3:0]  mem_wmask	       
 );
 
    reg [31:0] MEM [0:255]; 
@@ -42,10 +44,16 @@ module Memory (
       MEM[103] = {8'h0, 8'hf, 8'he, 8'hd};            
    end
 
+   wire [29:0] word_addr = mem_addr[31:2];
+   
    always @(posedge clock) begin
       if(mem_rstrb) begin
-         mem_rdata <= MEM[mem_addr[31:2]];
+         mem_rdata <= MEM[word_addr];
       end
+      if(mem_wmask[0]) MEM[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
+      if(mem_wmask[1]) MEM[word_addr][15:8 ] <= mem_wdata[15:8 ];
+      if(mem_wmask[2]) MEM[word_addr][23:16] <= mem_wdata[23:16];
+      if(mem_wmask[3]) MEM[word_addr][31:24] <= mem_wdata[31:24];	 
    end
    
 endmodule
@@ -55,7 +63,9 @@ module RiscV (
     input clock,
     output    [31:0] mem_addr,  
     input     [31:0] mem_rdata, 
-    output 	     mem_rstrb
+    output 	     mem_rstrb,
+    output    [31:0] mem_wdata,
+    input     [3:0]  mem_wmask	       
 );
    
    reg [31:0] PC;          // program counter
@@ -300,19 +310,25 @@ module SOC(
    wire [31:0] mem_addr;
    wire [31:0] mem_rdata;
    wire mem_rstrb;
+   wire [31:0] mem_wdata;
+   wire [3:0]  mem_wmask;
    
    Memory RAM(
       .clock(clock),
       .mem_addr(mem_addr),
       .mem_rdata(mem_rdata),
-      .mem_rstrb(mem_rstrb)
+      .mem_rstrb(mem_rstrb),
+      .mem_wdata(mem_wdata),
+      .mem_wmask(mem_wmask)	      
    );
 
    RiscV CPU(
       .clock(clock),
       .mem_addr(mem_addr),
       .mem_rdata(mem_rdata),
-      .mem_rstrb(mem_rstrb)
+      .mem_rstrb(mem_rstrb),
+      .mem_wdata(mem_wdata),
+      .mem_wmask(mem_wmask)	      
    );
    
 endmodule
