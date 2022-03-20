@@ -385,9 +385,105 @@ task AUIPC;
 endtask
    
 /***************************************************************************/   
+
+/*
+ * Load instructions
+ */    
+
+task LB;
+   input [4:0]  rd;
+   input [4:0]  rs1;
+   input [31:0] imm;
+   begin
+      IType(7'b0000011, rd, rs1, imm, 3'b000);
+   end
+endtask      
+
+task LH;
+   input [4:0]  rd;
+   input [4:0]  rs1;
+   input [31:0] imm;
+   begin
+      IType(7'b0000011, rd, rs1, imm, 3'b001);
+   end
+endtask      
+   
+task LW;
+   input [4:0]  rd;
+   input [4:0]  rs1;
+   input [31:0] imm;
+   begin
+      IType(7'b0000011, rd, rs1, imm, 3'b010);
+   end
+endtask      
+
+task LBU;
+   input [4:0]  rd;
+   input [4:0]  rs1;
+   input [31:0] imm;
+   begin
+      IType(7'b0000011, rd, rs1, imm, 3'b100);
+   end
+endtask      
+
+task LHU;
+   input [4:0]  rd;
+   input [4:0]  rs1;
+   input [31:0] imm;
+   begin
+      IType(7'b0000011, rd, rs1, imm, 3'b101);
+   end
+endtask      
+   
+/***************************************************************************/   
+
+/*
+ * Store instructions
+ */ 
+
+task SType;
+   input [6:0]  opcode;
+   input [4:0]  rs1;
+   input [4:0]  rs2;   
+   input [31:0] imm;
+   input [2:0]  funct3;
+   begin
+      MEM[memPC[31:2]] = {imm[11:5], rs2, rs1, funct3, imm[4:0], opcode};
+      memPC = memPC + 4;
+   end
+endtask
+
+task SB;
+   input [4:0]  rs1;
+   input [4:0]  rs2;   
+   input [31:0] imm;
+   begin
+      SType(7'b0100011, rs1, rs2, imm, 3'b000);
+   end
+endtask   
+
+task SH;
+   input [4:0]  rs1;
+   input [4:0]  rs2;   
+   input [31:0] imm;
+   begin
+      SType(7'b0100011, rs1, rs2, imm, 3'b001);
+   end
+endtask   
+
+task SW;
+   input [4:0]  rs1;
+   input [4:0]  rs2;   
+   input [31:0] imm;
+   begin
+      SType(7'b0100011, rs1, rs2, imm, 3'b010);
+   end
+endtask   
+   
+/***************************************************************************/   
    
 /*
- * SYSTEM
+ * SYSTEM instructions
  * (for now, just EBREAK)
  */
 
@@ -421,24 +517,9 @@ endtask
    function [31:0] LabelRef;
      input integer L;
      begin
-	$display("memPC=%d",memPC);
-	$display("L=%d",L);	
 	LabelRef = L - memPC;
-	$display("LabelRef=%d",L - memPC);
      end
    endfunction
      
 /****************************************************************************/
    
-task SType;
-   input [6:0]  opcode;
-   input [4:0]  rs1;
-   input [4:0]  rs2;   
-   input [31:0] imm;
-   input [2:0]  funct3;
-   begin
-      MEM[memPC[31:2]] = {imm[11:5], rs2, rs1, funct3, imm[4:0], opcode};
-      memPC = memPC + 4;
-   end
-endtask
-
