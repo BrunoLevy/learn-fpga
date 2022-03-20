@@ -4,8 +4,8 @@
  * Bruno Levy, March 2022
  */
 
-integer romPC;
-initial romPC = 0;
+integer memPC;
+initial memPC = 0;
 
 /***************************************************************************/
 
@@ -39,8 +39,8 @@ task RType;
    input [2:0] funct3;
    input [6:0] funct7;
    begin
-      ROM[romPC[31:2]] = {funct7, rs2, rs1, funct3, rd, opcode};
-      romPC = romPC + 4;
+      MEM[memPC[31:2]] = {funct7, rs2, rs1, funct3, rd, opcode};
+      memPC = memPC + 4;
    end
 endtask
 
@@ -128,8 +128,8 @@ task IType;
    input [31:0] imm;
    input [2:0]  funct3;
    begin
-      ROM[romPC[31:2]] = {imm[11:0], rs1, funct3, rd, opcode};
-      romPC = romPC + 4;
+      MEM[memPC[31:2]] = {imm[11:0], rs1, funct3, rd, opcode};
+      memPC = memPC + 4;
    end
 endtask
 
@@ -228,8 +228,8 @@ task JType;
    input [4:0]  rd;
    input [31:0] imm;
    begin
-      ROM[romPC[31:2]] = {imm[20], imm[10:1], imm[11], imm[19:12], rd, opcode};
-      romPC = romPC + 4;
+      MEM[memPC[31:2]] = {imm[20], imm[10:1], imm[11], imm[19:12], rd, opcode};
+      memPC = memPC + 4;
    end
 endtask
    
@@ -266,8 +266,8 @@ task BType;
    input [31:0] imm;
    input [2:0]  funct3;
    begin
-      ROM[romPC[31:2]] = {imm[12],imm[10:5], rs2, rs1, funct3, imm[4:1], imm[11], opcode};
-      romPC = romPC + 4;
+      MEM[memPC[31:2]] = {imm[12],imm[10:5], rs2, rs1, funct3, imm[4:1], imm[11], opcode};
+      memPC = memPC + 4;
    end
 endtask
 
@@ -336,8 +336,8 @@ task UType;
    input [4:0]  rd;
    input [31:0] imm;
    begin
-      ROM[romPC[31:2]] = {imm[31:12], rd, opcode};
-      romPC = romPC + 4;
+      MEM[memPC[31:2]] = {imm[31:12], rd, opcode};
+      memPC = memPC + 4;
    end
 endtask
 
@@ -366,8 +366,8 @@ endtask
 
 task EBREAK;
    begin
-      ROM[romPC[31:2]] = {12'b000000000001, 5'b00000, 3'b000, 5'b00000, 7'b1110011};
-      romPC = romPC + 4;
+      MEM[memPC[31:2]] = {12'b000000000001, 5'b00000, 3'b000, 5'b00000, 7'b1110011};
+      memPC = memPC + 4;
    end
 endtask   
    
@@ -387,17 +387,17 @@ endtask
    task Label;
      output integer L;
      begin
-	L = romPC;
+	L = memPC;
      end
    endtask
    
    function [31:0] LabelRef;
      input integer L;
      begin
-	$display("romPC=%d",romPC);
+	$display("memPC=%d",memPC);
 	$display("L=%d",L);	
-	LabelRef = L - romPC;
-	$display("LabelRef=%d",L - romPC);
+	LabelRef = L - memPC;
+	$display("LabelRef=%d",L - memPC);
      end
    endfunction
      
@@ -410,8 +410,8 @@ task SType;
    input [31:0] imm;
    input [2:0]  funct3;
    begin
-      ROM[romPC[31:2]] = {imm[11:5], rs2, rs1, funct3, imm[4:0], opcode};
-      romPC = romPC + 4;
+      MEM[memPC[31:2]] = {imm[11:5], rs2, rs1, funct3, imm[4:0], opcode};
+      memPC = memPC + 4;
    end
 endtask
 

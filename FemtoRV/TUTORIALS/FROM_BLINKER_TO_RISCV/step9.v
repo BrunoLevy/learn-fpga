@@ -15,7 +15,7 @@ module RiscV (
 );
    assign leds = 0; // we will use the LEDs later
    
-   reg [31:0] ROM [0:255]; 
+   reg [31:0] MEM [0:255]; 
    reg [31:0] PC;          // program counter
    reg [31:0] instr;       // current instruction
 
@@ -29,7 +29,7 @@ module RiscV (
       instr = NOP_CODEOP;
    end
 
-   // ROM initialization, using our poor's men assembly
+   // MEM initialization, using our poor's men assembly
    // in "risc_assembly.v".
    initial begin
                   ADD(x1,x0,x0);
@@ -149,7 +149,7 @@ module RiscV (
    always @(posedge clock) begin
       case(state)
 	FETCH_INSTR: begin
-	   instr <= ROM[PC[31:2]];
+	   instr <= MEM[PC[31:2]];
 	   state <= FETCH_REGS;
 	end
 	FETCH_REGS: begin
