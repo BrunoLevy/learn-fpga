@@ -36,6 +36,8 @@ module Memory (
    
    initial begin
 
+      L2_ = 420;
+      
       // LI(sp,4096)
       // Stack pointer: end of RAM
       ADDI(sp,x0,1);
@@ -64,14 +66,17 @@ module Memory (
       LI(a0,0);
 Label(L1_); 
       ANDI(a3,a1,1);
-      BEQ(a3,zero,8); // cannot use LabelRef(L2_) because it is declared *after*
+      BEQ(a3,zero,LabelRef(L2_)); 
       ADD(a0,a0,a2);
 Label(L2_);
       SRLI(a1,a1,1);
       SLLI(a2,a2,1);
       BNE(a1,zero,LabelRef(L1_));
       RET();
-      
+
+      if(ASMerror) begin
+	 $finish();
+      end
    end
 
    wire [29:0] word_addr = mem_addr[31:2];

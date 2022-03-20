@@ -602,21 +602,31 @@ endtask
  *                   JAL(x0, LabelRef(L0_));
  */
 
-   integer L0_, L1_, L2_, L3_, L4_, L5_, L6_, L7_;
-
+   integer L0_=0, L1_=0, L2_=0, L3_=0, L4_=0, L5_=0, L6_=0, L7_=0;
+   integer ASMerror=0;
+   
+   
    task Label;
-     output integer L;
+     inout integer L;
      begin
+	if(L != 0 && L != memPC) begin
+	   $display("LABEL at %d: wrong forward declaration as %d",memPC,L);
+	   ASMerror=1;
+	end
 	L = memPC;
-//	$display("LABEL: %x",memPC);
+	$display("LABEL: %d",memPC);
      end
    endtask
    
    function [31:0] LabelRef;
-     input integer L;
-     begin
-	LabelRef = L - memPC;
-     end
+      input integer L;
+      begin
+	 if(L == 0) begin
+	    $display("LABEL used before set");
+	    ASMerror = 1;
+	 end
+	 LabelRef = L - memPC;
+      end
    endfunction
      
 /****************************************************************************/
