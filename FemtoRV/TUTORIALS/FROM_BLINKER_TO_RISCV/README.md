@@ -13,10 +13,11 @@ A progressive journey from a simple blinky design to a RISC-V core.
 - [step 8](step8.v): Jumps
 - [step 9](step9.v): Branches
 - [step 10](step10.v): LUI and AUIPC
+- [step 11](step11.v): Memory in separate module
+- [step 12](step12.v): Load
 
 _WIP_
 
-- step 11: Separate memory
-- step 12: Load and store
-- step 13: Using the GNU toolchain to compile programs
-- step 14: Devices (UART, ...)
+- step 13: Store
+- step 14: Using the GNU toolchain to compile programs
+- step 15: Devices (UART, ...)
