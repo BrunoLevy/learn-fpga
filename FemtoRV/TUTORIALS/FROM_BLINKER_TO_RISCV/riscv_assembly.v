@@ -25,11 +25,20 @@
 //    end
 //
 // There are 8 predefined labels L0_ ... L7_
+// Sadly, this only works if Label() is
+//    before LabelRef() :-( (I don't know how
+//    to make forward refs work, because this
+//    would need two passes...)
 // You can add your own labels as follows:
 //    integer my_label;
 // Needs to be done before the initial block that
 // generates assembly.
-
+//
+// You can change the address where code is generated
+//   by assigning to memPC (needs to be a word boundary).
+//
+// NOTE: to be checked, LUI, AUIPC take as argument
+//     pre-shifted constant, unlike in GNU assembly
 
 integer memPC;
 initial memPC = 0;
@@ -453,12 +462,18 @@ task SType;
    end
 endtask
 
+// Note: in SB, SH, SW, rs1 and rs2 are swapped, to match assembly code:
+// for instance:
+//   
+//     rs2   rs1   
+//  sw ra, 0(sp)   
+   
 task SB;
    input [4:0]  rs1;
    input [4:0]  rs2;   
    input [31:0] imm;
    begin
-      SType(7'b0100011, rs1, rs2, imm, 3'b000);
+      SType(7'b0100011, rs2, rs1, imm, 3'b000);
    end
 endtask   
 
@@ -467,7 +482,7 @@ task SH;
    input [4:0]  rs2;   
    input [31:0] imm;
    begin
-      SType(7'b0100011, rs1, rs2, imm, 3'b001);
+      SType(7'b0100011, rs2, rs1, imm, 3'b001);
    end
 endtask   
 
@@ -476,7 +491,7 @@ task SW;
    input [4:0]  rs2;   
    input [31:0] imm;
    begin
-      SType(7'b0100011, rs1, rs2, imm, 3'b010);
+      SType(7'b0100011, rs2, rs1, imm, 3'b010);
    end
 endtask   
    
@@ -593,6 +608,7 @@ endtask
      output integer L;
      begin
 	L = memPC;
+	$display("LABEL: %x",memPC);
      end
    endtask
    
@@ -604,4 +620,86 @@ endtask
    endfunction
      
 /****************************************************************************/
+
+/*
+ * RISC-V ABI register names.
+ */    
+
+   localparam zero = x0;
+   localparam ra   = x1;
+   localparam sp   = x2;
+   localparam gp   = x3;
+   localparam tp   = x4;
+   localparam t0   = x5;
+   localparam t1   = x6;
+   localparam t2   = x7;
+   localparam fp   = x8;
+   localparam s0   = x8;
+   localparam s1   = x9;
+   localparam a0   = x10;
+   localparam a1   = x11;
+   localparam a2   = x12;
+   localparam a3   = x13;
+   localparam a4   = x14;
+   localparam a5   = x15;
+   localparam a6   = x16;
+   localparam a7   = x17;
+   localparam s2   = x18;
+   localparam s3   = x19;
+   localparam s4   = x20;
+   localparam s5   = x21;
+   localparam s6   = x22;
+   localparam s7   = x23;
+   localparam s8   = x24;
+   localparam s9   = x25;
+   localparam s10  = x26;
+   localparam s11  = x27;
+   localparam t3   = x28;
+   localparam t4   = x29;
+   localparam t5   = x30;      
+   localparam t6   = x31;   
+
+/*
+ * RISC-V pseudo-instructions
+ */
+
+task NOP;
+   begin
+      ADD(x0,x0,x0);
+   end
+endtask
+   
+task LI;
+   input [4:0]  rd;
+   input [31:0] imm;
+   begin
+      if(imm > 12'b111111111111) begin
+	 $display("LI large");
+	 LUI(rd,imm);
+	 if(imm[11:0] != 0) begin
+	    ORI(rd,rd,imm[11:0]);
+	 end
+      end else begin
+	 $display("LI small");
+	 ADDI(rd,zero,imm);
+      end
+   end
+endtask
+
+task CALL;
+  input [31:0] offset;
+  begin
+     AUIPC(x6, offset);
+     JALR(x1, x6, offset[11:0]);
+  end
+endtask 
+
+task RET;
+  begin
+     JALR(x0,x1,0);
+  end
+endtask   
+   
+   
+/****************************************************************************/   
    

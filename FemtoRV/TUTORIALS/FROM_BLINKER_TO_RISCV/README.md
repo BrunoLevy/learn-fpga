@@ -16,9 +16,9 @@ A progressive journey from a simple blinky design to a RISC-V core.
 - [step 11](step11.v): Memory in separate module
 - [step 12](step12.v): Load
 - [step 13](step13.v): Store
+- [step 14](step14.v): Playing with more interesting programs
 
 _WIP_
 
-- step 14: More interesting example programs
 - step 15: Using the GNU toolchain to compile programs
 - step 16: Devices (UART, ...)
