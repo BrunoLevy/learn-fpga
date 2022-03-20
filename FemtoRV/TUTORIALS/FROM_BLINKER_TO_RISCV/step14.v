@@ -1,6 +1,6 @@
 /**
- * Step 13: Creating a RISC-V processor
- *         Store 
+ * Step 14: Creating a RISC-V processor
+ *         Playing with more interesting programs
  * Usage:
  *    iverilog step13.v
  *    vvp a.out
@@ -31,8 +31,32 @@ module Memory (
    // MEM initialization, using our poor's men assembly
    // in "risc_assembly.v".
    initial begin
+
+      // LI(sp,4096)
+      // Stack pointer: end of RAM
+      ADDI(sp,x0,1);
+      SLLI(sp,sp,12);
+
+      // LI(gp, 8192)
+      // General pointer: IO page
+      //   Offset 4: "UART" (displays character)
+      //   Offset 8: displays integer value
+      ADDI(gp,x0,1);
+      SLLI(gp,gp,13);
       
-      LI(sp,4096);
+      LI(a0,3);
+      SW(a0,gp,8);
+
+      LI(a0,"a");
+      SW(a0,gp,4);
+      
+      LI(a0,"b");
+      SW(a0,gp,4);
+
+      LI(a0,"c");
+      SW(a0,gp,4);
+      
+      EBREAK();
       
       CALL(LabelRef(400));
       CALL(LabelRef(400));
@@ -52,15 +76,28 @@ module Memory (
    end
 
    wire [29:0] word_addr = mem_addr[31:2];
+   wire        isIO = mem_addr[13];
    
    always @(posedge clock) begin
-      if(mem_rstrb) begin
-         mem_rdata <= MEM[word_addr];
+      if(isIO) begin
+	 if(|mem_wmask) begin
+	    if(word_addr[0]) begin
+	       $write("%c",mem_wdata[7:0]);
+	       $fflush(32'h8000_0001);
+	    end
+	    if(word_addr[1]) begin
+	       $display("Output: %b %0d %0d",mem_wdata, mem_wdata, $signed(mem_wdata));
+	    end
+	 end
+      end else begin
+	 if(mem_rstrb) begin
+            mem_rdata <= MEM[word_addr];
+	 end
+	 if(mem_wmask[0]) MEM[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
+	 if(mem_wmask[1]) MEM[word_addr][15:8 ] <= mem_wdata[15:8 ];
+	 if(mem_wmask[2]) MEM[word_addr][23:16] <= mem_wdata[23:16];
+	 if(mem_wmask[3]) MEM[word_addr][31:24] <= mem_wdata[31:24];
       end
-      if(mem_wmask[0]) MEM[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
-      if(mem_wmask[1]) MEM[word_addr][15:8 ] <= mem_wdata[15:8 ];
-      if(mem_wmask[2]) MEM[word_addr][23:16] <= mem_wdata[23:16];
-      if(mem_wmask[3]) MEM[word_addr][31:24] <= mem_wdata[31:24];
    end
    
 endmodule
@@ -285,6 +322,7 @@ module RiscV (
 	   state <= EXECUTE;
 	end
 	EXECUTE: begin
+	   /*
 	   case (1'b1)
 	     isALUreg: $display(
 				"%d ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
@@ -306,6 +344,7 @@ module RiscV (
 	     isStore:  $display("%d STORE",PC);
 	     isSYSTEM: $display("%d SYSTEM",PC);
 	   endcase 
+	   */
 	   if(isSYSTEM) begin
 	      $finish();
 	   end
@@ -321,7 +360,7 @@ module RiscV (
 	end
 
 	STORE: begin
-	   $display("STORE addr=%0d rs1=%d Simm=%b",loadstore_addr, rs1, Simm);
+//	   $display("STORE addr=%0d rs1=%d rs2=%d Simm=%b",loadstore_addr, rs1, rs2, Simm);
 	   state <= FETCH_INSTR;
 	end
 
@@ -332,7 +371,7 @@ module RiscV (
 
       if(writeBackEn && rdId != 0) begin
 	 RegisterBank[rdId] <= writeBackData;
-	 $display("x%0d <= %b %0d %0d",rdId,writeBackData,writeBackData,$signed(writeBackData));
+	 // $display("x%0d <= %b %0d %0d",rdId,writeBackData,writeBackData,$signed(writeBackData));
       end
       
    end

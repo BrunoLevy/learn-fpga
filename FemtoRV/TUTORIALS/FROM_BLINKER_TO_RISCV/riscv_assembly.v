@@ -668,19 +668,19 @@ task NOP;
       ADD(x0,x0,x0);
    end
 endtask
-   
+
 task LI;
    input [4:0]  rd;
    input [31:0] imm;
    begin
       if(imm > 12'b111111111111) begin
-	 $display("LI large");
+//	 $display("LI large");
 	 LUI(rd,imm);
 	 if(imm[11:0] != 0) begin
 	    ORI(rd,rd,imm[11:0]);
 	 end
       end else begin
-	 $display("LI small");
+//	 $display("LI small");
 	 ADDI(rd,zero,imm);
       end
    end
