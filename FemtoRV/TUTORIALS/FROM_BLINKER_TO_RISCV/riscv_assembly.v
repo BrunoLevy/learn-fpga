@@ -4,6 +4,33 @@
  * Bruno Levy, March 2022
  */
 
+// Machine code will be generated in MEM,
+// starting from address 0 (can be changed below,
+// initial value of memPC).
+//
+// Example:
+//
+// module MyModule( my inputs, my outputs ...);
+//    ...
+//    reg [31:0] MEM [0:255]; 
+//    `include "riscv_assembly.v"
+//      // yes, needs to be included from here.
+//    ...
+//    initial begin
+//                  ADD(x1,x0,x0);
+//                  ADDI(x2,x0,32);
+//      Label(L0_); ADDI(x1,x1,1); 
+//                  BNE(x1, x2, LabelRef(L0_));
+//                  EBREAK();
+//    end
+//
+// There are 8 predefined labels L0_ ... L7_
+// You can add your own labels as follows:
+//    integer my_label;
+// Needs to be done before the initial block that
+// generates assembly.
+
+
 integer memPC;
 initial memPC = 0;
 
