@@ -1,6 +1,7 @@
 /**
  * Step 14: Creating a RISC-V processor
  *         Playing with more interesting programs
+ *         Multiplication routine.
  * Usage:
  *    iverilog step13.v
  *    vvp a.out
@@ -30,6 +31,9 @@ module Memory (
    
    // MEM initialization, using our poor's men assembly
    // in "risc_assembly.v".
+
+   integer mulsi3 = 400;
+   
    initial begin
 
       // LI(sp,4096)
@@ -39,40 +43,35 @@ module Memory (
 
       // LI(gp, 8192)
       // General pointer: IO page
-      //   Offset 4: "UART" (displays character)
-      //   Offset 8: displays integer value
+      //      SW(a0,gp,4); -> displays character
+      //      SW(a0,gp,8); -> displays number
       ADDI(gp,x0,1);
       SLLI(gp,gp,13);
       
-      LI(a0,3);
+      LI(a0,8);
       SW(a0,gp,8);
-
-      LI(a0,"a");
-      SW(a0,gp,4);
-      
-      LI(a0,"b");
-      SW(a0,gp,4);
-
-      LI(a0,"c");
-      SW(a0,gp,4);
-      
+      LI(a1,9);
+      SW(a1,gp,8);
+      CALL(LabelRef(mulsi3));
+      SW(a0,gp,8);
       EBREAK();
-      
-      CALL(LabelRef(400));
-      CALL(LabelRef(400));
-      CALL(LabelRef(400));      
-      EBREAK();
-      
-      memPC = 400;
-      ADDI(sp, sp, -4);
-      SW(ra, sp, 0);
-      LI(a0,1);
-      LI(a0,2);
-      LI(a0,3);
-      LI(a0,4);
-      LW(ra, sp, 0);
-      ADDI(sp, sp, 4);
+
+      // Mutiplication routine,
+      // Input in a0 and a1
+      // Result in a0
+      memPC = mulsi3;
+      ADD(a2,a0,zero);
+      LI(a0,0);
+Label(L1_); 
+      ANDI(a3,a1,1);
+      BEQ(a3,zero,8); // cannot use LabelRef(L2_) because it is declared *after*
+      ADD(a0,a0,a2);
+Label(L2_);
+      SRLI(a1,a1,1);
+      SLLI(a2,a2,1);
+      BNE(a1,zero,LabelRef(L1_));
       RET();
+      
    end
 
    wire [29:0] word_addr = mem_addr[31:2];

@@ -608,7 +608,7 @@ endtask
      output integer L;
      begin
 	L = memPC;
-	$display("LABEL: %x",memPC);
+//	$display("LABEL: %x",memPC);
      end
    endtask
    
