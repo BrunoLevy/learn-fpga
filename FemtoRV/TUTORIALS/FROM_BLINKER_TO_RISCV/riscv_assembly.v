@@ -484,15 +484,97 @@ endtask
    
 /*
  * SYSTEM instructions
- * (for now, just EBREAK)
  */
 
+task FENCE;
+   input [3:0] pred;
+   input [3:0] succ;
+   begin
+      MEM[memPC[31:2]] = {4'b0000, pred, succ, 5'b00000, 3'b000, 5'b00000, 7'b1110011};
+      memPC = memPC + 4;
+   end
+endtask   
+
+task FENCE_I;
+   begin
+      MEM[memPC[31:2]] = {4'b0000, 4'b0000, 4'b0000, 5'b00000, 3'b001, 5'b00000, 7'b1110011};
+      memPC = memPC + 4;
+   end
+endtask   
+   
+task ECALL;
+   begin
+      MEM[memPC[31:2]] = {12'b000000000000, 5'b00000, 3'b000, 5'b00000, 7'b1110011};
+      memPC = memPC + 4;
+   end
+endtask   
+   
 task EBREAK;
    begin
       MEM[memPC[31:2]] = {12'b000000000001, 5'b00000, 3'b000, 5'b00000, 7'b1110011};
       memPC = memPC + 4;
    end
 endtask   
+
+task CSRRW;
+   input [4:0] rd;
+   input [11:0] csr;
+   input [4:0] rs1;
+   begin
+      MEM[memPC[31:2]] = {csr, rs1, 3'b001, rd, 7'b1110011};
+      memPC = memPC + 4;      
+   end
+endtask
+
+task CSRRS;
+   input [4:0] rd;
+   input [11:0] csr;
+   input [4:0] rs1;
+   begin
+      MEM[memPC[31:2]] = {csr, rs1, 3'b010, rd, 7'b1110011};
+      memPC = memPC + 4;      
+   end
+endtask
+
+task CSRRC;
+   input [4:0] rd;
+   input [11:0] csr;   
+   input [4:0] rs1;
+   begin
+      MEM[memPC[31:2]] = {csr, rs1, 3'b011, rd, 7'b1110011};
+      memPC = memPC + 4;      
+   end
+endtask
+
+task CSRRWI;
+   input [4:0] rd;
+   input [11:0] csr;
+   input [31:0] imm;
+   begin
+      MEM[memPC[31:2]] = {csr, imm[4:0], 3'b101, rd, 7'b1110011};
+      memPC = memPC + 4;      
+   end
+endtask
+
+task CSRRSI;
+   input [4:0] rd;
+   input [11:0] csr;
+   input [31:0] imm;
+   begin
+      MEM[memPC[31:2]] = {csr, imm[4:0], 3'b110, rd, 7'b1110011};
+      memPC = memPC + 4;      
+   end
+endtask
+
+task CSRRCI;
+   input [4:0] rd;
+   input [11:0] csr;
+   input [31:0] imm;
+   begin
+      MEM[memPC[31:2]] = {csr, imm[4:0], 3'b111, rd, 7'b1110011};
+      memPC = memPC + 4;      
+   end
+endtask
    
 /***************************************************************************/   
 
