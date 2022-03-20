@@ -62,7 +62,7 @@ missing component that I needed to create is:
 - a loader for the ELF format. I wrote a super
 simple one [here](https://github.com/BrunoLevy/learn-fpga/blob/master/LiteX/software/Libs/lite_elf.c).
 The technical details are described [here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/TUTORIALS/software.md).
-The result is a few hundred lines of with no dependencies that can directly load statically-linked ELFs.
+The result is a few hundred lines of C with no dependencies that can directly load statically-linked ELFs.
 
 Then the rest works as follows:
 
