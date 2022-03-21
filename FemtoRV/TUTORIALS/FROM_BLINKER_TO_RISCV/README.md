@@ -2,6 +2,17 @@
 
 A progressive journey from a simple blinky design to a RISC-V core.
 
+_WIP_
+
+## Prerequisites:
+- iverilog(icarus) 
+
+```
+  sudo apt-get install iverilog
+```
+
+## Instructions
+
 To start a simulation:
 ```
    $ run.sh stepnn.v
@@ -12,6 +23,8 @@ To exit the simulation:
   <ctrl><c>
   finish
 ```
+
+## The steps
 
 - [step 1](step1.v): Blinker in simulation
 - [step 2](step2.v): Blinker with five LEDs
