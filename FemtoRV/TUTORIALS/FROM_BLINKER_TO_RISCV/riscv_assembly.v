@@ -688,6 +688,8 @@ task NOP;
    end
 endtask
 
+// TO BE DEBUGGED, 
+// PROBLEM WITH NEGATIVE/SIGN-BIT EXPANSION
 task LI;
    input [4:0]  rd;
    input [31:0] imm;
@@ -718,7 +720,30 @@ task RET;
      JALR(x0,x1,0);
   end
 endtask   
-   
+
+task MOV;
+   input [4:0]  rd;
+   input [4:0] 	rs1;
+   begin
+      ADD(rd,rs1,zero);
+   end
+endtask
+
+task BEQZ;
+   input [4:0]  rs1;
+   input [31:0] imm;
+   begin
+      BType(7'b1100011, rs1, x0, imm, 3'b000);
+   end
+endtask
+
+task BNEZ;
+   input [4:0]  rs1;
+   input [31:0] imm;
+   begin
+      BType(7'b1100011, rs1, x0, imm, 3'b001);
+   end
+endtask
    
 /****************************************************************************/   
    

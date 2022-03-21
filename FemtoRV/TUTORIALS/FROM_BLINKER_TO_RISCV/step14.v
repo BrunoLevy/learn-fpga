@@ -43,8 +43,7 @@ module Memory (
       // General pointer: IO page
       //      SW(a0,gp,4); -> displays character
       //      SW(a0,gp,8); -> displays number
-      ADDI(gp,x0,1);
-      SLLI(gp,gp,13);
+      MOV(gp,sp);
       
       LI(a0,8);
       SW(a0,gp,8);
@@ -58,16 +57,16 @@ module Memory (
       // Input in a0 and a1
       // Result in a0
       memPC = mulsi3;
-      ADD(a2,a0,zero);
+      MOV(a2,a0);
       LI(a0,0);
 Label(L1_); 
       ANDI(a3,a1,1);
-      BEQ(a3,zero,LabelRef(L2_)); 
+      BEQZ(a3,LabelRef(L2_)); 
       ADD(a0,a0,a2);
 Label(L2_);
       SRLI(a1,a1,1);
       SLLI(a2,a2,1);
-      BNE(a1,zero,LabelRef(L1_));
+      BNEZ(a1,LabelRef(L1_));
       RET();
 
       if(ASMerror) begin
@@ -76,28 +75,15 @@ Label(L2_);
    end
 
    wire [29:0] word_addr = mem_addr[31:2];
-   wire        isIO = mem_addr[13];
    
    always @(posedge clock) begin
-      if(isIO) begin
-	 if(|mem_wmask) begin
-	    if(word_addr[0]) begin
-	       $write("%c",mem_wdata[7:0]);
-	       $fflush(32'h8000_0001);
-	    end
-	    if(word_addr[1]) begin
-	       $display("Output: %b %0d %0d",mem_wdata, mem_wdata, $signed(mem_wdata));
-	    end
-	 end
-      end else begin
-	 if(mem_rstrb) begin
-            mem_rdata <= MEM[word_addr];
-	 end
-	 if(mem_wmask[0]) MEM[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
-	 if(mem_wmask[1]) MEM[word_addr][15:8 ] <= mem_wdata[15:8 ];
-	 if(mem_wmask[2]) MEM[word_addr][23:16] <= mem_wdata[23:16];
-	 if(mem_wmask[3]) MEM[word_addr][31:24] <= mem_wdata[31:24];
+      if(mem_rstrb) begin
+         mem_rdata <= MEM[word_addr];
       end
+      if(mem_wmask[0]) MEM[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
+      if(mem_wmask[1]) MEM[word_addr][15:8 ] <= mem_wdata[15:8 ];
+      if(mem_wmask[2]) MEM[word_addr][23:16] <= mem_wdata[23:16];
+      if(mem_wmask[3]) MEM[word_addr][31:24] <= mem_wdata[31:24];
    end
    
 endmodule
@@ -396,15 +382,6 @@ module SOC(
    wire mem_rstrb;
    wire [31:0] mem_wdata;
    wire [3:0]  mem_wmask;
-   
-   Memory RAM(
-      .clock(clock),
-      .mem_addr(mem_addr),
-      .mem_rdata(mem_rdata),
-      .mem_rstrb(mem_rstrb),
-      .mem_wdata(mem_wdata),
-      .mem_wmask(mem_wmask)	      
-   );
 
    RiscV CPU(
       .clock(clock),
@@ -414,6 +391,40 @@ module SOC(
       .mem_wdata(mem_wdata),
       .mem_wmask(mem_wmask)	      
    );
+
+   wire isIO  = mem_addr[12];
+   wire isRAM = !isIO; 
+
+   // SOC memory map:
+   // 0 ... 4095: 1024 words of RAM
+   // 
+
+
+   
+   Memory RAM(
+      .clock(clock),
+      .mem_addr(mem_addr),
+      .mem_rdata(mem_rdata),
+      .mem_rstrb(isRAM && mem_rstrb),
+      .mem_wdata(mem_wdata),
+      .mem_wmask({4{isRAM}} & mem_wmask)	      
+   );
+   
+   always @(posedge clock) begin
+      if(isIO) begin
+	 if(|mem_wmask) begin
+	    if(mem_addr[2]) begin
+	       $write("%c",mem_wdata[7:0]);
+	       $fflush(32'h8000_0001);
+	    end
+	    if(mem_addr[3]) begin
+	       $display("Output: %b %0d %0d",mem_wdata, mem_wdata, $signed(mem_wdata));
+	    end
+	 end	    
+      end
+   end
+   
+
    
 endmodule
    
