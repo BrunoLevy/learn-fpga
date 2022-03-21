@@ -282,7 +282,6 @@ task JAL;
    input [4:0] rd;
    input [31:0] imm;
    begin
-      $display("JAL, imm = %d",imm);
       JType(7'b1101111, rd, imm);
    end
 endtask 
@@ -619,11 +618,15 @@ endtask
      inout integer L;
      begin
 	if(L != 0 && L != memPC) begin
+`ifdef SIM	   
 	   $display("LABEL at %d: wrong forward declaration as %d",memPC,L);
+`endif	   
 	   ASMerror=1;
 	end
 	L = memPC;
+`ifdef SIM	   	
 	$display("LABEL: %d",memPC);
+`endif	
      end
    endtask
    
@@ -631,7 +634,9 @@ endtask
       input integer L;
       begin
 	 if(L == 0) begin
+`ifdef SIM	   	    
 	    $display("LABEL used before set");
+`endif	    
 	    ASMerror = 1;
 	 end
 	 LabelRef = L - memPC;

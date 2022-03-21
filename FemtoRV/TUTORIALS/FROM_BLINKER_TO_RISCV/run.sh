@@ -1,3 +1,3 @@
 rm -f a.out
-iverilog bench_iverilog.v $1
+iverilog -DSIM bench_iverilog.v $1
 vvp a.out

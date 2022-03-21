@@ -20,11 +20,11 @@ module Memory (
 
 `include "riscv_assembly.v"
 
-`ifdef SIM   
+`ifdef SIM
    initial begin
        mem_rdata = 0;
    end
-`endif   
+`endif
    
    // MEM initialization, using our poor's men assembly
    // in "risc_assembly.v".
@@ -42,7 +42,15 @@ module Memory (
       //      SW(a0,gp,4); -> displays character
       //      SW(a0,gp,8); -> displays number
       LI(gp,4096);
+
       
+Label(L1_);
+      LI(a0,15);
+      SW(a0,gp,8);
+      JAL(x0,LabelRef(L1_));
+      
+
+/*      
       LI(a0,8);
       SW(a0,gp,8);
       LI(a1,9);
@@ -66,7 +74,8 @@ Label(L2_);
       SLLI(a2,a2,1);
       BNEZ(a1,LabelRef(L1_));
       RET();
-
+*/
+      
 `ifdef SIM      
       if(ASMerror) begin
 	 $finish();
@@ -74,6 +83,7 @@ Label(L2_);
 `endif      
    end
 
+   
    wire [29:0] word_addr = mem_addr[31:2];
    
    always @(posedge clock) begin
@@ -145,35 +155,55 @@ module RiscV (
    wire [6:0] funct7 = instr[31:25];
    
    // The registers bank
-   reg [31:0] RegisterBank [0:31];
+   reg [31:0] RegisterBank [31:0];
    reg [31:0] rs1; // value of source
    reg [31:0] rs2; //  registers.
    wire [31:0] writeBackData; // data to be written to rd
    wire        writeBackEn;   // asserted if data should be written to rd
 
+   always @(posedge clock) begin
+      if(writeBackEn) begin
+	 if(rdId != 0) begin
+	    RegisterBank[rdId] <= writeBackData;
+	 end
+      end
+   end
+
+`ifdef SIM   
    integer     i;
    initial begin
       for(i=0; i<32; i++) begin
 	 RegisterBank[i] = 0;
       end
    end
-
+`endif
+   
    // The ALU
    wire [31:0] aluIn1 = rs1;
    wire [31:0] aluIn2 = isALUreg ? rs2 : Iimm;
    reg [31:0] aluOut;
    wire [4:0] shamt = isALUreg ? rs2[4:0] : instr[24:20]; // shift amount
 
+   // The adder is used by both arithmetic instructions and JALR.
+   wire [31:0] aluPlus = aluIn1 + aluIn2;
+
+   // Use a single 33 bits subtract to do subtraction and all comparisons
+   // (trick borrowed from swapforth/J1)
+   wire [32:0] aluMinus = {1'b1, ~aluIn2} + {1'b0,aluIn1} + 33'b1;
+   wire        LT  = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : aluMinus[32];
+   wire        LTU = aluMinus[32];
+   wire        EQ  = (aluMinus[31:0] == 0);
+   
    always @(*) begin
       case(funct3)
-	3'b000: aluOut = (funct7[5] & instr[5]) ? (aluIn1 - aluIn2) : (aluIn1 + aluIn2);
+	3'b000: aluOut = (funct7[5] & instr[5]) ? aluMinus : aluPlus;
 	3'b001: aluOut = aluIn1 << shamt;
-	3'b010: aluOut = ($signed(aluIn1) < $signed(aluIn2));
-	3'b011: aluOut = (aluIn1 < aluIn2);
+	3'b010: aluOut = LT;
+	3'b011: aluOut = LTU;
 	3'b100: aluOut = (aluIn1 ^ aluIn2);
 	3'b101: aluOut = funct7[5]? ($signed(aluIn1) >>> shamt) : ($signed(aluIn1) >> shamt); 
 	3'b110: aluOut = (aluIn1 | aluIn2);
-	3'b111: aluOut = (aluIn1 & aluIn2);	
+	3'b111: aluOut = (aluIn1 & aluIn2);
       endcase
    end
 
@@ -187,12 +217,12 @@ module RiscV (
    reg takeBranch;
    always @(*) begin
       case(funct3)
-	3'b000: takeBranch = (rs1 == rs2);
-	3'b001: takeBranch = (rs1 != rs2);
-	3'b100: takeBranch = ($signed(rs1) < $signed(rs2));
-	3'b101: takeBranch = ($signed(rs1) >= $signed(rs2));
-	3'b110: takeBranch = (rs1 < rs2);
-	3'b110: takeBranch = (rs1 >= rs2);
+	3'b000:  takeBranch = EQ;
+	3'b001:  takeBranch = !EQ;
+	3'b100:  takeBranch = LT;
+	3'b101:  takeBranch = !LT;
+	3'b110:  takeBranch = LTU;
+	3'b110:  takeBranch = !LTU;
 	default: takeBranch = 1'b0;
       endcase
    end
@@ -272,15 +302,9 @@ module RiscV (
 			  (isAUIPC) ? (PC + Uimm) :
 			  (isLoad)  ? LOAD_data :
 			  aluOut;
-   assign writeBackEn = 
-			(state == EXECUTE && 
-			   (isALUreg || 
-			    isALUimm || 
-			    isJAL    || 
-			    isJALR   || 
-			    isLUI    || 
-			    isAUIPC)
-			 ) || (state == WAIT_DATA);
+   
+   assign writeBackEn = (state == EXECUTE && !isBranch && !isStore) ||
+		        (state == WAIT_DATA);
 
    // next PC
    wire [31:0] nextPC = 
@@ -308,36 +332,13 @@ module RiscV (
 	   state <= EXECUTE;
 	end
 	EXECUTE: begin
-	   /*
-	   case (1'b1)
-	     isALUreg: $display(
-				"%d ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
-				PC, rdId, rs1Id, rs2Id, funct3
-		       );
-	     isALUimm: $display(
-				"%d ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
-				PC, rdId, rs1Id, Iimm, funct3
-		       );
-	     isBranch: $display(
-				"%d BRANCH rs1=%d rs2=%d takeBranch=%b",
-				PC, rs1Id, rs2Id, takeBranch
-		       );
-	     isJAL:    $display("%d JAL",PC);
-	     isJALR:   $display("%d JALR",PC);
-	     isAUIPC:  $display("%d AUIPC",PC);
-	     isLUI:    $display("%d LUI",PC);	
-	     isLoad:   $display("%d LOAD",PC);
-	     isStore:  $display("%d STORE",PC);
-	     isSYSTEM: $display("%d SYSTEM",PC);
-	   endcase 
-	   */
 `ifdef SIM	   
 	   if(isSYSTEM) begin
 	      $finish();
 	   end
 `endif	   
 	   PC <= nextPC;
-	   loadstore_addr <= isStore ? rs1 + Simm : rs1 + Iimm;
+	   loadstore_addr <= rs1 + (isStore ? Simm : Iimm);
 	   state <= isLoad  ? LOAD  : 
 		    isStore ? STORE : 
 		    FETCH_INSTR;
@@ -357,11 +358,6 @@ module RiscV (
 	end
       endcase 
 
-      if(writeBackEn && rdId != 0) begin
-	 RegisterBank[rdId] <= writeBackData;
-	 // $display("x%0d <= %b %0d %0d",rdId,writeBackData,writeBackData,$signed(writeBackData));
-      end
-      
    end
 
    assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ?
@@ -399,8 +395,6 @@ module SOC(
    // SOC memory map:
    // 0 ... 4095: 1024 words of RAM
    // 
-
-
    
    Memory RAM(
       .clock(clock),
