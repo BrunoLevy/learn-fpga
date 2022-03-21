@@ -1,16 +1,13 @@
 /**
  * Step 1: simulation of a Blinker
- * Usage:
- *    iverilog step1.v
- *    vvp a.out
- *    to exit: <ctrl><c> then finish
  */
 
 `default_nettype none
 
-module Blink (
+module SOC (
     input clock,
-    output led
+    output leds_active,
+    output [4:0] leds
 );
    reg count;
    initial begin
@@ -19,25 +16,7 @@ module Blink (
    always @(posedge clock) begin
       count <= ~count;
    end
-   assign led = count;
+   assign leds = {4'b0, count};
+   assign leds_active = 1'b1;
 endmodule
 
-module bench();
-   reg clock;
-   wire led;
-
-   Blink uut(
-     .clock(clock),
-     .led(led)	     
-   );
-   
-   initial begin
-      clock = 0;
-      forever begin
-	 #1 clock = ~clock;
-	 $display("LED = %b",led);
-      end
-   end
-   
-endmodule   
-   

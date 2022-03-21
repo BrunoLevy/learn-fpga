@@ -1,3 +1,3 @@
 rm -f a.out
-iverilog $1
+iverilog bench_iverilog.v $1
 vvp a.out

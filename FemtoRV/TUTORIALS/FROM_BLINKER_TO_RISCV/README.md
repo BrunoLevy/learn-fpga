@@ -2,6 +2,16 @@
 
 A progressive journey from a simple blinky design to a RISC-V core.
 
+To start a simulation:
+```
+   $ run.sh stepnn.v
+```
+
+To exit the simulation:
+```
+  <ctrl><c>
+  finish
+```
 
 - [step 1](step1.v): Blinker in simulation
 - [step 2](step2.v): Blinker with five LEDs
@@ -16,7 +26,7 @@ A progressive journey from a simple blinky design to a RISC-V core.
 - [step 11](step11.v): Memory in separate module
 - [step 12](step12.v): Load
 - [step 13](step13.v): Store
-- [step 14](step14.v): Playing with more interesting programs
+- [step 14](step14.v): MUL routine
 
 _WIP_
 

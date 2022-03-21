@@ -1,19 +1,18 @@
 /**
  * Step 9: Creating a RISC-V processor
  *         Branches
- * Usage:
- *    iverilog step9.v
- *    vvp a.out
- *    to exit: <ctrl><c> then finish
  */
 
 `default_nettype none
 
-module RiscV (
+module SOC (
     input clock,
+    output leds_active,
     output [4:0] leds
 );
-   assign leds = 0; // we will use the LEDs later
+   // we will use the LEDs later...
+   assign leds = 5'b0; 
+   assign leds_active = 1'b0;
    
    reg [31:0] MEM [0:255]; 
    reg [31:0] PC;          // program counter
@@ -195,23 +194,4 @@ module RiscV (
       
    end
 endmodule
-
-module bench();
-   reg clock;
-   wire [4:0] leds;
-
-   RiscV uut(
-     .clock(clock),
-     .leds(leds)	     
-   );
-   
-   initial begin
-      clock = 0;
-      forever begin
-	 #1 clock = ~clock;
-	 // $display("LEDS=%b",leds); // we will use the LEDs later
-      end
-   end
-   
-endmodule   
    

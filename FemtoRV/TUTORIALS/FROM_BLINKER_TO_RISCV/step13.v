@@ -1,10 +1,6 @@
 /**
  * Step 13: Creating a RISC-V processor
  *         Store 
- * Usage:
- *    iverilog step13.v
- *    vvp a.out
- *    to exit: <ctrl><c> then finish
  */
 
 `default_nettype none
@@ -346,9 +342,12 @@ endmodule
 
 module SOC(
     input clock,
+    output leds_active,
     output [4:0] leds
 );
-   assign leds = 0;
+   // we will use the LEDs later...
+   assign leds = 5'b0; 
+   assign leds_active = 1'b0;
 
    wire [31:0] mem_addr;
    wire [31:0] mem_rdata;
@@ -375,24 +374,3 @@ module SOC(
    );
    
 endmodule
-
-
-module bench();
-   reg clock;
-   wire [4:0] leds;
-   
-   SOC uut(
-     .clock(clock),
-     .leds(leds)	     
-   );
-   
-   initial begin
-      clock = 0;
-      forever begin
-	 #1 clock = ~clock;
-	 // $display("LEDS=%b",leds); // we will use the LEDs later
-      end
-   end
-   
-endmodule   
-   
