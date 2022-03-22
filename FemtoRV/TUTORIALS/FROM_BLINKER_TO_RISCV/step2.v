@@ -1,5 +1,6 @@
 /**
- * Step 2: Blinker (slower)
+ * Step 2: Blinker (slower version)
+ * DONE
  */
 
 `default_nettype none

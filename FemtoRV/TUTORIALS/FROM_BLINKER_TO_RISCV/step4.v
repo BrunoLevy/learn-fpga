@@ -6,53 +6,51 @@
 `default_nettype none
 
 module SOC (
-    input clock,
-    output [4:0] leds,
-    output leds_active
+    input  CLK,        // system clock 
+    input  RESET,      // reset button
+    output [4:0] LEDS, // system LEDs
+    input  RXD,        // UART receive
+    output TXD         // UART transmit
 );
-   // we will use the LEDs later...
-   assign leds = 5'b0; 
-   assign leds_active = 1'b0;
+   wire clock;
    
-   reg [31:0] ROM [0:255]; 
-   reg [31:0] PC;          // program counter
-   reg [31:0] instr;       // current instruction
+   reg [31:0] MEM [0:256]; 
+   reg [31:0] PC;       // program counter
+   reg [31:0] instr;    // current instruction
    
    initial begin
-
-      PC    = 0;
-      
+      PC = 0;
       // add x0, x0, x0
       //                   rs2   rs1  add  rd   ALUREG
       instr = 32'b0000000_00000_00000_000_00000_0110011;
       // add x1, x0, x0
-      //                    rs2   rs1  add  rd   ALUREG
-      ROM[0] = 32'b0000000_00000_00000_000_00001_0110011;
+      //                    rs2   rs1  add  rd  ALUREG
+      MEM[0] = 32'b0000000_00000_00000_000_00001_0110011;
       // addi x1, x1, 1
       //             imm         rs1  add  rd   ALUIMM
-      ROM[1] = 32'b000000000001_00001_000_00001_0010011;
+      MEM[1] = 32'b000000000001_00001_000_00001_0010011;
       // addi x1, x1, 1
       //             imm         rs1  add  rd   ALUIMM
-      ROM[2] = 32'b000000000001_00001_000_00001_0010011;
+      MEM[2] = 32'b000000000001_00001_000_00001_0010011;
       // addi x1, x1, 1
       //             imm         rs1  add  rd   ALUIMM
-      ROM[3] = 32'b000000000001_00001_000_00001_0010011;
+      MEM[3] = 32'b000000000001_00001_000_00001_0010011;
       // addi x1, x1, 1
       //             imm         rs1  add  rd   ALUIMM
-      ROM[4] = 32'b000000000001_00001_000_00001_0010011;
-
+      MEM[4] = 32'b000000000001_00001_000_00001_0010011;
+      // lw x2,0(x1)
+      //             imm         rs1   w   rd   LOAD
+      MEM[5] = 32'b000000000000_00001_010_00010_0000011;
+      // sw x2,0(x1)
+      //             imm   rs2   rs1   w   imm  STORE
+      MEM[6] = 32'b000000_00001_00010_010_00000_0100011;
       
-      ROM[5] = 0;
+      // ebreak
+      //                                        SYSTEM
+      MEM[7] = 32'b000000000001_00000_000_00000_1110011;
       
    end
 
-   always @(posedge clock) begin
-      instr <= ROM[PC];
-      PC <= PC + 1;
-      if(instr == 0) begin
-	 $finish();
-      end
-   end
 
    // See the table P. 105 in RISC-V manual
    
@@ -85,6 +83,27 @@ module SOC (
    wire [6:0] funct7 = instr[31:25];
    
    always @(posedge clock) begin
+      if(RESET) begin
+	 PC <= 0;
+	 instr <= 32'b0000000_00000_00000_000_00000_0110011; // NOP
+      end else if(!isSYSTEM) begin
+	 instr <= MEM[PC];
+	 PC <= PC+1;
+      end
+
+`ifdef BENCH      
+      if(isSYSTEM) begin
+	 $finish();
+      end
+`endif      
+
+   end
+
+   assign LEDS = isSYSTEM ? 31 : {PC[0],isALUreg,isALUimm,isStore,isLoad};
+   
+`ifdef BENCH   
+   always @(posedge clock) begin
+      $display("PC=%0d",PC);
       case (1'b1)
 	isALUreg: $display(
 	      "ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
@@ -104,6 +123,28 @@ module SOC (
 	isSYSTEM: $display("SYSTEM");
       endcase 
    end
+`endif
+
+// Decceleration factor to make it possible
+// to observe what happens.
+// Simulation is approx. 16 times slower than
+// actual device.
+`ifdef BENCH
+   localparam slow_bit=17;
+`else
+   localparam slow_bit=21;
+`endif
+
+// Comment to deactivate clock decceleration.
+`define SLOW
+
+`ifdef SLOW
+   reg [slow_bit:0] slow_CLK = 0;
+   always @(posedge CLK) slow_CLK <= slow_CLK + 1;
+   assign clock = slow_CLK[slow_bit];
+`else
+   assign clock = CLK;
+`endif
    
 endmodule
 

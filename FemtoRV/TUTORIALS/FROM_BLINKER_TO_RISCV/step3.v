@@ -1,5 +1,6 @@
 /**
- * Step 3: RAM
+ * Step 3: Display a led pattern "animation" stored in BRAM.
+ * DONE
  */
 
 `default_nettype none
