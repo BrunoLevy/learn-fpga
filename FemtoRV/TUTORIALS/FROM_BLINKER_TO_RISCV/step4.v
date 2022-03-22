@@ -1,6 +1,7 @@
 /**
  * Step 4: Creating a RISC-V processor
  *         The instruction decoder
+ * DONE
  */
 
 `default_nettype none
@@ -12,9 +13,10 @@ module SOC (
     input  RXD,        // UART receive
     output TXD         // UART transmit
 );
-   wire clock;
+
+   wire    clock;
    
-   reg [31:0] MEM [0:256]; 
+   reg [31:0] MEM [0:255]; 
    reg [31:0] PC;       // program counter
    reg [31:0] instr;    // current instruction
    

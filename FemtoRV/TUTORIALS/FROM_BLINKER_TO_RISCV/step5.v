@@ -1,20 +1,22 @@
 /**
  * Step 5: Creating a RISC-V processor
  *         The register bank and the state machine
+ * DONE
  */
 
 `default_nettype none
 
 module SOC (
-    input clock,
-    output leds_active,
-    output [4:0] leds
+    input  CLK,        // system clock 
+    input  RESET,      // reset button
+    output [4:0] LEDS, // system LEDs
+    input  RXD,        // UART receive
+    output TXD         // UART transmit
 );
-   // we will use the LEDs later...
-   assign leds = 5'b0; 
-   assign leds_active = 1'b0;
+
+   wire    clock;
    
-   reg [31:0] ROM [0:255]; 
+   reg [31:0] MEM [0:255]; 
    reg [31:0] PC;          // program counter
    reg [31:0] instr;       // current instruction
 
@@ -26,23 +28,24 @@ module SOC (
       instr = 32'b0000000_00000_00000_000_00000_0110011;
       // add x1, x0, x0
       //                    rs2   rs1  add  rd   ALUREG
-      ROM[0] = 32'b0000000_00000_00000_000_00001_0110011;
+      MEM[0] = 32'b0000000_00000_00000_000_00001_0110011;
       // addi x1, x1, 1
       //             imm         rs1  add  rd   ALUIMM
-      ROM[1] = 32'b000000000001_00001_000_00001_0010011;
+      MEM[1] = 32'b000000000001_00001_000_00001_0010011;
       // addi x1, x1, 1
       //             imm         rs1  add  rd   ALUIMM
-      ROM[2] = 32'b000000000001_00001_000_00001_0010011;
+      MEM[2] = 32'b000000000001_00001_000_00001_0010011;
       // addi x1, x1, 1
       //             imm         rs1  add  rd   ALUIMM
-      ROM[3] = 32'b000000000001_00001_000_00001_0010011;
+      MEM[3] = 32'b000000000001_00001_000_00001_0010011;
       // addi x1, x1, 1
       //             imm         rs1  add  rd   ALUIMM
-      ROM[4] = 32'b000000000001_00001_000_00001_0010011;
+      MEM[4] = 32'b000000000001_00001_000_00001_0010011;
 
-      
-      ROM[5] = 0;
-      
+      // ebreak
+      //                                        SYSTEM
+      MEM[5] = 32'b000000000001_00000_000_00000_1110011;
+       
    end
 
    
@@ -85,12 +88,14 @@ module SOC (
    assign writeBackData = 0; // for now
    assign writeBackEn = 0;   // for now
 
-   integer     i;
+`ifdef BENCH   
+   integer i;
    initial begin
       for(i=0; i<32; ++i) begin
 	 RegisterBank[i] = 0;
       end
    end
+`endif   
 
    // The state machine
    
@@ -104,46 +109,77 @@ module SOC (
    end
 
    always @(posedge clock) begin
-      if(writeBackEn && rdId != 0) begin
-	 RegisterBank[rdId] <= writeBackData;
-      end
-      
-      case(state)
-	FETCH_INSTR: begin
-	   instr <= ROM[PC];
-	   state <= FETCH_REGS;
-	end
-	FETCH_REGS: begin
-	   rs1 <= RegisterBank[rs1Id];
-	   rs2 <= RegisterBank[rs2Id];
-	   state <= EXECUTE;
-	end
-	EXECUTE: begin
-	   case (1'b1)
-	     isALUreg: $display(
-				"ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
-				rdId, rs1Id, rs2Id, funct3
-		       );
-	     isALUimm: $display(
-				"ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
-				rdId, rs1Id, Iimm, funct3
-		       );
-	     isBranch: $display("BRANCH");
-	     isJAL:    $display("JAL");
-	     isJALR:   $display("JALR");
-	     isAUIPC:  $display("AUIPC");
-	     isLUI:    $display("LUI");	
-	     isLoad:   $display("LOAD");
-	     isStore:  $display("STORE");
-	     isSYSTEM: $display("SYSTEM");
-	   endcase 
-	   if(instr == 0) begin
-	      $finish();
+      if(RESET) begin
+      end else begin
+	 if(writeBackEn && rdId != 0) begin
+	    RegisterBank[rdId] <= writeBackData;
+	 end
+	 
+	 case(state)
+	   FETCH_INSTR: begin
+	      instr <= MEM[PC];
+	      state <= FETCH_REGS;
 	   end
-	   PC <= PC + 1;
-	   state <= FETCH_INSTR;
-	end
-      endcase
-   end
+	   FETCH_REGS: begin
+	      rs1 <= RegisterBank[rs1Id];
+	      rs2 <= RegisterBank[rs2Id];
+	      state <= EXECUTE;
+	   end
+	   EXECUTE: begin
+	      case (1'b1)
+		isALUreg: $display(
+				   "ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
+				   rdId, rs1Id, rs2Id, funct3
+				   );
+		isALUimm: $display(
+				   "ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
+				   rdId, rs1Id, Iimm, funct3
+				   );
+		isBranch: $display("BRANCH");
+		isJAL:    $display("JAL");
+		isJALR:   $display("JALR");
+		isAUIPC:  $display("AUIPC");
+		isLUI:    $display("LUI");	
+		isLoad:   $display("LOAD");
+		isStore:  $display("STORE");
+		isSYSTEM: $display("SYSTEM");
+	      endcase 
+`ifdef BENCH
+	      if(isSYSTEM) begin
+		 $finish();
+	      end
+`endif
+	      if(!isSYSTEM) begin
+		 PC <= PC + 1;
+	      end
+	      state <= FETCH_INSTR;
+	   end
+	 endcase
+      end 
+   end 
+
+   assign LEDS = isSYSTEM ? 31 : (1 << state);
+   
+// Decceleration factor to make it possible
+// to observe what happens.
+// Simulation is approx. 16 times slower than
+// actual device.
+`ifdef BENCH
+   localparam slow_bit=17;
+`else
+   localparam slow_bit=21;
+`endif
+
+// Comment to deactivate clock decceleration.
+`define SLOW
+
+`ifdef SLOW
+   reg [slow_bit:0] slow_CLK = 0;
+   always @(posedge CLK) slow_CLK <= slow_CLK + 1;
+   assign clock = slow_CLK[slow_bit];
+`else
+   assign clock = CLK;
+`endif
+   
 endmodule
 
