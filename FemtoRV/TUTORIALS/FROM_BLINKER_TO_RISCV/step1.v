@@ -1,22 +1,23 @@
 /**
- * Step 1: simulation of a Blinker
+ * Step 1: Blinker
  */
 
 `default_nettype none
 
 module SOC (
-    input clock,
-    output leds_active,
-    output [4:0] leds
+    input  CLK,        // system clock 
+    input  RESET,      // reset button
+    output [4:0] LEDS, // system LEDs
+    input  RXD,        // UART receive
+    output TXD         // UART transmit
 );
-   reg count;
-   initial begin
-      count = 0;
-   end
-   always @(posedge clock) begin
-      count <= ~count;
-   end
-   assign leds = {4'b0, count};
-   assign leds_active = 1'b1;
-endmodule
 
+
+// A blinker that counts on 5 bits, wired to the 5 LEDs
+   reg [4:0] count = 0;
+   always @(posedge CLK) begin
+      count <= count + 1;
+   end
+   assign LEDS = count;
+   
+endmodule

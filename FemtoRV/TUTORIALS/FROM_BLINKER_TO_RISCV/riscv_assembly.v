@@ -734,6 +734,14 @@ task MOV;
    end
 endtask
 
+task J;
+   input [31:0] imm;
+   begin
+      // TODO: far targets
+      JAL(zero,imm);
+   end
+endtask
+
 task BEQZ;
    input [4:0]  rs1;
    input [31:0] imm;

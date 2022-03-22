@@ -1,21 +1,27 @@
 module bench();
-   reg clock;
-   wire [4:0] leds;
-   wire leds_active;
+   reg CLK;
+   wire RESET = 0;
+   wire [4:0] LEDS;
+   reg  RXD = 1'b0;
+   wire TXD;
 
    SOC uut(
-     .clock(clock),
-     .leds(leds),
-     .leds_active(leds_active)
+     .CLK(CLK),
+     .RESET(RESET),
+     .LEDS(LEDS),
+     .RXD(RXD),
+     .TXD(TXD)
    );
-   
+
+   reg[4:0] prev_LEDS = 0;
    initial begin
-      clock = 0;
+      CLK = 0;
       forever begin
-	 #1 clock = ~clock;
-	 if(leds_active && clock) begin
-	    $display("LEDS = %b",leds);
-	 end   
+	 #1 CLK = ~CLK;
+	 if(LEDS != prev_LEDS) begin
+	    $display("LEDS = %b",LEDS);
+	 end
+	 prev_LEDS <= LEDS;
       end
    end
 endmodule   

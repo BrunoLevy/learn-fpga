@@ -1,8 +1,12 @@
-set_io clock 21
+set_io CLK 21
 
-set_io leds[0] 99
-set_io leds[1] 98
-set_io leds[2] 97
-set_io leds[3] 96
-set_io leds[4] 95
+set_io LEDS[0] 99
+set_io LEDS[1] 98
+set_io LEDS[2] 97
+set_io LEDS[3] 96
+set_io LEDS[4] 95
 
+set_io TXD 8
+set_io RXD 9
+
+set_io RESET 47

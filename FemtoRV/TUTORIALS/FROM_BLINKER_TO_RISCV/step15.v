@@ -1,5 +1,5 @@
 /**
- * Step 14: Creating a RISC-V processor
+ * Step 15: Creating a RISC-V processor
  *         Playing with more interesting programs
  *         Multiplication routine.
  */
@@ -8,7 +8,7 @@
 
 
 module Memory (
-   input clock,
+   input      clock,
    input      [31:0] mem_addr,  
    output reg [31:0] mem_rdata, 
    input   	     mem_rstrb,
@@ -29,52 +29,26 @@ module Memory (
    // MEM initialization, using our poor's men assembly
    // in "risc_assembly.v".
 
-   integer mulsi3 = 40;
    
    initial begin
 
-      L2_ = 60;
       
       // Stack pointer: end of RAM
-      LI(sp,4096);
+      //LI(sp,4096);
 
       // General pointer: IO page
       //      SW(a0,gp,4); -> displays character
       //      SW(a0,gp,8); -> displays number
+      //LI(gp,4096);
+
       LI(gp,4096);
-
-      
 Label(L1_);
-      LI(a0,15);
+      LI(a0,5);
       SW(a0,gp,8);
-      JAL(x0,LabelRef(L1_));
-      
-
-/*      
-      LI(a0,8);
+      LI(a0,10);
       SW(a0,gp,8);
-      LI(a1,9);
-      SW(a1,gp,8);
-      CALL(LabelRef(mulsi3));
-      SW(a0,gp,8);
+      J(LabelRef(L1_));
       EBREAK();
-
-      // Mutiplication routine,
-      // Input in a0 and a1
-      // Result in a0
-Label(mulsi3);
-      MOV(a2,a0);
-      LI(a0,0);
-Label(L1_); 
-      ANDI(a3,a1,1);
-      BEQZ(a3,LabelRef(L2_)); 
-      ADD(a0,a0,a2);
-Label(L2_);
-      SRLI(a1,a1,1);
-      SLLI(a2,a2,1);
-      BNEZ(a1,LabelRef(L1_));
-      RET();
-*/
       
 `ifdef SIM      
       if(ASMerror) begin
@@ -100,17 +74,21 @@ endmodule
 
 
 module RiscV (
-    input clock,
-    output    [31:0] mem_addr,  
-    input     [31:0] mem_rdata, 
-    output 	     mem_rstrb,
-    output    [31:0] mem_wdata,
-    output     [3:0] mem_wmask	       
+    input 	  clock,
+    input 	  resetN,
+    output [31:0] mem_addr, 
+    input [31:0]  mem_rdata, 
+    output 	  mem_rstrb,
+    output [31:0] mem_wdata,
+    output [3:0]  mem_wmask,
+    output [31:0] PCout	      
 );
    
    reg [31:0] PC;          // program counter
    reg [31:0] instr;       // current instruction
 
+   assign PCout = PC;
+   
    // add x0,x0,x0   
    localparam [31:0] NOP_CODEOP = 32'b0000000_00000_00000_000_00000_0110011; 
 
@@ -307,7 +285,8 @@ module RiscV (
 		        (state == WAIT_DATA);
 
    // next PC
-   wire [31:0] nextPC = 
+   wire [31:0] nextPC =
+	   isSYSTEM ? PC : 
           (isBranch && takeBranch) ? PC+Bimm :
 	  isJAL  ? PC+Jimm :
 	  isJALR ? rs1+Iimm :
@@ -318,6 +297,10 @@ module RiscV (
    end
 
    always @(posedge clock) begin
+      if(!resetN) begin
+	 PC <= 32'b0;
+	 state <= FETCH_INSTR;
+      end else begin
       case(state)
 	FETCH_INSTR: begin
 	   state <= WAIT_INSTR;
@@ -334,7 +317,7 @@ module RiscV (
 	EXECUTE: begin
 `ifdef SIM	   
 	   if(isSYSTEM) begin
-	      $finish();
+//	      $finish();
 	   end
 `endif	   
 	   PC <= nextPC;
@@ -357,7 +340,7 @@ module RiscV (
 	   state <= FETCH_INSTR;
 	end
       endcase 
-
+      end
    end
 
    assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ?
@@ -379,16 +362,47 @@ module SOC(
    wire mem_rstrb;
    wire [31:0] mem_wdata;
    wire [3:0]  mem_wmask;
+   wire [31:0] PC;
+   wire        resetN;
 
+   wire clock2;
+
+   reg [17:0] cnt = 0;
+   always @(posedge clock) cnt <= cnt + 1;
+   assign clock2 = cnt[17];
+// assign clock2 = clock;
+
+//   always @(posedge clock) begin
+//      $display("%b",clock2);
+//   end
+   
    RiscV CPU(
-      .clock(clock),
+      .clock(clock2),
+      .resetN(resetN),
       .mem_addr(mem_addr),
       .mem_rdata(mem_rdata),
       .mem_rstrb(mem_rstrb),
       .mem_wdata(mem_wdata),
-      .mem_wmask(mem_wmask)	      
+      .mem_wmask(mem_wmask),
+      .PCout(PC)	     
    );
 
+  reg RESET = 0;
+  reg [11:0] reset_cnt = 0;
+  always @(posedge clock2, posedge RESET) begin
+      if(RESET) begin
+	 reset_cnt <= 0;
+      end else begin
+	 reset_cnt <= reset_cnt + !resetN;
+      end
+  end
+
+   assign resetN = &reset_cnt;
+// assign resetN = 1'b1;
+
+   
+//   assign leds = PC[4:0];
+   
    wire isIO  = mem_addr[12];
    wire isRAM = !isIO; 
 
@@ -397,7 +411,7 @@ module SOC(
    // 
    
    Memory RAM(
-      .clock(clock),
+      .clock(clock2),
       .mem_addr(mem_addr),
       .mem_rdata(mem_rdata),
       .mem_rstrb(isRAM && mem_rstrb),
@@ -405,7 +419,7 @@ module SOC(
       .mem_wmask({4{isRAM}} & mem_wmask)	      
    );
    
-   always @(posedge clock) begin
+   always @(posedge clock2) begin
       if(isIO) begin
 	 if(|mem_wmask) begin
 	    if(mem_addr[2]) begin
@@ -417,8 +431,9 @@ module SOC(
 	    if(mem_addr[3]) begin
 `ifdef SIM	       	       
 	       $display("Output: %b %0d %0d",mem_wdata, mem_wdata, $signed(mem_wdata));
+	       $display("PC[6:2]: %d", PC[6:2]);
 `else
-	       leds <= mem_rdata[4:0];
+	       leds <= mem_wdata[4:0];
 `endif	       
 	    end
 	 end	    
