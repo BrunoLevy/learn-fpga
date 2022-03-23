@@ -1,6 +1,7 @@
 /**
- * Step 6: Creating a RISC-V processor
- *         The ALU
+ * Step 7: Creating a RISC-V processor
+ *         Assembly
+ * DONE
  */
 
 `default_nettype none
@@ -150,7 +151,7 @@ module SOC (
 	 end
 	 case(state)
 	   FETCH_INSTR: begin
-	      instr <= MEM[PC];
+	      instr <= MEM[PC[31:2]];
 	      state <= FETCH_REGS;
 	   end
 	   FETCH_REGS: begin
@@ -160,7 +161,7 @@ module SOC (
 	   end
 	   EXECUTE: begin
 	      if(!isSYSTEM) begin
-		 PC <= PC + 1;
+		 PC <= PC + 4;
 	      end
 	      state <= FETCH_INSTR;
 	   end

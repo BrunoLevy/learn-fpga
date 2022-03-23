@@ -1,6 +1,7 @@
 /**
  * Step 6: Creating a RISC-V processor
  *         The ALU
+ * DONE
  */
 
 `default_nettype none
