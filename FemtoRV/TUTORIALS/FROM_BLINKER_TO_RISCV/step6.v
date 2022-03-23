@@ -224,9 +224,9 @@ module SOC (
 // Simulation is approx. 16 times slower than
 // actual device.
 `ifdef BENCH
-   localparam slow_bit=17;
+   localparam slow_bit=15;
 `else
-   localparam slow_bit=21;
+   localparam slow_bit=19;
 `endif
 
 // Comment to deactivate clock decceleration.
