@@ -27,10 +27,6 @@ module SOC (
    initial begin
       PC = 0;
       
-      // add x0, x0, x0
-      //                   rs2   rs1  add  rd   ALUREG
-      // instr = 32'b0000000_00000_00000_000_00000_0110011;
-      
       // add x1, x0, x0
       //                    rs2   rs1  add  rd   ALUREG
       MEM[0] = 32'b0000000_00000_00000_000_00001_0110011;
@@ -164,7 +160,6 @@ module SOC (
       if(RESET) begin
 	 PC    <= 0;
 	 state <= FETCH_INSTR;
-	 // instr <= 32'b0000000_00000_00000_000_00000_0110011; // NOP
       end else begin
 	 if(writeBackEn && rdId != 0) begin
 	    RegisterBank[rdId] <= writeBackData;

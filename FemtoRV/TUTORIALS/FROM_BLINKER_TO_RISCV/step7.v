@@ -1,36 +1,33 @@
 /**
- * Step 7: Creating a RISC-V processor
- *         Assembly
+ * Step 6: Creating a RISC-V processor
+ *         The ALU
  */
 
 `default_nettype none
 
 module SOC (
-    input clock,
-    output leds_active,
-    output [4:0] leds
+    input  CLK,        // system clock 
+    input  RESET,      // reset button
+    output [4:0] LEDS, // system LEDs
+    input  RXD,        // UART receive
+    output TXD         // UART transmit
 );
-   // we will use the LEDs later...
-   assign leds = 5'b0; 
-   assign leds_active = 1'b0;
+
+   wire    clock;
+
+   // Plug the leds on register 1 to see its contents
+   reg [4:0] leds;
+   assign LEDS = leds;
+   
    
    reg [31:0] MEM [0:255]; 
    reg [31:0] PC;          // program counter
    reg [31:0] instr;       // current instruction
 
-
 `include "riscv_assembly.v"
-
-   // Initial value of program counter and instruction
-   // register.
+   
    initial begin
       PC = 0;
-      instr = NOP_CODEOP;
-   end
-
-   // MEM initialization, using our poor's men assembly
-   // in "risc_assembly.v".
-   initial begin
       ADD(x0,x0,x0);
       ADD(x1,x0,x0);
       ADDI(x1,x1,1);
@@ -42,15 +39,14 @@ module SOC (
       SRLI(x3,x3,3);
       SLLI(x3,x3,31);
       SRAI(x3,x3,5);
+      SRLI(x1,x3,26);
       EBREAK();
    end
 
    
    // See the table P. 105 in RISC-V manual
-   // The 10 RISC-V instructions
-   // Funny: what we do here is in fact just the reverse
-   // of what's done in riscv_assembly.v !
    
+   // The 10 RISC-V instructions
    wire isALUreg  =  (instr[6:0] == 7'b0110011); // rd <- rs1 OP rs2   
    wire isALUimm  =  (instr[6:0] == 7'b0010011); // rd <- rs1 OP Iimm
    wire isBranch  =  (instr[6:0] == 7'b1100011); // if(rs1 OP rs2) PC<-PC+Bimm
@@ -85,12 +81,14 @@ module SOC (
    wire [31:0] writeBackData; // data to be written to rd
    wire        writeBackEn;   // asserted if data should be written to rd
 
+`ifdef BENCH   
    integer     i;
    initial begin
       for(i=0; i<32; ++i) begin
 	 RegisterBank[i] = 0;
       end
    end
+`endif   
 
    // The ALU
    wire [31:0] aluIn1 = rs1;
@@ -100,12 +98,14 @@ module SOC (
 
    always @(*) begin
       case(funct3)
-	3'b000: aluOut = (funct7[5] & instr[5]) ? (aluIn1 - aluIn2) : (aluIn1 + aluIn2);
+	3'b000: aluOut = (funct7[5] & instr[5]) ? 
+			 (aluIn1 - aluIn2) : (aluIn1 + aluIn2);
 	3'b001: aluOut = aluIn1 << shamt;
 	3'b010: aluOut = ($signed(aluIn1) < $signed(aluIn2));
 	3'b011: aluOut = (aluIn1 < aluIn2);
 	3'b100: aluOut = (aluIn1 ^ aluIn2);
-	3'b101: aluOut = funct7[5]? ($signed(aluIn1) >>> shamt) : ($signed(aluIn1) >> shamt); 
+	3'b101: aluOut = funct7[5]? ($signed(aluIn1) >>> shamt) : 
+			 ($signed(aluIn1) >> shamt); 
 	3'b110: aluOut = (aluIn1 | aluIn2);
 	3'b111: aluOut = (aluIn1 & aluIn2);	
       endcase
@@ -116,7 +116,8 @@ module SOC (
    // to make the difference with ADDI
    //
    // SRLI/SRAI/SRL/SRA: 
-   // funct7[5] is 1 for arithmetic shift (SRA/SRAI) and 0 for logical shift (SRL/SRLI)
+   // funct7[5] is 1 for arithmetic shift (SRA/SRAI) and 
+   // 0 for logical shift (SRL/SRLI)
    
    // The state machine
    localparam FETCH_INSTR = 0;
@@ -133,49 +134,88 @@ module SOC (
    end
 
    always @(posedge clock) begin
-      case(state)
-	FETCH_INSTR: begin
-	   instr <= MEM[PC];
-	   state <= FETCH_REGS;
-	end
-	FETCH_REGS: begin
-	   rs1 <= RegisterBank[rs1Id];
-	   rs2 <= RegisterBank[rs2Id];
-	   state <= EXECUTE;
-	end
-	EXECUTE: begin
-	   case (1'b1)
-	     isALUreg: $display(
-				"ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
-				rdId, rs1Id, rs2Id, funct3
-		       );
-	     isALUimm: $display(
-				"ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
-				rdId, rs1Id, Iimm, funct3
-		       );
-	     isBranch: $display("BRANCH");
-	     isJAL:    $display("JAL");
-	     isJALR:   $display("JALR");
-	     isAUIPC:  $display("AUIPC");
-	     isLUI:    $display("LUI");	
-	     isLoad:   $display("LOAD");
-	     isStore:  $display("STORE");
-	     isSYSTEM: $display("SYSTEM");
-	   endcase 
-	   if(isSYSTEM) begin
-	      $finish();
+      if(RESET) begin
+	 PC    <= 0;
+	 state <= FETCH_INSTR;
+      end else begin
+	 if(writeBackEn && rdId != 0) begin
+	    RegisterBank[rdId] <= writeBackData;
+	    // For displaying what happens.
+	    if(rdId == 1) begin
+	       leds <= writeBackData;
+	    end
+`ifdef BENCH	 
+	    $display("x%0d <= %b",rdId,writeBackData);
+`endif	 
+	 end
+	 case(state)
+	   FETCH_INSTR: begin
+	      instr <= MEM[PC];
+	      state <= FETCH_REGS;
 	   end
-	   PC <= PC + 1;
-	   state <= FETCH_INSTR;
-	end
-      endcase 
-
-      if(writeBackEn && rdId != 0) begin
-	 RegisterBank[rdId] <= writeBackData;
-	 $display("x%0d <= %b",rdId,writeBackData);
+	   FETCH_REGS: begin
+	      rs1 <= RegisterBank[rs1Id];
+	      rs2 <= RegisterBank[rs2Id];
+	      state <= EXECUTE;
+	   end
+	   EXECUTE: begin
+	      if(!isSYSTEM) begin
+		 PC <= PC + 1;
+	      end
+	      state <= FETCH_INSTR;
+	   end
+	 endcase // case (state)
       end
-      
-      
    end
+
+`ifdef BENCH
+   always @(posedge clock) begin
+      if(state == FETCH_REGS) begin
+	 case (1'b1)
+	   isALUreg: $display(
+			      "ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
+			      rdId, rs1Id, rs2Id, funct3
+			      );
+	   isALUimm: $display(
+			      "ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
+			      rdId, rs1Id, Iimm, funct3
+			      );
+	   isBranch: $display("BRANCH");
+	   isJAL:    $display("JAL");
+	   isJALR:   $display("JALR");
+	   isAUIPC:  $display("AUIPC");
+	   isLUI:    $display("LUI");	
+	   isLoad:   $display("LOAD");
+	   isStore:  $display("STORE");
+	   isSYSTEM: $display("SYSTEM");
+	 endcase 
+	 if(isSYSTEM) begin
+	    $finish();
+	 end
+      end 
+   end
+`endif	      
+   
+// Decceleration factor to make it possible
+// to observe what happens.
+// Simulation is approx. 16 times slower than
+// actual device.
+`ifdef BENCH
+   localparam slow_bit=17;
+`else
+   localparam slow_bit=21;
+`endif
+
+// Comment to deactivate clock decceleration.
+`define SLOW
+
+`ifdef SLOW
+   reg [slow_bit:0] slow_CLK = 0;
+   always @(posedge CLK) slow_CLK <= slow_CLK + 1;
+   assign clock = slow_CLK[slow_bit];
+`else
+   assign clock = CLK;
+`endif
+   assign TXD  = 1'b0; // not used for now         
 endmodule
 
