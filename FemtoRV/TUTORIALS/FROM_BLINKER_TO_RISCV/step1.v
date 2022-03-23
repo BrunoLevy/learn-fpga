@@ -20,5 +20,5 @@ module SOC (
       count <= count + 1;
    end
    assign LEDS = count;
-   
+   assign TXD  = 1'b0; // not used for now
 endmodule

@@ -1,6 +1,7 @@
 /**
  * Step 5: Creating a RISC-V processor
  *         The register bank and the state machine
+ * LEDs show state.
  * DONE
  */
 
@@ -110,6 +111,9 @@ module SOC (
 
    always @(posedge clock) begin
       if(RESET) begin
+	 PC    <= 0;
+	 state <= FETCH_INSTR;
+	 instr <= 32'b0000000_00000_00000_000_00000_0110011; // NOP
       end else begin
 	 if(writeBackEn && rdId != 0) begin
 	    RegisterBank[rdId] <= writeBackData;
@@ -126,29 +130,6 @@ module SOC (
 	      state <= EXECUTE;
 	   end
 	   EXECUTE: begin
-	      case (1'b1)
-		isALUreg: $display(
-				   "ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
-				   rdId, rs1Id, rs2Id, funct3
-				   );
-		isALUimm: $display(
-				   "ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
-				   rdId, rs1Id, Iimm, funct3
-				   );
-		isBranch: $display("BRANCH");
-		isJAL:    $display("JAL");
-		isJALR:   $display("JALR");
-		isAUIPC:  $display("AUIPC");
-		isLUI:    $display("LUI");	
-		isLoad:   $display("LOAD");
-		isStore:  $display("STORE");
-		isSYSTEM: $display("SYSTEM");
-	      endcase 
-`ifdef BENCH
-	      if(isSYSTEM) begin
-		 $finish();
-	      end
-`endif
 	      if(!isSYSTEM) begin
 		 PC <= PC + 1;
 	      end
@@ -159,6 +140,34 @@ module SOC (
    end 
 
    assign LEDS = isSYSTEM ? 31 : (1 << state);
+
+`ifdef BENCH
+   always @(posedge clock) begin
+      if(state == FETCH_REGS) begin
+	 case (1'b1)
+	   isALUreg: $display(
+			      "ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
+			      rdId, rs1Id, rs2Id, funct3
+			      );
+	   isALUimm: $display(
+			      "ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
+			      rdId, rs1Id, Iimm, funct3
+			      );
+	   isBranch: $display("BRANCH");
+	   isJAL:    $display("JAL");
+	   isJALR:   $display("JALR");
+	   isAUIPC:  $display("AUIPC");
+	   isLUI:    $display("LUI");	
+	   isLoad:   $display("LOAD");
+	   isStore:  $display("STORE");
+	   isSYSTEM: $display("SYSTEM");
+	 endcase 
+	 if(isSYSTEM) begin
+	    $finish();
+	 end
+      end 
+   end
+`endif	      
    
 // Decceleration factor to make it possible
 // to observe what happens.
@@ -180,6 +189,6 @@ module SOC (
 `else
    assign clock = CLK;
 `endif
-   
+   assign TXD  = 1'b0; // not used for now         
 endmodule
 

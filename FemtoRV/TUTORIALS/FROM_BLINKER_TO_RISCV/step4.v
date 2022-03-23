@@ -1,6 +1,7 @@
 /**
  * Step 4: Creating a RISC-V processor
  *         The instruction decoder
+ * central LED blinks, other LEDs show instr type.
  * DONE
  */
 
@@ -147,6 +148,6 @@ module SOC (
 `else
    assign clock = CLK;
 `endif
-   
+   assign TXD  = 1'b0; // not used for now      
 endmodule
 

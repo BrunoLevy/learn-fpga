@@ -15,7 +15,7 @@ module SOC (
 
    wire clock;
    reg [4:0] PC = 0;
-   reg [4:0] MEM [0:19];
+   reg [4:0] MEM [0:20];
    initial begin
        MEM[0]  = 5'b00000;
        MEM[1]  = 5'b00001;
@@ -69,5 +69,6 @@ module SOC (
 `else
    assign clock = CLK;
 `endif
-
+   
+   assign TXD  = 1'b0; // not used for now   
 endmodule
