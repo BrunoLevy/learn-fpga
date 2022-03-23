@@ -13,9 +13,8 @@
 // module MyModule( my inputs, my outputs ...);
 //    ...
 //    reg [31:0] MEM [0:255]; 
-//    `include "riscv_assembly.v"
-//      // yes, needs to be included from here.
-//    ...
+//    `include "riscv_assembly.v" // yes, needs to be included from here.
+//    integer L0_;
 //    initial begin
 //                  ADD(x1,x0,x0);
 //                  ADDI(x2,x0,32);
@@ -23,24 +22,15 @@
 //                  BNE(x1, x2, LabelRef(L0_));
 //                  EBREAK();
 //    end
-//
-// There are 8 predefined labels L0_ ... L7_
-// You can add your own labels as follows:
-//    integer my_label;
-// Needs to be done before the initial block that
-// generates assembly.
-// If you do a forward reference to a label, it will
-// fail with an error, but will indicate the address of
-// the label, then you'll need to set the address of the
-// label at the beginning of the "initial" block. When
-// you re-run, it checks for you whether the value is
-// correct.
-// See step14.v for an example.
-// At the beginning of the "initial" block with ASM code,
-// there is:
-// L2 = 420;
-// If you remove the line, it will fail with an error, but
-// will display the value (420) to be used.
+//   1) simulate with icarus, it will complain about uninitialized labels,
+//      and will display for each Label() statement the address to be used
+//      (in the present case, it is 8)
+//   2) replace the declaration of the label:
+//      integer L0_ = 8;
+//      re-simulate with icarus
+//      If you made an error, it will be detected
+//   3) synthesize with yosys
+// (if you do not use labels, you can synthesize directly, of course...)
 //
 //
 // You can change the address where code is generated
