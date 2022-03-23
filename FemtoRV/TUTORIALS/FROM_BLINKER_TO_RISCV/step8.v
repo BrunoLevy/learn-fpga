@@ -22,19 +22,22 @@ module SOC (
    
    
    reg [31:0] MEM [0:255]; 
-   reg [31:0] PC;          // program counter
+   reg [31:0] PC=0;        // program counter
    reg [31:0] instr;       // current instruction
 
    
 `include "riscv_assembly.v"
-   
-   initial begin
-      PC = 0;
-      ADD(x1,x0,x0);
-      ADDI(x1,x1,1);
-      JAL(x0, -4); 
-      EBREAK();
-   end
+      integer L0_ = 4;
+      initial begin
+
+	 ADD(x1,x0,x0);
+      Label(L0_);
+	 ADDI(x1,x1,1);
+	 JAL(x0,L0_ - memPC);
+	 EBREAK();
+
+	 endASM();
+      end
 
    
    // See the table P. 105 in RISC-V manual

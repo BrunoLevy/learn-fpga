@@ -610,61 +610,41 @@ endtask
  *                   JAL(x0, LabelRef(L0_));
  */
 
-   integer L0_=0, L1_=0, L2_=0, L3_=0, L4_=0, L5_=0, L6_=0, L7_=0;
    integer ASMerror=0;
    
-
-/*   
    task Label;
-     inout integer L;
-     begin
-	if(L != 0 && L != memPC) begin
-`ifdef BENCH	   
-	   $display("LABEL at %d: wrong forward declaration as %d",memPC,L);
-`endif	   
-	   ASMerror=1;
+      inout integer L;
+      begin
+`ifdef BENCH
+	if(L == -1) begin
+	   $display("Missing label initialization");
+	   ASMerror = 1;
 	end
-	L = memPC;
-`ifdef BENCH	   	
-	$display("LABEL: %d",memPC);
-`endif	
+	if(L != -1 && L != memPC) begin
+	   $display("Incorrect label initialization");
+	   ASMerror = 1;
+	end
+	$display("Label:",memPC);
+`endif	 
      end
    endtask
-*/
 
-`ifdef BENCH   
-   function [31:0] LabelRefFunc;
+   function [31:0] LabelRef;
       input integer L;
+      input integer addr;
       begin
-	 if(L == 0) begin
-`ifdef BENCH	   	    
-	    $display("LABEL used before set");
-`endif	    
-	    ASMerror = 1;
-	 end
-	 LabelRefFunc = L - memPC;
+	 LabelRef = L - memPC;
       end
    endfunction
-`endif 
-   
-`ifdef BENCH
-   
- `define Label(L) \
-   if(L != 0 && L != memPC) begin \
-      $display("LABEL at %d: wrong forward declaration as %d",memPC,L); \
-      ASMerror=1; \
-   end \
-   L = memPC; \
-   $display("LABEL: %d",memPC)
 
-
-`define LabelRef(L) LabelRefFunc(L)
-
-`else
- `define Label(L) L = memPC; 
- `define LabelRef(L) (L - memPC)
+   task endASM;
+      begin
+`ifdef BENCH      
+	 if(ASMerror) $finish();
 `endif
-
+      end
+   endtask
+   
    
 /****************************************************************************/
 
