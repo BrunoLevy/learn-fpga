@@ -1,6 +1,7 @@
 /**
  * Step 11: Creating a RISC-V processor
  *         Separate memory
+ * DONE
  */
 
 `default_nettype none
