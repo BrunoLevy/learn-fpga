@@ -20,7 +20,6 @@ module SOC (
    reg [4:0] leds;
    assign LEDS = leds;
    
-   
    reg [31:0] MEM [0:255]; 
    reg [31:0] PC;          // program counter
    reg [31:0] instr;       // current instruction
@@ -120,6 +119,13 @@ module SOC (
    reg [31:0] aluOut;
    wire [4:0] shamt = isALUreg ? rs2[4:0] : instr[24:20]; // shift amount
 
+   // ADD/SUB/ADDI: 
+   // funct7[5] is 1 for SUB and 0 for ADD. We need also to test instr[5]
+   // to make the difference with ADDI
+   //
+   // SRLI/SRAI/SRL/SRA: 
+   // funct7[5] is 1 for arithmetic shift (SRA/SRAI) and 
+   // 0 for logical shift (SRL/SRLI)
    always @(*) begin
       case(funct3)
 	3'b000: aluOut = (funct7[5] & instr[5]) ? 
@@ -135,28 +141,17 @@ module SOC (
       endcase
    end
 
-   // ADD/SUB/ADDI: 
-   // funct7[5] is 1 for SUB and 0 for ADD. We need also to test instr[5]
-   // to make the difference with ADDI
-   //
-   // SRLI/SRAI/SRL/SRA: 
-   // funct7[5] is 1 for arithmetic shift (SRA/SRAI) and 
-   // 0 for logical shift (SRL/SRLI)
    
    // The state machine
    localparam FETCH_INSTR = 0;
    localparam FETCH_REGS  = 1;
    localparam EXECUTE     = 2;
-   reg [1:0] state;
+   reg [1:0] state = FETCH_INSTR;
 
    // register write back
    assign writeBackData = aluOut; 
    assign writeBackEn = (state == EXECUTE && (isALUreg || isALUimm));   
    
-   initial begin
-      state = FETCH_INSTR;
-   end
-
    always @(posedge clock) begin
       if(RESET) begin
 	 PC    <= 0;

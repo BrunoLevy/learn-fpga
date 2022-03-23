@@ -37,11 +37,11 @@ To exit the simulation:
 - [step 9](step9.v): Branches
 - [step 10](step10.v): LUI and AUIPC
 - [step 11](step11.v): Memory in separate module
-- [step 12](step12.v): Load
-- [step 13](step13.v): Store
-- [step 14](step14.v): MUL routine
 
 _WIP_
 
+- [step 12](step12.v): Load
+- [step 13](step13.v): Store
+- [step 14](step14.v): MUL routine
 - step 15: Using the GNU toolchain to compile programs
 - step 16: Devices (UART, ...)

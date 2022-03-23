@@ -103,12 +103,8 @@ module SOC (
    localparam FETCH_INSTR = 0;
    localparam FETCH_REGS  = 1;
    localparam EXECUTE     = 2;
-   reg [1:0] state;
+   reg [1:0] state = FETCH_INSTR;
    
-   initial begin
-      state = FETCH_INSTR;
-   end
-
    always @(posedge clock) begin
       if(RESET) begin
 	 PC    <= 0;

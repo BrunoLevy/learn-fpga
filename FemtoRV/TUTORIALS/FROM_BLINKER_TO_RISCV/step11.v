@@ -5,31 +5,25 @@
 
 `default_nettype none
 
-
 module Memory (
-   input clock,
-   input      [31:0] mem_addr,  
-   output reg [31:0] mem_rdata, 
-   input   	     mem_rstrb
+   input             clock,
+   input      [31:0] mem_addr,  // address to be read
+   output reg [31:0] mem_rdata, // data read from memory
+   input   	     mem_rstrb  // goes high when processor wants to read
 );
 
    reg [31:0] MEM [0:255]; 
 
 `include "riscv_assembly.v"
-   
-   initial begin
-       mem_rdata = 0;
-   end
-   
-   
-   // MEM initialization, using our poor's men assembly
-   // in "risc_assembly.v".
+   integer L0_=8;
    initial begin
                   ADD(x1,x0,x0);      
-                  ADDI(x2,x0,32);
-      Label(L0_); ADDI(x1,x1,1); 
+                  ADDI(x2,x0,31);
+      Label(L0_); 
+                  ADDI(x1,x1,1); 
                   BNE(x1, x2, LabelRef(L0_));
                   EBREAK();
+      endASM();
    end
 
    always @(posedge clock) begin
@@ -37,36 +31,24 @@ module Memory (
          mem_rdata <= MEM[mem_addr[31:2]];
       end
    end
-   
 endmodule
 
 
-module RiscV (
-    input clock,
-    output    [31:0] mem_addr,  
-    input     [31:0] mem_rdata, 
-    output 	     mem_rstrb
+module Processor (
+    input 	      clock,
+    input 	      RESET,
+    output     [31:0] mem_addr, 
+    input      [31:0] mem_rdata, 
+    output 	      mem_rstrb,
+    output reg [31:0] x1		  
 );
-   
-   reg [31:0] PC;          // program counter
+
+   reg [31:0] PC=0;        // program counter
    reg [31:0] instr;       // current instruction
 
-   // add x0,x0,x0   
-   localparam [31:0] NOP_CODEOP = 32'b0000000_00000_00000_000_00000_0110011; 
-
-   // Initial value of program counter and instruction
-   // register.
-   initial begin
-      PC = 0;
-      instr = NOP_CODEOP;
-   end
-
-   
    // See the table P. 105 in RISC-V manual
-   // The 10 RISC-V instructions
-   // Funny: what we do here is in fact just the reverse
-   // of what's done in riscv_assembly.v !
    
+   // The 10 RISC-V instructions
    wire isALUreg  =  (instr[6:0] == 7'b0110011); // rd <- rs1 OP rs2   
    wire isALUimm  =  (instr[6:0] == 7'b0010011); // rd <- rs1 OP Iimm
    wire isBranch  =  (instr[6:0] == 7'b1100011); // if(rs1 OP rs2) PC<-PC+Bimm
@@ -101,12 +83,14 @@ module RiscV (
    wire [31:0] writeBackData; // data to be written to rd
    wire        writeBackEn;   // asserted if data should be written to rd
 
+`ifdef BENCH   
    integer     i;
    initial begin
       for(i=0; i<32; ++i) begin
 	 RegisterBank[i] = 0;
       end
    end
+`endif   
 
    // The ALU
    wire [31:0] aluIn1 = rs1;
@@ -114,26 +98,30 @@ module RiscV (
    reg [31:0] aluOut;
    wire [4:0] shamt = isALUreg ? rs2[4:0] : instr[24:20]; // shift amount
 
-   always @(*) begin
-      case(funct3)
-	3'b000: aluOut = (funct7[5] & instr[5]) ? (aluIn1 - aluIn2) : (aluIn1 + aluIn2);
-	3'b001: aluOut = aluIn1 << shamt;
-	3'b010: aluOut = ($signed(aluIn1) < $signed(aluIn2));
-	3'b011: aluOut = (aluIn1 < aluIn2);
-	3'b100: aluOut = (aluIn1 ^ aluIn2);
-	3'b101: aluOut = funct7[5]? ($signed(aluIn1) >>> shamt) : ($signed(aluIn1) >> shamt); 
-	3'b110: aluOut = (aluIn1 | aluIn2);
-	3'b111: aluOut = (aluIn1 & aluIn2);	
-      endcase
-   end
-
    // ADD/SUB/ADDI: 
    // funct7[5] is 1 for SUB and 0 for ADD. We need also to test instr[5]
    // to make the difference with ADDI
    //
    // SRLI/SRAI/SRL/SRA: 
-   // funct7[5] is 1 for arithmetic shift (SRA/SRAI) and 0 for logical shift (SRL/SRLI)
+   // funct7[5] is 1 for arithmetic shift (SRA/SRAI) and 
+   // 0 for logical shift (SRL/SRLI)
+   always @(*) begin
+      case(funct3)
+	3'b000: aluOut = (funct7[5] & instr[5]) ? 
+			 (aluIn1 - aluIn2) : (aluIn1 + aluIn2);
+	3'b001: aluOut = aluIn1 << shamt;
+	3'b010: aluOut = ($signed(aluIn1) < $signed(aluIn2));
+	3'b011: aluOut = (aluIn1 < aluIn2);
+	3'b100: aluOut = (aluIn1 ^ aluIn2);
+	3'b101: aluOut = funct7[5]? ($signed(aluIn1) >>> shamt) : 
+			 ($signed(aluIn1) >> shamt); 
+	3'b110: aluOut = (aluIn1 | aluIn2);
+	3'b111: aluOut = (aluIn1 & aluIn2);	
+      endcase
+   end
 
+
+   // The predicate for branch instructions
    reg takeBranch;
    always @(*) begin
       case(funct3)
@@ -152,91 +140,109 @@ module RiscV (
    localparam WAIT_INSTR  = 1;
    localparam FETCH_REGS  = 2;
    localparam EXECUTE     = 3;
-   reg [1:0] state;
+   reg [1:0] state = FETCH_INSTR;
 
    // register write back
-   assign writeBackData = 
-			  (isJAL || isJALR) ? (PC + 4) :
+   assign writeBackData = (isJAL || isJALR) ? (PC + 4) :
 			  (isLUI) ? Uimm :
 			  (isAUIPC) ? (PC + Uimm) : 
 			  aluOut;
-   assign writeBackEn = (state == EXECUTE && (isALUreg || isALUimm || isJAL || isJALR || isLUI || isAUIPC));
-
+   
+   assign writeBackEn = (state == EXECUTE && 
+			 (isALUreg || 
+			  isALUimm || 
+			  isJAL    || 
+			  isJALR   ||
+			  isLUI    ||
+			  isAUIPC)
+			 );
    // next PC
-   wire [31:0] nextPC = 
-          (isBranch && takeBranch) ? PC+Bimm :
-	  isJAL  ? PC+Jimm :
-	  isJALR ? rs1+Iimm :
-	  PC+4;
+   wire [31:0] nextPC = (isBranch && takeBranch) ? PC+Bimm  :	       
+   	                isJAL                    ? PC+Jimm  :
+	                isJALR                   ? rs1+Iimm :
+	                PC+4;
    
-   initial begin
-      state = FETCH_INSTR;
-   end
-
    always @(posedge clock) begin
-      case(state)
-	FETCH_INSTR: begin
-	   state <= WAIT_INSTR;
-	end
-	WAIT_INSTR: begin
-	   instr <= mem_rdata;
-	   state <= FETCH_REGS;
-	end
-	FETCH_REGS: begin
-	   rs1 <= RegisterBank[rs1Id];
-	   rs2 <= RegisterBank[rs2Id];
-	   state <= EXECUTE;
-	end
-	EXECUTE: begin
-	   case (1'b1)
-	     isALUreg: $display(
-				"ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
-				rdId, rs1Id, rs2Id, funct3
-		       );
-	     isALUimm: $display(
-				"ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
-				rdId, rs1Id, Iimm, funct3
-		       );
-	     isBranch: $display(
-				"BRANCH rs1=%d rs2=%d takeBranch=%b",
-				rs1Id, rs2Id, takeBranch
-		       );
-	     isJAL:    $display("JAL");
-	     isJALR:   $display("JALR");
-	     isAUIPC:  $display("AUIPC");
-	     isLUI:    $display("LUI");	
-	     isLoad:   $display("LOAD");
-	     isStore:  $display("STORE");
-	     isSYSTEM: $display("SYSTEM");
-	   endcase 
-	   if(isSYSTEM) begin
-	      $finish();
+      if(RESET) begin
+	 PC    <= 0;
+	 state <= FETCH_INSTR;
+      end else begin
+	 if(writeBackEn && rdId != 0) begin
+	    RegisterBank[rdId] <= writeBackData;
+	    // For displaying what happens.
+	    if(rdId == 1) begin
+	       x1 <= writeBackData;
+	    end
+`ifdef BENCH	 
+	    $display("x%0d <= %b",rdId,writeBackData);
+`endif	 
+	 end
+	 case(state)
+	   FETCH_INSTR: begin
+	      state <= WAIT_INSTR;
 	   end
-	   PC <= nextPC;
-	   state <= FETCH_INSTR;
-	end
-      endcase 
-
-      if(writeBackEn && rdId != 0) begin
-	 RegisterBank[rdId] <= writeBackData;
-	 $display("x%0d <= %b",rdId,writeBackData);
+	   WAIT_INSTR: begin
+	      instr <= mem_rdata;
+	      state <= FETCH_REGS;
+	   end
+	   FETCH_REGS: begin
+	      rs1 <= RegisterBank[rs1Id];
+	      rs2 <= RegisterBank[rs2Id];
+	      state <= EXECUTE;
+	   end
+	   EXECUTE: begin
+	      if(!isSYSTEM) begin
+		 PC <= nextPC;
+	      end
+	      state <= FETCH_INSTR;
+	   end
+	 endcase 
       end
-      
    end
-   
+
    assign mem_addr = PC;
    assign mem_rstrb = (state == FETCH_INSTR);
-      
+   
+`ifdef BENCH
+   always @(posedge clock) begin
+      if(state == FETCH_REGS) begin
+	 case (1'b1)
+	   isALUreg: $display(
+			      "ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
+			      rdId, rs1Id, rs2Id, funct3
+			      );
+	   isALUimm: $display(
+			      "ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
+			      rdId, rs1Id, Iimm, funct3
+			      );
+	   isBranch: $display("BRANCH rs1=%0d rs2=%0d",rs1Id, rs2Id);
+	   isJAL:    $display("JAL");
+	   isJALR:   $display("JALR");
+	   isAUIPC:  $display("AUIPC");
+	   isLUI:    $display("LUI");	
+	   isLoad:   $display("LOAD");
+	   isStore:  $display("STORE");
+	   isSYSTEM: $display("SYSTEM");
+	 endcase 
+	 if(isSYSTEM) begin
+	    $finish();
+	 end
+      end 
+   end
+`endif	      
+   
 endmodule
 
-module SOC(
-    input clock,
-    output leds_active,
-    output [4:0] leds
+
+module SOC (
+    input  CLK,        // system clock 
+    input  RESET,      // reset button
+    output [4:0] LEDS, // system LEDs
+    input  RXD,        // UART receive
+    output TXD         // UART transmit
 );
-   // we will use the LEDs later...
-   assign leds = 5'b0; 
-   assign leds_active = 1'b0;
+
+   wire    clock;
 
    Memory RAM(
       .clock(clock),
@@ -248,14 +254,38 @@ module SOC(
    wire [31:0] mem_addr;
    wire [31:0] mem_rdata;
    wire mem_rstrb;
+   wire [31:0] x1;
 
-   RiscV CPU(
+   Processor CPU(
       .clock(clock),
+      .RESET(RESET),		 
       .mem_addr(mem_addr),
       .mem_rdata(mem_rdata),
-      .mem_rstrb(mem_rstrb)
+      .mem_rstrb(mem_rstrb),
+      .x1(x1)		 
    );
+   assign LEDS = x1[4:0];
    
+// Decceleration factor to make it possible
+// to observe what happens.
+// Simulation is approx. 16 times slower than
+// actual device.
+`ifdef BENCH
+   localparam slow_bit=15;
+`else
+   localparam slow_bit=19;
+`endif
+
+// Comment to deactivate clock decceleration.
+`define SLOW
+
+`ifdef SLOW
+   reg [slow_bit:0] slow_CLK = 0;
+   always @(posedge CLK) slow_CLK <= slow_CLK + 1;
+   assign clock = slow_CLK[slow_bit];
+`else
+   assign clock = CLK;
+`endif
+   assign TXD  = 1'b0; // not used for now         
 endmodule
 
-   

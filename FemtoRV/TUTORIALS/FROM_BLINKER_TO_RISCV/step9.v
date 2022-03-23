@@ -93,6 +93,13 @@ module SOC (
    reg [31:0] aluOut;
    wire [4:0] shamt = isALUreg ? rs2[4:0] : instr[24:20]; // shift amount
 
+   // ADD/SUB/ADDI: 
+   // funct7[5] is 1 for SUB and 0 for ADD. We need also to test instr[5]
+   // to make the difference with ADDI
+   //
+   // SRLI/SRAI/SRL/SRA: 
+   // funct7[5] is 1 for arithmetic shift (SRA/SRAI) and 
+   // 0 for logical shift (SRL/SRLI)
    always @(*) begin
       case(funct3)
 	3'b000: aluOut = (funct7[5] & instr[5]) ? 
@@ -107,14 +114,6 @@ module SOC (
 	3'b111: aluOut = (aluIn1 & aluIn2);	
       endcase
    end
-
-   // ADD/SUB/ADDI: 
-   // funct7[5] is 1 for SUB and 0 for ADD. We need also to test instr[5]
-   // to make the difference with ADDI
-   //
-   // SRLI/SRAI/SRL/SRA: 
-   // funct7[5] is 1 for arithmetic shift (SRA/SRAI) and 
-   // 0 for logical shift (SRL/SRLI)
 
    // The predicate for branch instructions
    reg takeBranch;
@@ -134,7 +133,7 @@ module SOC (
    localparam FETCH_INSTR = 0;
    localparam FETCH_REGS  = 1;
    localparam EXECUTE     = 2;
-   reg [1:0] state;
+   reg [1:0] state = FETCH_INSTR;
 
    // register write back
    assign writeBackData = (isJAL || isJALR) ? (PC + 4) : aluOut;
@@ -145,17 +144,11 @@ module SOC (
 			  isJALR)
 			 );
    // next PC
-   wire [31:0] nextPC =
-          (isBranch && takeBranch) ? PC+Bimm :	       
-   	  isJAL  ? PC+Jimm :
-	  isJALR ? rs1+Iimm :
-	  PC+4;
-
+   wire [31:0] nextPC = (isBranch && takeBranch) ? PC+Bimm :	       
+   	                isJAL                    ? PC+Jimm :
+	                isJALR                   ? rs1+Iimm :
+	                PC+4;
    
-   initial begin
-      state = FETCH_INSTR;
-   end
-
    always @(posedge clock) begin
       if(RESET) begin
 	 PC    <= 0;
@@ -187,7 +180,7 @@ module SOC (
 	      end
 	      state <= FETCH_INSTR;
 	   end
-	 endcase // case (state)
+	 endcase 
       end
    end
 
@@ -203,10 +196,7 @@ module SOC (
 			      "ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
 			      rdId, rs1Id, Iimm, funct3
 			      );
-	   isBranch: $display(
-			      "BRANCH rs1=%d rs2=%d takeBranch=%b",
-			      rs1Id, rs2Id, takeBranch
-		     );
+	   isBranch: $display("BRANCH rs1=%0d rs2=%0d",rs1Id, rs2Id);
 	   isJAL:    $display("JAL");
 	   isJALR:   $display("JALR");
 	   isAUIPC:  $display("AUIPC");
