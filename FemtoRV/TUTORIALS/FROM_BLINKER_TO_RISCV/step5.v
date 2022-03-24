@@ -131,7 +131,10 @@ module SOC (
 	      if(!isSYSTEM) begin
 		 PC <= PC + 1;
 	      end
-	      state <= FETCH_INSTR;
+	      state <= FETCH_INSTR;	      
+`ifdef BENCH      
+	      if(isSYSTEM) $finish();
+`endif      
 	   end
 	 endcase
       end 

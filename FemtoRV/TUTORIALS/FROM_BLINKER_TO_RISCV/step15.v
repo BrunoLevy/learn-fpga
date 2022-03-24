@@ -220,7 +220,7 @@ module Processor (
 	                                  isJALR   ? {aluPlus[31:1],1'b0} :
 	                                             PCplus4;
 
-   reg [31:0]  loadstore_addr;
+   wire [31:0] loadstore_addr = rs1 + Iimm;
    
    // Load
    // All memory accesses are aligned on 32 bits boundary. For this
@@ -289,8 +289,10 @@ module Processor (
 	      if(!isSYSTEM) begin
 		 PC <= nextPC;
 	      end
-	      loadstore_addr <= rs1 + Iimm;
 	      state <= isLoad ? LOAD : FETCH_INSTR;
+`ifdef BENCH      
+	      if(isSYSTEM) $finish();
+`endif      
 	   end
 	   LOAD: begin
 	      state <= WAIT_DATA;

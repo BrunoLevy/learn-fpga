@@ -45,6 +45,10 @@ To exit the simulation:
 
 _WIP_
 
-- [step 17](step17.v): MUL routine
-- step 18: Using the GNU toolchain to compile programs
-- step 19: Devices (UART, ...)
+- step 17: memory-mapped devices
+- step 18: Mandelbrot set
+- step 19: Faster simulation with Verilator
+- step 20: Using the GNU toolchain to compile programs
+- step 21: More devices (LED matrix, OLED screen...)
+- step 22: Running programs from the SPI Flash
+- step 23: Raytracing with the IceStick

@@ -246,6 +246,9 @@ module Processor (
 		 PC <= nextPC;
 	      end
 	      state <= FETCH_INSTR;
+`ifdef BENCH      
+	      if(isSYSTEM) $finish();
+`endif      
 	   end
 	 endcase 
       end

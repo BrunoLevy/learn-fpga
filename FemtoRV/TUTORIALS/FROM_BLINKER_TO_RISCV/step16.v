@@ -228,6 +228,13 @@ module Processor (
 				             Bimm[31:0] );
    wire [31:0] PCplus4 = PC+4;
    
+   wire [31:0] nextPC = ((isBranch && takeBranch) || isJAL) ? PCplusImm   :
+	                                  isJALR   ? {aluPlus[31:1],1'b0} :
+	                                             PCplus4;
+
+   wire [31:0] loadstore_addr = rs1 + (isStore ? Simm : Iimm);
+
+
    // register write back
    assign writeBackData = (isJAL || isJALR) ? PCplus4   :
 			      isLUI         ? Uimm      :
@@ -240,11 +247,6 @@ module Processor (
    assign writeBackEn = (state==EXECUTE && !isBranch && !isStore && !isLoad) ||
 			(state==WAIT_DATA) ;
    
-   wire [31:0] nextPC = ((isBranch && takeBranch) || isJAL) ? PCplusImm   :
-	                                  isJALR   ? {aluPlus[31:1],1'b0} :
-	                                             PCplus4;
-
-   reg [31:0]  loadstore_addr;
    
    // Load
    // All memory accesses are aligned on 32 bits boundary. For this
@@ -341,10 +343,12 @@ module Processor (
 	      if(!isSYSTEM) begin
 		 PC <= nextPC;
 	      end
-	      loadstore_addr <= isStore ? rs1 + Simm : rs1 + Iimm;
 	      state <= isLoad  ? LOAD  : 
 		       isStore ? STORE : 
 		       FETCH_INSTR;
+`ifdef BENCH      
+	      if(isSYSTEM) $finish();
+`endif      
 	   end
 	   LOAD: begin
 	      state <= WAIT_DATA;

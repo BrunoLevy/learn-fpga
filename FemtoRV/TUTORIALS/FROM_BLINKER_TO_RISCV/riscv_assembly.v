@@ -691,21 +691,24 @@ task NOP;
    end
 endtask
 
-// TO BE DEBUGGED, 
-// PROBLEM WITH NEGATIVE/SIGN-BIT EXPANSION
+// See https://stackoverflow.com/questions/50742420/
+// risc-v-build-32-bit-constants-with-lui-and-addi
+// Add imm[11] << 12 to the constant passed to LUI,
+// so that it cancels sign expansion done by ADDI
+// if imm[11] is 1.
 task LI;
    input [4:0]  rd;
    input [31:0] imm;
    begin
-      if(imm > 12'b111111111111) begin
-	 $display("LI large");
-	 LUI(rd,imm);
-	 if(imm[11:0] != 0) begin
-	    ORI(rd,rd,imm[11:0]);
-	 end
-      end else begin
-//	 $display("LI small");
+      if(imm == 0) begin
+	 ADD(rd,zero,zero);
+      end else if($signed(imm) >= -2048 && $signed(imm) < 2048) begin
 	 ADDI(rd,zero,imm);
+      end else begin
+	 LUI(rd,imm + (imm[11] << 12)); // cancel sign expansion
+	 if(imm[11:0] != 0) begin
+	    ADDI(rd,rd,imm[11:0]);
+	 end
       end
    end
 endtask

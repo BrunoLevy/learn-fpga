@@ -95,13 +95,9 @@ module SOC (
 	 instr <= MEM[PC];
 	 PC <= PC+1;
       end
-
 `ifdef BENCH      
-      if(isSYSTEM) begin
-	 $finish();
-      end
+      if(isSYSTEM) $finish();
 `endif      
-
    end
 
    assign LEDS = isSYSTEM ? 31 : {PC[0],isALUreg,isALUimm,isStore,isLoad};
