@@ -26,10 +26,9 @@ To exit the simulation:
 
 ## The steps
 
-
-- [step 1](step1.v): Blinker in simulation
-- [step 2](step2.v): Blinker with five LEDs
-- [step 3](step3.v): Blinker with five LEDs, slower version
+- [step 1](step1.v): Blinker, too fast, can't see anything
+- [step 2](step2.v): Blinker with clockworks
+- [step 3](step3.v): Blinker that loads pattern from RAM
 - [step 4](step4.v): The instruction decoder
 - [step 5](step5.v): The register bank and the state machine
 - [step 6](step6.v): The ALU
@@ -42,11 +41,10 @@ To exit the simulation:
 - [step 13](step13.v): Size optimization
 - [step 14](step14.v): Subroutines 2 (using Risc-V pseudo-instructions)
 - [step 15](step15.v): Load
+- [step 16](step16.v): Store
 
 _WIP_
 
-
-- [step 16](step16.v): Store
 - [step 17](step17.v): MUL routine
 - step 18: Using the GNU toolchain to compile programs
 - step 19: Devices (UART, ...)
