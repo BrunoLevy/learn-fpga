@@ -74,6 +74,9 @@ module Clockworks
 	 
 	 assign clk = CLK;
 
+// Preserve resources on Ice40HX1K (IceStick) with 
+// carefully tuned counter (12 bits suffice). 
+// For other FPGAs, use larger counter.
 `ifdef ICE_STICK
 	 reg [11:0] 	    reset_cnt = 0;
 `else   

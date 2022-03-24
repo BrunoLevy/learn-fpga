@@ -204,9 +204,9 @@ module Processor (
    
    assign writeBackEn = (state == EXECUTE && !isBranch && !isStore);
    
-   wire [31:0] nextPC = ((isBranch && takeBranch) || isJAL) ? PCplusImm  :	       
-	                isJALR                              ? {aluPlus[31:1],1'b0}:
-	                PCplus4;
+   wire [31:0] nextPC = ((isBranch && takeBranch) || isJAL) ? PCplusImm   :
+	                                  isJALR   ? {aluPlus[31:1],1'b0} :
+	                                             PCplus4;
 
    // The state machine
    localparam FETCH_INSTR = 0;
@@ -223,7 +223,7 @@ module Processor (
 	 if(writeBackEn && rdId != 0) begin
 	    RegisterBank[rdId] <= writeBackData;
 	    // For displaying what happens.
-	    if(rdId == 10) begin
+	    if(rdId == 10) begin // a1 = x10
 	       x10 <= writeBackData;
 	    end
 	 end

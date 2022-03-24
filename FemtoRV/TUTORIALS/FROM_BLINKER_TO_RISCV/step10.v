@@ -227,6 +227,5 @@ module SOC (
    
    assign TXD  = 1'b0; // not used for now   
 
-
 endmodule
 
