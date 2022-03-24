@@ -1,9 +1,10 @@
 /**
  * Step 3: Display a led pattern "animation" stored in BRAM.
- * DONE
+ * DONE*
  */
 
 `default_nettype none
+`include "clockworks.v"
 
 module SOC (
     input  CLK,        // system clock 
@@ -13,7 +14,9 @@ module SOC (
     output TXD         // UART transmit
 );
 
-   wire clock;
+   wire clk;    // internal clock
+   wire resetn; // internal reset signal, goes low on reset
+   
    reg [4:0] PC = 0;
    reg [4:0] MEM [0:20];
    initial begin
@@ -43,32 +46,20 @@ module SOC (
    reg [4:0] leds = 0;
    assign LEDS=leds;
 
-   always @(posedge clock) begin
+   always @(posedge clk) begin
       leds <= MEM[PC];
-      PC <= (RESET || PC==20) ? 0 : (PC+1);
+      PC <= (!resetn || PC==20) ? 0 : (PC+1);
    end
 
-
-// Decceleration factor to make it possible
-// to observe what happens.
-// Simulation is approx. 16 times slower than
-// actual device.
-`ifdef BENCH
-   localparam slow_bit=17;
-`else
-   localparam slow_bit=21;
-`endif
-
-// Comment to deactivate clock decceleration.
-`define SLOW
-
-`ifdef SLOW
-   reg [slow_bit:0] slow_CLK = 0;
-   always @(posedge CLK) slow_CLK <= slow_CLK + 1;
-   assign clock = slow_CLK[slow_bit];
-`else
-   assign clock = CLK;
-`endif
+   // Gearbox and reset circuitry.
+   Clockworks #(
+     .SLOW(21) // Divide clock frequency by 2^21
+   )CW(
+     .CLK(CLK),
+     .RESET(RESET),
+     .clk(clk),
+     .resetn(resetn)
+   );
    
    assign TXD  = 1'b0; // not used for now   
 endmodule

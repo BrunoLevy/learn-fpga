@@ -1,9 +1,10 @@
 /**
  * Step 2: Blinker (slower version)
- * DONE
+ * DONE*
  */
 
 `default_nettype none
+`include "clockworks.v"
 
 module SOC (
     input  CLK,        // system clock 
@@ -13,32 +14,27 @@ module SOC (
     output TXD         // UART transmit
 );
 
-// Decceleration factor to make it possible
-// to observe what happens.
-// Simulation is approx. 16 times slower than
-// actual device.
-`ifdef BENCH
-   localparam slow_bit=17;
-`else
-   localparam slow_bit=21;
-`endif
-
-// Comment to deactivate clock decceleration.
-`define SLOW
-
-`ifdef SLOW
-   reg [slow_bit:0] slow_CLK = 0;
-   always @(posedge CLK) slow_CLK <= slow_CLK + 1;
-   wire clock = slow_CLK[slow_bit];
-`else
-   wire clock = CLK;
-`endif
-
-// A blinker that counts on 5 bits, wired to the 5 LEDs
+   wire clk;    // internal clock
+   wire resetn; // internal reset signal, goes low on reset
+   
+   // A blinker that counts on 5 bits, wired to the 5 LEDs
    reg [4:0] count = 0;
-   always @(posedge clock) begin
-      count <= RESET ? 0 : count + 1;
+   always @(posedge clk) begin
+      count <= !resetn ? 0 : count + 1;
    end
+
+   // Clock gearbox (to let you see what happens)
+   // and reset circuitry (to workaround an
+   // initialization problem with Ice40)
+   Clockworks #(
+     .SLOW(21) // Divide clock frequency by 2^21
+   )CW(
+     .CLK(CLK),
+     .RESET(RESET),
+     .clk(clk),
+     .resetn(resetn)
+   );
+   
    assign LEDS = count;
    assign TXD  = 1'b0; // not used for now   
 endmodule

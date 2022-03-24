@@ -698,7 +698,7 @@ task LI;
    input [31:0] imm;
    begin
       if(imm > 12'b111111111111) begin
-//	 $display("LI large");
+	 $display("LI large");
 	 LUI(rd,imm);
 	 if(imm[11:0] != 0) begin
 	    ORI(rd,rd,imm[11:0]);

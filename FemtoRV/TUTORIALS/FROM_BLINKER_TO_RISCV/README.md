@@ -26,6 +26,8 @@ To exit the simulation:
 
 ## The steps
 
+_TODO_ make RESET / RESETN coherent in first steps (maybe a separate module ?)
+
 - [step 1](step1.v): Blinker in simulation
 - [step 2](step2.v): Blinker with five LEDs
 - [step 3](step3.v): Blinker with five LEDs, slower version
@@ -37,11 +39,14 @@ To exit the simulation:
 - [step 9](step9.v): Branches
 - [step 10](step10.v): LUI and AUIPC
 - [step 11](step11.v): Memory in separate module
+- [step 12](step12.v): Subroutines 1 (standard Risc-V instruction set)
+- [step 13](step13.v): Size optimization
+- [step 14](step14.v): Subroutines 2 (using Risc-V pseudo-instructions)
 
 _WIP_
 
-- [step 12](step12.v): Load
-- [step 13](step13.v): Store
-- [step 14](step14.v): MUL routine
-- step 15: Using the GNU toolchain to compile programs
-- step 16: Devices (UART, ...)
+- [step 15](step12.v): Load
+- [step 16](step13.v): Store
+- [step 17](step14.v): MUL routine
+- step 18: Using the GNU toolchain to compile programs
+- step 19: Devices (UART, ...)

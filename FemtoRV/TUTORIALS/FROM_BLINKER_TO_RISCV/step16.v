@@ -1,15 +1,18 @@
 /**
- * Step 12: Creating a RISC-V processor
- *         Load
+ * Step 16: Creating a RISC-V processor
+ *         Store 
  */
 
 `default_nettype none
+
 
 module Memory (
    input clock,
    input      [31:0] mem_addr,  
    output reg [31:0] mem_rdata, 
-   input   	     mem_rstrb
+   input   	     mem_rstrb,
+   input      [31:0] mem_wdata,
+   output     [3:0]  mem_wmask	       
 );
 
    reg [31:0] MEM [0:255]; 
@@ -27,8 +30,17 @@ module Memory (
                   ADD(x1,x0,x0);      
                   ADDI(x2,x0,16);
       Label(L0_); LB(x3,x1,400);
+                  SB(x3,x1,800);
                   ADDI(x1,x1,1); 
                   BNE(x1,x2, LabelRef(L0_));
+
+                  ADD(x1,x0,x0);      
+                  ADDI(x2,x0,16);
+      Label(L1_); LB(x3,x1,800);
+                  ADDI(x1,x1,1); 
+                  BNE(x1,x2, LabelRef(L1_));
+
+      
                   EBREAK();
       
       MEM[100] = {8'h4, 8'h3, 8'h2, 8'h1};
@@ -37,10 +49,16 @@ module Memory (
       MEM[103] = {8'h0, 8'hf, 8'he, 8'hd};            
    end
 
+   wire [29:0] word_addr = mem_addr[31:2];
+   
    always @(posedge clock) begin
       if(mem_rstrb) begin
-         mem_rdata <= MEM[mem_addr[31:2]];
+         mem_rdata <= MEM[word_addr];
       end
+      if(mem_wmask[0]) MEM[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
+      if(mem_wmask[1]) MEM[word_addr][15:8 ] <= mem_wdata[15:8 ];
+      if(mem_wmask[2]) MEM[word_addr][23:16] <= mem_wdata[23:16];
+      if(mem_wmask[3]) MEM[word_addr][31:24] <= mem_wdata[31:24];	 
    end
    
 endmodule
@@ -50,7 +68,9 @@ module RiscV (
     input clock,
     output    [31:0] mem_addr,  
     input     [31:0] mem_rdata, 
-    output 	     mem_rstrb
+    output 	     mem_rstrb,
+    output    [31:0] mem_wdata,
+    input     [3:0]  mem_wmask	       
 );
    
    reg [31:0] PC;          // program counter
@@ -155,6 +175,7 @@ module RiscV (
    reg [31:0] loadstore_addr;
    
    // Load
+   // ------------------------------------------------------------------------
    // All memory accesses are aligned on 32 bits boundary. For this
    // reason, we need some circuitry that does unaligned halfword
    // and byte load/store, based on:
@@ -181,7 +202,33 @@ module RiscV (
      mem_halfwordAccess ? {{16{LOAD_sign}}, LOAD_halfword} :
                           mem_rdata ;
 
+   // Store
+   // ------------------------------------------------------------------------
 
+   assign mem_wdata[ 7: 0] = rs2[7:0];
+   assign mem_wdata[15: 8] = loadstore_addr[0] ? rs2[7:0]  : rs2[15: 8];
+   assign mem_wdata[23:16] = loadstore_addr[1] ? rs2[7:0]  : rs2[23:16];
+   assign mem_wdata[31:24] = loadstore_addr[0] ? rs2[7:0]  :
+			     loadstore_addr[1] ? rs2[15:8] : rs2[31:24];
+
+   // The memory write mask:
+   //    1111                     if writing a word
+   //    0011 or 1100             if writing a halfword
+   //                                (depending on loadstore_addr[1])
+   //    0001, 0010, 0100 or 1000 if writing a byte
+   //                                (depending on loadstore_addr[1:0])
+
+   wire [3:0] STORE_wmask =
+	      mem_byteAccess      ?
+	            (loadstore_addr[1] ?
+		          (loadstore_addr[0] ? 4'b1000 : 4'b0100) :
+		          (loadstore_addr[0] ? 4'b0010 : 4'b0001)
+                    ) :
+	      mem_halfwordAccess ?
+	            (loadstore_addr[1] ? 4'b1100 : 4'b0011) :
+              4'b1111;
+
+   assign mem_wmask = {4{(state == STORE)}} & STORE_wmask;
    
    // The state machine
    localparam FETCH_INSTR = 0;
@@ -190,6 +237,7 @@ module RiscV (
    localparam EXECUTE     = 3;
    localparam LOAD        = 4;
    localparam WAIT_DATA   = 5;
+   localparam STORE       = 6;
    reg [2:0] state;
 
    // register write back
@@ -260,12 +308,18 @@ module RiscV (
 	      $finish();
 	   end
 	   PC <= nextPC;
-	   loadstore_addr <= rs1 + Iimm;
-	   state <= isLoad ? LOAD : FETCH_INSTR;
+	   loadstore_addr <= isStore ? rs1 + Simm : rs1 + Iimm;
+	   state <= isLoad  ? LOAD  : 
+		    isStore ? STORE : 
+		    FETCH_INSTR;
 	end 
 
 	LOAD: begin
 	   state <= WAIT_DATA;
+	end
+
+	STORE: begin
+	   state <= FETCH_INSTR;
 	end
 
 	WAIT_DATA: begin
@@ -298,20 +352,25 @@ module SOC(
    wire [31:0] mem_addr;
    wire [31:0] mem_rdata;
    wire mem_rstrb;
+   wire [31:0] mem_wdata;
+   wire [3:0]  mem_wmask;
    
    Memory RAM(
       .clock(clock),
       .mem_addr(mem_addr),
       .mem_rdata(mem_rdata),
-      .mem_rstrb(mem_rstrb)
+      .mem_rstrb(mem_rstrb),
+      .mem_wdata(mem_wdata),
+      .mem_wmask(mem_wmask)	      
    );
 
    RiscV CPU(
       .clock(clock),
       .mem_addr(mem_addr),
       .mem_rdata(mem_rdata),
-      .mem_rstrb(mem_rstrb)
+      .mem_rstrb(mem_rstrb),
+      .mem_wdata(mem_wdata),
+      .mem_wmask(mem_wmask)	      
    );
    
 endmodule
-

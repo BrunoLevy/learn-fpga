@@ -1,13 +1,14 @@
 /**
  * Step 11: Creating a RISC-V processor
  *         Separate memory
- * DONE
+ * DONE*
  */
 
 `default_nettype none
+`include "clockworks.v"
 
 module Memory (
-   input             clock,
+   input             clk,
    input      [31:0] mem_addr,  // address to be read
    output reg [31:0] mem_rdata, // data read from memory
    input   	     mem_rstrb  // goes high when processor wants to read
@@ -27,7 +28,7 @@ module Memory (
       endASM();
    end
 
-   always @(posedge clock) begin
+   always @(posedge clk) begin
       if(mem_rstrb) begin
          mem_rdata <= MEM[mem_addr[31:2]];
       end
@@ -36,8 +37,8 @@ endmodule
 
 
 module Processor (
-    input 	      clock,
-    input 	      RESET,
+    input 	      clk,
+    input 	      resetn,
     output     [31:0] mem_addr, 
     input      [31:0] mem_rdata, 
     output 	      mem_rstrb,
@@ -131,7 +132,7 @@ module Processor (
 	3'b100: takeBranch = ($signed(rs1) < $signed(rs2));
 	3'b101: takeBranch = ($signed(rs1) >= $signed(rs2));
 	3'b110: takeBranch = (rs1 < rs2);
-	3'b110: takeBranch = (rs1 >= rs2);
+	3'b111: takeBranch = (rs1 >= rs2);
 	default: takeBranch = 1'b0;
       endcase
    end
@@ -163,8 +164,8 @@ module Processor (
 	                isJALR                   ? rs1+Iimm :
 	                PC+4;
    
-   always @(posedge clock) begin
-      if(RESET) begin
+   always @(posedge clk) begin
+      if(!resetn) begin
 	 PC    <= 0;
 	 state <= FETCH_INSTR;
       end else begin
@@ -205,7 +206,7 @@ module Processor (
    assign mem_rstrb = (state == FETCH_INSTR);
    
 `ifdef BENCH
-   always @(posedge clock) begin
+   always @(posedge clk) begin
       if(state == FETCH_REGS) begin
 	 case (1'b1)
 	   isALUreg: $display(
@@ -243,10 +244,11 @@ module SOC (
     output TXD         // UART transmit
 );
 
-   wire    clock;
+   wire    clk;
+   wire    resetn;
 
    Memory RAM(
-      .clock(clock),
+      .clk(clk),
       .mem_addr(mem_addr),
       .mem_rdata(mem_rdata),
       .mem_rstrb(mem_rstrb)
@@ -258,35 +260,26 @@ module SOC (
    wire [31:0] x1;
 
    Processor CPU(
-      .clock(clock),
-      .RESET(RESET),		 
+      .clk(clk),
+      .resetn(resetn),		 
       .mem_addr(mem_addr),
       .mem_rdata(mem_rdata),
       .mem_rstrb(mem_rstrb),
       .x1(x1)		 
    );
    assign LEDS = x1[4:0];
+
+   // Gearbox and reset circuitry.
+   Clockworks #(
+     .SLOW(19) // Divide clock frequency by 2^19
+   )CW(
+     .CLK(CLK),
+     .RESET(RESET),
+     .clk(clk),
+     .resetn(resetn)
+   );
    
-// Decceleration factor to make it possible
-// to observe what happens.
-// Simulation is approx. 16 times slower than
-// actual device.
-`ifdef BENCH
-   localparam slow_bit=15;
-`else
-   localparam slow_bit=19;
-`endif
+   assign TXD  = 1'b0; // not used for now   
 
-// Comment to deactivate clock decceleration.
-`define SLOW
-
-`ifdef SLOW
-   reg [slow_bit:0] slow_CLK = 0;
-   always @(posedge CLK) slow_CLK <= slow_CLK + 1;
-   assign clock = slow_CLK[slow_bit];
-`else
-   assign clock = CLK;
-`endif
-   assign TXD  = 1'b0; // not used for now         
 endmodule
 

@@ -1,46 +1,91 @@
 /**
- * Step 15: Creating a RISC-V processor
- *         Load
+ * Step 17: Creating a RISC-V processor
+ *         Playing with more interesting programs
+ *         Multiplication routine.
+ *         Core is not size-optimized
+ *         We can delete this one, and keep ony mulsi routine
  */
 
 `default_nettype none
+
 
 module Memory (
    input clock,
    input      [31:0] mem_addr,  
    output reg [31:0] mem_rdata, 
-   input   	     mem_rstrb
+   input   	     mem_rstrb,
+   input      [31:0] mem_wdata,
+   input      [3:0]  mem_wmask	       
 );
 
-   reg [31:0] MEM [0:255]; 
+   reg [31:0] MEM [0:1023];
 
 `include "riscv_assembly.v"
-   
+
+`ifdef SIM   
    initial begin
        mem_rdata = 0;
    end
-   
+`endif   
    
    // MEM initialization, using our poor's men assembly
    // in "risc_assembly.v".
+
+   integer mulsi3 = 40;
+   
    initial begin
-                  ADD(x1,x0,x0);      
-                  ADDI(x2,x0,16);
-      Label(L0_); LB(x3,x1,400);
-                  ADDI(x1,x1,1); 
-                  BNE(x1,x2, LabelRef(L0_));
-                  EBREAK();
+
+      L2_ = 60;
       
-      MEM[100] = {8'h4, 8'h3, 8'h2, 8'h1};
-      MEM[101] = {8'h8, 8'h7, 8'h6, 8'h5};
-      MEM[102] = {8'hc, 8'hb, 8'ha, 8'h9};
-      MEM[103] = {8'h0, 8'hf, 8'he, 8'hd};            
+      // Stack pointer: end of RAM
+      LI(sp,4096);
+
+      // General pointer: IO page
+      //      SW(a0,gp,4); -> displays character
+      //      SW(a0,gp,8); -> displays number
+      LI(gp,4096);
+      
+      LI(a0,8);
+      SW(a0,gp,8);
+      LI(a1,9);
+      SW(a1,gp,8);
+      CALL(LabelRef(mulsi3));
+      SW(a0,gp,8);
+      EBREAK();
+
+      // Mutiplication routine,
+      // Input in a0 and a1
+      // Result in a0
+Label(mulsi3);
+      MOV(a2,a0);
+      LI(a0,0);
+Label(L1_); 
+      ANDI(a3,a1,1);
+      BEQZ(a3,LabelRef(L2_)); 
+      ADD(a0,a0,a2);
+Label(L2_);
+      SRLI(a1,a1,1);
+      SLLI(a2,a2,1);
+      BNEZ(a1,LabelRef(L1_));
+      RET();
+
+`ifdef SIM      
+      if(ASMerror) begin
+	 $finish();
+      end
+`endif      
    end
 
+   wire [29:0] word_addr = mem_addr[31:2];
+   
    always @(posedge clock) begin
       if(mem_rstrb) begin
-         mem_rdata <= MEM[mem_addr[31:2]];
+         mem_rdata <= MEM[word_addr];
       end
+      if(mem_wmask[0]) MEM[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
+      if(mem_wmask[1]) MEM[word_addr][15:8 ] <= mem_wdata[15:8 ];
+      if(mem_wmask[2]) MEM[word_addr][23:16] <= mem_wdata[23:16];
+      if(mem_wmask[3]) MEM[word_addr][31:24] <= mem_wdata[31:24];
    end
    
 endmodule
@@ -50,7 +95,9 @@ module RiscV (
     input clock,
     output    [31:0] mem_addr,  
     input     [31:0] mem_rdata, 
-    output 	     mem_rstrb
+    output 	     mem_rstrb,
+    output    [31:0] mem_wdata,
+    output     [3:0] mem_wmask	       
 );
    
    reg [31:0] PC;          // program counter
@@ -108,7 +155,7 @@ module RiscV (
 
    integer     i;
    initial begin
-      for(i=0; i<32; ++i) begin
+      for(i=0; i<32; i++) begin
 	 RegisterBank[i] = 0;
       end
    end
@@ -155,6 +202,7 @@ module RiscV (
    reg [31:0] loadstore_addr;
    
    // Load
+   // ------------------------------------------------------------------------
    // All memory accesses are aligned on 32 bits boundary. For this
    // reason, we need some circuitry that does unaligned halfword
    // and byte load/store, based on:
@@ -181,7 +229,33 @@ module RiscV (
      mem_halfwordAccess ? {{16{LOAD_sign}}, LOAD_halfword} :
                           mem_rdata ;
 
+   // Store
+   // ------------------------------------------------------------------------
 
+   assign mem_wdata[ 7: 0] = rs2[7:0];
+   assign mem_wdata[15: 8] = loadstore_addr[0] ? rs2[7:0]  : rs2[15: 8];
+   assign mem_wdata[23:16] = loadstore_addr[1] ? rs2[7:0]  : rs2[23:16];
+   assign mem_wdata[31:24] = loadstore_addr[0] ? rs2[7:0]  :
+			     loadstore_addr[1] ? rs2[15:8] : rs2[31:24];
+
+   // The memory write mask:
+   //    1111                     if writing a word
+   //    0011 or 1100             if writing a halfword
+   //                                (depending on loadstore_addr[1])
+   //    0001, 0010, 0100 or 1000 if writing a byte
+   //                                (depending on loadstore_addr[1:0])
+
+   wire [3:0] STORE_wmask =
+	      mem_byteAccess      ?
+	            (loadstore_addr[1] ?
+		          (loadstore_addr[0] ? 4'b1000 : 4'b0100) :
+		          (loadstore_addr[0] ? 4'b0010 : 4'b0001)
+                    ) :
+	      mem_halfwordAccess ?
+	            (loadstore_addr[1] ? 4'b1100 : 4'b0011) :
+              4'b1111;
+
+   assign mem_wmask = {4{(state == STORE)}} & STORE_wmask;
    
    // The state machine
    localparam FETCH_INSTR = 0;
@@ -190,6 +264,7 @@ module RiscV (
    localparam EXECUTE     = 3;
    localparam LOAD        = 4;
    localparam WAIT_DATA   = 5;
+   localparam STORE       = 6;
    reg [2:0] state;
 
    // register write back
@@ -235,37 +310,48 @@ module RiscV (
 	   state <= EXECUTE;
 	end
 	EXECUTE: begin
+	   /*
 	   case (1'b1)
 	     isALUreg: $display(
-				"ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
-				rdId, rs1Id, rs2Id, funct3
+				"%d ALUreg rd=%d rs1=%d rs2=%d funct3=%b",
+				PC, rdId, rs1Id, rs2Id, funct3
 		       );
 	     isALUimm: $display(
-				"ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
-				rdId, rs1Id, Iimm, funct3
+				"%d ALUimm rd=%d rs1=%d imm=%0d funct3=%b",
+				PC, rdId, rs1Id, Iimm, funct3
 		       );
 	     isBranch: $display(
-				"BRANCH rs1=%d rs2=%d takeBranch=%b",
-				rs1Id, rs2Id, takeBranch
+				"%d BRANCH rs1=%d rs2=%d takeBranch=%b",
+				PC, rs1Id, rs2Id, takeBranch
 		       );
-	     isJAL:    $display("JAL");
-	     isJALR:   $display("JALR");
-	     isAUIPC:  $display("AUIPC");
-	     isLUI:    $display("LUI");	
-	     isLoad:   $display("LOAD");
-	     isStore:  $display("STORE");
-	     isSYSTEM: $display("SYSTEM");
+	     isJAL:    $display("%d JAL",PC);
+	     isJALR:   $display("%d JALR",PC);
+	     isAUIPC:  $display("%d AUIPC",PC);
+	     isLUI:    $display("%d LUI",PC);	
+	     isLoad:   $display("%d LOAD",PC);
+	     isStore:  $display("%d STORE",PC);
+	     isSYSTEM: $display("%d SYSTEM",PC);
 	   endcase 
+	   */
+`ifdef SIM	   
 	   if(isSYSTEM) begin
 	      $finish();
 	   end
+`endif	   
 	   PC <= nextPC;
-	   loadstore_addr <= rs1 + Iimm;
-	   state <= isLoad ? LOAD : FETCH_INSTR;
+	   loadstore_addr <= isStore ? rs1 + Simm : rs1 + Iimm;
+	   state <= isLoad  ? LOAD  : 
+		    isStore ? STORE : 
+		    FETCH_INSTR;
 	end 
 
 	LOAD: begin
 	   state <= WAIT_DATA;
+	end
+
+	STORE: begin
+//	   $display("STORE addr=%0d rs1=%d rs2=%d Simm=%b",loadstore_addr, rs1, rs2, Simm);
+	   state <= FETCH_INSTR;
 	end
 
 	WAIT_DATA: begin
@@ -275,7 +361,7 @@ module RiscV (
 
       if(writeBackEn && rdId != 0) begin
 	 RegisterBank[rdId] <= writeBackData;
-	 $display("x%0d <= %b",rdId,writeBackData);
+	 // $display("x%0d <= %b %0d %0d",rdId,writeBackData,writeBackData,$signed(writeBackData));
       end
       
    end
@@ -289,29 +375,65 @@ endmodule
 module SOC(
     input clock,
     output leds_active,
-    output [4:0] leds
+    output reg [4:0] leds
 );
    // we will use the LEDs later...
-   assign leds = 5'b0; 
    assign leds_active = 1'b0;
 
    wire [31:0] mem_addr;
    wire [31:0] mem_rdata;
    wire mem_rstrb;
-   
-   Memory RAM(
-      .clock(clock),
-      .mem_addr(mem_addr),
-      .mem_rdata(mem_rdata),
-      .mem_rstrb(mem_rstrb)
-   );
+   wire [31:0] mem_wdata;
+   wire [3:0]  mem_wmask;
 
    RiscV CPU(
       .clock(clock),
       .mem_addr(mem_addr),
       .mem_rdata(mem_rdata),
-      .mem_rstrb(mem_rstrb)
+      .mem_rstrb(mem_rstrb),
+      .mem_wdata(mem_wdata),
+      .mem_wmask(mem_wmask)	      
+   );
+
+   wire isIO  = mem_addr[12];
+   wire isRAM = !isIO; 
+
+   // SOC memory map:
+   // 0 ... 4095: 1024 words of RAM
+   // 
+
+
+   
+   Memory RAM(
+      .clock(clock),
+      .mem_addr(mem_addr),
+      .mem_rdata(mem_rdata),
+      .mem_rstrb(isRAM && mem_rstrb),
+      .mem_wdata(mem_wdata),
+      .mem_wmask({4{isRAM}} & mem_wmask)	      
    );
    
-endmodule
+   always @(posedge clock) begin
+      if(isIO) begin
+	 if(|mem_wmask) begin
+	    if(mem_addr[2]) begin
+`ifdef SIM	       
+	       $write("%c",mem_wdata[7:0]);
+	       $fflush(32'h8000_0001);
+`endif	       
+	    end
+	    if(mem_addr[3]) begin
+`ifdef SIM	       	       
+	       $display("Output: %b %0d %0d",mem_wdata, mem_wdata, $signed(mem_wdata));
+`else
+	       leds <= mem_rdata[4:0];
+`endif	       
+	    end
+	 end	    
+      end
+   end
+   
 
+   
+endmodule
+   

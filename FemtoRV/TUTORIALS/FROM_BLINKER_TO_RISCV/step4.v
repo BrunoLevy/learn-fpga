@@ -2,10 +2,11 @@
  * Step 4: Creating a RISC-V processor
  *         The instruction decoder
  * central LED blinks, other LEDs show instr type.
- * DONE
+ * DONE*
  */
 
 `default_nettype none
+`include "clockworks.v"
 
 module SOC (
     input  CLK,        // system clock 
@@ -15,7 +16,8 @@ module SOC (
     output TXD         // UART transmit
 );
 
-   wire    clock;
+   wire clk;    // internal clock
+   wire resetn; // internal reset signal, goes low on reset
    
    reg [31:0] MEM [0:255]; 
    reg [31:0] PC;       // program counter
@@ -85,8 +87,8 @@ module SOC (
    wire [2:0] funct3 = instr[14:12];
    wire [6:0] funct7 = instr[31:25];
    
-   always @(posedge clock) begin
-      if(RESET) begin
+   always @(posedge clk) begin
+      if(!resetn) begin
 	 PC <= 0;
 	 instr <= 32'b0000000_00000_00000_000_00000_0110011; // NOP
       end else if(!isSYSTEM) begin
@@ -105,7 +107,7 @@ module SOC (
    assign LEDS = isSYSTEM ? 31 : {PC[0],isALUreg,isALUimm,isStore,isLoad};
    
 `ifdef BENCH   
-   always @(posedge clock) begin
+   always @(posedge clk) begin
       $display("PC=%0d",PC);
       case (1'b1)
 	isALUreg: $display(
@@ -128,26 +130,16 @@ module SOC (
    end
 `endif
 
-// Decceleration factor to make it possible
-// to observe what happens.
-// Simulation is approx. 16 times slower than
-// actual device.
-`ifdef BENCH
-   localparam slow_bit=17;
-`else
-   localparam slow_bit=21;
-`endif
-
-// Comment to deactivate clock decceleration.
-`define SLOW
-
-`ifdef SLOW
-   reg [slow_bit:0] slow_CLK = 0;
-   always @(posedge CLK) slow_CLK <= slow_CLK + 1;
-   assign clock = slow_CLK[slow_bit];
-`else
-   assign clock = CLK;
-`endif
-   assign TXD  = 1'b0; // not used for now      
+   // Gearbox and reset circuitry.
+   Clockworks #(
+     .SLOW(21) // Divide clock frequency by 2^21
+   )CW(
+     .CLK(CLK),
+     .RESET(RESET),
+     .clk(clk),
+     .resetn(resetn)
+   );
+   
+   assign TXD  = 1'b0; // not used for now   
 endmodule
 

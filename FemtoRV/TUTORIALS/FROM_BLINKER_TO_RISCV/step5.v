@@ -2,10 +2,11 @@
  * Step 5: Creating a RISC-V processor
  *         The register bank and the state machine
  * LEDs show state.
- * DONE
+ * DONE*
  */
 
 `default_nettype none
+`include "clockworks.v"
 
 module SOC (
     input  CLK,        // system clock 
@@ -15,7 +16,8 @@ module SOC (
     output TXD         // UART transmit
 );
 
-   wire    clock;
+   wire clk;    // internal clock
+   wire resetn; // internal reset signal, goes low on reset
    
    reg [31:0] MEM [0:255]; 
    reg [31:0] PC;          // program counter
@@ -105,8 +107,8 @@ module SOC (
    localparam EXECUTE     = 2;
    reg [1:0] state = FETCH_INSTR;
    
-   always @(posedge clock) begin
-      if(RESET) begin
+   always @(posedge clk) begin
+      if(!resetn) begin
 	 PC    <= 0;
 	 state <= FETCH_INSTR;
 	 instr <= 32'b0000000_00000_00000_000_00000_0110011; // NOP
@@ -138,7 +140,7 @@ module SOC (
    assign LEDS = isSYSTEM ? 31 : (1 << state);
 
 `ifdef BENCH
-   always @(posedge clock) begin
+   always @(posedge clk) begin
       if(state == FETCH_REGS) begin
 	 case (1'b1)
 	   isALUreg: $display(
@@ -164,27 +166,18 @@ module SOC (
       end 
    end
 `endif	      
+
+   // Gearbox and reset circuitry.
+   Clockworks #(
+     .SLOW(21) // Divide clock frequency by 2^21
+   )CW(
+     .CLK(CLK),
+     .RESET(RESET),
+     .clk(clk),
+     .resetn(resetn)
+   );
    
-// Decceleration factor to make it possible
-// to observe what happens.
-// Simulation is approx. 16 times slower than
-// actual device.
-`ifdef BENCH
-   localparam slow_bit=15;
-`else
-   localparam slow_bit=19;
-`endif
-
-// Comment to deactivate clock decceleration.
-`define SLOW
-
-`ifdef SLOW
-   reg [slow_bit:0] slow_CLK = 0;
-   always @(posedge CLK) slow_CLK <= slow_CLK + 1;
-   assign clock = slow_CLK[slow_bit];
-`else
-   assign clock = CLK;
-`endif
-   assign TXD  = 1'b0; // not used for now         
+   assign TXD  = 1'b0; // not used for now   
+   
 endmodule
 
