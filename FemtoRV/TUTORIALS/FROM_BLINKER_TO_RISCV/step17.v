@@ -12,7 +12,7 @@ module Memory (
    output reg [31:0] mem_rdata, // data read from memory
    input   	     mem_rstrb, // goes high when processor wants to read
    input      [31:0] mem_wdata, // data to be written
-   output     [3:0]  mem_wmask	// masks for writing the 4 bytes (1 = write byte)       
+   input      [3:0]  mem_wmask	// masks for writing the 4 bytes (1 = write byte)       
 );
 
    reg [31:0] MEM [0:1535]; // 1536 4-bytes words = 6 Kb of RAM in total
@@ -22,22 +22,33 @@ module Memory (
 `else
    localparam slow_bit=17;
 `endif
+
+   // Memory-mapped IO in IO page, 1-hot addressing in word address.   
+   localparam IO_LEDS_bit      = 0;  // W five leds
+   localparam IO_UART_DAT_bit  = 1;  // W data to send (8 bits) 
+   localparam IO_UART_CNTL_bit = 2;  // R status. bit 9: busy sending
+
+   // Converts an IO_xxx_bit constant into an offset in IO page.
+   function [31:0] IO_BIT_TO_OFFSET;
+      input [31:0] bit;
+      begin
+	 IO_BIT_TO_OFFSET = 1 << (bit + 2);
+      end
+   endfunction
    
 `include "riscv_assembly.v"
    integer    L0_   = 16;
-   integer    wait_ = 36;
-   integer    L1_   = 44;
+   integer    wait_ = 40;
+   integer    L1_   = 48;
    
    initial begin
 
-      LI(sp,6144); // End of RAM
-      LI(gp,8192); // IO page
+      LI(sp,32'h1800);   // End of RAM, 6kB
+      LI(gp,32'h400000); // IO page
 
-      EBREAK();
-      
-/*      
       LI(a0,0);
    Label(L0_); 
+      SW(a0,gp,IO_BIT_TO_OFFSET(IO_LEDS_bit));
       ADDI(a0,a0,1);
       CALL(LabelRef(wait_)); 
       J(LabelRef(L0_)); 
@@ -50,7 +61,7 @@ module Memory (
       ADDI(t0,t0,-1);
       BNEZ(t0,LabelRef(L1_));
       RET();
-*/
+
       endASM();
    end
 
@@ -69,13 +80,13 @@ endmodule
 
 
 module Processor (
-    input 	      clk,
-    input 	      resetn,
-    output [31:0]     mem_addr, 
-    input [31:0]      mem_rdata, 
-    output 	      mem_rstrb,
-    output [31:0]     mem_wdata,
-    input [3:0]       mem_wmask
+    input 	  clk,
+    input 	  resetn,
+    output [31:0] mem_addr, 
+    input [31:0]  mem_rdata, 
+    output 	  mem_rstrb,
+    output [31:0] mem_wdata,
+    output [3:0]  mem_wmask
 );
 
    reg [31:0] PC=0;        // program counter
@@ -295,7 +306,7 @@ module Processor (
       end else begin
 	 if(writeBackEn && rdId != 0) begin
 	    RegisterBank[rdId] <= writeBackData;
-	    $display("r%0d <= %b (%d) (%d)",rdId,writeBackData,writeBackData,$signed(writeBackData));
+	    // $display("r%0d <= %b (%d) (%d)",rdId,writeBackData,writeBackData,$signed(writeBackData));
 	    // For displaying what happens.
 	 end
 	 case(state)
@@ -346,11 +357,11 @@ endmodule
 
 
 module SOC (
-    input  CLK,        // system clock 
-    input  RESET,      // reset button
-    output [4:0] LEDS, // system LEDs
-    input  RXD,        // UART receive
-    output TXD         // UART transmit
+    input 	     CLK, // system clock 
+    input 	     RESET, // reset button
+    output reg [4:0] LEDS, // system LEDs
+    input 	     RXD, // UART receive
+    output 	     TXD         // UART transmit
 );
 
    wire clk;
@@ -361,15 +372,6 @@ module SOC (
    wire mem_rstrb;
    wire [31:0] mem_wdata;
    wire [3:0]  mem_wmask;
-   
-   Memory RAM(
-      .clk(clk),
-      .mem_addr(mem_addr),
-      .mem_rdata(mem_rdata),
-      .mem_rstrb(mem_rstrb),
-      .mem_wdata(mem_wdata),
-      .mem_wmask(mem_wmask)
-   );
 
    Processor CPU(
       .clk(clk),
@@ -380,8 +382,33 @@ module SOC (
       .mem_wdata(mem_wdata),
       .mem_wmask(mem_wmask)
    );
+   
+   wire [29:0] mem_wordaddr = mem_addr[31:2];
+   wire isIO  = mem_addr[22];
+   wire isRAM = !isIO;
+   wire mem_wstrb = |mem_wmask;
+   
+   Memory RAM(
+      .clk(clk),
+      .mem_addr(mem_addr),
+      .mem_rdata(mem_rdata),
+      .mem_rstrb(isRAM & mem_rstrb),
+      .mem_wdata(mem_wdata),
+      .mem_wmask({4{isRAM}}&mem_wmask)
+   );
 
 
+   // Memory-mapped IO in IO page, 1-hot addressing in word address.   
+   localparam IO_LEDS_bit      = 0;  // W five leds
+   localparam IO_UART_DAT_bit  = 1;  // W data to send (8 bits) 
+   localparam IO_UART_CNTL_bit = 2;  // R status. bit 9: busy sending
+   
+   always @(posedge clk) begin
+      if(isIO & mem_wstrb & mem_wordaddr[IO_LEDS_bit]) begin
+	 LEDS <= mem_wdata;
+      end
+   end
+   
    // Gearbox and reset circuitry.
    Clockworks CW(
      .CLK(CLK),
@@ -390,8 +417,6 @@ module SOC (
      .resetn(resetn)
    );
 
-//   assign LEDS = mem_addr[5:0];
-   assign LEDS = 5'b0;
    assign TXD  = 1'b0; // not used for now
    
 endmodule

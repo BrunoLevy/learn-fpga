@@ -747,7 +747,7 @@ task BEQZ;
    input [4:0]  rs1;
    input [31:0] imm;
    begin
-      BType(7'b1100011, rs1, x0, imm, 3'b000);
+      BEQ(rs1,x0,imm);
    end
 endtask
 
@@ -755,7 +755,7 @@ task BNEZ;
    input [4:0]  rs1;
    input [31:0] imm;
    begin
-      BType(7'b1100011, rs1, x0, imm, 3'b001);
+      BNE(rs1,x0,imm);
    end
 endtask
    

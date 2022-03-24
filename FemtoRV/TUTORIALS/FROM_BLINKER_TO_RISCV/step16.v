@@ -13,7 +13,7 @@ module Memory (
    output reg [31:0] mem_rdata, // data read from memory
    input   	     mem_rstrb, // goes high when processor wants to read
    input      [31:0] mem_wdata, // data to be written
-   output     [3:0]  mem_wmask	// masks for writing the 4 bytes (1 = write byte)       
+   input      [3:0]  mem_wmask	// masks for writing the 4 bytes (1 = write byte)       
 );
 
    reg [31:0] MEM [0:255]; 
@@ -93,7 +93,7 @@ module Processor (
     input [31:0]      mem_rdata, 
     output 	      mem_rstrb,
     output [31:0]     mem_wdata,
-    input [3:0]       mem_wmask,
+    output [3:0]      mem_wmask,
     output reg [31:0] x10 = 0		  
 );
 

@@ -42,10 +42,10 @@ To exit the simulation:
 - [step 14](step14.v): Subroutines 2 (using Risc-V pseudo-instructions)
 - [step 15](step15.v): Load
 - [step 16](step16.v): Store
+- [step 17](step17.v): Memory-mapped devices (TODO: UART)
 
 _WIP_
 
-- step 17: memory-mapped devices
 - step 18: Mandelbrot set
 - step 19: Faster simulation with Verilator
 - step 20: Using the GNU toolchain to compile programs
