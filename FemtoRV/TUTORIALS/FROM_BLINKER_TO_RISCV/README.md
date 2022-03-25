@@ -43,10 +43,10 @@ To exit the simulation:
 - [step 15](step15.v): Load
 - [step 16](step16.v): Store
 - [step 17](step17.v): Memory-mapped devices 
+- [step 18](step18.v): Mandelbrot set
 
 _WIP_
 
-- step 18: Mandelbrot set
 - step 19: Faster simulation with Verilator
 - step 20: Using the GNU toolchain to compile programs
 - step 21: More devices (LED matrix, OLED screen...)

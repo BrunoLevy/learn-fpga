@@ -727,7 +727,7 @@ task RET;
   end
 endtask   
 
-task MOV;
+task MV;
    input [4:0]  rd;
    input [4:0] 	rs1;
    begin
@@ -758,6 +758,39 @@ task BNEZ;
       BNE(rs1,x0,imm);
    end
 endtask
+
+task BGT;
+   input [4:0]  rs1;
+   input [4:0]  rs2;   
+   input [31:0] imm;
+   begin
+      BLT(rs2,rs1,imm);
+   end
+endtask
+
+task DATAW;
+   input [31:0] w;
+   begin
+      MEM[memPC[31:2]] = w;
+      memPC = memPC+4;
+   end
+endtask
+
+task DATAB;
+   input [7:0] b1;
+   input [7:0] b2;
+   input [7:0] b3;
+   input [7:0] b4;   
+   begin
+      MEM[memPC[31:2]][ 7: 0] = b1;
+      MEM[memPC[31:2]][15: 8] = b2;
+      MEM[memPC[31:2]][23:16] = b3;
+      MEM[memPC[31:2]][31:24] = b4;            
+      memPC = memPC+4;
+   end
+endtask
+
+      
    
-/****************************************************************************/   
+/****************************************************************************/ 
    
