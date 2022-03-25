@@ -5,6 +5,7 @@
 
 `default_nettype none
 `include "clockworks.v"
+`include "emitter_uart.v"
 
 module Memory (
    input             clk,
@@ -12,7 +13,7 @@ module Memory (
    output reg [31:0] mem_rdata, // data read from memory
    input   	     mem_rstrb, // goes high when processor wants to read
    input      [31:0] mem_wdata, // data to be written
-   input      [3:0]  mem_wmask	// masks for writing the 4 bytes (1 = write byte)       
+   input      [3:0]  mem_wmask	// masks for writing the 4 bytes (1=write byte)
 );
 
    reg [31:0] MEM [0:1535]; // 1536 4-bytes words = 6 Kb of RAM in total
@@ -37,31 +38,70 @@ module Memory (
    endfunction
    
 `include "riscv_assembly.v"
-   integer    L0_   = 16;
-   integer    wait_ = 40;
-   integer    L1_   = 48;
+   integer    L0_      = 12;
+   integer    L1_      = 20;
+   integer    L2_      = 52;      
+   integer    wait_    = 104;
+   integer    wait_L0_ = 112;
+   integer    putc_    = 124; 
+   integer    putc_L0_ = 132;
    
    initial begin
-
       LI(sp,32'h1800);   // End of RAM, 6kB
       LI(gp,32'h400000); // IO page
 
+   Label(L0_);
+
+      // Count from 0 to 15 on the LEDs      
+      LI(s0,16); // upper bound of loop
       LI(a0,0);
-   Label(L0_); 
+   Label(L1_);
       SW(a0,gp,IO_BIT_TO_OFFSET(IO_LEDS_bit));
+      CALL(LabelRef(wait_));
       ADDI(a0,a0,1);
-      CALL(LabelRef(wait_)); 
-      J(LabelRef(L0_)); 
-      EBREAK();
+      BNE(a0,s0,LabelRef(L1_));
+
+      // Send abcdef...xyz to the UART
+      LI(s0,26); // upper bound of loop     
+      LI(a0,"a");
+      LI(s1,0);
+   Label(L2_);
+      CALL(LabelRef(putc_));
+      ADDI(a0,a0,1);
+      ADDI(s1,s1,1);
+      BNE(s1,s0,LabelRef(L2_));
+
+      // CR;LF
+      LI(a0,13);
+      CALL(LabelRef(putc_));
+      LI(a0,10);
+      CALL(LabelRef(putc_));
       
+      J(LabelRef(L0_));
+      
+      EBREAK(); // I systematically keep it before functions
+                // in case I decide to remove the loop...
+
    Label(wait_);
       LI(t0,1);
       SLLI(t0,t0,slow_bit);
-   Label(L1_);
+   Label(wait_L0_);
       ADDI(t0,t0,-1);
-      BNEZ(t0,LabelRef(L1_));
+      BNEZ(t0,LabelRef(wait_L0_));
       RET();
 
+   Label(putc_);
+      // Send character to UART
+      SW(a0,gp,IO_BIT_TO_OFFSET(IO_UART_DAT_bit));
+      // Read UART status, and loop until bit 9 (busy sending)
+      // is zero.
+      LI(t0,1<<9);
+   Label(putc_L0_);
+      LW(t1,gp,IO_BIT_TO_OFFSET(IO_UART_CNTL_bit));     
+      AND(t1,t1,t0);
+      BNEZ(t1,LabelRef(putc_L0_));
+      RET();
+	   
       endASM();
    end
 
@@ -227,14 +267,11 @@ module Processor (
 			      isLoad        ? LOAD_data :
 			                      aluOut;
 
-   assign writeBackEn = (state==EXECUTE && !isBranch && !isStore) ||
-			(state==WAIT_DATA) ;
-   
    wire [31:0] nextPC = ((isBranch && takeBranch) || isJAL) ? PCplusImm   :
 	                                  isJALR   ? {aluPlus[31:1],1'b0} :
 	                                             PCplus4;
 
-   reg [31:0]  loadstore_addr;
+   wire [31:0] loadstore_addr = rs1 + (isStore ? Simm : Iimm);
    
    // Load
    // All memory accesses are aligned on 32 bits boundary. For this
@@ -326,7 +363,6 @@ module Processor (
 	      if(!isSYSTEM) begin
 		 PC <= nextPC;
 	      end
-	      loadstore_addr <= isStore ? rs1 + Simm : rs1 + Iimm;
 	      state <= isLoad  ? LOAD  : 
 		       isStore ? STORE : 
 		       FETCH_INSTR;
@@ -347,6 +383,8 @@ module Processor (
       end
    end
 
+   assign writeBackEn = (state==EXECUTE && !isBranch && !isStore) ||
+			(state==WAIT_DATA) ;
    
    assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ?
 		     PC : loadstore_addr ;
@@ -382,7 +420,8 @@ module SOC (
       .mem_wdata(mem_wdata),
       .mem_wmask(mem_wmask)
    );
-   
+
+   wire [31:0] RAM_rdata;
    wire [29:0] mem_wordaddr = mem_addr[31:2];
    wire isIO  = mem_addr[22];
    wire isRAM = !isIO;
@@ -391,7 +430,7 @@ module SOC (
    Memory RAM(
       .clk(clk),
       .mem_addr(mem_addr),
-      .mem_rdata(mem_rdata),
+      .mem_rdata(RAM_rdata),
       .mem_rstrb(isRAM & mem_rstrb),
       .mem_wdata(mem_wdata),
       .mem_wmask({4{isRAM}}&mem_wmask)
@@ -408,6 +447,38 @@ module SOC (
 	 LEDS <= mem_wdata;
       end
    end
+
+   wire uart_valid = isIO & mem_wstrb & mem_wordaddr[IO_UART_DAT_bit];
+   wire uart_ready;
+   
+   corescore_emitter_uart #(
+      .clk_freq_hz(`BOARD_FREQ*1000000),
+      .baud_rate(115200)			    
+   ) UART(
+      .i_clk(clk),
+      .i_rst(!resetn),
+      .i_data(mem_wdata[7:0]),
+      .i_valid(uart_valid),
+      .o_ready(uart_ready),
+      .o_uart_tx(TXD)      			       
+   );
+
+   wire [31:0] IO_rdata = 
+	       mem_wordaddr[IO_UART_CNTL_bit] ? { 22'b0, !uart_ready, 9'b0}
+	                                      : 32'b0;
+   
+   assign mem_rdata = isRAM ? RAM_rdata :
+	                      IO_rdata ;
+   
+   
+`ifdef BENCH
+   always @(posedge clk) begin
+      if(uart_valid) begin
+	 $write("%c", mem_wdata[7:0] );
+	 $fflush(32'h8000_0001);
+      end
+   end
+`endif   
    
    // Gearbox and reset circuitry.
    Clockworks CW(
@@ -417,7 +488,5 @@ module SOC (
      .resetn(resetn)
    );
 
-   assign TXD  = 1'b0; // not used for now
-   
 endmodule
 
