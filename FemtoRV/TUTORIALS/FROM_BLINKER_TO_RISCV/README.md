@@ -252,7 +252,7 @@ button ? The IceStick has no button. In fact it has one !
 
 Press a finger on the circled region of the image (around pin 47).
 
-** Try this ** Knight-driver mode, and `RESET` toggles direction.
+**Try this** Knight-driver mode, and `RESET` toggles direction.
 
 ## Step 3: a blinker that loads LEDs patterns from ROM
 
@@ -474,8 +474,24 @@ There are four other instruction formats `S-type` (for Store),
 `B-type` (for Branch), `U-type` (for Upper immediates that
 are left-shifted by 12), and `J-type` (for Jumps). Each
 instruction format has a different way of encoding an immediate
-value in the instruction word. One can decode it by directly
-translating the table of the documentation into VERILOG, as follows:
+value in the instruction word.
+
+To understand what it means, let's get back to Chapter 2, page 16.
+The different instruction types correspond to the way _immediate values_ are encoded in them.
+
+| Instr. type | Description                                    | Immediate value encoding                             |
+|-------------|------------------------------------------------|------------------------------------------------------|
+| `R-type`    | register-register ALU ops. [more on this here](https://www.youtube.com/watch?v=pVWtI0426mU) | None    |
+| `I-type`    | register-immediate integer ALU ops and `JALR`. | 12 bits, sign expansion                              |
+| `S-type`    | store                                          | 12 bits, sign expansion                              |
+| `B-type`    | branch                                         | 12 bits, sign expansion, upper `[31:1]` (bit 0 is 0) |
+| `U-type`    | `LUI`,`AUIPC`                                  | 20 bits, upper `31:12` (bits `[11:0]` are 0)         |
+| `J-type`    | `JAL`                                          | 12 bits, sign expansion, upper `[31:1]` (bit 0 is 0) |
+
+Note that `I-type` and `S-type` encode the same type of values (but they are taken from different parts of `instr`).
+Same thing for `B-type` and `J-type`.
+
+One can decode the different types of immediates as follows:
 ```
    wire [31:0] Uimm={    instr[31],   instr[30:12], {12{1'b0}}};
    wire [31:0] Iimm={{21{instr[31]}}, instr[30:20]};
@@ -492,6 +508,145 @@ decoder gets the following information from the instruction word:
 - source and destination registers `rs1`,`rs2` and `rd`
 - function codes `funct3` and `funct7`
 - the five formats for immediate values (with sign expansion for `Iimm`, `Simm`, `Bimm` and `Jimm`).
+
+Let us now initialize the memory with a few RISC-V instruction and see whether we can recognize them
+by lighting a different LED depending on the instruction ([step4.v](step4.v)). To do that, we use
+the big table in page 130 of the
+[RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
+It is a bit painful (we will see easier ways later !). Using the `_` character to separate fields of a binary constant is
+especially interesting under this circumstance.
+
+```
+   initial begin
+      // add x1, x0, x0
+      //                    rs2   rs1  add  rd  ALUREG
+      MEM[0] = 32'b0000000_00000_00000_000_00001_0110011;
+      // addi x1, x1, 1
+      //             imm         rs1  add  rd   ALUIMM
+      MEM[1] = 32'b000000000001_00001_000_00001_0010011;
+      ...
+      // lw x2,0(x1)
+      //             imm         rs1   w   rd   LOAD
+      MEM[5] = 32'b000000000000_00001_010_00010_0000011;
+      // sw x2,0(x1)
+      //             imm   rs2   rs1   w   imm  STORE
+      MEM[6] = 32'b000000_00001_00010_010_00000_0100011;
+      // ebreak
+      //                                        SYSTEM
+      MEM[7] = 32'b000000000001_00000_000_00000_1110011;
+   end	   
+```
+
+Then we can fetch and recognize the instructions as follows:
+```
+   always @(posedge clk) begin
+      if(!resetn) begin
+	 PC <= 0;
+      end else if(!isSYSTEM) begin
+	 instr <= MEM[PC];
+	 PC <= PC+1;
+      end
+   end
+   assign LEDS = isSYSTEM ? 31 : {PC[0],isALUreg,isALUimm,isStore,isLoad};
+```
+(first led is wired to `PC[0]` so that we will see it blinking even if
+ there is the same instruction several times).
+
+In simulation mode, we can in addition display the name of the recognized instruction
+and the fields:
+```
+`ifdef BENCH   
+   always @(posedge clk) begin
+      $display("PC=%0d",PC);
+      case (1'b1)
+	isALUreg: $display("ALUreg rd=%d rs1=%d rs2=%d funct3=%b",rdId, rs1Id, rs2Id, funct3);
+	isALUimm: $display("ALUimm rd=%d rs1=%d imm=%0d funct3=%b",rdId, rs1Id, Iimm, funct3);
+	isBranch: $display("BRANCH");
+	isJAL:    $display("JAL");
+	isJALR:   $display("JALR");
+	isAUIPC:  $display("AUIPC");
+	isLUI:    $display("LUI");	
+	isLoad:   $display("LOAD");
+	isStore:  $display("STORE");
+	isSYSTEM: $display("SYSTEM");
+      endcase 
+   end
+`endif
+```
+
+**Try this** run `step4.v` in simulation and on the device. Try initializing the memory with
+different RISC-V instruction and test whether the decoder recognizes them.
+
+## Sidebar: the elegance of RISC-V
+
+This paragraph may be skipped.
+it just contains my own impressions and reflexions on the RISC-V instruction set, inspired by the comments and Q&A in italics in the
+[RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
+
+At this point, I realized what an _instruction set architecture_ means: it is for sure a specification of _what bit pattern does what_
+(Instruction Set) and it is also at the same time driven by how this will be translated into wires (Architecture). An ISA is not
+_abstract_, it is _independent_ on an implementation, but it is strongly designed with implementation in mind ! While the 
+pipeline, branch prediction unit, multiple execution units, caches may differ in different implementations, the instruction decoder
+is probably very similar in all implementations.
+
+There were things that seemed really weird to me
+in the first place: all these immediate format variants, the fact that immediate values are scrambled in different bits of `instr`,
+the `zero` register, and the weird instructions `LUI`,`AUIPC`,`JAL`,`JALR`. When writing the instruction decoder, you better understand the reasons. The
+ISA is really smart, and is the result of a long evolution (there were RISC-I, RISC-II, ... before). It seems to me the result of a 
+_distillation_. Now, in 2020, many things were tested in terms of ISA, and this one seems to have benefited from all the previous
+attempts, taking the good choices and avoiding the suboptimal ones. 
+
+What is really nice in the ISA is:
+- instruction size is fixed. Makes things really easier. _(there are extension with varying instrution length, but at least the core
+  instruction set is simple)_;
+- `rs1`,`rs2`,`rd` are always encoded by the same bits of `instr`;
+- the immediate formats that need to do sign expansion do it from the same bit (`instr[31]`);
+- the weird instructions `LUI`,`AUIPC`,`JAL`,`JALR` can be combined to implement higher-level tasks
+   (load 32-bit constant in register, jump to arbitrary address, function calls). Their existence is
+   justified by the fact it makes the design easier. Then assembly programmer's life is made easier by
+   _pseudo-instructions_ `CALL`, `RET`, ... See [risc-v assembly manual](https://github.com/riscv/riscv-asm-manual/blob/master/riscv-asm.md), the
+   two tables at the end of the page. Same thing for tests/branch instructions obtained by swapping parameters (e.g. `a < b <=> b > a`
+   etc...), there are pseudo-instructions that do the job for you.
+
+Put differently, to appreciate the elegance of the RISC-V ISA, imagine
+that your mission is to _invent it_. That is, invent both the set of
+instructions and the way they are encoded as bit patterns. The constraints are:
+- fixed instruction length (32 bits)
+- as simple as possible: the ultimate sophistication is simplicity [Leonardo da Vinci] !!
+- source and destination registers always encoded at the same position
+- whenever there is sign-extension, it should be done from the same bit
+- it should be simple to load an arbitrary 32-bits immediate value in a register (but may take several instructions)
+- it should be simple to jump to arbitrary memory locations (but may take several instructions)
+- it should be simple to implement function calls (but may take several instructions)
+
+Then you understand why there are many different immediate
+formats. For instance, consider `JAL`, that does not have a source
+register, as compared to `JALR` that has one. Both take an immediate
+value, but `JAL` has 5 more bits available to store it, since it does
+not need to encode the source register. The slightest available bit is
+used to extend the dynamic range of the immediates. This explains both
+the multiple immediate formats and the fact that they are assembled
+from multiple pieces of `instr`, slaloming between the three fixed
+5-bits register encodings, that are there or not depending on the
+cases.
+
+Now the rationale behind the weird instructions `LUI`,`AUIPC`,`JAL`
+and `JALR` is to give a set of functions that can be combined to load
+arbitrary 32-bit values in register, or to jump to arbitrary locations
+in memory, or to implement the function call protocol as simply as
+possible. Considering the constraints, the taken choices (that seemed
+weird to me in the first place) perfectly make sense. In addition,
+with the taken choices, the instruction decoder is pretty simple and
+has a low logical depth. Besides the 7-bits instruction decoder, it
+mostly consists of a set of wires drawn from the bits of `instr`, and
+duplication of the sign-extended bit 31 to form the immediate values.
+
+Before moving forward, I'd like to say a word about the `zero` register.
+I think it is really a smart move. With it, you do not need a `MOV rd rs` 
+instruction (just `ADD rd rs zero`), you do not need a `NOP` 
+instruction (`ADD zero zero zero`), and all the branch variants can
+compare with `zero` ! I think that `zero` is a great invention, not as great
+as `0`, but really makes the instruction set more compact.
 
 
 
