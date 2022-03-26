@@ -135,6 +135,17 @@ module FemtoRV32 #(
    wire        LTU = aluMinus[32];
    wire        EQ  = (aluMinus[31:0] == 0);
 
+   // Logical operations
+   reg [32-1:0] aluLog;
+
+   always @(*)
+   case (instr[13:12])
+     2'b00  : aluLog = aluIn1 ^ aluIn2;
+     2'b10  : aluLog = aluIn1 | aluIn2;
+     2'b11  : aluLog = aluIn1 & aluIn2;
+     default: aluLog = 32'hxxxxxxxx;
+   endcase
+
    // Notes:
    // - instr[30] is 1 for SUB and 0 for ADD
    // - for SUB, need to test also instr[5] to discriminate ADDI:
@@ -145,9 +156,9 @@ module FemtoRV32 #(
      (funct3Is[0]  ? instr[30] & instr[5] ? aluMinus[31:0] : aluPlus : 32'b0) |
      (funct3Is[2]  ? {31'b0, LT}                                     : 32'b0) |
      (funct3Is[3]  ? {31'b0, LTU}                                    : 32'b0) |
-     (funct3Is[4]  ? aluIn1 ^ aluIn2                                 : 32'b0) |
-     (funct3Is[6]  ? aluIn1 | aluIn2                                 : 32'b0) |
-     (funct3Is[7]  ? aluIn1 & aluIn2                                 : 32'b0) |
+     (funct3Is[4]  ? aluLog                                          : 32'b0) |
+     (funct3Is[6]  ? aluLog                                          : 32'b0) |
+     (funct3Is[7]  ? aluLog                                          : 32'b0) |
      (funct3IsShift ? aluReg                                         : 32'b0) ;
 
    wire funct3IsShift = funct3Is[1] | funct3Is[5];
