@@ -1042,6 +1042,59 @@ Wow, we have implemented 28 instructions out of 38 ! Let us continue...
 
 ## Step 10: LUI and AUIPC
 
+We still have these two weird instructions to implement. What do they do ?
+It is rather simple:
+
+| instruction   | effect          |
+|---------------|-----------------|
+| LUI rd, imm   | rd <= Uimm      |
+| AUIPC rd, imm | rd <= PC + Uimm |
+
+And if you look at the `Uimm` format, it reads its MSBs (`imm[31:12]`) from
+the immediate encoded in the instructions. The 12 LSBs are set to zero.
+These two instructions are super useful: the immediate formats supported by all the
+other instructions can only modify the LSBs. Combined with these two
+functions, one can load an arbitrary value in a register (but this can
+require up to two instructions).
+
+Implementing these two instructions just requires to change `writeBackEn` and
+`writeBackData` as follows:
+```verilog
+   assign writeBackData = (isJAL || isJALR) ? (PC + 4) :
+			  (isLUI) ? Uimm :
+			  (isAUIPC) ? (PC + Uimm) : 
+			  aluOut;
+   
+   assign writeBackEn = (state == EXECUTE && 
+			 (isALUreg || 
+			  isALUimm || 
+			  isJAL    || 
+			  isJALR   ||
+			  isLUI    ||
+			  isAUIPC)
+			 );
+```
+
+**You are here !**
+Seems that we are nearly there ! 8 instructions to go...
+
+| ALUreg | ALUimm | Jump  | Branch | LUI | AUIPC | Load  | Store | SYSTEM |
+|--------|--------|-------|--------|-----|-------|-------|-------|--------|
+| [*] 10 | [*] 9  | [*] 2 | [ *] 6 | [*] | [*]   | [ ] 5 | [ ] 3 | [*] 1  |
+
+
+**Try this** run [step10.v](step10.v) in simulation and on the device.
+
+_Argh !!_ On my icestick, it does not fit (requires 1283 LUTs and the
+IceStick only has 1280). What can we do ? Remember, we absolutely took
+no care about resource consumption, just trying to write a design that
+works. In fact, there is _a lot_ of room for improvement in our design,
+we will see that later, but before then, let's organize our SOC a
+bit better (then we will shrink the processor).
+
+## Step 11: Memory in a separate module
+
+
 
 ## Files for all the steps
 
@@ -1056,8 +1109,8 @@ Wow, we have implemented 28 instructions out of 38 ! Let us continue...
 - [step 9](step9.v): Branches
 - [step 10](step10.v): LUI and AUIPC
 - [step 11](step11.v): Memory in separate module
-- [step 12](step12.v): Subroutines 1 (standard Risc-V instruction set)
-- [step 13](step13.v): Size optimization
+- [step 12](step12.v): Size optimization: the Incredible Shrinking Core !
+- [step 13](step13.v): Subroutines 1 (standard Risc-V instruction set)
 - [step 14](step14.v): Subroutines 2 (using Risc-V pseudo-instructions)
 - [step 15](step15.v): Load
 - [step 16](step16.v): Store

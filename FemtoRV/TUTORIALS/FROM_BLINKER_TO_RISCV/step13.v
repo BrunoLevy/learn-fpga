@@ -1,7 +1,6 @@
 /**
  * Step 13: Creating a RISC-V processor
  *         Subroutines 1 (using standard RISC-V asm)
- *         LUT optimization, gaining a lot of space !
  * DONE*
  */
 
@@ -18,7 +17,7 @@ module Memory (
    reg [31:0] MEM [0:255]; 
 
 `ifdef BENCH
-   localparam slow_bit=13;
+   localparam slow_bit=15;
 `else
    localparam slow_bit=19;
 `endif
@@ -117,41 +116,10 @@ module Processor (
 
    // The ALU
    wire [31:0] aluIn1 = rs1;
-   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2 : Iimm;
-
+   wire [31:0] aluIn2 = isALUreg ? rs2 : Iimm;
+   reg [31:0] aluOut;
    wire [4:0] shamt = isALUreg ? rs2[4:0] : instr[24:20]; // shift amount
 
-   // The adder is used by both arithmetic instructions and JALR.
-   wire [31:0] aluPlus = aluIn1 + aluIn2;
-
-   // Use a single 33 bits subtract to do subtraction and all comparisons
-   // (trick borrowed from swapforth/J1)
-   wire [32:0] aluMinus = {1'b1, ~aluIn2} + {1'b0,aluIn1} + 33'b1;
-   wire        LT  = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : aluMinus[32];
-   wire        LTU = aluMinus[32];
-   wire        EQ  = (aluMinus[31:0] == 0);
-
-   // Flip a 32 bit word. Used by the shifter (a single shifter for
-   // left and right shifts, saves silicium !)
-   function [31:0] flip32;
-      input [31:0] x;
-      flip32 = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7], 
-		x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15], 
-		x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
-		x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
-   endfunction
-
-   wire [31:0] shifter_in = (funct3 == 3'b001) ? flip32(aluIn1) : aluIn1;
-   
-   /* verilator lint_off WIDTH */
-   wire [31:0] shifter = 
-               $signed({instr[30] & aluIn1[31], shifter_in}) >>> aluIn2[4:0];
-   /* verilator lint_on WIDTH */
-
-   wire [31:0] leftshift = flip32(shifter);
-   
-
-   
    // ADD/SUB/ADDI: 
    // funct7[5] is 1 for SUB and 0 for ADD. We need also to test instr[5]
    // to make the difference with ADDI
@@ -159,62 +127,62 @@ module Processor (
    // SRLI/SRAI/SRL/SRA: 
    // funct7[5] is 1 for arithmetic shift (SRA/SRAI) and 
    // 0 for logical shift (SRL/SRLI)
-   reg [31:0]  aluOut;
    always @(*) begin
       case(funct3)
-	3'b000: aluOut = (funct7[5] & instr[5]) ? aluMinus[31:0] : aluPlus;
-	3'b001: aluOut = leftshift;
-	3'b010: aluOut = {31'b0, LT};
-	3'b011: aluOut = {31'b0, LTU};
+	3'b000: aluOut = (funct7[5] & instr[5]) ? 
+			 (aluIn1 - aluIn2) : (aluIn1 + aluIn2);
+	3'b001: aluOut = aluIn1 << shamt;
+	3'b010: aluOut = ($signed(aluIn1) < $signed(aluIn2));
+	3'b011: aluOut = (aluIn1 < aluIn2);
 	3'b100: aluOut = (aluIn1 ^ aluIn2);
-	3'b101: aluOut = shifter;
+	3'b101: aluOut = funct7[5]? ($signed(aluIn1) >>> shamt) : 
+			 ($signed(aluIn1) >> shamt); 
 	3'b110: aluOut = (aluIn1 | aluIn2);
 	3'b111: aluOut = (aluIn1 & aluIn2);	
       endcase
    end
 
+
    // The predicate for branch instructions
    reg takeBranch;
    always @(*) begin
       case(funct3)
-	3'b000: takeBranch = EQ;
-	3'b001: takeBranch = !EQ;
-	3'b100: takeBranch = LT;
-	3'b101: takeBranch = !LT;
-	3'b110: takeBranch = LTU;
-	3'b111: takeBranch = !LTU;
+	3'b000: takeBranch = (rs1 == rs2);
+	3'b001: takeBranch = (rs1 != rs2);
+	3'b100: takeBranch = ($signed(rs1) < $signed(rs2));
+	3'b101: takeBranch = ($signed(rs1) >= $signed(rs2));
+	3'b110: takeBranch = (rs1 < rs2);
+	3'b111: takeBranch = (rs1 >= rs2);
 	default: takeBranch = 1'b0;
       endcase
    end
    
-
-   // Address computation
-   // An adder used to compute branch address, JAL address and AUIPC.
-   // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
-   // Equivalent to PCplusImm = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
-   wire [31:0] PCplusImm = PC + ( instr[3] ? Jimm[31:0] :
-				  instr[4] ? Uimm[31:0] :
-				             Bimm[31:0] );
-   wire [31:0] PCplus4 = PC+4;
-   
-   // register write back
-   assign writeBackData = (isJAL || isJALR) ? PCplus4 :
-			      isLUI         ? Uimm :
-			      isAUIPC       ? PCplusImm : 
-			                      aluOut;
-   
-   assign writeBackEn = (state == EXECUTE && !isBranch && !isStore);
-   
-   wire [31:0] nextPC = ((isBranch && takeBranch) || isJAL) ? PCplusImm  :	       
-	                isJALR                              ? {aluPlus[31:1],1'b0}:
-	                PCplus4;
-
    // The state machine
    localparam FETCH_INSTR = 0;
    localparam WAIT_INSTR  = 1;
    localparam FETCH_REGS  = 2;
    localparam EXECUTE     = 3;
    reg [1:0] state = FETCH_INSTR;
+
+   // register write back
+   assign writeBackData = (isJAL || isJALR) ? (PC + 4) :
+			  (isLUI) ? Uimm :
+			  (isAUIPC) ? (PC + Uimm) : 
+			  aluOut;
+   
+   assign writeBackEn = (state == EXECUTE && 
+			 (isALUreg || 
+			  isALUimm || 
+			  isJAL    || 
+			  isJALR   ||
+			  isLUI    ||
+			  isAUIPC)
+			 );
+   // next PC
+   wire [31:0] nextPC = (isBranch && takeBranch) ? PC+Bimm  :	       
+   	                isJAL                    ? PC+Jimm  :
+	                isJALR                   ? rs1+Iimm :
+	                PC+4;
    
    always @(posedge clk) begin
       if(!resetn) begin
@@ -292,7 +260,7 @@ module SOC (
       .x10(x10)		 
    );
    assign LEDS = x10[4:0];
-   
+
    // Gearbox and reset circuitry.
    Clockworks CW(
      .CLK(CLK),
@@ -302,7 +270,5 @@ module SOC (
    );
    
    assign TXD  = 1'b0; // not used for now         
-   
-
 endmodule
 
