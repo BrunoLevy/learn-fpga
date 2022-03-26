@@ -213,8 +213,7 @@ As you can see, the counter is now much slower. Try it also on device:
 Yes, now we can see clearly what happens ! And what about the `RESET`
 button ? The IceStick has no button. In fact it has one ! 
 
-[[IceStick_RESET.jpg]]
-
+![](IceStick_RESET.jpg)
 
 ## Files for all the steps
 
