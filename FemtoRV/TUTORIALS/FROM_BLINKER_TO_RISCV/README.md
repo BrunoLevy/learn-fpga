@@ -1100,6 +1100,274 @@ bit better (then we will shrink the processor).
 
 ## Step 11: Memory in a separate module
 
+In our previous designs, we got everything in our `SOC` module (memory and
+processor). In this step, we will see how to separate them.
+
+First, the `Memory` module:
+
+```verilog
+module Memory (
+   input             clk,
+   input      [31:0] mem_addr,  // address to be read
+   output reg [31:0] mem_rdata, // data read from memory
+   input   	     mem_rstrb  // goes high when processor wants to read
+);
+   reg [31:0] MEM [0:255]; 
+
+`include "riscv_assembly.v"
+   integer L0_=8;
+   initial begin
+                  ADD(x1,x0,x0);      
+                  ADDI(x2,x0,31);
+      Label(L0_); ADDI(x1,x1,1); 
+                  BNE(x1, x2, LabelRef(L0_));
+                  EBREAK();
+      endASM();
+   end
+
+   always @(posedge clk) begin
+      if(mem_rstrb) begin
+         mem_rdata <= MEM[mem_addr[31:2]];
+      end
+   end
+endmodule
+```
+
+In its interface, there is a `clk` signal connected to the clock.
+Whenever the processor wants to read in memory, it positions the
+address to be read on `mem_addr`, and sets `mem_rstrb` to 1. Then
+the `Memory` module returns the data to be read on `mem_rdata`.
+
+Symetrically, the `Processor` module has a `mem_addr` signal (as
+`output` this time), a `mem_rdata` signal (as input) and a
+`mem_rstrb` signal (as output):
+
+```verilog
+module Processor (
+    input 	      clk,
+    input 	      resetn,
+    output     [31:0] mem_addr, 
+    input      [31:0] mem_rdata, 
+    output 	      mem_rstrb,
+    output reg [31:0] x1		  
+);
+...
+endmodule
+```
+(in addition, we have a `x1` signal that contains the contents
+of register `x1`, that can be used for visual debugging. We will
+plug it to the LEDs).
+
+The state machine has one additional state:
+```verilog
+   localparam FETCH_INSTR = 0;
+   localparam WAIT_INSTR  = 1;
+   localparam FETCH_REGS  = 2;
+   localparam EXECUTE     = 3;
+
+   case(state)
+     FETCH_INSTR: begin
+       state <= WAIT_INSTR;
+     end
+     WAIT_INSTR: begin
+       instr <= mem_rdata;
+       state <= FETCH_REGS;
+     end
+     FETCH_REGS: begin
+       rs1 <= RegisterBank[rs1Id];
+       rs2 <= RegisterBank[rs2Id];
+       state <= EXECUTE;
+     end
+     EXECUTE: begin
+        if(!isSYSTEM) begin
+  	   PC <= nextPC;
+	end
+	state <= FETCH_INSTR;
+      end
+   endcase 
+```
+_Note_ we will see later how to simplify it and get back to three states.
+
+Now, `mem_addr` and `mem_rstrb` can be wired as follows:
+```verilog
+   assign mem_addr = PC;
+   assign mem_rstrb = (state == FETCH_INSTR);
+```
+
+And finally, everything is installed and connected in the `SOC`
+```verilog
+module SOC (
+    input  CLK,        // system clock 
+    input  RESET,      // reset button
+    output [4:0] LEDS, // system LEDs
+    input  RXD,        // UART receive
+    output TXD         // UART transmit
+);
+   wire    clk;
+   wire    resetn;
+   Memory RAM(
+      .clk(clk),
+      .mem_addr(mem_addr),
+      .mem_rdata(mem_rdata),
+      .mem_rstrb(mem_rstrb)
+   );
+
+   wire [31:0] mem_addr;
+   wire [31:0] mem_rdata;
+   wire mem_rstrb;
+   wire [31:0] x1;
+   Processor CPU(
+      .clk(clk),
+      .resetn(resetn),		 
+      .mem_addr(mem_addr),
+      .mem_rdata(mem_rdata),
+      .mem_rstrb(mem_rstrb),
+      .x1(x1)		 
+   );
+   assign LEDS = x1[4:0];
+
+   // Gearbox and reset circuitry.
+   Clockworks #(
+     .SLOW(19) // Divide clock frequency by 2^19
+   ) CW (
+     .CLK(CLK),
+     .RESET(RESET),
+     .clk(clk),
+     .resetn(resetn)
+   );
+   
+   assign TXD  = 1'b0; // not used for now   
+endmodule
+```
+
+Now you can run [step11.v](step11.v) in the simulator. As expected,
+it does the same thing as in the previous step (counts on the LEDs
+from 0 to 31 and stops). What about running it on the device ?
+Wow, even worse, 1341 LUTs (and we only got 1280 of them on the IceStick).
+So let us shrink our code to make it fit !
+
+## Step 12: Size optimization, the incredible shrinking core.
+
+There are many things we can do for shrinking this core. Let us
+first take a look at the ALU. It can compute addition, subtraction,
+and comparisons. Can't we reuse the result of subtraction for comparisons ?
+Sure we can, but to do that we need to compute a 33 bits subtraction, and
+test the sign bit. Matthias Koch (@Mecrisp) explained me this trick, that
+is also used in swapforth/J1 (another small RISC core that works on
+the IceStick).  The 33 bits subtract is written as follows:
+```verilog
+   wire [32:0] aluMinus = {1'b0,aluIn1} - {1'b0,aluIn2};
+```
+which corresponds in practice to:
+```verilog
+   wire [32:0] aluMinus = {1'b1, ~aluIn2} + {1'b0,aluIn1} + 33'b1;
+```
+Then we can create the wires for the three tests (this saves three 32-bit
+adders):
+```
+   wire        LT  = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : aluMinus[32];
+   wire        LTU = aluMinus[32];
+   wire        EQ  = (aluMinus[31:0] == 0);
+```
+
+Of course, we still need one adder for addition:
+```verilog
+   wire [31:0] aluPlus = aluIn1 + aluIn2;
+```
+
+Then, `aluOut` is computed as follows:
+```verilog
+   reg [31:0]  aluOut;
+   always @(*) begin
+      case(funct3)
+	3'b000: aluOut = (funct7[5] & instr[5]) ? aluMinus[31:0] : aluPlus;
+	3'b001: aluOut = leftshift;
+	3'b010: aluOut = {31'b0, LT};
+	3'b011: aluOut = {31'b0, LTU};
+	3'b100: aluOut = (aluIn1 ^ aluIn2);
+	3'b101: aluOut = shifter;
+	3'b110: aluOut = (aluIn1 | aluIn2);
+	3'b111: aluOut = (aluIn1 & aluIn2);	
+      endcase
+   end
+```
+
+Let us try on the IceStick. Yes ! 1167 LUTs, it fits ! But it is not a
+good reason to stop there, there are still several opportunities to
+shrink space. Let us take a look at `takeBranch`, can't we reuse the
+`EQ`,`LT`,`LTU` signals we just created ? Sure we can:
+
+```verilog
+   reg takeBranch;
+   always @(*) begin
+      case(funct3)
+	3'b000: takeBranch = EQ;
+	3'b001: takeBranch = !EQ;
+	3'b100: takeBranch = LT;
+	3'b101: takeBranch = !LT;
+	3'b110: takeBranch = LTU;
+	3'b111: takeBranch = !LTU;
+	default: takeBranch = 1'b0;
+      endcase
+   end
+```
+
+For this to work, we also need to make sure that `rs2` is routed to the
+second ALU input also for branches:
+
+```verilog
+   wire [31:0] aluIn2 = isALUreg | isBranch ? rs2 : Iimm;
+```
+
+What does it give on the device ? 1094 LUTs, not that bad, but let us continue...
+The jump target for `JALR` is `rs1+Iimm`, and we created an adder especially for
+that, it is stupid because the ALU already computes that. OK let us reuse it:
+
+```verilog
+   wire [31:0] nextPC = ((isBranch && takeBranch) || isJAL) ? PCplusImm  :	       
+	                isJALR                              ? {aluPlus[31:1],1'b0}:
+	                PCplus4;
+```
+
+How do we stand now ? 1030 LUTs. And it is not finished: what eats-up the largest
+number of LUTs is the shifter, and we have three of them in the ALU (one for left
+shifts, one for logical right shifts and one for arithmetic right shifts).
+By another sorcerer's trick indicated by by Matthias Koch (@mecrisp), it is
+possible to merge the two right shifts, by creating a 33 bits shifter with the
+additional bit set to 0 or 1 depending on input's bit31 and on whether it is a
+logical shift or an arithmetic shift.
+```verilog
+   wire [31:0] shifter = 
+               $signed({instr[30] & aluIn1[31], shifter_in}) >>> aluIn2[4:0];
+```
+
+Even better, Matthias told me it is possible to use in fact a single shifter, by flipping the
+input and flipping the output if it is a left shift:
+```verilog
+   wire [31:0] shifter_in = (funct3 == 3'b001) ? flip32(aluIn1) : aluIn1;
+   wire [31:0] leftshift = flip32(shifter);
+```
+
+The ALU then looks like that:
+```verilog
+   reg [31:0]  aluOut;
+   always @(*) begin
+      case(funct3)
+	3'b000: aluOut = (funct7[5] & instr[5]) ? aluMinus[31:0] : aluPlus;
+	3'b001: aluOut = leftshift;
+	3'b010: aluOut = {31'b0, LT};
+	3'b011: aluOut = {31'b0, LTU};
+	3'b100: aluOut = (aluIn1 ^ aluIn2);
+	3'b101: aluOut = shifter;
+	3'b110: aluOut = (aluIn1 | aluIn2);
+	3'b111: aluOut = (aluIn1 & aluIn2);	
+      endcase
+   end
+```
+
+Where do we stand now ? 887 LUTs my friend ! 
+
+
 
 
 ## Files for all the steps
