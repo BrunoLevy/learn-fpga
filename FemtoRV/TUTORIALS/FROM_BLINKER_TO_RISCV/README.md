@@ -384,11 +384,114 @@ see the instruction decoder and how things are interconnected.
 
 ## Step 4: the instruction decoder
 
-Now the idea is to have a memory with RISC-V instructions in it, and see how to recognize
-among the 11 instructions (and light a different LED in function of the recognized instruction).
+Now the idea is to have a memory with RISC-V instructions in it, load all instructions
+sequentially (like in our christmas tinsel), in an `instr` register, and see how to recognize
+among the 11 instructions (and light a different LED in function of the recognized instruction). Each
+instruction is encoded in a 32-bits word, and we need to decode the different bits of this word to
+recognize the instruction and its parameters.
 
+The [RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf)
+has all the information that we need summarized in two tables in page 130 (RV32/64G Instruction Set Listings). 
 
-[RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf).
+Let us take a look at the big table, first thing to notice is that the 7 LSBs tells you which instruction it is
+(there are 10 possibilities, we do not count `FENCE` for now).
+
+```
+   reg [31:0] instr;
+   ...
+   wire isALUreg  =  (instr[6:0] == 7'b0110011); // rd <- rs1 OP rs2   
+   wire isALUimm  =  (instr[6:0] == 7'b0010011); // rd <- rs1 OP Iimm
+   wire isBranch  =  (instr[6:0] == 7'b1100011); // if(rs1 OP rs2) PC<-PC+Bimm
+   wire isJALR    =  (instr[6:0] == 7'b1100111); // rd <- PC+4; PC<-rs1+Iimm
+   wire isJAL     =  (instr[6:0] == 7'b1101111); // rd <- PC+4; PC<-PC+Jimm
+   wire isAUIPC   =  (instr[6:0] == 7'b0010111); // rd <- PC + Uimm
+   wire isLUI     =  (instr[6:0] == 7'b0110111); // rd <- Uimm   
+   wire isLoad    =  (instr[6:0] == 7'b0000011); // rd <- mem[rs1+Iimm]
+   wire isStore   =  (instr[6:0] == 7'b0100011); // mem[rs1+Simm] <- rs2
+   wire isSYSTEM  =  (instr[6:0] == 7'b1110011); // special
+```
+
+Besides the instruction type, we need also to decode the arguments of the instruction.
+The table on the top distinguishes 6 types of instructions
+(`R-type`,`I-type`,`S-type`,`B-type`,`U-type`,`J-type`), depending on the arguments
+of the instruction and how they are encoded within the 32 bits of the instruction word.
+
+`R-type` instructions take two source registers `rs1` and `rs2`,
+ apply an operation on them and stores the result in a
+ third destination register `rd` (`ADD`, `SUB`, `SLL`, `SLT`, `SLTU`, `XOR`,
+ `SRL`, `SRA`, `OR`, `AND`).
+
+ Since RISC-V has 32 registers,
+ each of `rs1`,`rs2` and `rd` use 5 bits of the instruction
+ word. Interestingly, these are the same bits for all
+ instruction formats. Hence, "decoding" `rs1`,`rs2`
+ and `rd` is just a matter of drawing some wires
+ from the instruction word:
+```
+   wire [4:0] rs1Id = instr[19:15];
+   wire [4:0] rs2Id = instr[24:20];
+   wire [4:0] rdId  = instr[11:7];
+```
+
+ Then, one needs to recognize among the 10 R-type instructions.
+ It is done mostly with the `funct3` field, a 3-bits code. With
+ a 3-bits code, one can only encode 8 different instructions, hence
+ there is also a `funct7` field (7 MSBs of instruction word). Bit
+ 30 of the instruction word encodes `ADD`/`SUB` and `SRA`/`SRL`
+ (arithmetic right shift with sign expansion/logical right shift).
+ The instruction decoder has wires for `funct3` and `funct7`:
+```
+   wire [2:0] funct3 = instr[14:12];
+   wire [6:0] funct7 = instr[31:25];
+```
+
+`I-type` instructions take one register `rs1`, an immediate value
+`Iimm`, applies an operation on them and stores the result in the
+destination register `rd` (`ADDI`, `SLTI`, `SLTIU`, `XORI`, `ORI`,
+`ANDI`, `SLLI`, `SRLI`, `SRAI`).
+
+_Wait a minute:_ there are 10 R-Type instructions but only 9 I-Type
+instructions, why is this so ? If you look carefully, you will see
+that there is no `SUBI`, but one can instead use `ADDI` with a
+negative immediate value. This is a general rule in RISC-V, if an
+existing functionality can be used, do not create a new functionality.
+
+As for R-type instructions, the instruction can be distinguished using
+`funct3` and `funct7` (and in `funct7`, only the bit 30 of the instruction
+word is used, to distinguish `SRAI`/`SRLI` arithmetic and logical right shifts).
+
+The immediate value is encoded in the 12 MSBs of the instruction word,
+hence we will draw additional wires to get it:
+```
+   wire [31:0] Iimm={{21{instr[31]}}, instr[30:20]};
+```
+
+As can be seen, bit 31 of the instruction word is repeated 21 times,
+this is "sign expansion" (converts a 12-bits signed quantity into
+a 32-bits one).
+
+There are four other instruction formats `S-type` (for Store),
+`B-type` (for Branch), `U-type` (for Upper immediates that
+are left-shifted by 12), and `J-type` (for Jumps). Each
+instruction format has a different way of encoding an immediate
+value in the instruction word. One can decode it by directly
+translating the table of the documentation into VERILOG, as follows:
+```
+   wire [31:0] Uimm={    instr[31],   instr[30:12], {12{1'b0}}};
+   wire [31:0] Iimm={{21{instr[31]}}, instr[30:20]};
+   wire [31:0] Simm={{21{instr[31]}}, instr[30:25],instr[11:7]};
+   wire [31:0] Bimm={{20{instr[31]}}, instr[7],instr[30:25],instr[11:8],1'b0};
+   wire [31:0] Jimm={{12{instr[31]}}, instr[19:12],instr[20],instr[30:21],1'b0};
+```
+Note that `Iimm`, `Simm`, `Bimm` and `Jimm` do sign expansion (by copying
+bit 31 the required number of times to fill the MSBs).
+
+And that's all for our instruction decoder ! To summarize, the instruction
+decoder gets the following information from the instruction word:
+- signals isXXX that recognizes among the 11 possible RISC-V instructions
+- source and destination registers `rs1`,`rs2` and `rd`
+- function codes `funct3` and `funct7`
+- the five formats for immediate values (with sign expansion for `Iimm`, `Simm`, `Bimm` and `Jimm`).
 
 
 
