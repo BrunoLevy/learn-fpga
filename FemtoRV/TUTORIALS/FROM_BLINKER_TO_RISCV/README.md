@@ -50,7 +50,7 @@ Before starting, you will need to install the following softwares:
 
 Let us start and create our first blinky ! Our blinky is implemented as VERILOG module,
 connected to inputs and outputs, as follows ([step1.v](step1.v)):
-```
+```verilog
    module SOC (
        input  CLK,        
        input  RESET,      
