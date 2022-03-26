@@ -634,7 +634,10 @@ endtask
 
    task endASM;
       begin
-`ifdef BENCH      
+`ifdef GET_ASM_LABELS
+	 $finish();
+`endif	 
+`ifdef BENCH  
 	 if(ASMerror) $finish();
 `endif
       end

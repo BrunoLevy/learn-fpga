@@ -50,19 +50,20 @@ module Memory (
    `define norm_max (4 << `mandel_shift)
    
    integer    mandelstart_ = 12;
-   integer    loop_y_      = 24;
-   integer    loop_x_      = 32;
-   integer    loop_Z_      = 44;
-   integer    exit_Z_      = 136;
-   integer    wait_        = 212;
-   integer    wait_L0_     = 220;
-   integer    putc_        = 232; 
-   integer    putc_L0_     = 240;
-   integer    mulsi3_      = 256;
-   integer    mulsi3_L0_   = 264;
-   integer    mulsi3_L1_   = 276;
+   integer    blink_       = 16;
+   integer    loop_y_      = 76;
+   integer    loop_x_      = 84;
+   integer    loop_Z_      = 96;
+   integer    exit_Z_      = 188;
+   integer    wait_        = 264;
+   integer    wait_L0_     = 272;
+   integer    putc_        = 284; 
+   integer    putc_L0_     = 292;
+   integer    mulsi3_      = 308;
+   integer    mulsi3_L0_   = 316;
+   integer    mulsi3_L1_   = 328;
    
-   integer    colormap_    = 292;
+   integer    colormap_    = 344;
 
    // X,Y         : s0,s1
    // Cr,Ci       : s2,s3
@@ -76,6 +77,22 @@ module Memory (
       LI(gp,32'h400000); // IO page
 
    Label(mandelstart_);
+
+      // Blink 5 times.
+      LI(s0,5);      
+   Label(blink_);
+      LI(a0,5);
+      SW(a0,gp,IO_BIT_TO_OFFSET(IO_LEDS_bit));
+      CALL(LabelRef(wait_));
+      LI(a0,10);
+      SW(a0,gp,IO_BIT_TO_OFFSET(IO_LEDS_bit));
+      CALL(LabelRef(wait_));
+      ADDI(s0,s0,-1);
+      BNEZ(s0,LabelRef(blink_));
+      LI(a0,0);
+      SW(a0,gp,IO_BIT_TO_OFFSET(IO_LEDS_bit));      
+      
+      
       LI(s1,0);
       LI(s3,`xmin);
       LI(s11,80);
@@ -133,6 +150,7 @@ module Memory (
       ADDI(s3,s3,`dy);
       BNE(s1,s11,LabelRef(loop_y_));
 
+      
       J(LabelRef(mandelstart_));
       
       EBREAK(); // I systematically keep it before functions
@@ -418,7 +436,7 @@ module Processor (
       end else begin
 	 if(writeBackEn && rdId != 0) begin
 	    RegisterBank[rdId] <= writeBackData;
-//	    $display("r%0d <= %b (%d) (%d)",rdId,writeBackData,writeBackData,$signed(writeBackData));
+	    // $display("r%0d <= %b (%d) (%d)",rdId,writeBackData,writeBackData,$signed(writeBackData));
 	    // For displaying what happens.
 	 end
 	 case(state)
