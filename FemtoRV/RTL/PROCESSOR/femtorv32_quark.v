@@ -34,22 +34,22 @@
 `define NRV_ABI      "ilp32"
 `define NRV_OPTIMIZE "-Os"
 
-module FemtoRV32(
-   input 	 clk,
+module FemtoRV32 #(
+   parameter RESET_ADDR = 32'h00000000,
+   parameter ADDR_WIDTH = 24
+)(
+   input         clk,
 
    output [31:0] mem_addr,  // address bus
    output [31:0] mem_wdata, // data to be written
-   output [3:0]  mem_wmask, // write mask for the 4 bytes of each word
-   input [31:0]  mem_rdata, // input lines for both data and instr
-   output 	 mem_rstrb, // active to initiate memory read (used by IO)
-   input 	 mem_rbusy, // asserted if memory is busy reading value
-   input 	 mem_wbusy, // asserted if memory is busy writing value
+   output  [3:0] mem_wmask, // write mask for the 4 bytes of each word
+   input  [31:0] mem_rdata, // input lines for both data and instr
+   output        mem_rstrb, // active to initiate memory read (used by IO)
+   input         mem_rbusy, // asserted if memory is busy reading value
+   input         mem_wbusy, // asserted if memory is busy writing value
 
-   input 	 reset      // set to 0 to reset the processor
+   input         reset      // set to 0 to reset the processor
 );
-
-   parameter RESET_ADDR       = 32'h00000000;
-   parameter ADDR_WIDTH       = 24;
 
  /***************************************************************************/
  // Instruction decoding.
@@ -100,6 +100,7 @@ module FemtoRV32(
    (* no_rw_check *)
    reg [31:0] registerFile [31:0];
 
+   // write access
    always @(posedge clk) begin
      if (writeBack)
        if (rdId != 0)
@@ -154,16 +155,16 @@ module FemtoRV32(
    always @(posedge clk) begin
       if(aluWr) begin
          if (funct3IsShift) begin  // SLL, SRA, SRL
-	    aluReg <= aluIn1;
-	    aluShamt <= aluIn2[4:0];
-	 end
+            aluReg <= aluIn1;
+            aluShamt <= aluIn2[4:0];
+         end
       end
 
 `ifdef NRV_TWOLEVEL_SHIFTER
       else if(|aluShamt[4:2]) begin // Shift by 4
          aluShamt <= aluShamt - 4;
-	 aluReg <= funct3Is[1] ? aluReg << 4 :
-		   {{4{instr[30] & aluReg[31]}}, aluReg[31:4]};
+         aluReg <= funct3Is[1] ? aluReg << 4 :
+                   {{4{instr[30] & aluReg[31]}}, aluReg[31:4]};
       end  else
 `endif
       // Compact form of:
@@ -173,8 +174,8 @@ module FemtoRV32(
 
       if (|aluShamt) begin
          aluShamt <= aluShamt - 1;
-	 aluReg <= funct3Is[1] ? aluReg << 1 :              // SLL
-		   {instr[30] & aluReg[31], aluReg[31:1]};  // SRA,SRL
+         aluReg <= funct3Is[1] ? aluReg << 1 :              // SLL
+                   {instr[30] & aluReg[31], aluReg[31:1]};  // SRA,SRL
       end
    end
 
@@ -204,20 +205,20 @@ module FemtoRV32(
    // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
    // Equivalent to PCplusImm = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
    wire [ADDR_WIDTH-1:0] PCplusImm = PC + ( instr[3] ? Jimm[ADDR_WIDTH-1:0] :
-					    instr[4] ? Uimm[ADDR_WIDTH-1:0] :
-					               Bimm[ADDR_WIDTH-1:0] );
+                                            instr[4] ? Uimm[ADDR_WIDTH-1:0] :
+                                                       Bimm[ADDR_WIDTH-1:0] );
 
    // A separate adder to compute the destination of load/store.
    // testing instr[5] is equivalent to testing isStore in this context.
    wire [ADDR_WIDTH-1:0] loadstore_addr = rs1[ADDR_WIDTH-1:0] +
-		   (instr[5] ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
+                   (instr[5] ? Simm[ADDR_WIDTH-1:0] : Iimm[ADDR_WIDTH-1:0]);
 
    /* verilator lint_off WIDTH */
    // internal address registers and cycles counter may have less than 
    // 32 bits, so we deactivate width test for mem_addr and writeBackData
 
    assign mem_addr = state[WAIT_INSTR_bit] | state[FETCH_INSTR_bit] ?
-		     PC : loadstore_addr ;
+                     PC : loadstore_addr ;
 
    /***************************************************************************/
    // The value written back to the register file.
@@ -251,7 +252,7 @@ module FemtoRV32(
    // - funct3[2] (instr[14]): 0->do sign expansion   1->no sign expansion
 
    wire LOAD_sign =
-	!instr[14] & (mem_byteAccess ? LOAD_byte[7] : LOAD_halfword[15]);
+        !instr[14] & (mem_byteAccess ? LOAD_byte[7] : LOAD_halfword[15]);
 
    wire [31:0] LOAD_data =
          mem_byteAccess ? {{24{LOAD_sign}},     LOAD_byte} :
@@ -259,10 +260,10 @@ module FemtoRV32(
                           mem_rdata ;
 
    wire [15:0] LOAD_halfword =
-	       loadstore_addr[1] ? mem_rdata[31:16] : mem_rdata[15:0];
+               loadstore_addr[1] ? mem_rdata[31:16] : mem_rdata[15:0];
 
    wire  [7:0] LOAD_byte =
-	       loadstore_addr[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
+               loadstore_addr[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
 
    // STORE
 
@@ -270,7 +271,7 @@ module FemtoRV32(
    assign mem_wdata[15: 8] = loadstore_addr[0] ? rs2[7:0]  : rs2[15: 8];
    assign mem_wdata[23:16] = loadstore_addr[1] ? rs2[7:0]  : rs2[23:16];
    assign mem_wdata[31:24] = loadstore_addr[0] ? rs2[7:0]  :
-			     loadstore_addr[1] ? rs2[15:8] : rs2[31:24];
+                             loadstore_addr[1] ? rs2[15:8] : rs2[31:24];
 
    // The memory write mask:
    //    1111                     if writing a word
@@ -280,13 +281,13 @@ module FemtoRV32(
    //                                (depending on loadstore_addr[1:0])
 
    wire [3:0] STORE_wmask =
-	      mem_byteAccess      ?
-	            (loadstore_addr[1] ?
-		          (loadstore_addr[0] ? 4'b1000 : 4'b0100) :
-		          (loadstore_addr[0] ? 4'b0010 : 4'b0001)
+              mem_byteAccess      ?
+                    (loadstore_addr[1] ?
+                          (loadstore_addr[0] ? 4'b1000 : 4'b0100) :
+                          (loadstore_addr[0] ? 4'b0010 : 4'b0001)
                     ) :
-	      mem_halfwordAccess ?
-	            (loadstore_addr[1] ? 4'b1100 : 4'b0011) :
+              mem_halfwordAccess ?
+                    (loadstore_addr[1] ? 4'b1100 : 4'b0011) :
               4'b1111;
 
    /*************************************************************************/
@@ -312,7 +313,7 @@ module FemtoRV32(
 
    // register write-back enable.
    wire writeBack = ~(isBranch | isStore ) &
-	            (state[EXECUTE_bit] | state[WAIT_ALU_OR_MEM_bit]);
+                    (state[EXECUTE_bit] | state[WAIT_ALU_OR_MEM_bit]);
 
    // The memory-read signal.
    assign mem_rstrb = state[EXECUTE_bit] & isLoad | state[FETCH_INSTR_bit];
@@ -326,8 +327,8 @@ module FemtoRV32(
    wire jumpToPCplusImm = isJAL | (isBranch & predicate);
 `ifdef NRV_IS_IO_ADDR
    wire needToWait = isLoad |
-		     isStore  & `NRV_IS_IO_ADDR(mem_addr) |
-		     isALU & funct3IsShift;
+                     isStore  & `NRV_IS_IO_ADDR(mem_addr) |
+                     isALU & funct3IsShift;
 `else
    wire needToWait = isLoad | isStore | isALU & funct3IsShift;
 `endif
@@ -355,7 +356,7 @@ module FemtoRV32(
            PC <= isJALR          ? {aluPlus[ADDR_WIDTH-1:1],1'b0} :
                  jumpToPCplusImm ? PCplusImm :
                  PCplus4;
-	   state <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
+           state <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
         end
 
         state[WAIT_ALU_OR_MEM_bit]: begin
@@ -363,7 +364,7 @@ module FemtoRV32(
         end
 
         default: begin // FETCH_INSTR
-          state <= WAIT_INSTR;
+           state <= WAIT_INSTR;
         end
 
       endcase
@@ -417,4 +418,3 @@ endmodule
 // [2] state uses 1-hot encoding (at any time, state has only one bit set to 1).
 // It uses a larger number of bits (one bit per state), but often results in
 // a both more compact (fewer LUTs) and faster state machine.
-
