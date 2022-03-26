@@ -552,6 +552,10 @@ Then we can fetch and recognize the instructions as follows:
 (first led is wired to `PC[0]` so that we will see it blinking even if
  there is the same instruction several times).
 
+As you can see, the program counter is only incremented if instruction
+is not `SYSTEM`. For now, the only `SYSTEM` instruction that we support
+is `EBREAK`, that halts execution. 
+
 In simulation mode, we can in addition display the name of the recognized instruction
 and the fields:
 ```verilog
@@ -720,7 +724,104 @@ Now we can fetch instructions from memory, decode them and read register
 values, but our (wannabe) CPU is still unable to do anything. Let us see
 how to do actual computations on register's values.
 
+_So, are you going to create an `ALU` module ? And by the way, why did not
+ you create a `Decoder` module, and a `RegisterBank` module ?_
 
+My very first design used multiple modules and multiple register files, for
+a total of 1000 lines of code or so, then Matthias Koch wrote a monolithic
+version, that fits in 200 lines of code. Not only it is more compact, but
+also it is much easier to understand when you got everything in one place.
+**Rule of thumb:** if you have more boxes and wires between the boxes than
+circuitry in the boxes, then you have too many boxes !
+
+_But wait a minute, modular design is good, no ?_
+
+Modular design is neither good nor bad, it is useful whenever it makes things
+simpler. It is not the case in the present situation. There is no absolute
+answer though, it is a matter of taste and style ! In this tutorial, we use
+a (mostly) monolithic design.
+
+Now we want to implement two types of instructions:
+- Rtype: `rd` <- `rs1` `OP` `rs2`  (recognized by `isALUreg`)
+- Itype: `rd` <- `rs1` `OP` `Iimm` (recognized by `isALUimm`)
+
+The ALU takes two inputs `aluIn1` and `aluIn2`, computes
+`aluIn1` `OP` `aluIn2` and stores it in `aluOut`:
+```verilog
+   wire [31:0] aluIn1 = rs1;
+   wire [31:0] aluIn2 = isALUreg ? rs2 : Iimm;
+   reg [31:0] aluOut;
+```
+Depending on the instruction type, `aluIn2` is either the value
+in the second source register `rs2`, or an immediate in the `Itype`
+format (`Immm`). The operation `OP` depends mostly on `funct3`
+(and also on `funct7`). Keep a copy of the [RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf) open page 130 on your knees or in another window:
+
+| funct3 | operation                                     |
+|--------|-----------------------------------------------|
+| 3'b000 | `ADD` or `SUB`                                |
+| 3'b001 | left shift                                    |
+| 3'b010 | signed comparison (<)                         |
+| 3'b011 | unsigned comparison (<)                       |
+| 3'b100 | `XOR`                                         |
+| 3'b101 | logical right shift or arithmetic right shift |
+| 3'b110 | `OR`                                          |
+| 3'b111 | `AND`                                         |
+
+- for `ADD`/`SUB`, if its an `ALUreg` operation (Rtype), then one makes the
+difference between `ADD` and `SUB` by testing bit 5 of `funct7` (1 for `SUB`).
+If it is an `ALUimm` operation (Itype), then it can be only `ADD`. In this
+context, one just needs to test bit 5 of `instr` to distinguish between
+`ALUreg` (if it is 1) and `ALUimm` (if it is 0).
+- for logical or arithmetic right shift, one makes the difference also by testing
+bit 5 of `funct7`, 1 for arithmetic shift (with sign expansion) and 0 for
+logical shift.
+- the shift amount is either the content of `rs2` for `ALUreg` instructions or
+  `instr[24:20]` (the same bits as `rs2Id`) for `ALUimm` instructions.
+
+Putting everything together, one gets the following VERILOG code for the ALU:
+```verilog
+   reg [31:0] aluOut;
+   wire [4:0] shamt = isALUreg ? rs2[4:0] : instr[24:20]; // shift amount
+   always @(*) begin
+      case(funct3)
+	3'b000: aluOut = (funct7[5] & instr[5]) ? (aluIn1-aluIn2) : (aluIn1+aluIn2);
+	3'b001: aluOut = aluIn1 << shamt;
+	3'b010: aluOut = ($signed(aluIn1) < $signed(aluIn2));
+	3'b011: aluOut = (aluIn1 < aluIn2);
+	3'b100: aluOut = (aluIn1 ^ aluIn2);
+	3'b101: aluOut = funct7[5]? ($signed(aluIn1) >>> shamt) : (aluIn1 >> shamt); 
+	3'b110: aluOut = (aluIn1 | aluIn2);
+	3'b111: aluOut = (aluIn1 & aluIn2);	
+      endcase
+   end
+```
+_Note:_ although it is declared as a `reg`, `aluOut` will be a combinatorial function
+(no flipflop generated), because its value is determined in a combinatorial block
+(`always @(*)`), and all the configurations are enumerated in the `case` statement.
+
+Register write-back is configured as follows:
+```verilog
+   assign writeBackData = aluOut; 
+   assign writeBackEn = (state == EXECUTE && (isALUreg || isALUimm));   
+```
+
+**Try this** run [step6.v](step6.v) in simulation and on the device. In simulation
+it will display the written value and the written register for all register
+write-back operation. On the device it will show the 5 LSBs of `x1` on the LEDs.
+Then you can try changing the program, and observe the effect on register values.
+
+**You are here !** This is the list of instructions you have to implement,
+your wannabe RISC-V core currently supports 20 of them. Next steps: jumps,
+then branches, then... the rest. Before then, as you probably have noticed,
+translating RISC-V programs into binary (that is, assembling manually) is
+extremely painful. Next section gives a much easier solution.
+
+| ALUreg | ALUimm | Jump  | Branch | LUI | AUIPC | Load  | Store | SYSTEM |
+|--------|--------|-------|--------|-----|-------|-------|-------|--------|
+| [*] 10 | [*] 9  | [ ] 2 | [ ] 6  | [ ] | [ ]   | [ ] 5 | [ ] 3 | [*] 1  |
+
+## Using the VERILOG assembler
 
 ## Files for all the steps
 
