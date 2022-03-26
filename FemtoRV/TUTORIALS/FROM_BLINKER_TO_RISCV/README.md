@@ -648,6 +648,78 @@ instruction (`ADD zero zero zero`), and all the branch variants can
 compare with `zero` ! I think that `zero` is a great invention, not as great
 as `0`, but really makes the instruction set more compact.
 
+## Step 5: The register bank and the state machine
+
+The register bank is implemented as follows:
+```
+   reg [31:0] RegisterBank [0:31];
+```
+
+Let us take a closer look at what we need to to to execute an instruction.
+Condider for instance a stream of R-type instructions. For each instruction,
+we need to do the following four things:
+
+- fetch the instruction: `instr <= MEM[PC]`
+- fetch the values of `rs1` and `rs2`: `rs1 <= RegisterBank[rs1Id]; rs2 <= RegisterBank[rs2Id]`
+   where `rs1` and `rs2` are two registers. We need to do that because `RegisterBank` will be
+   synthesized as a block of BRAM, and one needs one cycle to access the content of BRAM.
+- compute `rs1` `OP` `rs2` (where `OP` depends on `funct3` and `funct7`)
+- store the result in `rd`: `RegisterBank[rdId] <= writeBackData`. This can be done during
+  the same cycle as the previous step if `OP` is computed by a combinatorial circuit.
+
+The first three operations are implemented by a state machine,
+as follows (see [step5.v](step5.v)):
+```
+   localparam FETCH_INSTR = 0;
+   localparam FETCH_REGS  = 1;
+   localparam EXECUTE     = 2;
+   reg [1:0] state = FETCH_INSTR;
+   always @(posedge clk) begin
+	 case(state)
+	   FETCH_INSTR: begin
+	      instr <= MEM[PC];
+	      state <= FETCH_REGS;
+	   end
+	   FETCH_REGS: begin
+	      rs1 <= RegisterBank[rs1Id];
+	      rs2 <= RegisterBank[rs2Id];
+	      state <= EXECUTE;
+	   end
+	   EXECUTE: begin
+	      PC <= PC + 1;
+	      state <= FETCH_INSTR;	      
+	   end
+	 endcase
+      end 
+   end 
+```
+
+The fourth one (register write-back) is implemented in this block:
+```
+   wire [31:0] writeBackData = ... ;
+   wire writeBackEn = ...;
+   always @posedge(clk) begin	
+      if(writeBackEn && rdId != 0) begin
+          RegisterBank[rdId] <= writeBackData;
+      end
+   end
+```
+Remember that writing to register 0 has no effect (hence the test `rdId != 0`).
+The signal `writeBackEn` is asserted whenever `writeBackData` should be written
+to register `rdId`.
+The data to be written back (`writeBackData`) will be obtained from the ALU,
+as explained in the next episode. 
+
+**Try this**: run [step5.v](step5.v) in simulation and on the device. You will
+see your wannabe CPU's state machine dancing waltz on the LEDs (that display
+the current state).
+
+## Step 6: the ALU
+
+Now we can fetch instructions from memory, decode them and read register
+values, but our (wannabe) CPU is still unable to do anything. Let us see
+how to do actual computations on register's values.
+
 
 
 ## Files for all the steps
