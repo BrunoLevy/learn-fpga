@@ -34,8 +34,8 @@ from the bit pattern of the current instruction.
 If you want to design a RISC-V processor on your own, I recommend you take a deep look at 
 [the Stackoverflow answer](https://stackoverflow.com/questions/51592244/implementation-of-simple-microprocessor-using-verilog/51621153#51621153), 
 and do some schematics on your own to have all the general ideas in mind
-before going further. 
-
+before going further... or you can choose to directly jump into this tutorial, one step at a time. It will
+gently take you from the most trivial Blinky design to a fully functional RISC-V core. 
 
 ## Prerequisites:
 
@@ -46,9 +46,15 @@ Before starting, you will need to install the following softwares:
 ```
 - yosys/nextpnr, the toolchain for your board. See [this link](../toolchain.md).
 
+Note that iverilog/icarus is sufficient to run and play with all the
+steps of the tutorial, but the experience is not the same. I highly
+recommend to run each step on a real device.  The feeling and
+excitation of your own processor running some code for the first time
+is not of the same magnitude when you are doing simulation !!!
+
 ## Step 1: your first blinky
 
-Let us start and create our first blinky ! Our blinky is implemented as VERILOG module,
+Let us start and create our first blinky ! Our blinky is implemented as a VERILOG module,
 connected to inputs and outputs, as follows ([step1.v](step1.v)):
 ```verilog
    module SOC (
@@ -955,7 +961,7 @@ fix the label as indicated by the simulator, re-run in simulation, run on device
 
 Branches are like jumps, except that they compare two register, and update
 `PC` based on the result of the comparison. Another difference is that they
-are more limited in the address they can reach from `PC` (12-bits offset). 
+are more limited in the address range they can reach from `PC` (12-bits offset). 
 There are 6 different branch instructions:
 
 | instruction      | effect                                             |
@@ -969,7 +975,7 @@ There are 6 different branch instructions:
 
 _Wait a minute:_ there is `BLT`, but where is `BGT` ? Always the same
 principle in a RISC-V processor: if something can be done with a functionality
-that is already there, do not add the functionality ! In this case,
+that is already there, do not add a new functionality ! In this case,
 `BGT rs1,rs2,imm` is equivalent to `BLT rs2,rs1,imm` (just swap the first
 two operands). If you use `BGT` in a RISC-V assembly program, it will work
 (and the assembler replaces it with `BLT` with swapped operands). `BGT`
