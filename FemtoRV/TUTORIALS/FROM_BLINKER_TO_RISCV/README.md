@@ -821,7 +821,227 @@ extremely painful. Next section gives a much easier solution.
 |--------|--------|-------|--------|-----|-------|-------|-------|--------|
 | [*] 10 | [*] 9  | [ ] 2 | [ ] 6  | [ ] | [ ]   | [ ] 5 | [ ] 3 | [*] 1  |
 
-## Using the VERILOG assembler
+## Step 7: using the VERILOG assembler
+
+To avoid having to manually translate RISC-V assembly into binary, one can
+use the GNU assembler, generate a binary file, translate it into hexadecimal
+and use the VERILOG function `readmemh()` to initialize memory with the
+content of that file. We will see later how to do that.
+
+But in our case, it would be very convenient to be able to write small
+assembly programs directly in the same VERILOG file as our design. In fact,
+it is possible to do so, by implementing a RISC-V assembler directly in
+VERILOG (using tasks and functions), as done in [riscv_assembly.v](riscv_assembly.v).
+
+In [step7.v](step7.v), memory is initialized with
+the same assembly program as in [step6.v](step6.v). 
+It looks like that now, Much easier to read, no ?
+```verilog
+   `include "riscv_assembly.v"
+   initial begin
+      ADD(x0,x0,x0);
+      ADD(x1,x0,x0);
+      ADDI(x1,x1,1);
+      ADDI(x1,x1,1);
+      ADDI(x1,x1,1);
+      ADDI(x1,x1,1);
+      ADD(x2,x1,x0);
+      ADD(x3,x1,x2);
+      SRLI(x3,x3,3);
+      SLLI(x3,x3,31);
+      SRAI(x3,x3,5);
+      SRLI(x1,x3,26);
+      EBREAK();
+   end
+```
+_Note:_ `riscv_assembly.v` needs to be included from inside the module that
+uses assembly.
+
+In this step, we make another modification: in the previous steps, `PC` was
+the index of the current instruction. For what follows, we want it to be
+the _address_ of the current instruction. Since each instruction is 32-bits
+long, it means that:
+- to increment `PC`, we do `PC <= PC + 4` (instead of `PC <= PC + 1` as before)
+- to fetch the current instruction, we do `instr <= MEM[PC[31:2]];` (we ignore
+  the two LSBs of `PC`).
+
+## Step 8: jumps
+
+There are two jump instructions, `JAL` (jump and link), and `JALR` (jump and
+link register). By "and link", one means that the current PC can be written
+to a register. Hence `JAL` and `JALR` can be used to implement not only
+jumps, but also function calls. Here is what the two instructions are
+supposed to do:
+
+| instruction     | effect                  |
+|-----------------|-------------------------|
+| JAL rd,imm      | rd<-PC+4; PC<-PC+Jimm   |
+| JALR rd,rs1,imm | rd<-PC+4; PC<-rs1+Iimm  |
+
+To implement these two instructions, we need to make
+the following changes to our core. First thing is
+register write-back: now value can be `PC+4` instead
+of `aluOut` for jump instructions:
+```verilog
+   assign writeBackData = (isJAL || isJALR) ? (PC + 4) : aluOut;
+   assign writeBackEn = (state == EXECUTE && 
+			 (isALUreg || 
+			  isALUimm || 
+			  isJAL    || 
+			  isJALR)
+			 );
+```
+
+We also need to declare a `nextPC` value, that implements the
+three possibilities:
+```verilog
+   wire [31:0] nextPC = isJAL  ? PC+Jimm :
+	                isJALR ? rs1+Iimm :
+	                PC+4;
+```
+
+Then, in the state machine, the line `PC <= PC + 4;` is replaced
+with `PC <= nextPC;` and that's all !
+
+We can now implement a simple (infinite) loop to test our new
+jump instruction:
+```verilog
+`include "riscv_assembly.v"
+      integer L0_=4;
+      initial begin
+	 ADD(x1,x0,x0);
+      Label(L0_);
+	 ADDI(x1,x1,1);
+	 JAL(x0,LabelRef(L0_));
+	 EBREAK();
+	 endASM();
+      end
+```
+
+The integer `L0_` is a label. Unlike with a real assembler, we
+need to specify the value of `L0_` by hand. Here it is easy,
+`L0_` is right after the first instruction, hence it corresponds
+to the beginning of the RAM (0) plus one 32-bits words, that is, 4.
+For longer programs with many labels, you can let the labels uninitialized
+(`integer L0_;`) then the first time you run the program, it will compute and display the
+values to be used for the labels. It is not super-convenient, but still
+much better than assembling by hand / determining the labels by hand.
+
+_Note 1_: I systematically insert an `EBREAK()` instruction at the end of the program,
+here it would not be necessary (we have an infinite loop), but if I change my mind
+and exit the loop, then `EBREAK()` is already there.
+
+_Note 2_: the `endASM();` statement checks the validity of all the labels and exits
+simulation whenever an invalid label is detected. If you use the RISC-V VERILOG
+assembler, systematically run your design in simulation before synthesizing (because
+this verification cannot be done at synthesis time).
+
+**Try this** Run the design [step8.v](step8.v) in simulation and on the device.
+Yes, after 8 steps, what we have is just another stupid blinky ! But this time,
+this blinky is executing a real RISC-V program ! It is not a complete RISC-V core
+yet, but it starts to have a strong RISC-V flavor. Be patient, our core will be
+soon able to run RISC-V programs that are more interesting than a blinky.
+
+**You are here !**
+Still some work to do, but we are making progress.
+| ALUreg | ALUimm | Jump  | Branch | LUI | AUIPC | Load  | Store | SYSTEM |
+|--------|--------|-------|--------|-----|-------|-------|-------|--------|
+| [*] 10 | [*] 9  | [*] 2 | [ ] 6  | [ ] | [ ]   | [ ] 5 | [ ] 3 | [*] 1  |
+
+**Try this** add a couple of instructions before the loop, run in simulation,
+fix the label as indicated by the simulator, re-run in simulation, run on device.
+
+## Step 9: Branches
+
+Branches are like jumps, except that they compare two register, and update
+`PC` based on the result of the comparison. Another difference is that they
+are more limited in the address they can reach from `PC` (12-bits offset). 
+There are 6 different branch instructions:
+
+| instruction      | effect                                             |
+|------------------|----------------------------------------------------|
+| BEQ rs1,rs2,imm  | if(rs1 == rs2) PC <- PC+Bimm                       |
+| BNE rs1,rs2,imm  | if(rs1 != rs2) PC <- PC+Bimm                       |
+| BLT rs1,rs2,imm  | if(rs1 <  rs2) PC <- PC+Bimm (signed comparison)   |
+| BGE rs1,rs2,imm  | if(rs1 >= rs2) PC <- PC+Bimm (signed comparison)   |
+| BLTU rs1,rs2,imm | if(rs1 <  rs2) PC <- PC+Bimm (unsigned comparison) |
+| BGEU rs1,rs2,imm | if(rs1 >= rs2) PC <- PC+Bimm (unsigned comparison) |
+
+_Wait a minute:_ there is `BLT`, but where is `BGT` ? Always the same
+principle in a RISC-V processor: if something can be done with a functionality
+that is already there, do not add the functionality ! In this case,
+`BGT rs1,rs2,imm` is equivalent to `BLT rs2,rs1,imm` (just swap the first
+two operands). If you use `BGT` in a RISC-V assembly program, it will work
+(and the assembler replaces it with `BLT` with swapped operands). `BGT`
+is called a "pseudo-instruction". There are many pseudo-instructions to make
+RISC-V assembly programmer's life easier (more on this later).
+
+Back to our branch instructions, we will need to add in the ALU some wires
+to compute the result of the test, as follows:
+```verilog
+   reg takeBranch;
+   always @(*) begin
+      case(funct3)
+	3'b000: takeBranch = (rs1 == rs2);
+	3'b001: takeBranch = (rs1 != rs2);
+	3'b100: takeBranch = ($signed(rs1) < $signed(rs2));
+	3'b101: takeBranch = ($signed(rs1) >= $signed(rs2));
+	3'b110: takeBranch = (rs1 < rs2);
+	3'b111: takeBranch = (rs1 >= rs2);
+	default: takeBranch = 1'b0;
+      endcase
+```
+_Note 1_ it is possible to create a much more compact ALU, that uses a much smaller number
+of LUTs when synthesized, we sill see that later (for now, our goal is to have a RISC-V
+processor that works, we will optimize it later).
+
+_Note 2_ Among the 8 possibilites given by `funct3`, only 6 of them are used by the branch
+instructions. It is necessary to have a `default:` statement in the `case`, else the
+synthesizer would not be able to keep `takeBranch` as purely combinatorial (and would generate
+a latch, which we do not want).
+
+Now the only thing that remains to do for implementing branches is to add a case for
+`nextPC`, as follows:
+```verilog
+   wire [31:0] nextPC = (isBranch && takeBranch) ? PC+Bimm :	       
+   	                isJAL                    ? PC+Jimm :
+	                isJALR                   ? rs1+Iimm :
+	                PC+4;
+```
+
+We are now ready to test a simple loop, that counts from 0 to 31,
+displays each iteration on the LEDs (remember, they are wired
+to `x1`) and stops:
+
+```c++
+`include "riscv_assembly.v"
+      integer L0_ = 8;
+   
+      initial begin
+         ADD(x1,x0,x0);
+         ADDI(x2,x0,32);
+      Label(L0_); 
+	 ADDI(x1,x1,1); 
+         BNE(x1, x2, LabelRef(L0_));
+         EBREAK();
+
+	 endASM();
+      end
+```
+
+**Try this** run [test9.v](test9.v) in simulation and on device. Try modifying the program,
+create a "knight driver" blinky with an outer loop and two inner loops (one left to right and
+one right to left). 
+
+**You are here !**
+Wow, we have implemented 28 instructions out of 38 ! Let us continue...
+
+| ALUreg | ALUimm | Jump  | Branch | LUI | AUIPC | Load  | Store | SYSTEM |
+|--------|--------|-------|--------|-----|-------|-------|-------|--------|
+| [*] 10 | [*] 9  | [*] 2 | [ *] 6 | [ ] | [ ]   | [ ] 5 | [ ] 3 | [*] 1  |
+
+## Step 10: LUI and AUIPC
+
 
 ## Files for all the steps
 
