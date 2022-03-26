@@ -93,7 +93,7 @@ In fact they are blinking, but it is too fast for you to distinguish anything.
 To see something, it is possible to use simulation. To use simulation, we write
 a new VERILOG file [bench_iverilog.v](bench_iverilog.v),
 with a module `bench` that encapsulates our `SOC`:
-```
+```verilog
 module bench();
    reg CLK;
    wire RESET = 0; 
@@ -173,7 +173,7 @@ with the LEDs.
 To do that, I created a `Clockworks` module in (clockworks.v)[clockworks.v],
 that contains the gearbox and a mechanism related with the `RESET` signal (that
 I'll talk about later). `Clockworks` is implemented as follows:
-```
+```verilog
 module Clockworks 
 (
    input  CLK,   // clock pin of the board
@@ -198,7 +198,7 @@ between the `CLK` signal of the board
 and the design, using an internal `clk`
 signal, as follows, in [step2.v](step2.v):
 
-```
+```verilog
 `include "clockworks.v"
 
 module SOC (
@@ -270,7 +270,7 @@ the time (except when there are jumps and branches). Let us
 start with something similar, but much simpler: a pre-programmed
 christmas tinsel, that loads the LEDs pattern from a memory (see
 [step3.v](step3.v)). Our tinsel has a memory with the patterns:
-```
+```verilog
    reg [4:0] MEM [0:20];
    initial begin
        MEM[0]  = 5'b00000;
@@ -289,7 +289,7 @@ data for the BRAMs of the FPGA._
 We will also have a "program counter" `PC` incremented at each clock, and
 a mechanism to fetch `MEM` contents indexed by `PC`:
 
-```
+```verilog
    reg [4:0] PC = 0;
    reg [4:0] leds = 0;
 
@@ -396,7 +396,7 @@ has all the information that we need summarized in two tables in page 130 (RV32/
 Let us take a look at the big table, first thing to notice is that the 7 LSBs tells you which instruction it is
 (there are 10 possibilities, we do not count `FENCE` for now).
 
-```
+```verilog
    reg [31:0] instr;
    ...
    wire isALUreg  =  (instr[6:0] == 7'b0110011); // rd <- rs1 OP rs2   
@@ -427,7 +427,7 @@ of the instruction and how they are encoded within the 32 bits of the instructio
  instruction formats. Hence, "decoding" `rs1`,`rs2`
  and `rd` is just a matter of drawing some wires
  from the instruction word:
-```
+```verilog
    wire [4:0] rs1Id = instr[19:15];
    wire [4:0] rs2Id = instr[24:20];
    wire [4:0] rdId  = instr[11:7];
@@ -440,7 +440,7 @@ of the instruction and how they are encoded within the 32 bits of the instructio
  30 of the instruction word encodes `ADD`/`SUB` and `SRA`/`SRL`
  (arithmetic right shift with sign expansion/logical right shift).
  The instruction decoder has wires for `funct3` and `funct7`:
-```
+```verilog
    wire [2:0] funct3 = instr[14:12];
    wire [6:0] funct7 = instr[31:25];
 ```
@@ -462,7 +462,7 @@ word is used, to distinguish `SRAI`/`SRLI` arithmetic and logical right shifts).
 
 The immediate value is encoded in the 12 MSBs of the instruction word,
 hence we will draw additional wires to get it:
-```
+```verilog
    wire [31:0] Iimm={{21{instr[31]}}, instr[30:20]};
 ```
 
@@ -492,7 +492,7 @@ Note that `I-type` and `S-type` encode the same type of values (but they are tak
 Same thing for `B-type` and `J-type`.
 
 One can decode the different types of immediates as follows:
-```
+```verilog
    wire [31:0] Uimm={    instr[31],   instr[30:12], {12{1'b0}}};
    wire [31:0] Iimm={{21{instr[31]}}, instr[30:20]};
    wire [31:0] Simm={{21{instr[31]}}, instr[30:25],instr[11:7]};
@@ -516,7 +516,7 @@ the big table in page 130 of the
 It is a bit painful (we will see easier ways later !). Using the `_` character to separate fields of a binary constant is
 especially interesting under this circumstance.
 
-```
+```verilog
    initial begin
       // add x1, x0, x0
       //                    rs2   rs1  add  rd  ALUREG
@@ -538,7 +538,7 @@ especially interesting under this circumstance.
 ```
 
 Then we can fetch and recognize the instructions as follows:
-```
+```verilog
    always @(posedge clk) begin
       if(!resetn) begin
 	 PC <= 0;
@@ -554,7 +554,7 @@ Then we can fetch and recognize the instructions as follows:
 
 In simulation mode, we can in addition display the name of the recognized instruction
 and the fields:
-```
+```verilog
 `ifdef BENCH   
    always @(posedge clk) begin
       $display("PC=%0d",PC);
@@ -651,7 +651,7 @@ as `0`, but really makes the instruction set more compact.
 ## Step 5: The register bank and the state machine
 
 The register bank is implemented as follows:
-```
+```verilog
    reg [31:0] RegisterBank [0:31];
 ```
 
@@ -669,7 +669,7 @@ we need to do the following four things:
 
 The first three operations are implemented by a state machine,
 as follows (see [step5.v](step5.v)):
-```
+```verilog
    localparam FETCH_INSTR = 0;
    localparam FETCH_REGS  = 1;
    localparam EXECUTE     = 2;
@@ -695,7 +695,7 @@ as follows (see [step5.v](step5.v)):
 ```
 
 The fourth one (register write-back) is implemented in this block:
-```
+```verilog
    wire [31:0] writeBackData = ... ;
    wire writeBackEn = ...;
    always @posedge(clk) begin	
