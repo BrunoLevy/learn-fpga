@@ -151,15 +151,18 @@ module FemtoRV32 #(
    // - for SUB, need to test also instr[5] to discriminate ADDI:
    //    (1 for ADD/SUB, 0 for ADDI, and Iimm used by ADDI overlaps bit 30 !)
    // - instr[30] is 1 for SRA (do sign extension) and 0 for SRL
-
-   wire [31:0] aluOut =
-     (funct3Is[0]  ? instr[30] & instr[5] ? aluMinus[31:0] : aluPlus : 32'b0) |
-     (funct3Is[2]  ? {31'b0, LT}                                     : 32'b0) |
-     (funct3Is[3]  ? {31'b0, LTU}                                    : 32'b0) |
-     (funct3Is[4]  ? aluLog                                          : 32'b0) |
-     (funct3Is[6]  ? aluLog                                          : 32'b0) |
-     (funct3Is[7]  ? aluLog                                          : 32'b0) |
-     (funct3IsShift ? aluReg                                         : 32'b0) ;
+   reg [32-1:0] aluOut;
+   always @(*)
+   case (instr[14:12])
+      3'b000: aluOut = instr[30] & instr[5] ? aluMinus[31:0] : aluPlus;  // ADD
+      3'b001: aluOut = aluReg;        // SL
+      3'b010: aluOut = {31'b0, LT};   // SLT
+      3'b011: aluOut = {31'b0, LTU};  // SLTU
+      3'b100: aluOut = aluLog;        // XOR
+      3'b101: aluOut = aluReg;        // SR
+      3'b110: aluOut = aluLog;        // OR
+      3'b111: aluOut = aluLog;        // AND
+   endcase
 
    wire funct3IsShift = funct3Is[1] | funct3Is[5];
 
@@ -194,13 +197,19 @@ module FemtoRV32 #(
    // The predicate for conditional branches.
    /***************************************************************************/
 
-   wire predicate =
-        funct3Is[0] &  EQ  | // BEQ
-        funct3Is[1] & !EQ  | // BNE
-        funct3Is[4] &  LT  | // BLT
-        funct3Is[5] & !LT  | // BGE
-        funct3Is[6] &  LTU | // BLTU
-        funct3Is[7] & !LTU ; // BGEU
+   reg predicate;
+
+   always @(*)
+   case (instr[14:12])
+      3'b000: predicate =  EQ ;  // BEQ
+      3'b001: predicate = !EQ ;  // BNE
+      3'b010: predicate = 1'bx;  //
+      3'b011: predicate = 1'bx;  //
+      3'b100: predicate =  LT ;  // BLT
+      3'b101: predicate = !LT ;  // BGE
+      3'b110: predicate =  LTU;  // BLTU
+      3'b111: predicate = !LTU;  // BGEU
+   endcase
 
    /***************************************************************************/
    // Program counter and branch target computation.
