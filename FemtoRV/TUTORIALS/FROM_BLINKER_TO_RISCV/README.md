@@ -1390,9 +1390,12 @@ The ALU then looks like that:
 
 Where do we stand now ? 887 LUTs my friend ! 
 
-_Note_ well, in fact one can gain even more space with the shifter, by shifting 1 single bit
+_Note 1_ well, in fact one can gain even more space with the shifter, by shifting 1 single bit
 at each clock. The ALU then becomes a little bit more complicated (multi-cycle), but much
 much smaller (Femtorv32-quark uses this trick). We will see that later.
+
+_Note 2_ with a multi-cycle ALU, we could also have a single 33-bits adder, and compute subtractions
+in three cycles, by separating the computation of `~aluIn2`, `aluIn1+(~aluIn2)` and `aluIn1+(~aluIn2)+1`.
 
 Before then, another easy win is factoring the adder used for address computation, as follows:
 ```verilog
@@ -1463,8 +1466,7 @@ There would many possible ways of using RISC-V instructions to implement functio
 calls. To make sure everybody uses the same convention, there is an
 **application binary interface** that defines how to call functions, how to
 pass parameters, and which register does what. See
-[https://github.com/riscv-non-isa/riscv-asm-manual/blob/master/riscv-asm.md](this document)
-for more details.
+[this document](https://github.com/riscv-non-isa/riscv-asm-manual/blob/master/riscv-asm.md) for more details.
 
 **Calling a function** In this document, we learn that for calling a function, the return address will
 be stored in `x1`. Hence one can call a function using `JAL(x1,offset)` where
@@ -1652,6 +1654,8 @@ by a programmer can be called from a function written by another programmer, pos
 language. We will see later how to use GNU assembler and C compiler to compile programs for our CPU.
 But before playing with software and toolchains, remember, we still have 8 instructions to implement
 in hardware (5 `Load` variants and 3 `Store` variants).
+
+**Try this** invent (or copy it from [somewhere else](https://github.com/riscv-collab/riscv-gcc/blob/5964b5cd72721186ea2195a7be8d40cfe6554023/libgcc/config/riscv/muldi3.S)) a routine to multiply two numbers, test it on various inputs in simulation, and on the device.
 
 ## Step 15: Load
 
