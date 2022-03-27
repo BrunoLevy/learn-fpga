@@ -237,7 +237,7 @@ module FemtoRV32 #(
    // 32 bits, so we deactivate width test for mem_addr and writeBackData
 
    assign mem_addr = state[WAIT_INSTR_bit] | state[FETCH_INSTR_bit] ?
-                     PC : loadstore_addr ;
+                     PC : {loadstore_addr[ADDR_WIDTH-1:2], 2'b00} ;
 
    /***************************************************************************/
    // The value written back to the register file.
