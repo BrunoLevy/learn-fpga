@@ -38,17 +38,16 @@ module FemtoRV32 #(
    parameter RESET_ADDR = 32'h00000000,
    parameter ADDR_WIDTH = 24
 )(
-   input         clk,
-
-   output [31:0] mem_addr,  // address bus
-   output [31:0] mem_wdata, // data to be written
-   output  [3:0] mem_wmask, // write mask for the 4 bytes of each word
-   input  [31:0] mem_rdata, // input lines for both data and instr
-   output        mem_rstrb, // active to initiate memory read (used by IO)
-   input         mem_rbusy, // asserted if memory is busy reading value
-   input         mem_wbusy, // asserted if memory is busy writing value
-
-   input         reset      // set to 0 to reset the processor
+   input              clk,
+   input              reset,     // set to 0 to reset the processor
+   // system bus
+   output wire [31:0] mem_addr,  // address bus
+   output wire [31:0] mem_wdata, // data to be written
+   output wire  [3:0] mem_wmask, // write mask for the 4 bytes of each word
+   input  wire [31:0] mem_rdata, // input lines for both data and instr
+   output wire        mem_rstrb, // active to initiate memory read (used by IO)
+   input  wire        mem_rbusy, // asserted if memory is busy reading value
+   input  wire        mem_wbusy  // asserted if memory is busy writing value
 );
 
  /***************************************************************************/
@@ -260,30 +259,30 @@ module FemtoRV32 #(
    /***************************************************************************/
 
    // All memory accesses are aligned on 32 bits boundary. For this
-   // reason, we need some circuitry that does unaligned halfword
+   // reason, we need some circuitry that does unaligned half
    // and byte load/store, based on:
-   // - funct3[1:0]:  00->byte 01->halfword 10->word
-   // - mem_addr[1:0]: indicates which byte/halfword is accessed
+   // - funct3[1:0]:  00->byte 01->half 10->word
+   // - mem_addr[1:0]: indicates which byte/half is accessed
 
-   wire mem_byteAccess     = instr[13:12] == 2'b00; // funct3[1:0] == 2'b00;
-   wire mem_halfwordAccess = instr[13:12] == 2'b01; // funct3[1:0] == 2'b01;
+   wire mem_byteAccess = instr[13:12] == 2'b00; // funct3[1:0] == 2'b00;
+   wire mem_halfAccess = instr[13:12] == 2'b01; // funct3[1:0] == 2'b01;
 
    // LOAD, in addition to funct3[1:0], LOAD depends on:
    // - funct3[2] (instr[14]): 0->do sign expansion   1->no sign expansion
 
    wire LOAD_sign =
-        !instr[14] & (mem_byteAccess ? LOAD_byte[7] : LOAD_halfword[15]);
+        !instr[14] & (mem_byteAccess ? LOAD_byte[7] : LOAD_half[15]);
 
    wire [31:0] LOAD_data =
-         mem_byteAccess ? {{24{LOAD_sign}},     LOAD_byte} :
-     mem_halfwordAccess ? {{16{LOAD_sign}}, LOAD_halfword} :
-                          mem_rdata ;
+         mem_byteAccess ? {{24{LOAD_sign}}, LOAD_byte} :
+         mem_halfAccess ? {{16{LOAD_sign}}, LOAD_half} :
+                                            mem_rdata ;
 
-   wire [15:0] LOAD_halfword =
+   wire [15:0] LOAD_half =
                loadstore_addr[1] ? mem_rdata[31:16] : mem_rdata[15:0];
 
    wire  [7:0] LOAD_byte =
-               loadstore_addr[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
+               loadstore_addr[0] ? LOAD_half[15:8] : LOAD_half[7:0];
 
    // STORE
 
@@ -301,12 +300,12 @@ module FemtoRV32 #(
    //                                (depending on loadstore_addr[1:0])
 
    wire [3:0] STORE_wmask =
-              mem_byteAccess      ?
+              mem_byteAccess ?
                     (loadstore_addr[1] ?
-                          (loadstore_addr[0] ? 4'b1000 : 4'b0100) :
-                          (loadstore_addr[0] ? 4'b0010 : 4'b0001)
+                    (loadstore_addr[0] ? 4'b1000 : 4'b0100) :
+                    (loadstore_addr[0] ? 4'b0010 : 4'b0001)
                     ) :
-              mem_halfwordAccess ?
+              mem_halfAccess ?
                     (loadstore_addr[1] ? 4'b1100 : 4'b0011) :
               4'b1111;
 
