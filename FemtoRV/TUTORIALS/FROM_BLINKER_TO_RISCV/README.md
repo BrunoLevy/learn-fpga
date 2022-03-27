@@ -176,7 +176,7 @@ the clock divider between the `CLK` signal of the board and your
 design. Then, even on the device you can distinguish what happens
 with the LEDs.
 
-To do that, I created a `Clockworks` module in (clockworks.v)[clockworks.v],
+To do that, I created a `Clockworks` module in [clockworks.v](clockworks.v),
 that contains the gearbox and a mechanism related with the `RESET` signal (that
 I'll talk about later). `Clockworks` is implemented as follows:
 ```verilog
@@ -1246,7 +1246,9 @@ from 0 to 31 and stops). What about running it on the device ?
 Wow, even worse, 1341 LUTs (and we only got 1280 of them on the IceStick).
 So let us shrink our code to make it fit !
 
-## Step 12: Size optimization, the incredible shrinking core.
+## Step 12: Size optimization: the Incredible Shrinking Core.
+
+_Tribute to "the Incredible Shrinking Man" classic movie_
 
 There are many things we can do for shrinking this core. Let us
 first take a look at the ALU. It can compute addition, subtraction,
@@ -1258,17 +1260,31 @@ the IceStick).  The 33 bits subtract is written as follows:
 ```verilog
    wire [32:0] aluMinus = {1'b0,aluIn1} - {1'b0,aluIn2};
 ```
-which corresponds in practice to:
+if you want to know what `A-B` does in Verilog, it corresponds
+to `A+~B+1` (negate all the bits of B before adding, and add 1), it
+is how two's complement subtraction works. For instance, take
+`4'b0000 - 4`b0001`, the result is `-1`, encoded as `4`b1111`. It is
+computed as follows by the formula: `4'b0000 + ~4'b0001 + 1` = `4'b0000 + 4`b1110 + 1`
+= `4'b1111`. So we will keep the following expression (we could have kept the
+simpler form above, but it is interesting to be aware of what happens under the
+scene):
 ```verilog
    wire [32:0] aluMinus = {1'b1, ~aluIn2} + {1'b0,aluIn1} + 33'b1;
 ```
 Then we can create the wires for the three tests (this saves three 32-bit
 adders):
 ```
-   wire        LT  = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : aluMinus[32];
-   wire        LTU = aluMinus[32];
    wire        EQ  = (aluMinus[31:0] == 0);
+   wire        LTU = aluMinus[32];
+   wire        LT  = (aluIn1[31] ^ aluIn2[31]) ? aluIn1[31] : aluMinus[32];
 ```
+
+- The first one, `EQ`, goes high when `aluIn1` and `aluIn2` have the same value, or
+`aluMinus == 0` (no need to test the 33-rd bit)
+- the second one, `LTU`, corresponds to unsigned comparison. It is given by the sign bit of
+our 33-bits subtraction.
+- for the third one, there are two cases: if the signs differ, then `LT` goes high if
+  `aluIn1` is negative, else it is given by the sign bit of our 33-bits subtraction.
 
 Of course, we still need one adder for addition:
 ```verilog
@@ -1281,11 +1297,12 @@ Then, `aluOut` is computed as follows:
    always @(*) begin
       case(funct3)
 	3'b000: aluOut = (funct7[5] & instr[5]) ? aluMinus[31:0] : aluPlus;
-	3'b001: aluOut = leftshift;
+	3'b001: aluOut = aluIn1 << shamt;;
 	3'b010: aluOut = {31'b0, LT};
 	3'b011: aluOut = {31'b0, LTU};
 	3'b100: aluOut = (aluIn1 ^ aluIn2);
-	3'b101: aluOut = shifter;
+	3'b101: aluOut = funct7[5]? ($signed(aluIn1) >>> shamt) : 
+			 ($signed(aluIn1) >> shamt); 
 	3'b110: aluOut = (aluIn1 | aluIn2);
 	3'b111: aluOut = (aluIn1 & aluIn2);	
       endcase
@@ -1367,8 +1384,41 @@ The ALU then looks like that:
 
 Where do we stand now ? 887 LUTs my friend ! 
 
+_Note_ well, in fact one can gain even more space with the shifter, by shifting 1 single bit
+at each clock. The ALU then becomes a little bit more complicated (multi-cycle), but much
+much smaller (Femtorv32-quark uses this trick). We will see that later.
 
+Before then, another easy win is factoring the adder used for address computation, as follows:
+```verilog
+   wire [31:0] PCplusImm = PC + ( instr[3] ? Jimm[31:0] :
+				  instr[4] ? Uimm[31:0] :
+				             Bimm[31:0] );
+   wire [31:0] PCplus4 = PC+4;
+```   
 
+Then these two adders can be used by both `nextPC` and `writeBackData`:
+```verilog
+
+   assign writeBackData = (isJAL || isJALR) ? (PCplus4) :
+			  (isLUI) ? Uimm :
+			  (isAUIPC) ? PCplusImm : 
+			  aluOut;
+
+   assign writeBackEn = (state == EXECUTE && !isBranch);
+
+   wire [31:0] nextPC = (isBranch && takeBranch || isJAL) ? PC+Imm  :	       
+	                isJALR                   ? {aluPlus[31:1],1'b0} :
+	                PCplus;
+```
+
+The verdict ? 839 LUTs (we have gained another 50 LUTs or so...). There is still room for
+gaining more LUTs (by using a multi-cycle ALU for shifts, and by using a smaller number of
+bits for address computation), but we'll keep that for later, since we have now enough room
+on the device for the next steps. 
+
+## Step 13: subroutines (version 1, using plain RISC-V instructions)
+
+## Step 14: subroutines (version 2, using RISC-V ABI and pseudo-instructions)
 
 ## Files for all the steps
 
