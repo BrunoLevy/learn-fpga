@@ -42,7 +42,7 @@ module FemtoRV32 #(
    input              reset,     // set to 0 to reset the processor
    // system bus
    output wire [31:0] mem_addr,  // address bus
-   output wire [31:0] mem_wdata, // data to be written
+   output reg  [31:0] mem_wdata, // data to be written
    output wire  [3:0] mem_wmask, // write mask for the 4 bytes of each word
    input  wire [31:0] mem_rdata, // input lines for both data and instr
    output wire        mem_rstrb, // active to initiate memory read (used by IO)
@@ -285,12 +285,21 @@ module FemtoRV32 #(
                loadstore_addr[0] ? LOAD_half[15:8] : LOAD_half[7:0];
 
    // STORE
-
-   assign mem_wdata[ 7: 0] = rs2[7:0];
-   assign mem_wdata[15: 8] = loadstore_addr[0] ? rs2[7:0]  : rs2[15: 8];
-   assign mem_wdata[23:16] = loadstore_addr[1] ? rs2[7:0]  : rs2[23:16];
-   assign mem_wdata[31:24] = loadstore_addr[0] ? rs2[7:0]  :
-                             loadstore_addr[1] ? rs2[15:8] : rs2[31:24];
+   always @(*)
+   case (instr[14:12])
+      3'b000 : case (loadstore_addr[1:0])
+         2'b00: mem_wdata = {8'hxx     , 8'hxx     , 8'hxx     , rs2[ 7: 0]};
+         2'b01: mem_wdata = {8'hxx     , 8'hxx     , rs2[ 7: 0], 8'hxx     };
+         2'b10: mem_wdata = {8'hxx     , rs2[ 7: 0], 8'hxx     , 8'hxx     };
+         2'b11: mem_wdata = {rs2[ 7: 0], 8'hxx     , 8'hxx     , 8'hxx     };
+      endcase
+      3'b001 : casez (loadstore_addr[1])
+         1'b0 : mem_wdata = {8'hxx     , 8'hxx     , rs2[15: 8], rs2[ 7: 0]};
+         1'b1 : mem_wdata = {rs2[15: 8], rs2[ 7: 0], 8'hxx     , 8'hxx     };
+      endcase
+      3'b010 :  mem_wdata = {rs2[31:24], rs2[23:16], rs2[15: 8], rs2[ 7: 0]};
+      default:  mem_wdata = {8'hxx     , 8'hxx     , 8'hxx     , 8'hxx     };
+   endcase
 
    // The memory write mask:
    //    1111                     if writing a word
