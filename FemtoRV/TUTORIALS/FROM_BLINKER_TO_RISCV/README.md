@@ -1659,11 +1659,368 @@ in hardware (5 `Load` variants and 3 `Store` variants).
 
 ## Step 15: Load
 
-_TODO_
+Let us see now how to implement load instructions. There are 5 different instructions:
+
+ | Instruction     | Effect                                                       |
+ |-----------------|--------------------------------------------------------------|
+ | LW(rd,rs1,imm)  | Load word at address (rs1+imm) into rd                       |
+ | LBU(rd,rs1,imm) | Load byte at address (rs1+imm) into rd                       |
+ | LHU(rd,rs1,imm) | Load half-word at address (rs1+imm) into rd                  |
+ | LB(rd,rs1,imm)  | Load byte at address (rs1+imm) into rd then sign extend      |
+ | LH(rd,rs1,imm)  | Load half-word at address (rs1+imm) into rd then sign extend |
+
+_Note_ addresses are aligned on word boundaries for `LW` (multiple of 4 bytes) and
+halfword boundaries for `LH`,`LHU` (multiple of 2 bytes). It is a good thing, it
+makes things much easier for us...
+
+But we still have some work to do ! First, some circuitry that determines the
+loaded value (that we will call `LOAD_data`).
+
+As you can see, we got instructions for loading words, half-words and bytes, and
+instructions that load half-words and bytes exist in two versions:
+- `LBU`,`LHU` that load a byte,halfword in the LSBs of `rd`
+- `LB`,`LH` that load a byte,halfword in the LSBs of `rd` then do sign extensin:
+
+For instance, imagine a sign byte with the value `-1`, that is `8'b11111111`,
+loading it in a 32-bit register with `LBU` will result in `32b0000000000000000000000011111111`,
+whereas loading it with `LB` will result in `32b11111111111111111111111111111111`, that is,
+the 32-bits version of `-1`. 
+
+So we got a "two-dimensional" array of cases (whether we load a byte, halfword, word, and
+whether we do sign extension or not). Well, in fact it is even more complicated. Remember,
+our memory is structured into words, so when we load a byte, we need to know which one it
+is (among 4), and when we load a halfword, we need to know which one it is (among 2). This
+can be done by examining the 2 LSBs of the address of the data to be loaded (`rs1 + Iimm`):
+
+```verilog
+   wire [31:0] loadstore_addr = rs1 + Iimm;
+   wire [15:0] LOAD_halfword =
+	       loadstore_addr[1] ? mem_rdata[31:16] : mem_rdata[15:0];
+
+   wire  [7:0] LOAD_byte =
+	       loadstore_addr[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
+```
+
+OK, so now we need to select among `mem_rdata` (`LW`), `LOAD_halfword` (`LH`,`LHU`)
+and `LOAD_byte` (`LB`,`LBU`). Examining the table in the
+[RISC-V reference manual](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf)
+page 130, this is determined by the two LSBs of `funct3`:
+
+```verilog
+   wire mem_byteAccess     = funct3[1:0] == 2'b00;
+   wire mem_halfwordAccess = funct3[1:0] == 2'b01;
+
+   wire [31:0] LOAD_data =
+         mem_byteAccess ? LOAD_byte     :
+     mem_halfwordAccess ? LOAD_halfword :
+                          mem_rdata     ;
+```
+
+Now we need to insert sign expansion into this expression. The value to be
+written in the MSBs of `rd`, `LOAD_sign`, depends on both whether the
+instruction does sign expansion (`LB`,`LH`), characterized by `funct3[2]=0`,
+and the MSB of the loaded value:
+
+```verilog
+   wire LOAD_sign =
+	!funct3[2] & (mem_byteAccess ? LOAD_byte[7] : LOAD_halfword[15]);
+
+   wire [31:0] LOAD_data =
+         mem_byteAccess ? {{24{LOAD_sign}},     LOAD_byte} :
+     mem_halfwordAccess ? {{16{LOAD_sign}}, LOAD_halfword} :
+                          mem_rdata ;
+```
+
+Pfiuuuu, it was a bit painful, but in the end it is not too complicated.
+My initial design was much more complicated, but Matthias Koch (@mecrisp) simplified
+it a lot, resulting in the (reasonably easy to understand) design above.
+
+We are not completely done though, now we need to modify the state machine. It will have
+two additional states, `LOAD` and `WAIT_DATA`:
+
+```verilog
+   localparam FETCH_INSTR = 0;
+   localparam WAIT_INSTR  = 1;
+   localparam FETCH_REGS  = 2;
+   localparam EXECUTE     = 3;
+   localparam LOAD        = 4;
+   localparam WAIT_DATA   = 5;
+   reg [2:0] state = FETCH_INSTR;
+```
+
+_Note 1_ we could do with a smaller number of states, but for now our goal is to have
+something that works and that is as easy to understand as possible. We will see later
+how to simplify the state machine.
+_Note 2_ do not forget to check that `state` has the required number of bits !
+(`reg [2:0] state` instead of `reg [1:0] state` as before !!). Then the new
+states are plugged in as follows:
+
+```verilog
+     ...
+	   EXECUTE: begin
+	      if(!isSYSTEM) begin
+		 PC <= nextPC;
+	      end
+	      state <= isLoad ? LOAD : FETCH_INSTR;
+	   end
+	   LOAD: begin
+	      state <= WAIT_DATA;
+	   end
+	   WAIT_DATA: begin
+	      state <= FETCH_INSTR;
+	   end
+
+     ...
+```
+
+And finally, the signals `mem_addr` (with the address to be read)
+and `mem_rstrb` (that goes high whenever the processor wants to read data) are
+driven as follows:
+
+```verilog
+   assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ?
+		     PC : loadstore_addr ;
+   assign mem_rstrb = (state == FETCH_INSTR || state == LOAD);
+```
+
+Let us test now our new instructions with the following program:
+```verilog
+   integer L0_   = 8;
+   integer wait_ = 32;
+   integer L1_   = 40;
+   
+   initial begin
+      LI(s0,0);   
+      LI(s1,16);
+   Label(L0_); 
+      LB(a0,s0,400); // LEDs are plugged on a0 (=x10)
+      CALL(LabelRef(wait_));
+      ADDI(s0,s0,1); 
+      BNE(s0,s1, LabelRef(L0_));
+      EBREAK();
+      
+   Label(wait_);
+      LI(t0,1);
+      SLLI(t0,t0,slow_bit);
+   Label(L1_);
+      ADDI(t0,t0,-1);
+      BNEZ(t0,LabelRef(L1_));
+      RET();
+
+      endASM();
+
+      // Note: index 100 (word address)
+      //     corresponds to 
+      // address 400 (byte address)
+      MEM[100] = {8'h4, 8'h3, 8'h2, 8'h1};
+      MEM[101] = {8'h8, 8'h7, 8'h6, 8'h5};
+      MEM[102] = {8'hc, 8'hb, 8'ha, 8'h9};
+      MEM[103] = {8'hff, 8'hf, 8'he, 8'hd};            
+   end
+```
+This program initializes some values in four words
+at address 400, and loads them in `a10` in a loop.
+There is also a delay loop (`wait` function) to let
+you see something, just as before.
+
+**Try this** Run the program in simulation and on the device.
+Test the other instructions. Do a programmable tinsel as in step 3.
+
+**You are here !** Just three instructions to go and we will be done !
+
+| ALUreg | ALUimm | Jump  | Branch | LUI | AUIPC | Load  | Store | SYSTEM |
+|--------|--------|-------|--------|-----|-------|-------|-------|--------|
+| [*] 10 | [*] 9  | [*] 2 | [*] 6  | [*] | [*]   | [*] 5 | [ ] 3 | [*] 1  |
 
 ## Step 16: Store
 
-_TODO_
+We are approaching the end, but still some work to do, to implement
+the following three instructions:
+
+ | Instruction     | Effect                                  |
+ |-----------------|-----------------------------------------|
+ | SW(rs2,rs1,imm) | store rs2 at address rs1+imm            |
+ | SB(rs2,rs1,imm) | store 8 LSBs of rs2 at address rs1+imm  |
+ | SH(rs2,rs1,imm) | store 16 LSBs of rs2 at address rs1+imm |
+
+To do so, we will need to do three different things:
+- modify the interface between the processor and the memory in
+  such a way that the processor can write to the memory
+- the memory is addressed by words. Each write operation will
+  modify a word. But `SB` and `SH` need to be able to
+  write individual bytes. Besides the word to be written,
+  we need to compute which byte of this word should be
+  effectively modified in memory (a 4-bits mask)
+- the state machine needs to be modified.
+
+
+The `Memory` module is modified as follows:
+
+``` verilog
+module Memory (
+   input             clk,
+   input      [31:0] mem_addr,  
+   output reg [31:0] mem_rdata, 
+   input   	     mem_rstrb, 
+   input      [31:0] mem_wdata, 
+   input      [3:0]  mem_wmask	
+);
+
+   reg [31:0] MEM [0:255]; 
+
+   initial begin
+      ...
+   end
+
+   wire [29:0] word_addr = mem_addr[31:2];
+   always @(posedge clk) begin
+      if(mem_rstrb) begin
+         mem_rdata <= MEM[word_addr];
+      end
+      if(mem_wmask[0]) MEM[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
+      if(mem_wmask[1]) MEM[word_addr][15:8 ] <= mem_wdata[15:8 ];
+      if(mem_wmask[2]) MEM[word_addr][23:16] <= mem_wdata[23:16];
+      if(mem_wmask[3]) MEM[word_addr][31:24] <= mem_wdata[31:24];	 
+   end
+```
+
+We have two new input signals: `mem_wdata`, a 32-bits signal
+with the value to be written, and `mem_wmask` a 4-bits signal
+that indicates which byte should be written.
+
+_Note_ you may wonder how it is implemented in practice, in particular
+how the masked write to memory is synthesized on the device. BRAMs on
+most FPGAs directly support masked writes, through vendor's special
+primitives. Yosys has a (super smart) special step called "technology mapping" that
+detects some patterns in the source VERILOG file, and instances
+the vendor's primitive best adapted to the usage. In fact technology mapping
+was used before in our tutorial, to represent the registers bank: at each
+cycle we read two registers, `rs1` and `rs2`. In the IceStick, BRAMs can
+read a single value at each clock, so to make it possible, yosys automatically
+duplicates the register bank. Whenever a value is written to `rd`, it is written to
+the two register banks: `bank1[rdId] <- writeBackValue; bank2[rdId] <- writeBackValue;`,
+and two different registers can be read at the same cycle, each one in its own
+register bank `rs1 <- bank1[rs1Id]; rs2 <- bank2[rs2Id;`. With the magic of Yosys,
+you do not have to take care of this, it will automatically select the best
+mapping for you (duplicated register bank, single register bank with two read
+ports if target supports it, or even array of flipflops with address decoder
+for larger FPGAs with many LUTs). In our case, the IceStick has an Ice40HX1K,
+that has 8 kB of BRAM, organized in 8 blocks of 1 kB each. Two of them are
+used for the (duplicated) register bank, leaving 6 kB of BRAM that we use
+to synthesize system RAM. 
+
+Let us see now how to compute the word to be written and the mask. The
+address where the value should be written is still `rs1 + imm`, but
+the format of the immediate value is different between `Load` (`Iimm`)
+and `Store` (`Simm`):
+```
+   wire [31:0] loadstore_addr = rs1 + (isStore ? Simm : Iimm);
+```
+
+Now the data to be written depends on whether we write a byte, a halfword
+or a word, and for bytes and halfwords, also depends on the 2 LSBs of
+the address. Interestingly, we do not need to test whether we write a
+byte, a halfword or a word, because the write mask (see lated) will
+ignore MSBs for byte and halfword write:
+```
+   assign mem_wdata[ 7: 0] = rs2[7:0];
+   assign mem_wdata[15: 8] = loadstore_addr[0] ? rs2[7:0]  : rs2[15: 8];
+   assign mem_wdata[23:16] = loadstore_addr[1] ? rs2[7:0]  : rs2[23:16];
+   assign mem_wdata[31:24] = loadstore_addr[0] ? rs2[7:0]  :
+			     loadstore_addr[1] ? rs2[15:8] : rs2[31:24];
+```
+
+And finally, the 4-bits write mask, that indicate which byte of `mem_wdata`
+should be effectively written to memory. It is determined as follows:
+
+| write mask                                   | Instruction
+|----------------------------------------------|------------------------------------------|  
+| `4'b1111`                                    | `SW`                                     |
+| `4'b0011` or `4'b1100`                       | `SH`, depending on `loadstore_addr[1]`   |
+| `4'b0001`, `4'b0010`, `4'b0100` or `4'b1000` | `SB`, depending on `loadstore_addr[1:0]` |
+
+Deriving the expression is a bit painful. With Matthias Koch we ended up with this one:
+
+```verilog
+   wire [3:0] STORE_wmask =
+	      mem_byteAccess      ?
+	            (loadstore_addr[1] ?
+		          (loadstore_addr[0] ? 4'b1000 : 4'b0100) :
+		          (loadstore_addr[0] ? 4'b0010 : 4'b0001)
+                    ) :
+	      mem_halfwordAccess ?
+	            (loadstore_addr[1] ? 4'b1100 : 4'b0011) :
+              4'b1111;
+```
+
+Let us now create additional states in the state machine:
+```verilog
+   localparam FETCH_INSTR = 0;
+   localparam WAIT_INSTR  = 1;
+   localparam FETCH_REGS  = 2;
+   localparam EXECUTE     = 3;
+   localparam LOAD        = 4;
+   localparam WAIT_DATA   = 5;
+   localparam STORE       = 6;
+
+   ...
+
+   always @(posedge clk) begin
+   ...
+       case(state)
+           ...
+	   EXECUTE: begin
+	      if(!isSYSTEM) begin
+		 PC <= nextPC;
+	      end
+	      state <= isLoad  ? LOAD  : 
+		       isStore ? STORE : 
+		       FETCH_INSTR;
+	   LOAD: begin
+	      state <= WAIT_DATA;
+	   end
+	   WAIT_DATA: begin
+	      state <= FETCH_INSTR;
+	   end
+	   STORE: begin
+	      state <= FETCH_INSTR;
+	   end
+	 endcase 
+      end
+   end
+```
+
+The signals interfaced with the memory as driven as follows:
+```verilog
+   assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ?
+		     PC : loadstore_addr ;
+   assign mem_rstrb = (state == FETCH_INSTR || state == LOAD);
+   assign mem_wmask = {4{(state == STORE)}} & STORE_wmask;
+```
+
+And, at last, a little thing: do not write back to register bank if instruction
+is a `Store` !
+```verilog
+   assign writeBackEn = (state==EXECUTE && !isBranch && !isStore && !isLoad) ||
+			(state==WAIT_DATA) ;
+```
+_Note_ The `!isLoad` term that prevents writing `rd` during `EXECUTE` can be removed from the condition,
+since `rd` will be overwritten right after during the `WAIT_DATA`. It is there to have something easier
+to understand with simulations.
+
+**try this** Run [step16.v](step16.v) in simulation and on the device. It copies 16 bytes from address 400
+to address 800, then displays the values of the copied bytes.
+
+**You are here !** Congratulations ! You have finished implementing your first RV32I RISC-V core !
+
+| ALUreg | ALUimm | Jump  | Branch | LUI | AUIPC | Load  | Store | SYSTEM |
+|--------|--------|-------|--------|-----|-------|-------|-------|--------|
+| [*] 10 | [*] 9  | [*] 2 | [*] 6  | [*] | [*]   | [*] 5 | [*] 3 | [*] 1  |
+
+_But wait a minute_ for sure we have worked a lot to implement a RISC-V core, but all what I can see know
+is just something that looks like the stupid blinky at step 1 ! I want to see more !
+
+To do so, we need to let our device communicate with the outside word with more than 5 LEDs.
 
 ## Step 17: Memory-mapped device - let's do (much) more than a blinky !
 
