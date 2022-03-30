@@ -385,8 +385,8 @@ unconditional jumps and function calls. There are also two functions
 for memory ordering and system calls (but we will ignore these two
 ones for now). OK, in fact only 9 instructions then, it seems doable...
 At this point, I had not understood everything, so I'll start from what
-I think to be the simplest parts (register file and ALU), then we will
-see the instruction decoder and how things are interconnected.
+I think to be the simplest parts (intruction decoder, register file and ALU), then we will
+see how things are interconnected, how to implement jumps, branches, and all the instructions.
 
 ## Step 4: the instruction decoder
 
@@ -2263,7 +2263,260 @@ need to change `DEVICE=/dev/ttyUSB1` according to your local configuration.
 
 ## Step 18: Computing the Mandelbrot set 
 
-_TODO_
+Now that we have a functional RISC-V processor and a SOC with an UART that can send characters
+to a virtual terminal, let us rest a little bit with a purely software step. In this step, we
+are going to write a program in RISC-V assembly that computes a crude, ASCII-art version of
+the Mandelbrot set.
+
+Our "image" will be made of 80x80 characters. So let us start by writing a program that fills
+the image with "*" characters. To do that, we will use two nested loops. The Y coordinate
+will be stored in `s0` and the X coordinate in `s1`. The upper bound (80) will be stored
+in `s11`. The program looks like that:
+
+```verilog
+      LI(gp,32'h400000); // IO page
+      LI(s1,0);
+      LI(s11,80);
+      
+   Label(loop_y_);
+      LI(s0,0);
+
+   Label(loop_x_);
+      LI(a0,"*");
+      CALL(LabelRef(putc_));
+
+      ADDI(s0,s0,1);
+      BNE(s0,s11,LabelRef(loop_x_));
+
+      LI(a0,13);
+      CALL(LabelRef(putc_));
+      LI(a0,10);
+      CALL(LabelRef(putc_));      
+
+      ADDI(s1,s1,1);
+      BNE(s1,s11,LabelRef(loop_y_));
+
+      EBREAK();
+```
+(and we copy the `putc` function from the previous example).
+
+**Fixed point** So now we want to compute the Mandelbrot set. To do that, we need to manipulate real numbers.
+Unfortunately, our super simplistic RISC-V core is not able to directly manipulate floating point
+numbers. The C compiler's support library `libgcc` has some functions to support them, but we will
+see later how to use them. For now, the idea is to compute the Mandelbrot set using fixed-point
+numbers, that is, in an integer number, we will use some bits to represent the fractional part
+(10 bits in our case), and some bits to represent the integer parts (22 bits in our case). In other
+words, it means that if we want to represent a real number `x`, we will store (the integer part of)
+`x*2^10` in a register. It is similar to floating point numbers, except that the exponent in our
+case is always 10. We will use the following constants in our program:
+
+```verilog
+   `define mandel_shift 10
+   `define mandel_mul (1 << `mandel_shift)
+```
+
+Now, to compute the sum or the difference of two numbers, it does not change anything, because
+the `2^10` factor is the same for both numbers to be added (or subtracted). For a product it
+is a different story, because when you compute `x*y`, the actual computation that you do is
+`x*2^10*y*2^10`, so what you get is `(x*y)*2^20`, and you wanted `(x*y)*2^10`, so you need to
+divide by `2^10` (right shift by `10`). OK, that's good, but how do we compute the product
+of two integer numbers stored in two registers ? Our processor has no `MUL` instruction ? In fact
+it is possible to add a `MUL` instruction (it is part of the RV32M instruction set), we will see
+that later, but it will not fit within our tiny IceStick ! So what can we do ? We can implement
+a function that takes two numbers in `a0` and `a1`, computes their products and returns it in `a0`.
+The C compiler support library `libgcc` has one (it is what is used when compiling C for small
+RV32I RISC-V processors that do not have the `MUL` instruction, like ours). The source-code of
+this function is [here](https://github.com/riscv-collab/riscv-gcc/blob/5964b5cd72721186ea2195a7be8d40cfe6554023/libgcc/config/riscv/muldi3.S).
+Let us port it to our VERILOG RISC-V assembler (that has a slightly different syntax unfortunately,
+we will see later how to directly use gcc and gas):
+
+```verilog
+      // Mutiplication routine,
+      // Input in a0 and a1
+      // Result in a0
+   Label(mulsi3_);
+      MV(a2,a0);
+      LI(a0,0);
+   Label(mulsi3_L0_); 
+      ANDI(a3,a1,1);
+      BEQZ(a3,LabelRef(mulsi3_L1_)); 
+      ADD(a0,a0,a2);
+   Label(mulsi3_L1_);
+      SRLI(a1,a1,1);
+      SLLI(a2,a2,1);
+      BNEZ(a1,LabelRef(mulsi3_L0_));
+      RET();
+```
+(do not forget to declare the new labels before the `initial` block).
+
+So now, before displaying the Mandelbrot set, to test our fixed-point
+computation idea, let us display a simpler shape, that is, we consider
+we are visualizing the `[-2.0,2.0]x[-2.0,2.0]` square (mapped to our
+30x30 characters display), and we want to display a disk of radius `2`
+centered on `(0,0)`. To do that, we need first to compute the (fixed point)
+coordinates `x,y`. They will be stored in `s2` and `s3`. Then we need to
+compute `x^2+y^2`. We can do that by invoking the `mulsi3` routine twice
+(do not forget to rightshift the result by 10). Finally, we compare
+the result with `4 << 10` (4 because it is the _squared_ radius, and shifted
+to the left by 10 because of our fixed-point representation), to decide
+whether the point was inside or outside the disk, and use a different character
+to display it. The corresponding program looks like that:
+
+```verilog
+   `define mandel_shift 10
+   `define mandel_mul (1 << `mandel_shift)
+   `define xmin (-2*`mandel_mul)
+   `define xmax ( 2*`mandel_mul)
+   `define ymin (-2*`mandel_mul)
+   `define ymax ( 2*`mandel_mul)	
+   `define dx ((`xmax-`xmin)/30)
+   `define dy ((`ymax-`ymin)/30)
+   `define norm_max (4 << `mandel_shift)
+   
+   integer    loop_y_      = 28;
+   integer    loop_x_      = 36;
+   integer    in_disk_     = 92;
+
+   initial begin
+      LI(gp,32'h400000); // IO page
+
+      LI(s1,0);
+      LI(s3,`xmin);
+      LI(s11,30);
+      LI(s10,`norm_max);
+      
+   Label(loop_y_);
+      LI(s0,0);
+      LI(s2,`ymin);
+
+   Label(loop_x_);
+
+      MV(a0,s2);
+      MV(a1,s2);
+      CALL(LabelRef(mulsi3_));
+      SRLI(s4,a0,`mandel_shift); // s4 = x*x
+      MV(a0,s3);
+      MV(a1,s3);
+      CALL(LabelRef(mulsi3_));
+      SRLI(s5,a0,`mandel_shift); // s5 = y*y
+      ADD(s6,s4,s5);             // s6 = x*x+y*y
+      LI(a0,"*");
+      BLT(s6,s10,LabelRef(in_disk_)); // if x*x+y*y < 4
+      LI(a0," ");
+  Label(in_disk_);
+      CALL(LabelRef(putc_)); 
+
+      ADDI(s0,s0,1);
+      ADDI(s2,s2,`dx);
+      BNE(s0,s11,LabelRef(loop_x_));
+
+      LI(a0,13);
+      CALL(LabelRef(putc_));
+      LI(a0,10);
+      CALL(LabelRef(putc_));      
+
+      ADDI(s1,s1,1);
+      ADDI(s3,s3,`dy);
+      BNE(s1,s11,LabelRef(loop_y_));
+
+      EBREAK(); 
+```
+
+and the output looks like that:
+```
+          ***********         
+        ***************       
+       ******************     
+     *********************    
+    ***********************   
+    ************************  
+   *************************  
+  *************************** 
+  *************************** 
+ *****************************
+ *****************************
+ *****************************
+ *****************************
+ *****************************
+ *****************************
+ *****************************
+ *****************************
+ *****************************
+ *****************************
+ *****************************
+  *************************** 
+  *************************** 
+   *************************  
+   *************************  
+    ***********************   
+     *********************    
+      *******************     
+        ***************       
+          ***********         
+```
+
+Now to compute the Mandelbrot set, we need to iterate the following operation:
+```
+   Z <- 0; iter <- 0
+   do
+      Z <- Z^2 + C
+      iter <- iter + 1
+   while |Z| < 2
+```
+where `Z` and `C` are complex numbers. `C = x + iy` corresponds to the current pixel.
+Remember the rule for complex number multiplication (`i*i = -1`), we can compute
+`Z^2 = (Zr + i*Zi)^2 = Zr^2-Zi^2 + 2*i*Zr*Zi`. The loop that computes these iterates
+writes:
+```verilog
+   Label(loop_Z_);
+      MV(a0,s4); // Zrr  <- (Zr*Zr) >> mandel_shift
+      MV(a1,s4);
+      CALL(LabelRef(mulsi3_));
+      SRLI(s6,a0,`mandel_shift);
+      MV(a0,s4); // Zri <- (Zr*Zi) >> (mandel_shift-1)
+      MV(a1,s5);
+      CALL(LabelRef(mulsi3_));
+      SRAI(s7,a0,`mandel_shift-1);
+      MV(a0,s5); // Zii <- (Zi*Zi) >> (mandel_shift)
+      MV(a1,s5);
+      CALL(LabelRef(mulsi3_));
+      SRLI(s8,a0,`mandel_shift);
+      SUB(s4,s6,s8); // Zr <- Zrr - Zii + Cr  
+      ADD(s4,s4,s2);
+      ADD(s5,s7,s3); // Zi <- 2Zri + Cr
+
+      ADD(s6,s6,s8); // if norm > norm max, exit loop
+      LI(s7,`norm_max);
+      BGT(s6,s7,LabelRef(exit_Z_));
+      
+      ADDI(s10,s10,-1);  // iter--, loop if non-zero
+      BNEZ(s10,LabelRef(loop_Z_));
+      
+   Label(exit_Z_);
+```
+
+in the end, we display different characters depending on the value
+of `iter` (`s10`) when the loop is exited:
+```
+   Label(exit_Z_);
+      LI(a0,colormap_);
+      ADD(a0,a0,s10);
+      LBU(a0,a0,0);
+      CALL(LabelRef(putc_));
+```
+where the "colormap" is an array of characters that mimic
+different "intensities", from the darkest to the brightest:
+```
+   Label(colormap_);
+      DATAB(" ",".",",",":");
+      DATAB(";","o","x","%");
+      DATAB("#","@", 0 , 0 );            
+```
+
+![](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/TUTORIALS/Images/mandelbrot_terminal.gif)
+
+**Try that** run [step18.v](step18.v) in simulation and on the device. Modify it to draw your own graphics (for instance,
+try drawing "concentric circles" using the "colormap").
 
 ## Files for all the steps
 
