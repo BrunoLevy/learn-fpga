@@ -1884,6 +1884,7 @@ module Memory (
    end
 ```
 
+
 We have two new input signals: `mem_wdata`, a 32-bits signal
 with the value to be written, and `mem_wmask` a 4-bits signal
 that indicates which byte should be written.
@@ -1908,6 +1909,22 @@ for larger FPGAs with many LUTs). In our case, the IceStick has an Ice40HX1K,
 that has 8 kB of BRAM, organized in 8 blocks of 1 kB each. Two of them are
 used for the (duplicated) register bank, leaving 6 kB of BRAM that we use
 to synthesize system RAM. 
+
+The `Processor` module is updated accordingly:
+```verilog
+module Processor (
+    input 	      clk,
+    input 	      resetn,
+    output [31:0]     mem_addr, 
+    input [31:0]      mem_rdata, 
+    output 	      mem_rstrb,
+    output [31:0]     mem_wdata,
+    output [3:0]      mem_wmask,
+    output reg [31:0] x10 = 0		  
+);
+```
+
+(and everything is connected in the `SOC`).
 
 Let us see now how to compute the word to be written and the mask. The
 address where the value should be written is still `rs1 + imm`, but
@@ -2024,7 +2041,213 @@ To do so, we need to let our device communicate with the outside word with more 
 
 ## Step 17: Memory-mapped device - let's do (much) more than a blinky !
 
-_TODO_
+Now the idea is to add devices to our SOC. We already have LEDs, that are plugged to
+register `a0` (`x10`). Plugging devices on a register like that is not super elegant, it would
+be better to have a special address in memory that is not really actual RAM but that has
+a register plugged to the LEDs. With this idea, one can add as many devices as he likes, by
+assigning a virtual address to each device. Then the SOC will have address decoding hardware
+that routes the data to the right device. As you will see, besides removing from the processor
+the wires drawn from `x10` to the LEDS, this only requires some small modifications in the SOC.
+
+Before starting to modify the SOC, the first thing to do is to decide
+about the "memory map", that is, which address space portion
+corresponds to what. In our system, we have 6 kB of RAM, so in
+practice we could say that addresses between 0 and 2^13-1 (8 kB, let
+us keep a power of two) correspond to RAM. I decided to use a larger
+portion of address space for RAM (because we also have FPGAs that have
+ampler quantities of BRAM), then the address space dedicated to RAM
+will be between 0 and 2^22-1 (that is, 4 MB of RAM).
+
+Then, I decided to say that if bit 22 is set in an address, then this address
+corresponds to a device. Now we need to specify how to select among multiple
+devices. A natural idea is to use bits 0 to 21 as a "device index", but doing
+so is going to require multiple 22-bits wide comparators, and on our IceStick,
+it will eat-up a significant portion of the removing LUTs. A better idea,
+suggested (once again) by Matthias Koch (@mecrisp), is to use 1-hot encoding,
+that is, data is routed to device number `n` if bit `n` is set in the address.
+We will only consider "word addresses" (that is, ignore the two LSBs).
+Doing that, we can only plug 20 different devices to our SOC, but it is still
+much more than what we need. The advantage is that it dramatically simplifies
+address decoding, in such a way that everything still fits in the IceStick.
+
+To determine whether a memory request should be routed to the RAM or to the
+devices, we insert the following circuitry into the SOC:
+```verilog
+   wire [31:0] RAM_rdata;
+   wire [29:0] mem_wordaddr = mem_addr[31:2];
+   wire isIO  = mem_addr[22];
+   wire isRAM = !isIO;
+   wire mem_wstrb = |mem_wmask;
+```
+
+The RAM is wired as follows:
+```verilog
+   Memory RAM(
+      .clk(clk),
+      .mem_addr(mem_addr),
+      .mem_rdata(RAM_rdata),
+      .mem_rstrb(isRAM & mem_rstrb),
+      .mem_wdata(mem_wdata),
+      .mem_wmask({4{isRAM}}&mem_wmask)
+   );
+```
+(note the `isRAM` signal ANDed with the write mask)
+
+Now we can add the logic to wire our LEDs. They are
+declared as a `reg` in the SOC module interface:
+```verilog
+module SOC (
+    input 	     CLK, 
+    input 	     RESET,
+    output reg [4:0] LEDS, 
+    input 	     RXD, 
+    output 	     TXD  
+);
+```
+
+driven by a simple block:
+```verilog
+   localparam IO_LEDS_bit = 0;  
+
+   always @(posedge clk) begin
+      if(isIO & mem_wstrb & mem_wordaddr[IO_LEDS_bit]) begin
+	 LEDS <= mem_wdata;
+      end
+   end
+```
+
+Now we can write (yet another version of) our old good blinky:
+```verilog
+      LI(gp,32'h400000); 
+      LI(a0,0);
+   Label(L1_);
+      SW(a0,gp,4);
+      CALL(LabelRef(wait_));
+      ADDI(a0,a0,1);
+      J(LabelRef(L1_));
+```
+
+First we load the base address of the IO page in `gp` (that is, `2^22`). To write
+LEDs value, we store `a0` to word address 1 (that is address 4) in the IO page.
+To make things easier when we'll have several devices (right after), let us write
+some helper functions:
+
+```verilog
+   // Memory-mapped IO in IO page, 1-hot addressing in word address.   
+   localparam IO_LEDS_bit      = 0;  // W five leds
+
+   // Converts an IO_xxx_bit constant into an offset in IO page.
+   function [31:0] IO_BIT_TO_OFFSET;
+      input [31:0] bit;
+      begin
+	 IO_BIT_TO_OFFSET = 1 << (bit + 2);
+      end
+   endfunction
+```
+
+Then we can write to the LEDs as follows:
+
+```verilog
+   SW(a0,gp,IO_BIT_TO_OFFSET(IO_LEDS_bit));
+```
+
+_OK, is it all what you have, still your stupid blinky after 17 (!) tutorial steps ?_
+
+Sure, you are right man. Let us add an UART to allow our core to display stuff to a
+virtual terminal. The IceStick (and many other FPGA boards) has a special chip
+(FTDI2232H if you want to know), that
+translates between the plain old RS232 serial protocol and USB. It is good news for
+us, because RS232 is a simple protocol, much easier to implement than USB. In fact,
+our core will communicate with the outside word through two pins (one for sending
+data, called `TXD` and one for receiving data, called `RXD`), and the FTDI chip
+converts to the USB protocol for you. Moreover, it is a good idea not reinventing
+the wheel, and there are many existing implementation of UART
+(Universal Asynchronous Receiver Transmitter, that implement the RS232 protocol)
+in VERILOG. For our
+purpose, for now we will only implement half of it (that is, the part that lets
+our processor send data over it to display text in a terminal emulator).
+
+Olof Kindren has written a [Tweet-size UART](https://twitter.com/OlofKindgren/status/1409634477135982598),
+more legible version [here](https://gist.github.com/olofk/e91fba2572396f55525f8814f05fb33d).
+
+Let us insert it into our SOC and connect it:
+
+```verilog
+   // Memory-mapped IO in IO page, 1-hot addressing in word address.   
+   localparam IO_LEDS_bit      = 0;  // W five leds
+   localparam IO_UART_DAT_bit  = 1;  // W data to send (8 bits) 
+   localparam IO_UART_CNTL_bit = 2;  // R status. bit 9: busy sending
+   ...
+
+   wire uart_valid = isIO & mem_wstrb & mem_wordaddr[IO_UART_DAT_bit];
+   wire uart_ready;
+   
+   corescore_emitter_uart #(
+      .clk_freq_hz(`BOARD_FREQ*1000000),
+      .baud_rate(115200)			    
+   ) UART(
+      .i_clk(clk),
+      .i_rst(!resetn),
+      .i_data(mem_wdata[7:0]),
+      .i_valid(uart_valid),
+      .o_ready(uart_ready),
+      .o_uart_tx(TXD)      			       
+   );
+
+   wire [31:0] IO_rdata = 
+	       mem_wordaddr[IO_UART_CNTL_bit] ? { 22'b0, !uart_ready, 9'b0}
+	                                      : 32'b0;
+
+   assign mem_rdata = isRAM ? RAM_rdata :
+	                      IO_rdata ;
+   
+```
+
+The UART is projected onto two different addresses in memory space. The first
+one, that can be only written to, sends one character. The second one, that can
+be only read from, indicates whether the UART is ready (bit 9 = 0) or busy
+sending a character (bit 9 = 1). 
+
+
+Now our processor has more possibilities to communicate with the outside world
+than the poor five LEDs we had before ! Let us implement a function to send
+a character:
+
+```verilog
+   Label(putc_);
+      // Send character to UART
+      SW(a0,gp,IO_BIT_TO_OFFSET(IO_UART_DAT_bit));
+      // Read UART status, and loop until bit 9 (busy sending)
+      // is zero.
+      LI(t0,1<<9);
+   Label(putc_L0_);
+      LW(t1,gp,IO_BIT_TO_OFFSET(IO_UART_CNTL_bit));     
+      AND(t1,t1,t0);
+      BNEZ(t1,LabelRef(putc_L0_));
+      RET();
+```
+
+It writes the character to the UART address projected in IO space, then loops while
+the UART status indicates that it is busy sending a character.
+
+**Try this** run [step17.v](step17.v) in simulation and on the device.
+
+_Wait a minute_ in simulation, how does it know how to display something ?
+
+It because I cheated a bit, I added the following block of code to the SOC:
+```verilog
+`ifdef BENCH
+   always @(posedge clk) begin
+      if(uart_valid) begin
+	 $write("%c", mem_wdata[7:0] );
+	 $fflush(32'h8000_0001);
+      end
+   end
+`endif   
+```
+(the magic constant argument to`$fflush()` corresponds to `stdout`, you need to
+do that else you do not see anything on the terminal until the output buffer
+of `stdout` is full).
 
 ## Step 18: Computing the Mandelbrot set 
 
