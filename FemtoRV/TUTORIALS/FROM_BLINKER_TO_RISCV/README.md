@@ -2230,11 +2230,11 @@ a character:
 It writes the character to the UART address projected in IO space, then loops while
 the UART status indicates that it is busy sending a character.
 
-**Try this** run [step17.v](step17.v) in simulation and on the device.
+**Try this** run [step17.v](step17.v) in simulation.
 
 _Wait a minute_ in simulation, how does it know how to display something ?
 
-It because I cheated a bit, I added the following block of code to the SOC:
+It's because I cheated a bit, I added the following block of code to the SOC:
 ```verilog
 `ifdef BENCH
    always @(posedge clk) begin
@@ -2247,7 +2247,19 @@ It because I cheated a bit, I added the following block of code to the SOC:
 ```
 (the magic constant argument to`$fflush()` corresponds to `stdout`, you need to
 do that else you do not see anything on the terminal until the output buffer
-of `stdout` is full).
+of `stdout` is full). Doing so we do not test the UART in simulation (it is completely bypassed).
+I trust Olof that it works fine, but to do things properly, it would be better to plug something
+on the simulated `TXD` signal, decode the RS232 protocol and display the characters (we'll see
+examples of this type of simulation later on).
+
+**Try this** run [step17.v](step17.v) on device.
+
+To display what's sent to the UART, use:
+```
+  $ ./terminal.sh
+```
+_Note_ edit `terminal.sh` and chose your favourite terminal emulator in there. You may also
+need to change `DEVICE=/dev/ttyUSB1` according to your local configuration.
 
 ## Step 18: Computing the Mandelbrot set 
 
