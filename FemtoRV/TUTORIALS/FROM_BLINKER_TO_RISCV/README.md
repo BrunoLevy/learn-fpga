@@ -2,7 +2,16 @@
 
 This tutorial is a progressive journey from a simple blinky design to a RISC-V core.
 
-## Introduction
+It works with the following boards:
+- IceStick
+- IceBreaker
+- ULX3S
+- _to be added_ ARTY
+
+If you do not have a board, you can run everything in simulation (but
+it is not as fun).
+
+## Introduction and references on processor design
 
 To understand processor design, the first thing that I have read was
 [this answer](https://stackoverflow.com/questions/51592244/implementation-of-simple-microprocessor-using-verilog/51621153#51621153)

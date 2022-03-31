@@ -1,0 +1,35 @@
+# See https://github.com/emard/ulx3s/blob/master/doc/constraints/ulx3s_v20.lpf
+
+## Clock #########################################
+
+LOCATE COMP "CLK" SITE "G2";
+IOBUF PORT "CLK" PULLMODE=NONE IO_TYPE=LVCMOS33;
+FREQUENCY PORT "CLK" 25 MHZ;
+
+## RESET button ##################################
+
+LOCATE COMP "RESET" SITE "T1"; # fire 2 
+IOBUF PORT "RESET" IO_TYPE=LVCMOS33;
+
+## LEDs ##########################################
+
+LOCATE COMP "LEDS[0]" SITE "B2";
+LOCATE COMP "LEDS[1]" SITE "C2";
+LOCATE COMP "LEDS[2]" SITE "C1";
+LOCATE COMP "LEDS[3]" SITE "D2";
+LOCATE COMP "LEDS[4]" SITE "D1";
+
+IOBUF PORT "LEDS[0]"  IO_TYPE=LVCMOS33;
+IOBUF PORT "LEDS[1]"  IO_TYPE=LVCMOS33;
+IOBUF PORT "LEDS[2]"  IO_TYPE=LVCMOS33;
+IOBUF PORT "LEDS[3]"  IO_TYPE=LVCMOS33;
+IOBUF PORT "LEDS[4]"  IO_TYPE=LVCMOS33;
+
+## UART ######################################################
+
+LOCATE COMP "TXD"   SITE "L4"; # FPGA transmits to ftdi
+LOCATE COMP "RXD"   SITE "M1"; # FPGA receives from ftdi
+
+IOBUF PORT "TXD" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "RXD" PULLMODE=UP IO_TYPE=LVCMOS33;
+

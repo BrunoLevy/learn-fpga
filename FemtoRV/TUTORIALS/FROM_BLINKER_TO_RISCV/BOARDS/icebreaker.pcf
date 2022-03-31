@@ -1,0 +1,13 @@
+set_io CLK 35
+
+set_io LEDS[0] 27
+set_io LEDS[1] 21
+set_io LEDS[2] 25
+set_io LEDS[3] 23
+set_io LEDS[4] 26
+
+set_io TXD 9
+set_io RXD 6
+
+set_io RESET 10
+
