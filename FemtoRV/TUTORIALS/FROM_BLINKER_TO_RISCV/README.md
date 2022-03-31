@@ -51,7 +51,7 @@ gently take you from the most trivial Blinky design to a fully functional RISC-V
 Before starting, you will need to install the following softwares:
 - iverilog/icarus (simulation)
 ```
-  sudo apt-get install iverilog
+  $ sudo apt-get install iverilog
 ```
 - yosys/nextpnr, the toolchain for your board. See [this link](../toolchain.md).
 
@@ -2526,6 +2526,59 @@ different "intensities", from the darkest to the brightest:
 
 **Try that** run [step18.v](step18.v) in simulation and on the device. Modify it to draw your own graphics (for instance,
 try drawing "concentric circles" using the "colormap").
+
+## Step 19: Faster simulation with Verilator
+
+As you have seen in Step 18, simulation is much much slower than running the design on the device. However, there is
+another tool, called `verilator`, that lets you convert a VERILOG design into C++. Then you compile the C++, and you
+have a simulation that is much much faster than ikarus/iverilog. Let us first install verilator:
+```
+  $ apt-get install verilator
+```
+
+Before transforming our design into C++, we will have to create a "bench", that is, some C++ code that will generate the
+signals for our design, and that will declare the C++ `main()` function. The main role of the main function is to declare
+an object of class `VSOC` (generated from our `SOC` module), and wiggle its `CLK` signal. Each time the `CLK` signal is
+changed, you need to call the `eval()` function to take the change into account. The `sim_main.cpp` file is as follows:
+
+```c++
+#include "VSOC.h"
+#include "verilated.h"
+#include <iostream>
+
+int main(int argc, char** argv, char** env) {
+   VSOC top;
+   top.CLK = 0;
+   while(!Verilated::gotFinish()) {
+      top.CLK = !top.CLK;
+      top.eval();
+   }
+   return 0;
+}
+```
+
+In addition, in [sim_main.cpp](sim_main.cpp), there is some code to decode whenever the LEDs change, and display their
+status. 
+
+To convert a design to C++, use the following command:
+```
+  $ verilator -DBENCH -DBOARD_FREQ=12 -Wno-fatal --top-module SOC -cc -exe sim_main.cpp step18.v
+```
+
+Then to compile the C++ and run the generated program:
+```
+  $ cd obj_dir
+  $ make -f VSOC.mk
+  $ ./VSOC
+```
+
+As you can see, it is much much faster than icarus/iverilog ! For a small design, it does not make a huge difference, but believe me, when you
+are developping an RV32IMFC core, with a FPU, it is good to have efficient simulation !
+
+To make things easier, there is a `run_verilator.sh` script, that you can invoke as follows:
+```
+  $ run_verilator.sh step18.v
+```
 
 ## Files for all the steps
 

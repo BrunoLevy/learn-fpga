@@ -31,9 +31,9 @@ module Memory (
 
    // Converts an IO_xxx_bit constant into an offset in IO page.
    function [31:0] IO_BIT_TO_OFFSET;
-      input [31:0] bit;
+      input [31:0] bitid;
       begin
-	 IO_BIT_TO_OFFSET = 1 << (bit + 2);
+	 IO_BIT_TO_OFFSET = 1 << (bitid + 2);
       end
    endfunction
    
