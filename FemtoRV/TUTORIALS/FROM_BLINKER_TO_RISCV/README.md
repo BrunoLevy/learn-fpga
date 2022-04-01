@@ -2531,7 +2531,7 @@ try drawing "concentric circles" using the "colormap").
 
 As you have seen in Step 18, simulation is much much slower than running the design on the device. However, there is
 another tool, called `verilator`, that lets you convert a VERILOG design into C++. Then you compile the C++, and you
-have a simulation that is much much faster than ikarus/iverilog. Let us first install verilator:
+have a simulation that is much much faster than icarus/iverilog. Let us first install verilator:
 ```
   $ apt-get install verilator
 ```
@@ -2600,10 +2600,10 @@ To make things easier, there is a `run_verilator.sh` script, that you can invoke
 - [step 16](step16.v): Store
 - [step 17](step17.v): Memory-mapped devices 
 - [step 18](step18.v): Mandelbrot set
+- step 19: Faster simulation with Verilator
 
 _WIP_
 
-- step 19: Faster simulation with Verilator
 - step 20: Using the GNU toolchain to compile programs
 - step 21: More devices (LED matrix, OLED screen...)
 - step 22: Running programs from the SPI Flash
