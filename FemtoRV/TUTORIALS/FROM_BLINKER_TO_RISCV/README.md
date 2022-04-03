@@ -48,6 +48,11 @@ gently take you from the most trivial Blinky design to a fully functional RISC-V
 
 ## Prerequisites:
 
+First step is cloning the learn-fpga repository:
+```
+$ git clone https://github.com/BrunoLevy/learn-fpga.git
+```
+
 Before starting, you will need to install the following softwares:
 - iverilog/icarus (simulation)
 ```
@@ -2580,6 +2585,220 @@ To make things easier, there is a `run_verilator.sh` script, that you can invoke
   $ run_verilator.sh step18.v
 ```
 
+## Step 20: Using the GNU toolchain to compile programs
+
+At this step, you may have the feeling that our RISC-V design
+is just a toy, for educational purpose, far away from "the real thing".
+In fact, at this step, you will start feeling that what you have done
+is as real as any other RISC-V processor ! What makes a processor interesting
+is the software you can run on it, hence if our thingy can run any software
+written for a (RV32I) RISC-V processor, then it is a RV32I RISC-V processor.
+
+_Wait a minute_ but what we have used up to now to write the software is
+the VERILOG assembler, it is just a toy, different from the real thing no ?
+
+In fact, the VERILOG assembler generates exactly the same machine code as
+any other RISC-V assembler. We coud use instead any other RISC-V assembler,
+load the generated machine code into our design and run it !
+
+To do so, VERILOG has a `$readmemh()` command, that loads the data to
+initialize a memory from an external file. It is used as follows in
+[step20.v](step20.v):
+
+```verilog
+   initial begin
+       $readmemh("firmware.hex",MEM);
+   end
+```
+
+where `firmware.hex` is an ASCII file with the initial content of `MEM` in hexadecimal.
+
+So if we want to use an external assembler, all we have to do is figure out the following
+things:
+- how to compile RISC-V assembly code using GNU tools
+- how to tell GNU tools about the device we have created (RAM start address, RAM amount)
+- how to convert the output of GNU tools into a file that `$readmemh()` can understand
+
+OK, let us start with a simple blinker, in [blinker.S](FIRMWARE/blinker.S):
+
+```
+# Simple blinker
+
+.equ IO_BASE, 0x400000  
+.equ IO_LEDS, 4
+
+.section .text
+
+.globl start
+
+start:
+        li   gp,IO_BASE
+	li   sp,0x1800
+.L0:
+	li   t0, 5
+	sw   t0, IO_LEDS(gp)
+	call wait
+	li   t0, 10
+	sw   t0, IO_LEDS(gp)
+	call wait
+	j .L0
+
+wait:
+        li t0,1
+	slli t0, t0, 17
+.L1:       
+        addi t0,t0,-1
+	bnez t0, .L1
+	ret
+```
+
+As you can see, it is very similar to the code we wrote up to now in the
+VERILOG assembler.
+
+To compile it, you will need to install the RISC-V toolchain (compiler,
+assembler, linker) on your machine. Our makefile can do that for you:
+
+```
+  $ cd learn-fpga/FemtoRV
+  $ make ICESTICK.firmware_config
+```
+_Note:_ always use `ICESTICK.firmware_config`, even if you have a larger board,
+it will configure the makefiles for `RV32I` build (and that's what our processor
+supports).
+
+This will download some files and unpack them in `learn-fpga/FemtoRV/FIRMWARE/TOOLCHAIN`.
+Add the `riscv64-unknown-elf-gcc..../bin/` directory to your path.
+
+Now to compile our program:
+```
+  $ cd learn-fpga/FemtoRV/TUTORIALS/FROM_BLINKER_TO_RISCV/FIRMWARE
+  $ riscv64-unknown-elf-as -march=rv32i -mabi=ilp32 -mno-relax blinker.S -o blinker.o
+```
+We specify the architecture (`rv32i`) that corresponds to the instructions
+supported by our processor and the ABI (`ilp32`) that corresponds to the way functions
+are called. THe `no-relax` option concerns the `gp` register that we use for
+accessing the IO page (so we do not let the assembler use it for anything else).
+
+This generates an object file (`.o`). We now need to generate an executable from it,
+by invoking the linker. The linker will determine where our code and data should
+be implanted in memory. For that, we need to specify how the memory in our
+device is organized, in a linker script ([FIRMWARE/bram.ld](FIRMWARE/bram.ld)):
+
+
+```
+MEMORY
+{
+   BRAM (RWX) : ORIGIN = 0x0000, LENGTH = 0x1800  /* 6kB RAM */
+}
+SECTIONS
+{
+    everything :
+    {
+	. = ALIGN(4);
+        *(.*)
+    } >BRAM
+}
+```
+
+A linker script contains a description of `MEMORY`. In our case, there is a single
+segment of 6 kB of memory, that we call `BRAM`. It starts from address `0x0000`.
+Then we have `SECTIONS`, that indicates what goes where (or which segment goes
+to which memory). In our case, it is super simple: everything goes to BRAM.
+The linker is invoked as follows:
+
+```
+  $ riscv64-unknown-elf-ld blinker.o -o blinker.bram.elf -T bram.ld -m elf32lriscv -nostdlib -norelax
+```
+
+It generates an "elf" executable ("elf" stands for Executable and Linkable Format). The option
+`-T bram.ld` tells it to use our linker script. The option `-m elf32lriscv` indicates that
+we are generating a 32-bits executable. We are not using the C stdlib for now (`-nostdlib`) and
+we keep `gp` for ourselves (`-norelax`).
+
+We are not completely done, now we need to extract the relevant information from the elf executable,
+and generate a file with all the machine code in hexadecimal, so that VERILOG's `$readmemh()` function
+can understand it. For that, I wrote a `firmware_words` utility, that understands the elf file formats,
+extracts the parts that are interesting for us and writes them in ASCII hexadecimal:
+
+```
+  $ make blinker.bram.hex
+```
+
+_Note_ you can invoke `make xxxx.bram.hex` directly, it will invoke the assembler, linker and
+elf conversion utility for you automatically.
+
+Now you can run the example in simulation and on the device:
+```
+  $ cd ..
+  $ ./run_verilator.sh step20.v
+  $ BOARDS/run_xxx.sh step20.v
+```
+
+Now that things are easier, we can write more complicated programs. Let us see how
+to write the famous "hello world" program. What we need is a `putstring` routine to display
+a string on the tty. It takes as input the address of the first character of the string
+to display in `a0`.  We just need to loop on all characters of the string, and
+exit the loop as soon as we find a null character, and call `putchar` for each character:
+```
+# Warning, buggy code ahead !
+putstring:
+	mv t2,a0	
+.L2:    lbu a0,0(t2)
+	beqz a0,.L3
+	call putchar
+	addi t2,t2,1	
+	j .L2
+.L3:    ret
+```
+Have you seen the comment ? It means the code above has an error, can you spot it ?
+
+A hint, `putstring` is a function that calls a function. Don't we need to do special
+in this case ? 
+
+Do you remember what `call` and `ret` do ? Yes, `call` stores `PC+4` in `ra` then
+jumps to the function, and `ret` jumps to the address in `ra`. Now suppose that
+somebody called our `putstring` function. When we enter the function, `ra` contains
+the address we are supposed to jump to when reaching the `ret` statement in `putstring`.
+But inside `putstring`, we call `putchar`, and it overwrites `ra` with the address right
+after the call, so that `putchar` will be able to jump there when it will return, but
+`putstring` will jump there as well, which is not what we want. To avoid that, we need
+to save `ra` at the beginning of `putstring`, and restore it at the end. To do that,
+we use the stack as follows:
+
+```
+putstring:
+	addi sp,sp,-4 # save ra on the stack
+	sw ra,0(sp)   # (need to do that for functions that call functions)
+	mv t2,a0	
+.L2:    lbu a0,0(t2)
+	beqz a0,.L3
+	call putchar
+	addi t2,t2,1	
+	j .L2
+.L3:    lw ra,0(sp)  # restore ra
+	addi sp,sp,4 # resptore sp
+	ret
+```
+
+The function can be used as follows:
+```
+   la   a0, hello
+   call putstring
+   
+   ...
+
+hello:
+	.asciz "Hello, world !\n"
+```
+
+The `la` (load address) pseudo-instruction loads the address of the string
+in `a0`. The string is declared with a standard label, and the `.asciz`
+directive that generates a zero-terminated string.
+
+**Try this** Compile `hello.S` (`cd FIRMWARE; make hello.bram.hex`) and test it in simulation and on device.
+Try also `mandelbrot.S`. 
+
+
 ## Files for all the steps
 
 - [step 1](step1.v): Blinker, too fast, can't see anything
@@ -2601,10 +2820,11 @@ To make things easier, there is a `run_verilator.sh` script, that you can invoke
 - [step 17](step17.v): Memory-mapped devices 
 - [step 18](step18.v): Mandelbrot set
 - step 19: Faster simulation with Verilator
+- [step 20](step20.v): Using the GNU toolchain to compile assembly programs
 
 _WIP_
 
-- step 20: Using the GNU toolchain to compile programs
-- step 21: More devices (LED matrix, OLED screen...)
-- step 22: Running programs from the SPI Flash
-- step 23: Raytracing with the IceStick
+- step 21: Using the GNU toolchain to compile C programs
+- step 22: More devices (LED matrix, OLED screen...)
+- step 23: Running programs from the SPI Flash
+- step 24: Raytracing with the IceStick

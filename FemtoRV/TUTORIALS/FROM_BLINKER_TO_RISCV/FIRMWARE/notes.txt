@@ -1,0 +1,6 @@
+# https://blog.thea.codes/the-most-thoroughly-commented-linker-script/
+# https://interrupt.memfault.com/blog/how-to-write-linker-scripts-for-firmware
+
+bin/riscv64-unknown-elf-as -march=rv32i -mabi=ilp32 -mno-relax mandelbrot_terminal.S -o mandelbrot_terminal.o
+riscv64-unknown-elf-ld mandelbrot_terminal.o -T baremetal.ld -m elf32lriscv -nostdlib -norelax
+/home/blevy/Programming/learn-fpga/FemtoRV/FIRMWARE/TOOLS/firmware_words a.elf -ram 6144 -hex a.hex

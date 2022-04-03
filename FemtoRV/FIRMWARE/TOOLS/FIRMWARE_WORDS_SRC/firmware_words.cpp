@@ -206,7 +206,7 @@ void save_RAM_hex(const char* filename, std::vector<unsigned char>& RAM) {
   std::ofstream out(filename);
   for(int i=0; i<RAM_SIZE; i+=4) {
     // Fix by @anjin_games (commented-out code does not work on ARM)
-    char buff[9];
+    char buff[10];
     sprintf(buff,"%.2x%.2x%.2x%.2x ",RAM[i+3],RAM[i+2],RAM[i+1],RAM[i]);
     out << buff; 
     /* 
