@@ -26,9 +26,7 @@
 .equ dy, (ymax-ymin)/80
 .equ norm_max,(4 << mandel_shift)
 
-
 .section .text
-
 
 # X,Y         : s0,s1
 # Cr,Ci       : s2,s3
@@ -37,12 +35,9 @@
 # cnt: s10
 # 128: s11
 
-.globl start
+.globl main
 
-_start:
-        li   gp,IO_BASE
-	li   sp,0x1800
-
+main:
 mandelstart:
 	
 	li   t0, 5
@@ -123,37 +118,6 @@ exit_Z:
 	call putchar
 	
         j mandelstart
-
-wait:
-  li t0,1
-  slli t0, t0,17
-.L0:       
-  addi t0,t0,-1
-  bnez t0, .L0
-  ret
-
-__mulsi3:	
-  mv     a2, a0
-  li     a0, 0
-.L1:
-  andi   a3, a1, 1
-  beqz   a3, .L2
-  add    a0, a0, a2
-.L2:
-  srli   a1, a1, 1
-  slli   a2, a2, 1
-  bnez   a1, .L1
-  ret
-
-putchar:
-  sw a0, IO_UART_DAT(gp)
-  li t0, 1<<9
-.L3:  
-  lw t1, IO_UART_CNTL(gp)
-  and t1, t1, t0
-  bnez t1, .L3
-  ret
-
 
 colormap:
 .ascii " .,:;ox%#@"

@@ -5,9 +5,9 @@
 
 .section .text
 
-.globl start
+.globl main
 
-start:
+main:
         li   gp,IO_BASE
 	li   sp,0x1800
 .L0:
@@ -20,12 +20,4 @@ start:
 	call wait
 	j .L0
 
-
-wait:
-        li t0,1
-	slli t0, t0,17
-.L1:       
-        addi t0,t0,-1
-	bnez t0, .L1
-	ret
 
