@@ -8,8 +8,6 @@
 .globl main
 
 main:
-        li   gp,IO_BASE
-	li   sp,0x1800
 .L0:
 	
 	li   t0, 5

@@ -2823,9 +2823,9 @@ Let us see now how we can write code in C for our processor. At this point, we a
 generate object files (`.o`) and produce an elf executable from them using the linker. Our
 linker script ensures that everything goes at the right place in memory, then our processor
 can execute the code, first the content of `start.S`, implanted at address 0, that calls in
-turn the `main` function. Up to now our programs were completely implanted in assembly. The
+turn the `main` function. Up to now our programs were completely written in assembly. The
 nice thing with the ABI (Application Binary Interface), that we have seen at steps 13 and 14,
-is that it makes it possible to combine object files (`.o`) produces by different tools, as
+is that it makes it possible to combine object files (`.o`) produced by different tools, as
 soon as they respect the ABI, which is the case (of course) of the C compiler.
 
 The example [FIRMWARE/sieve.c](FIRMWARE/sieve.c), taken from the examples in picorv is a good
@@ -2839,8 +2839,12 @@ For this reason, we include a much smaller / much simpler version in
 [FIRMWARE/print.c](FIRMWARE/print.c) (also taken from picorv), and included in the objects
 to be linked with executables.
 
-**Try this** Compile `sieve.c` (`cd FIRMWARE; make sieve.bram.hex`) and test it in simulation and on device.
-Write your own programs (if you do not have an idea, try for instance writing a C version of mandelbrot).
+**Try this** Compile `sieve.c` (`cd FIRMWARE; make sieve.bram.hex`) and test it in simulation and on device
+(still with `step20.v`). Write your own programs (if you do not have an idea, try for instance writing a C version of mandelbrot).
+
+Now you can see that your processor is not just a toy, it is a real
+RISC-V processor on which you can run programs produced by standard
+tools !
 
 ## Files for all the steps
 
