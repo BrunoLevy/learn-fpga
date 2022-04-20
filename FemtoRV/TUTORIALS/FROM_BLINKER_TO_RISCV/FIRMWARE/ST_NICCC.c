@@ -17,13 +17,20 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifdef __linux__
+#include <stdlib.h>
+#include <unistd.h>
+#endif
+
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 
 /**********************************************************************************/
+/* Graphics routines                                                              */
+/**********************************************************************************/
 
-// SHRINK=1: 128x128 (you will need to set a tiny font in the tty to see smthg)
-// SHRINK=2: 64x64
+// SHRINK=1: 256x128 (you will need to set a tiny font in the tty to see smthg)
+// SHRINK=2: 128x64
 #define SHRINK 2
 
 void GL_clear() {
@@ -114,11 +121,10 @@ void GL_fill_poly(int nb_pts, int* points, int color) {
     for(int y = miny; y <= maxy; ++y) {
 	int x1 = x_left[y];
 	int x2 = x_right[y];
-	// Goto_XY(x1*2,y), x1*2 because two chars per pixel (to have square pixels)
-	printf("\033[%d;%dH",y,(x1 << 1)); 
+	// Goto_XY(x1,y)
+	printf("\033[%d;%dH",y,x1);
 	for(int x=x1; x<=x2; ++x) {
 	    putchar(' ');
-	    putchar(' ');	    
 	}
     }
 }
@@ -158,10 +164,41 @@ void spi_reset() {
   spi_word_addr = (uint32_t)(-1);
 }
 
+
+#ifdef __linux__
+
+FILE* f = NULL;
+
+/**
+ * Reads one byte of data from the file (emulates read_spi_byte() when running on desktop)
+ */
+uint8_t next_spi_byte() {
+   uint8_t result;
+   if(f == NULL) {
+      f = fopen("../../../FIRMWARE/EXAMPLES/DATA/scene1.dat","rb");
+      if(f == NULL) {
+	 printf("Could not open data file\n");
+	 exit(-1);
+      }
+   }
+   if(spi_word_addr != spi_addr >> 2) {
+      spi_word_addr = spi_addr >> 2;
+      fseek(f, spi_word_addr*4-ADDR_OFFSET, SEEK_SET);
+      fread(&(spi_u.spi_word), 4, 1, f);
+   }
+   result = spi_u.spi_bytes[spi_addr&3];
+   ++spi_addr;
+   return (uint8_t)(result);
+}
+
+#else
+
+
+# define SPI_FLASH_BASE ((uint32_t*)(1 << 23))
+
 /**
  * Reads one byte from the SPI flash, using the mapped SPI flash interface.
  */
-#define SPI_FLASH_BASE ((uint32_t*)(1 << 23))
 uint8_t next_spi_byte() {
    uint8_t result;
    if(spi_word_addr != spi_addr >> 2) {
@@ -172,6 +209,8 @@ uint8_t next_spi_byte() {
    ++spi_addr;
    return (uint8_t)(result);
 }
+
+#endif
 
 uint16_t next_spi_word() {
    /* In the ST-NICCC file,  
@@ -253,7 +292,7 @@ int read_frame() {
     if(frame_flags & INDEXED_BIT) {
 	uint8_t nb_vertices = next_spi_byte();
 	for(int v=0; v<nb_vertices; ++v) {
-	    X[v] = (next_spi_byte() >> SHRINK);
+	    X[v] = (next_spi_byte() >> (SHRINK-1));
 	    Y[v] = (next_spi_byte() >> SHRINK);
 	}
     }
@@ -288,7 +327,7 @@ int read_frame() {
 		poly[2*i]   = X[index];
 		poly[2*i+1] = Y[index];
 	    } else {
-		poly[2*i]   = (next_spi_byte() >> SHRINK);
+		poly[2*i]   = (next_spi_byte() >> (SHRINK-1));
 		poly[2*i+1] = (next_spi_byte() >> SHRINK);
 	    }
 	}
@@ -302,6 +341,10 @@ int main() {
     GL_clear();
     for(;;) {
         spi_reset();
-	while(read_frame());
+	while(read_frame()) {
+#ifdef __linux__       
+        usleep(20000);
+#endif       
+	}
     }
 }
