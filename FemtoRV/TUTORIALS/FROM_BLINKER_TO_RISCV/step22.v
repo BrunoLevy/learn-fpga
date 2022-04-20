@@ -321,15 +321,14 @@ endmodule
 
 
 module SOC (
-    input 	     CLK,  // system clock 
+    input 	     CLK, // system clock 
     input 	     RESET,// reset button
     output reg [4:0] LEDS, // system LEDs
-    input 	     RXD,  // UART receive
-    output 	     TXD,  // UART transmit
-    output           SPIFLASH_CLK,  // SPI flash clock
-    output           SPIFLASH_CS_N, // SPI flash chip select (active low)
-    output           SPIFLASH_MOSI, // SPI flash master out slave in
-    input            SPIFLASH_MISO  // SPI flash master in slave out
+    input 	     RXD, // UART receive
+    output 	     TXD, // UART transmit
+    output 	     SPIFLASH_CLK,  // SPI flash clock
+    output 	     SPIFLASH_CS_N, // SPI flash chip select (active low)
+    inout [1:0]      SPIFLASH_IO    // SPI flash IO pins
 );
 
    wire clk;
@@ -379,8 +378,7 @@ module SOC (
       .rbusy(SPIFlash_rbusy),
       .CLK(SPIFLASH_CLK),
       .CS_N(SPIFLASH_CS_N),
-      .MOSI(SPIFLASH_MOSI),
-      .MISO(SPIFLASH_MISO)
+      .IO(SPIFLASH_IO)			   
    );
    
    // Memory-mapped IO in IO page, 1-hot addressing in word address.   
@@ -397,7 +395,7 @@ module SOC (
 
    wire uart_valid = isIO & mem_wstrb & mem_wordaddr[IO_UART_DAT_bit];
    wire uart_ready;
-   
+
    corescore_emitter_uart #(
       .clk_freq_hz(`CPU_FREQ*1000000),
         .baud_rate(1000000)
@@ -409,7 +407,7 @@ module SOC (
       .o_ready(uart_ready),
       .o_uart_tx(TXD)      			       
    );
-
+   
    wire [31:0] IO_rdata = 
 	       mem_wordaddr[IO_UART_CNTL_bit] ? { 22'b0, !uart_ready, 9'b0}
 	                                      : 32'b0;

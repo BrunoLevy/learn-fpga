@@ -41,8 +41,7 @@
 // Macros to select version and number of dummy cycles based on the board.
 
 `ifdef ICE_STICK
-// `define SPI_FLASH_FAST_READ_DUAL_IO
- `define SPI_FLASH_FAST_READ
+ `define SPI_FLASH_FAST_READ_DUAL_IO
  `define SPI_FLASH_CONFIGURED
 `endif
 

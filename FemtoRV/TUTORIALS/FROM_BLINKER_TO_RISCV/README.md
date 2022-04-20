@@ -2891,7 +2891,7 @@ and the VERILOG implementation is in [spi_flash.v](spi_flash.v).
 It supports different protocols, depending on the used number of pins and whether pins are bidirectional.
 
 The `MappedSPIFlash` module has the following interface:
-```
+```verilog
 module MappedSPIFlash( 
     input wire 	       clk,          
     input wire 	       rstrb,        
@@ -2902,36 +2902,34 @@ module MappedSPIFlash(
 
     output wire        CLK,  
     output reg         CS_N, 
-    output wire        MOSI, 
-    input  wire        MISO  
+    inout  wire [1:0]  IO 
 );
 ```
 
-| signal       | description                                                             |
-|--------------|-------------------------------------------------------------------------|
-| clk          | system clock                                                            |
-| rstrb        | read strobe, goes high whenever processor wants to read a word          |
-| word_address | address of the word to be read                                          |
-| rdata        | data read from memory                                                   |
-| rbusy        | asserted if busy receiving data                                         |
-| CLK          | clock pin of the SPI flash chip                                         |
-| CS_N         | chip select pin of the SPI flash chip, active low                       |
-| MOSI         | master out slave in pin of the SPI flash chip (data sent to chip)       |
-| MISO         | master in slave out pin of the SPI flash chip (data received from chip) |
+| signal       | description                                                    |
+|--------------|----------------------------------------------------------------|
+| clk          | system clock                                                   |
+| rstrb        | read strobe, goes high whenever processor wants to read a word |
+| word_address | address of the word to be read                                 |
+| rdata        | data read from memory                                          |
+| rbusy        | asserted if busy receiving data                                |
+| CLK          | clock pin of the SPI flash chip                                |
+| CS_N         | chip select pin of the SPI flash chip, active low              |
+| IO           | two bidirectional pins for sending and receiving data          |
 
 Now the idea is to modify our SOC in such a way that some addresses correspond to the SPI flash.
 First we need to decide how it will be projected into the memory space of our processor. The
 idea is to use bit 23 of memory addresses to select the SPI Flash. 
 Then we have the different
 signals to discriminate the different zones of our memory:
-```
+```verilog
    wire isSPIFlash  = mem_addr[23];      
    wire isIO        = mem_addr[23:22] == 2'b01;
    wire isRAM       = mem_addr[23:22] == 2'b00;
 ```
 
 The `MappedSPIFlash` module is wired as follows:
-```
+```verilog
    wire SPIFlash_rdata;
    wire SPIFlash_rbusy;
    MappedSPIFlash SPIFlash(
@@ -2942,15 +2940,14 @@ The `MappedSPIFlash` module is wired as follows:
       .rbusy(SPIFlash_rbusy),
       .CLK(SPIFLASH_CLK),
       .CS_N(SPIFLASH_CS_N),
-      .MOSI(SPIFLASH_MOSI),
-      .MISO(SPIFLASH_MISO)
+      .IO(SPIFLASH_IO)
    );
 ```
-(the pins `SPIFLASH_CLK`, `SPIFLASH_CS_N`, `SPIFLASH_MOSI` and `SPIFLASH_MISO` are declared
+(the pins `SPIFLASH_CLK`, `SPIFLASH_CS_N`, `SPIFLASH_IO[0]` and `SPIFLASH_IO[1]` are declared
 in the constraint file, in the `BOARDS` subdirectory).
 
 The data sent to the processor has a three-ways mux:
-```
+```verilog
    assign mem_rdata = isRAM      ? RAM_rdata :
                       isSPIFlash ? SPIFlash_rdata : 
 	                           IO_rdata ;
@@ -2961,7 +2958,7 @@ address, but how does it know that data is ready ? (remember, data arrives one b
 this `SPIFlash_rbusy` that goes high whenever `MappedSPIFlash` is busy receiving some data, we need to take it
 into account in our processor's state machine. We add a new input signal `mem_rbusy` to our processor,
 and modify the state machine as follows:
-```
+```verilog
    ...
    WAIT_DATA: begin
       if(!mem_rbusy) begin
@@ -2972,8 +2969,8 @@ and modify the state machine as follows:
 ```
 
 Then, in the SOC, this signal is wired to `SPIFlash_rbusy`:
-```
-   wire        mem_rbusy;
+```verilog
+   wire mem_rbusy;
    ...
    Processor CPU(
      ...
@@ -2987,7 +2984,7 @@ Then, in the SOC, this signal is wired to `SPIFlash_rbusy`:
 By the way, since we are revisiting the state machine, there is something
 we can do. Remember this portion of the state machine, don't you think
 we could go faster ?
-```
+```verilog
    WAIT_INSTR: begin
       instr <= mem_rdata;
       state <= FETCH_REGS;
@@ -3002,7 +2999,7 @@ we could go faster ?
 Yes, `rs1Id` and `rs2Id` are simply 5 wires (each) drawn from `instr`, so we can
 get them from `mem_rdata` directly, and fetch the registers in the `WAIT_INSTR` state,
 as follows:
-```
+```verilog
    WAIT_INSTR: begin
       instr <= mem_rdata;
       rs1 <= RegisterBank[mem_rdata[19:15]];
@@ -3015,13 +3012,13 @@ Doing so we gain one cycle per instruction, and it is an easy win !
 Oh, and one more thing, why do we need a `LOAD` and a `STORE` state, could'nt we
 initiate memory transfers in the `EXECUTE` state ? Yes we can, so we need to change the write mask and
 read strobes accordingly, like that:
-```
+```verilog
    assign mem_rstrb = (state == FETCH_INSTR || (state == EXECUTE & isLoad));
    assign mem_wmask = {4{(state == EXECUTE) & isStore}} & STORE_wmask;
 ```
 
 Then the state machine has 4 states only !
-```
+```verilog
    localparam FETCH_INSTR = 0;
    localparam WAIT_INSTR  = 1;
    localparam EXECUTE     = 2;
@@ -3063,7 +3060,7 @@ Then the state machine has 4 states only !
 
 There are several other things that we can optimize. First thing, you may have noticed that
 the two LSBs of the instructions are always `2'b11` in RV32I, so we do not need to load them:
-```
+```verilog
    reg [31:2] instr;  
    ...
    instr <= mem_rdata[31:2];
@@ -3074,7 +3071,7 @@ the two LSBs of the instructions are always `2'b11` in RV32I, so we do not need 
 
 Something else: we are doing all address computations with 32 bits, whereas our address space
 has 24 bits only, we can save significant resources there:
-```
+```verilog
    localparam ADDR_WIDTH=24;
    wire [ADDR_WIDTH-1:0] PCplusImm = PC + ( instr[3] ? Jimm[31:0] :
 				  instr[4] ? Uimm[31:0] :
@@ -3093,7 +3090,7 @@ loading code ? To be able to load code from the SPI flash, the only thing we nee
 change is staying in the `WAIT_INSTR` state until `mem_rbusy` is zero, hence we
 just need to test `mem_rbusy` before changing `state` to `EXECUTE`:
 
-```
+```verilog
    WAIT_INSTR: begin
       instr <= mem_rdata[31:2];
       rs1 <= RegisterBank[mem_rdata[19:15]];
@@ -3103,6 +3100,41 @@ just need to test `mem_rbusy` before changing `state` to `EXECUTE`:
       end
    end
 ```
+
+![](ST_NICCC_tty.png)
+
+OK, so now we are ready to test the new storage that we have. Up to date
+verilog file is avalaible in [step22.v](step22.v). What we will do is displaying
+an animation on the terminal. The animation is a demo from the 90's, that streams
+polygon data to a software polygon renderer. Polygon data is a 640 kB binary file,
+available from `learn_fpga/FemtoRV/FIRMWARE/EXAMPLES/DATA/scene1.dat` (see other
+files in the same directory for more information about the file format). First
+thing to do is writing the file to the SPI flash, from a 1MBytes offset. For
+ICE40-based boards (IceStick, IceBreaker), use:
+
+```
+ $ iceprog -o 1M learn_fpga/FemtoRV/FIRMWARE/EXAMPLES/DATA/scene1.dat
+```
+
+For ECP5 boards (ULX3S), use:
+```
+ $ cp learn_fpga/FemtoRV/FIRMWARE/EXAMPLES/DATA/scene1.dat scene1.img
+ $ ujprog -j flash -f 1048576 scene1.img
+```
+(using latest version of `ujprog` compiled from [https://github.com/kost/fujprog](https://github.com/kost/fujprog)).
+
+Now you can compile the program:
+```
+ $ cd FIRMWARE
+ $ make ST_NICCC.bram.hex
+ $ cd ..
+```
+and send the design and the program to the device:
+```
+ $ BOARDS/run_xxx.sh step22.v
+ $ ./terminal.sh
+```
+
 
 
 ## Files for all the steps
