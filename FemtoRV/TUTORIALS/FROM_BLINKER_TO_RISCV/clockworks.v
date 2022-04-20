@@ -111,7 +111,9 @@ module Clockworks
 	    if(RESET) begin
 	       reset_cnt <= 0;
 	    end else begin
+	       /* verilator lint_off WIDTH */
 	       reset_cnt <= reset_cnt + !resetn;
+	       /* verilator lint_on WIDTH */	       
 	    end
 	 end
 `endif   

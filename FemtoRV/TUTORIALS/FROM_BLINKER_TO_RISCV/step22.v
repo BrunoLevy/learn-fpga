@@ -23,7 +23,7 @@ module Memory (
        $readmemh("firmware.hex",MEM);
    end
 
-   wire [29:0] word_addr = mem_addr[31:2];
+   wire [10:0] word_addr = mem_addr[12:2];
    
    always @(posedge clk) begin
       if(mem_rstrb) begin
@@ -47,8 +47,11 @@ module Processor (
     output [3:0]  mem_wmask
 );
 
-   reg [31:0] PC=0;        // program counter
-   reg [31:2] instr;       // current instruction
+   // Internal width for addresses.
+   localparam ADDR_WIDTH=24;
+   
+   reg [ADDR_WIDTH:0] PC=0; // program counter
+   reg [31:2] instr;        // current instruction
 
    // See the table P. 105 in RISC-V manual
    
@@ -67,9 +70,11 @@ module Processor (
    // The 5 immediate formats
    wire [31:0] Uimm={    instr[31],   instr[30:12], {12{1'b0}}};
    wire [31:0] Iimm={{21{instr[31]}}, instr[30:20]};
+   /* verilator lint_off UNUSED */ // MSBs of SBJimms are not used by addr adder.
    wire [31:0] Simm={{21{instr[31]}}, instr[30:25],instr[11:7]};
    wire [31:0] Bimm={{20{instr[31]}}, instr[7],instr[30:25],instr[11:8],1'b0};
    wire [31:0] Jimm={{12{instr[31]}}, instr[19:12],instr[20],instr[30:21],1'b0};
+   /* verilator lint_on UNUSED */
 
    // Destination registers
    wire [4:0] rdId  = instr[11:7];
@@ -169,34 +174,37 @@ module Processor (
 
    // Address computation
 
-   // Internal width for addresses.
-   localparam ADDR_WIDTH=24;
+
+   /* verilator lint_off WIDTH */
 
    // An adder used to compute branch address, JAL address and AUIPC.
    // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
    // Equivalent to PCplusImm = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
 
-
    // Note: doing so with ADDR_WIDTH < 32, AUIPC may fail in 
    // some RISC-V compliance tests because one can is supposed to use 
    // it to generate arbitrary 32-bit values (and not only addresses).
+   
    wire [ADDR_WIDTH-1:0] PCplusImm = PC + ( instr[3] ? Jimm[31:0] :
-				  instr[4] ? Uimm[31:0] :
-				             Bimm[31:0] );
+					    instr[4] ? Uimm[31:0] :
+				            Bimm[31:0] );
    wire [ADDR_WIDTH-1:0] PCplus4 = PC+4;
    
-   // register write back
-   assign writeBackData = (isJAL || isJALR) ? PCplus4   :
-			      isLUI         ? Uimm      :
-			      isAUIPC       ? PCplusImm :
-			      isLoad        ? LOAD_data :
-			                      aluOut;
 
    wire [ADDR_WIDTH-1:0] nextPC = ((isBranch && takeBranch) || isJAL) ? PCplusImm   :
 	                                  isJALR   ? {aluPlus[31:1],1'b0} :
 	                                             PCplus4;
 
    wire [ADDR_WIDTH-1:0] loadstore_addr = rs1 + (isStore ? Simm : Iimm);
+
+
+   // register write back
+   assign writeBackData = (isJAL || isJALR) ? PCplus4   :
+			      isLUI         ? Uimm      :
+			      isAUIPC       ? PCplusImm :
+			      isLoad        ? LOAD_data :
+			                      aluOut;
+   /* verilator lint_on WIDTH */
    
    // Load
    // All memory accesses are aligned on 32 bits boundary. For this
@@ -280,7 +288,9 @@ module Processor (
 	   end
 	   EXECUTE: begin
 	      if(!isSYSTEM) begin
+		 /* verilator lint_off WIDTH */
 		 PC <= nextPC;
+		 /* verilator lint_on WIDTH */		 
 	      end
 	      state <= isLoad  ? WAIT_DATA : FETCH_INSTR;
 `ifdef BENCH      
@@ -298,9 +308,12 @@ module Processor (
 
    assign writeBackEn = (state==EXECUTE && !isBranch && !isStore) ||
 			(state==WAIT_DATA) ;
-   
+
+   /* verilator lint_off WIDTH */
    assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ?
 		     PC : loadstore_addr ;
+   /* verilator lint_on WIDTH */
+   
    assign mem_rstrb = (state == FETCH_INSTR || (state == EXECUTE & isLoad));
    assign mem_wmask = {4{(state == EXECUTE) & isStore}} & STORE_wmask;
 
@@ -377,7 +390,7 @@ module SOC (
    
    always @(posedge clk) begin
       if(isIO & mem_wstrb & mem_wordaddr[IO_LEDS_bit]) begin
-	 LEDS <= mem_wdata;
+	 LEDS <= mem_wdata[4:0];
 //	 $display("Value sent to LEDS: %b %d %d",mem_wdata,mem_wdata,$signed(mem_wdata));
       end
    end
