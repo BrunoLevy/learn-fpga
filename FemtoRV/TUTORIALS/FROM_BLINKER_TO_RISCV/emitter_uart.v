@@ -8,8 +8,7 @@ module corescore_emitter_uart
    input wire [7:0] i_data,
    input wire 	    i_valid,
    output reg 	    o_ready,
-   output wire 	    o_uart_tx,
-   output wire      o_ready2
+   output wire 	    o_uart_tx
 );
 
    localparam START_VALUE = clk_freq_hz/baud_rate;

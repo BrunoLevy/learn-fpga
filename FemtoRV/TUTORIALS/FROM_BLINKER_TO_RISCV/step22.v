@@ -48,21 +48,21 @@ module Processor (
 );
 
    reg [31:0] PC=0;        // program counter
-   reg [31:0] instr;       // current instruction
+   reg [31:2] instr;       // current instruction
 
    // See the table P. 105 in RISC-V manual
    
    // The 10 RISC-V instructions
-   wire isALUreg  =  (instr[6:0] == 7'b0110011); // rd <- rs1 OP rs2   
-   wire isALUimm  =  (instr[6:0] == 7'b0010011); // rd <- rs1 OP Iimm
-   wire isBranch  =  (instr[6:0] == 7'b1100011); // if(rs1 OP rs2) PC<-PC+Bimm
-   wire isJALR    =  (instr[6:0] == 7'b1100111); // rd <- PC+4; PC<-rs1+Iimm
-   wire isJAL     =  (instr[6:0] == 7'b1101111); // rd <- PC+4; PC<-PC+Jimm
-   wire isAUIPC   =  (instr[6:0] == 7'b0010111); // rd <- PC + Uimm
-   wire isLUI     =  (instr[6:0] == 7'b0110111); // rd <- Uimm   
-   wire isLoad    =  (instr[6:0] == 7'b0000011); // rd <- mem[rs1+Iimm]
-   wire isStore   =  (instr[6:0] == 7'b0100011); // mem[rs1+Simm] <- rs2
-   wire isSYSTEM  =  (instr[6:0] == 7'b1110011); // special
+   wire isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2   
+   wire isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
+   wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
+   wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
+   wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
+   wire isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
+   wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm   
+   wire isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
+   wire isStore   =  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
+   wire isSYSTEM  =  (instr[6:2] == 5'b11100); // special
 
    // The 5 immediate formats
    wire [31:0] Uimm={    instr[31],   instr[30:12], {12{1'b0}}};
@@ -168,13 +168,22 @@ module Processor (
    
 
    // Address computation
+
+   // Internal width for addresses.
+   localparam ADDR_WIDTH=24;
+
    // An adder used to compute branch address, JAL address and AUIPC.
    // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
    // Equivalent to PCplusImm = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
-   wire [31:0] PCplusImm = PC + ( instr[3] ? Jimm[31:0] :
+
+
+   // Note: doing so with ADDR_WIDTH < 32, AUIPC may fail in 
+   // some RISC-V compliance tests because one can is supposed to use 
+   // it to generate arbitrary 32-bit values (and not only addresses).
+   wire [ADDR_WIDTH-1:0] PCplusImm = PC + ( instr[3] ? Jimm[31:0] :
 				  instr[4] ? Uimm[31:0] :
 				             Bimm[31:0] );
-   wire [31:0] PCplus4 = PC+4;
+   wire [ADDR_WIDTH-1:0] PCplus4 = PC+4;
    
    // register write back
    assign writeBackData = (isJAL || isJALR) ? PCplus4   :
@@ -183,11 +192,11 @@ module Processor (
 			      isLoad        ? LOAD_data :
 			                      aluOut;
 
-   wire [31:0] nextPC = ((isBranch && takeBranch) || isJAL) ? PCplusImm   :
+   wire [ADDR_WIDTH-1:0] nextPC = ((isBranch && takeBranch) || isJAL) ? PCplusImm   :
 	                                  isJALR   ? {aluPlus[31:1],1'b0} :
 	                                             PCplus4;
 
-   wire [31:0] loadstore_addr = rs1 + (isStore ? Simm : Iimm);
+   wire [ADDR_WIDTH-1:0] loadstore_addr = rs1 + (isStore ? Simm : Iimm);
    
    // Load
    // All memory accesses are aligned on 32 bits boundary. For this
@@ -246,10 +255,8 @@ module Processor (
    localparam FETCH_INSTR = 0;
    localparam WAIT_INSTR  = 1;
    localparam EXECUTE     = 2;
-   localparam LOAD        = 3;
-   localparam WAIT_DATA   = 4;
-   localparam STORE       = 5;
-   reg [2:0] state = FETCH_INSTR;
+   localparam WAIT_DATA   = 3;
+   reg [1:0] state = FETCH_INSTR;
    
    always @(posedge clk) begin
       if(!resetn) begin
@@ -258,40 +265,32 @@ module Processor (
       end else begin
 	 if(writeBackEn && rdId != 0) begin
 	    RegisterBank[rdId] <= writeBackData;
-	    // $display("r%0d <= %b (%d) (%d)",rdId,writeBackData,writeBackData,$signed(writeBackData));
-	    // For displaying what happens.
 	 end
 	 case(state)
 	   FETCH_INSTR: begin
 	      state <= WAIT_INSTR;
 	   end
 	   WAIT_INSTR: begin
-	      instr <= mem_rdata;
+	      instr <= mem_rdata[31:2];
 	      rs1 <= RegisterBank[mem_rdata[19:15]];
 	      rs2 <= RegisterBank[mem_rdata[24:20]];
-	      state <= EXECUTE;
+	      if(!mem_rbusy) begin
+		 state <= EXECUTE;
+	      end
 	   end
 	   EXECUTE: begin
 	      if(!isSYSTEM) begin
 		 PC <= nextPC;
 	      end
-	      state <= isLoad  ? LOAD  : 
-		       isStore ? STORE : 
-		       FETCH_INSTR;
+	      state <= isLoad  ? WAIT_DATA : FETCH_INSTR;
 `ifdef BENCH      
 	      if(isSYSTEM) $finish();
 `endif      
-	   end
-	   LOAD: begin
-	      state <= WAIT_DATA;
 	   end
 	   WAIT_DATA: begin
 	      if(!mem_rbusy) begin
 		 state <= FETCH_INSTR;
 	      end
-	   end
-	   STORE: begin
-	      state <= FETCH_INSTR;
 	   end
 	 endcase 
       end
@@ -302,8 +301,8 @@ module Processor (
    
    assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ?
 		     PC : loadstore_addr ;
-   assign mem_rstrb = (state == FETCH_INSTR || state == LOAD);
-   assign mem_wmask = {4{(state == STORE)}} & STORE_wmask;
+   assign mem_rstrb = (state == FETCH_INSTR || (state == EXECUTE & isLoad));
+   assign mem_wmask = {4{(state == EXECUTE) & isStore}} & STORE_wmask;
 
 endmodule
 
@@ -361,7 +360,7 @@ module SOC (
    wire SPIFlash_rbusy;
    MappedSPIFlash SPIFlash(
       .clk(clk),
-      .word_address(mem_wordaddr),
+      .word_address(mem_wordaddr[19:0]),
       .rdata(SPIFlash_rdata),
       .rstrb(isSPIFlash & mem_rstrb),
       .rbusy(SPIFlash_rbusy),

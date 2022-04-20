@@ -2864,6 +2864,8 @@ tools !
 
 ## Step 22: Storing data: can I have more than 6 kB of memory ?
 
+_and some optimizations in the processor_
+
 ![](IceStick_SPIFLASH.jpg)
 
 On the IceStick, there are only 8 blocks of 1 kB of BRAM, and since we
@@ -2880,7 +2882,7 @@ additional hardware to communicate with this chip.
 
 As you can see on the figure, this chip only has 8 legs, how can we
 address 4 MBs of data using 8 pins only ?  In fact, this chip uses a
-_serial protocol_ (SPI). To get a data, one sends the address to be
+_serial protocol_ (SPI). To access data, one sends the address to be
 read on a pin, one bit at a time, then the chip sends the data back on
 another pin, one bit at a time. If you want to learn more about it,
 my notes about SPI flash are
@@ -2919,7 +2921,8 @@ module MappedSPIFlash(
 
 Now the idea is to modify our SOC in such a way that some addresses correspond to the SPI flash.
 First we need to decide how it will be projected into the memory space of our processor. The
-idea is to use bit 23 of memory addresses to select the SPI Flash. Then we have the different
+idea is to use bit 23 of memory addresses to select the SPI Flash. 
+Then we have the different
 signals to discriminate the different zones of our memory:
 ```
    wire isSPIFlash  = mem_addr[23];      
@@ -3007,6 +3010,100 @@ as follows:
       state <= FETCH_REGS;
    end
 ```
+Doing so we gain one cycle per instruction, and it is an easy win !
+
+Oh, and one more thing, why do we need a `LOAD` and a `STORE` state, could'nt we
+initiate memory transfers in the `EXECUTE` state ? Yes we can, so we need to change the write mask and
+read strobes accordingly, like that:
+```
+   assign mem_rstrb = (state == FETCH_INSTR || (state == EXECUTE & isLoad));
+   assign mem_wmask = {4{(state == EXECUTE) & isStore}} & STORE_wmask;
+```
+
+Then the state machine has 4 states only !
+```
+   localparam FETCH_INSTR = 0;
+   localparam WAIT_INSTR  = 1;
+   localparam EXECUTE     = 2;
+   localparam WAIT_DATA   = 3;
+   reg [1:0] state = FETCH_INSTR;
+   always @(posedge clk) begin
+      if(!resetn) begin
+	 PC    <= 0;
+	 state <= FETCH_INSTR;
+      end else begin
+	 if(writeBackEn && rdId != 0) begin
+	    RegisterBank[rdId] <= writeBackData;
+	 end
+	 case(state)
+	   FETCH_INSTR: begin
+	      state <= WAIT_INSTR;
+	   end
+	   WAIT_INSTR: begin
+	      instr <= mem_rdata;
+	      rs1 <= RegisterBank[mem_rdata[19:15]];
+	      rs2 <= RegisterBank[mem_rdata[24:20]];
+	      state <= EXECUTE;
+	   end
+	   EXECUTE: begin
+	      if(!isSYSTEM) begin
+		 PC <= nextPC;
+	      end
+	      state <= isLoad  ? WAIT_DATA : FETCH_INSTR;
+	   end
+	   WAIT_DATA: begin
+	      if(!mem_rbusy) begin
+		 state <= FETCH_INSTR;
+	      end
+	   end
+	 endcase 
+      end
+   end
+```
+
+There are several other things that we can optimize. First thing, you may have noticed that
+the two LSBs of the instructions are always `2'b11` in RV32I, so we do not need to load them:
+```
+   reg [31:2] instr;  
+   ...
+   instr <= mem_rdata[31:2];
+   ...
+   wire isALUreg  =  (instr[6:2] == 5'b01100); 
+   ...
+```
+
+Something else: we are doing all address computations with 32 bits, whereas our address space
+has 24 bits only, we can save significant resources there:
+```
+   localparam ADDR_WIDTH=24;
+   wire [ADDR_WIDTH-1:0] PCplusImm = PC + ( instr[3] ? Jimm[31:0] :
+				  instr[4] ? Uimm[31:0] :
+				             Bimm[31:0] );
+   wire [ADDR_WIDTH-1:0] PCplus4 = PC+4;
+
+   wire [ADDR_WIDTH-1:0] nextPC = ((isBranch && takeBranch) || isJAL) ? PCplusImm   :
+	                                  isJALR   ? {aluPlus[31:1],1'b0} :
+	                                             PCplus4;
+
+   wire [ADDR_WIDTH-1:0] loadstore_addr = rs1 + (isStore ? Simm : Iimm);
+```
+
+Oh, and one last thing: now we are able to load data from the SPI flash, but what about
+loading code ? To be able to load code from the SPI flash, the only thing we need to
+change is staying in the `WAIT_INSTR` state until `mem_rbusy` is zero, hence we
+just need to test `mem_rbusy` before changing `state` to `EXECUTE`:
+
+```
+   WAIT_INSTR: begin
+      instr <= mem_rdata[31:2];
+      rs1 <= RegisterBank[mem_rdata[19:15]];
+      rs2 <= RegisterBank[mem_rdata[24:20]];
+      if(!mem_rbusy) begin
+	 state <= EXECUTE;
+      end
+   end
+```
+
 
 ## Files for all the steps
 
