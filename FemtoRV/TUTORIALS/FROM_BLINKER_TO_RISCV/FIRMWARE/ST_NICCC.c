@@ -38,13 +38,13 @@ void GL_clear() {
 }
 
 void GL_fill_poly(int nb_pts, int* points, int color) {
+    static int last_color = -1;
+   
     char x_left[128];
     char x_right[128];
 
     /* Determine clockwise, miny, maxy */
     int clockwise = 0;
-    int minx =  256;
-    int maxx = -256;
     int miny =  256;
     int maxy = -256;
 
@@ -53,7 +53,11 @@ void GL_fill_poly(int nb_pts, int* points, int color) {
      * see https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences
      */
 
-    printf("\033[48;5;%dm",color);
+    if(color != last_color) {
+       printf("\033[48;5;%dm",color);
+    }
+    last_color = color;
+   
     
     for(int i1=0; i1<nb_pts; ++i1) {
 	int i2=(i1==nb_pts-1) ? 0 : i1+1;
@@ -65,8 +69,6 @@ void GL_fill_poly(int nb_pts, int* points, int color) {
 	int dx2 = points[2*i3]   - x1;
 	int dy2 = points[2*i3+1] - y1;
 	clockwise += dx1 * dy2 - dx2 * dy1;
-	minx = MIN(minx,x1);
-	maxx = MAX(maxx,x1);
 	miny = MIN(miny,y1);
 	maxy = MAX(maxy,y1);
     }
@@ -121,8 +123,7 @@ void GL_fill_poly(int nb_pts, int* points, int color) {
     for(int y = miny; y <= maxy; ++y) {
 	int x1 = x_left[y];
 	int x2 = x_right[y];
-	// Goto_XY(x1,y)
-	printf("\033[%d;%dH",y,x1);
+	printf("\033[%d;%dH",y,x1); // Goto_XY(x1,y)
 	for(int x=x1; x<=x2; ++x) {
 	    putchar(' ');
 	}
