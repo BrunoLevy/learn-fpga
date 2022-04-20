@@ -10,6 +10,7 @@
 
 .section .text
 .globl putchar
+.globl print20
 
 putchar:
   sw a0, IO_UART_DAT(gp)
@@ -18,4 +19,9 @@ putchar:
   lw t1, IO_UART_CNTL(gp)
   and t1, t1, t0
   bnez t1, .L0
+#  li t1, 1024
+#.L1:
+#  addi t1,t1,-1
+#  bnez t1, .L1
   ret
+

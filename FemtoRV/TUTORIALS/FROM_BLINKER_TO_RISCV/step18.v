@@ -141,9 +141,9 @@ module Memory (
       ADDI(s2,s2,`dx);
       BNE(s0,s11,LabelRef(loop_x_));
 
-      LI(a0,13);
+      LI(a0," ");
       CALL(LabelRef(putc_));
-      LI(a0,10);
+      LI(a0,"\n");
       CALL(LabelRef(putc_));      
 
       ADDI(s1,s1,1);
@@ -546,8 +546,8 @@ module SOC (
    wire uart_ready;
    
    corescore_emitter_uart #(
-      .clk_freq_hz(`BOARD_FREQ*1000000),
-      .baud_rate(115200)			    
+      .clk_freq_hz(`CPU_FREQ*1000000),
+      .baud_rate(1000000)			    
    ) UART(
       .i_clk(clk),
       .i_rst(!resetn),

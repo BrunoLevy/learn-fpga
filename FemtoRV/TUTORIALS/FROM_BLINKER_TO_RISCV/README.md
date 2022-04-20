@@ -274,6 +274,12 @@ Press a finger on the circled region of the image (around pin 47).
 
 **Try this** Knight-driver mode, and `RESET` toggles direction.
 
+If you take a look at [clockworks.v](clockworks.v), you will see it can
+also create a `PLL`, it is a component that can be used to generate
+*faster* clocks. For instance, the IceStick has a 12 MHz system clock,
+but the core that we will generate will run at 45 MHz. We will see that
+later.
+
 ## Step 3: a blinker that loads LEDs patterns from ROM
 
 Now we got all the tools that we need, so let's see how to
@@ -747,7 +753,7 @@ how to do actual computations on register's values.
 _So, are you going to create an `ALU` module ? And by the way, why did not
  you create a `Decoder` module, and a `RegisterBank` module ?_
 
-My very first design used multiple modules and multiple register files, for
+My very first design used multiple modules and multiple files, for
 a total of 1000 lines of code or so, then Matthias Koch wrote a monolithic
 version, that fits in 200 lines of code. Not only it is more compact, but
 also it is much easier to understand when you got everything in one place.
@@ -2839,12 +2845,168 @@ For this reason, we include a much smaller / much simpler version in
 [FIRMWARE/print.c](FIRMWARE/print.c) (also taken from picorv), and included in the objects
 to be linked with executables.
 
-**Try this** Compile `sieve.c` (`cd FIRMWARE; make sieve.bram.hex`) and test it in simulation and on device
-(still with `step20.v`). Write your own programs (if you do not have an idea, try for instance writing a C version of mandelbrot).
+There are two other examples, a C version of the Mandelbrot program:
+[FIRMWARE/mandel_C.c](FIRMWARE/mandel_C.c). It uses
+[ANSI colors](https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences) to display
+low-resolution "graphics" in the terminal. There is also [FIRMWARE/riscv_logo.c](FIRMWARE/riscv_logo.c)
+that displays a spinning Risc-V logo (in a 90-ish demoscene style !).
+
+**Try this** Compile `sieve.c` (`cd FIRMWARE; make sieve.bram.hex`) and test it in simulation (`./run_verilator.sh step20.v`)
+and on device (`BOARDS/run_xxx.sh step20.v; ./terminal.sh`).
+Try the other programs. Write your own programs (if you do not have an idea, try for instance cellular automata, Life ...).
+Note: the Verilator framework can directly load ELF executables in simulation (no need to regenerate `firmware.hex`). You can generate all
+demo programs: `cd FIRMWARE; make hello.bram.elf mandelbrot.bram.elf mandel_C.bram.elf riscv_logo.bram.elf;cd ..`, then run the one that you want
+using `./run_verilator.sh step20.v FIRMWARE/mandel_C.bram.elf` or `./obj_dir/FIRMWARE/mandel_C.bram.elf`.
 
 Now you can see that your processor is not just a toy, it is a real
 RISC-V processor on which you can run programs produced by standard
 tools !
+
+## Step 22: Storing data: can I have more than 6 kB of memory ?
+
+![](IceStick_SPIFLASH.jpg)
+
+On the IceStick, there are only 8 blocks of 1 kB of BRAM, and since we
+need to use two of them for the registers, this leaves only 6 kB of
+RAM for our programs. It is sufficient for small programs like
+Mandelbrot or little graphic demos, but you will very soon reach the
+limit. The IceStick has a little chip (see figure) with 4 MBs of FLASH
+memory (other boards have a similar chip). When you synthesize a
+design, it is stored in this FLASH memory. On startup, the FPGA loads
+its configuration from this chip. The nice thing is that the FPGA
+configuration takes no more than a few kilobytes, this leaves us a lot
+of space to store our own data. But we will need to create some
+additional hardware to communicate with this chip.
+
+As you can see on the figure, this chip only has 8 legs, how can we
+address 4 MBs of data using 8 pins only ?  In fact, this chip uses a
+_serial protocol_ (SPI). To get a data, one sends the address to be
+read on a pin, one bit at a time, then the chip sends the data back on
+another pin, one bit at a time. If you want to learn more about it,
+my notes about SPI flash are
+[here](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/TUTORIALS/spi_flash.md)
+and the VERILOG implementation is in [spi_flash.v](spi_flash.v).
+It supports different protocols, depending on the used number of pins and whether pins are bidirectional.
+
+The `MappedSPIFlash` module has the following interface:
+```
+module MappedSPIFlash( 
+    input wire 	       clk,          
+    input wire 	       rstrb,        
+    input wire [19:0]  word_address, 
+
+    output wire [31:0] rdata,        
+    output wire        rbusy,        
+
+    output wire        CLK,  
+    output reg         CS_N, 
+    output wire        MOSI, 
+    input  wire        MISO  
+);
+```
+
+| signal       | description                                                             |
+|--------------|-------------------------------------------------------------------------|
+| clk          | system clock                                                            |
+| rstrb        | read strobe, goes high whenever processor wants to read a word          |
+| word_address | address of the word to be read                                          |
+| rdata        | data read from memory                                                   |
+| rbusy        | asserted if busy receiving data                                         |
+| CLK          | clock pin of the SPI flash chip                                         |
+| CS_N         | chip select pin of the SPI flash chip, active low                       |
+| MOSI         | master out slave in pin of the SPI flash chip (data sent to chip)       |
+| MISO         | master in slave out pin of the SPI flash chip (data received from chip) |
+
+Now the idea is to modify our SOC in such a way that some addresses correspond to the SPI flash.
+First we need to decide how it will be projected into the memory space of our processor. The
+idea is to use bit 23 of memory addresses to select the SPI Flash. Then we have the different
+signals to discriminate the different zones of our memory:
+```
+   wire isSPIFlash  = mem_addr[23];      
+   wire isIO        = mem_addr[23:22] == 2'b01;
+   wire isRAM       = mem_addr[23:22] == 2'b00;
+```
+
+The `MappedSPIFlash` module is wired as follows:
+```
+   wire SPIFlash_rdata;
+   wire SPIFlash_rbusy;
+   MappedSPIFlash SPIFlash(
+      .clk(clk),
+      .word_address(mem_wordaddr),
+      .rdata(SPIFlash_rdata),
+      .rstrb(isSPIFlash & mem_rstrb),
+      .rbusy(SPIFlash_rbusy),
+      .CLK(SPIFLASH_CLK),
+      .CS_N(SPIFLASH_CS_N),
+      .MOSI(SPIFLASH_MOSI),
+      .MISO(SPIFLASH_MISO)
+   );
+```
+(the pins `SPIFLASH_CLK`, `SPIFLASH_CS_N`, `SPIFLASH_MOSI` and `SPIFLASH_MISO` are declared
+in the constraint file, in the `BOARDS` subdirectory).
+
+The data sent to the processor has a three-ways mux:
+```
+   assign mem_rdata = isRAM      ? RAM_rdata :
+                      isSPIFlash ? SPIFlash_rdata : 
+	                           IO_rdata ;
+```
+
+OK, now our processor can automatically trigger a SPI flash read by accessing memory with bit 23 set in the
+address, but how does it know that data is ready ? (remember, data arrives one bit at a time). There is
+this `SPIFlash_rbusy` that goes high whenever `MappedSPIFlash` is busy receiving some data, we need to take it
+into account in our processor's state machine. We add a new input signal `mem_rbusy` to our processor,
+and modify the state machine as follows:
+```
+   ...
+   WAIT_DATA: begin
+      if(!mem_rbusy) begin
+	 state <= FETCH_INSTR;
+      end
+   end
+   ...
+```
+
+Then, in the SOC, this signal is wired to `SPIFlash_rbusy`:
+```
+   wire        mem_rbusy;
+   ...
+   Processor CPU(
+     ...
+     .mem_rbusy(mem_rbusy),
+     ...
+   );
+   ...
+   assign mem_rbusy = SPIFlash_rbusy;
+```
+
+By the way, since we are revisiting the state machine, there is something
+we can do. Remember this portion of the state machine, don't you think
+we could go faster ?
+```
+   WAIT_INSTR: begin
+      instr <= mem_rdata;
+      state <= FETCH_REGS;
+   end
+   FETCH_REGS: begin
+      rs1 <= RegisterBank[rs1Id];
+      rs2 <= RegisterBank[rs2Id];
+      state <= EXECUTE;
+   end
+```
+
+Yes, `rs1Id` and `rs2Id` are simply 5 wires (each) drawn from `instr`, so we can
+get them from `mem_rdata` directly, and fetch the registers in the `WAIT_INSTR` state,
+as follows:
+```
+   WAIT_INSTR: begin
+      instr <= mem_rdata;
+      rs1 <= RegisterBank[mem_rdata[19:15]];
+      rs2 <= RegisterBank[mem_rdata[24:20]];
+      state <= FETCH_REGS;
+   end
+```
 
 ## Files for all the steps
 

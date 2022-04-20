@@ -6,7 +6,12 @@ set_io LEDS[2] 97
 set_io LEDS[3] 96
 set_io LEDS[4] 95
 
-set_io TXD 8
-set_io RXD 9
+set_io TXD  8
+set_io RXD  9
+
+set_io SPIFLASH_CLK  70
+set_io SPIFLASH_CS_N 71
+set_io SPIFLASH_MOSI 67
+set_io SPIFLASH_MISO 68
 
 set_io RESET 47

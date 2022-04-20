@@ -9,11 +9,10 @@
 
 // A simple Sieve of Eratosthenes
 
+#include <stdio.h>
 #include <stdint.h>
 
 /*************************************************************************/
-
-extern void printf(const char* fmt, ...);
 
 // Note: if this is changed, then checksum need 
 // to be updated as well.

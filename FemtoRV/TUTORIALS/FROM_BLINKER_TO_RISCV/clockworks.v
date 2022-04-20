@@ -4,6 +4,7 @@
  *   - gearbox to divide clock frequency, used
  *     to let you observe how the design behaves
  *     one cycle at a time.
+ *   - PLL to generate faster clock
  *   - reset mechanism that resets the design
  *     during the first microseconds because
  *     reading in Ice40 BRAM during the first 
@@ -17,7 +18,10 @@
  * Macros
  *     NEGATIVE_RESET if board's RESET pin goes low on reset
  *     ICE_STICK if board is an IceStick.
- */     
+ */    
+ 
+`include "../../RTL/PLL/femtopll.v"
+ 
 module Clockworks 
 (
    input  CLK, // clock pin of the board
@@ -71,8 +75,18 @@ module Clockworks
  ****************************************************/
 	 
       end else begin 
-	 
-	 assign clk = CLK;
+	
+`ifdef CPU_FREQ	
+        femtoPLL #(
+          .freq(`CPU_FREQ)
+        ) pll(
+           .pclk(CLK),
+           .clk(clk)
+	);
+`else
+        assign clk=CLK;
+`endif
+
 
 // Preserve resources on Ice40HX1K (IceStick) with 
 // carefully tuned counter (12 bits suffice). 

@@ -1,11 +1,12 @@
 /**
- * Step 20: Creating a RISC-V processor
- * Using GNU tools
+ * Step 22: Creating a RISC-V processor
+ * Mapped SPI flash
  */
 
 `default_nettype none
 `include "clockworks.v"
 `include "emitter_uart.v"
+`include "spi_flash.v"
 
 module Memory (
    input             clk,
@@ -39,7 +40,8 @@ module Processor (
     input 	  clk,
     input 	  resetn,
     output [31:0] mem_addr, 
-    input [31:0]  mem_rdata, 
+    input [31:0]  mem_rdata,
+    input         mem_rbusy,		  
     output 	  mem_rstrb,
     output [31:0] mem_wdata,
     output [3:0]  mem_wmask
@@ -69,9 +71,7 @@ module Processor (
    wire [31:0] Bimm={{20{instr[31]}}, instr[7],instr[30:25],instr[11:8],1'b0};
    wire [31:0] Jimm={{12{instr[31]}}, instr[19:12],instr[20],instr[30:21],1'b0};
 
-   // Source and destination registers
-   wire [4:0] rs1Id = instr[19:15];
-   wire [4:0] rs2Id = instr[24:20];
+   // Destination registers
    wire [4:0] rdId  = instr[11:7];
    
    // function codes
@@ -245,11 +245,10 @@ module Processor (
    // The state machine
    localparam FETCH_INSTR = 0;
    localparam WAIT_INSTR  = 1;
-   localparam FETCH_REGS  = 2;
-   localparam EXECUTE     = 3;
-   localparam LOAD        = 4;
-   localparam WAIT_DATA   = 5;
-   localparam STORE       = 6;
+   localparam EXECUTE     = 2;
+   localparam LOAD        = 3;
+   localparam WAIT_DATA   = 4;
+   localparam STORE       = 5;
    reg [2:0] state = FETCH_INSTR;
    
    always @(posedge clk) begin
@@ -268,11 +267,8 @@ module Processor (
 	   end
 	   WAIT_INSTR: begin
 	      instr <= mem_rdata;
-	      state <= FETCH_REGS;
-	   end
-	   FETCH_REGS: begin
-	      rs1 <= RegisterBank[rs1Id];
-	      rs2 <= RegisterBank[rs2Id];
+	      rs1 <= RegisterBank[mem_rdata[19:15]];
+	      rs2 <= RegisterBank[mem_rdata[24:20]];
 	      state <= EXECUTE;
 	   end
 	   EXECUTE: begin
@@ -290,7 +286,9 @@ module Processor (
 	      state <= WAIT_DATA;
 	   end
 	   WAIT_DATA: begin
-	      state <= FETCH_INSTR;
+	      if(!mem_rbusy) begin
+		 state <= FETCH_INSTR;
+	      end
 	   end
 	   STORE: begin
 	      state <= FETCH_INSTR;
@@ -315,7 +313,11 @@ module SOC (
     input 	     RESET,// reset button
     output reg [4:0] LEDS, // system LEDs
     input 	     RXD,  // UART receive
-    output 	     TXD   // UART transmit
+    output 	     TXD,  // UART transmit
+    output           SPIFLASH_CLK,  // SPI flash clock
+    output           SPIFLASH_CS_N, // SPI flash chip select (active low)
+    output           SPIFLASH_MOSI, // SPI flash master out slave in
+    input            SPIFLASH_MISO  // SPI flash master in slave out
 );
 
    wire clk;
@@ -323,6 +325,7 @@ module SOC (
 
    wire [31:0] mem_addr;
    wire [31:0] mem_rdata;
+   wire        mem_rbusy;
    wire mem_rstrb;
    wire [31:0] mem_wdata;
    wire [3:0]  mem_wmask;
@@ -333,14 +336,16 @@ module SOC (
       .mem_addr(mem_addr),
       .mem_rdata(mem_rdata),
       .mem_rstrb(mem_rstrb),
+      .mem_rbusy(mem_rbusy),
       .mem_wdata(mem_wdata),
       .mem_wmask(mem_wmask)
    );
    
    wire [31:0] RAM_rdata;
    wire [29:0] mem_wordaddr = mem_addr[31:2];
-   wire isIO  = mem_addr[22];
-   wire isRAM = !isIO;
+   wire isSPIFlash  = mem_addr[23];      
+   wire isIO        = mem_addr[23:22] == 2'b01;
+   wire isRAM = !(mem_addr[23] | mem_addr[22]);
    wire mem_wstrb = |mem_wmask;
    
    Memory RAM(
@@ -352,7 +357,20 @@ module SOC (
       .mem_wmask({4{isRAM}}&mem_wmask)
    );
 
-
+   wire [31:0] SPIFlash_rdata;
+   wire SPIFlash_rbusy;
+   MappedSPIFlash SPIFlash(
+      .clk(clk),
+      .word_address(mem_wordaddr),
+      .rdata(SPIFlash_rdata),
+      .rstrb(isSPIFlash & mem_rstrb),
+      .rbusy(SPIFlash_rbusy),
+      .CLK(SPIFLASH_CLK),
+      .CS_N(SPIFLASH_CS_N),
+      .MOSI(SPIFLASH_MOSI),
+      .MISO(SPIFLASH_MISO)
+   );
+   
    // Memory-mapped IO in IO page, 1-hot addressing in word address.   
    localparam IO_LEDS_bit      = 0;  // W five leds
    localparam IO_UART_DAT_bit  = 1;  // W data to send (8 bits) 
@@ -370,7 +388,6 @@ module SOC (
    
    corescore_emitter_uart #(
       .clk_freq_hz(`CPU_FREQ*1000000),
-//      .baud_rate(115200)
         .baud_rate(1000000)
    ) UART(
       .i_clk(clk),
@@ -384,10 +401,12 @@ module SOC (
    wire [31:0] IO_rdata = 
 	       mem_wordaddr[IO_UART_CNTL_bit] ? { 22'b0, !uart_ready, 9'b0}
 	                                      : 32'b0;
-   
-   assign mem_rdata = isRAM ? RAM_rdata :
-	                      IO_rdata ;
-   
+
+   assign mem_rdata = isRAM      ? RAM_rdata :
+                      isSPIFlash ? SPIFlash_rdata : 
+	                           IO_rdata ;
+
+   assign mem_rbusy = SPIFlash_rbusy;
    
 `ifdef BENCH
    always @(posedge clk) begin

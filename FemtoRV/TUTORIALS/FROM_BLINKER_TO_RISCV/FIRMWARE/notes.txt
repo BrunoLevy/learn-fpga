@@ -4,3 +4,23 @@
 bin/riscv64-unknown-elf-as -march=rv32i -mabi=ilp32 -mno-relax mandelbrot_terminal.S -o mandelbrot_terminal.o
 riscv64-unknown-elf-ld mandelbrot_terminal.o -T baremetal.ld -m elf32lriscv -nostdlib -norelax
 /home/blevy/Programming/learn-fpga/FemtoRV/FIRMWARE/TOOLS/firmware_words a.elf -ram 6144 -hex a.hex
+
+
+FTDI 2232H
+
+Rx   >
+Tx   <
+RTSn > Request to send 
+CTSn < Clear to send 
+DTRn > Data Terminal Ready
+DSRn < Data Set Ready 
+DCDn > Data Carrier Detect
+
+
+#set_io DCDn 1
+#set_io DSRn 2
+#set_io DTRn 3
+#set_io CTSn 4
+#set_io RTSn 7
+set_io RS232_Tx_TTL 8
+set_io RS232_Rx_TTL 9
