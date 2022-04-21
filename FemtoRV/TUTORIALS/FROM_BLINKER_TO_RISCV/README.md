@@ -3085,22 +3085,6 @@ has 24 bits only, we can save significant resources there:
    wire [ADDR_WIDTH-1:0] loadstore_addr = rs1 + (isStore ? Simm : Iimm);
 ```
 
-Oh, and one last thing: now we are able to load data from the SPI flash, but what about
-loading code ? To be able to load code from the SPI flash, the only thing we need to
-change is staying in the `WAIT_INSTR` state until `mem_rbusy` is zero, hence we
-just need to test `mem_rbusy` before changing `state` to `EXECUTE`:
-
-```verilog
-   WAIT_INSTR: begin
-      instr <= mem_rdata[31:2];
-      rs1 <= RegisterBank[mem_rdata[19:15]];
-      rs2 <= RegisterBank[mem_rdata[24:20]];
-      if(!mem_rbusy) begin
-	 state <= EXECUTE;
-      end
-   end
-```
-
 ![](ST_NICCC_tty.png)
 
 OK, so now we are ready to test the new storage that we have. Up to date
@@ -3134,8 +3118,95 @@ and send the design and the program to the device:
  $ BOARDS/run_xxx.sh step22.v
  $ ./terminal.sh
 ```
+**Try this** Store an image in SPI Flash (in a format that is easy to read), and write a program to display it.
+You can use `printf("\033[48;2;%d;%d;%dm ",R,G,B);` to send a pixel (where `R`,`G`,`B` are numbers between 0 and 255),
+and `printf("\033[48;2;0;0;0m\n");` after each scanline.
 
+## Step 23: running programs from SPI Flash
 
+With what we have done in the previous step, we are now able to load data from the SPI flash, and we
+have ample space for all our data, but we still have only 6 kB that is shared between our code and
+variables, it is not much ! It would be great to be able to use the SPI flash to store our code,
+and execute it directly from there. We were able to write nice demos that fit in 6 kB, imagine what
+you could do with 2 MB for code, and the entire 6 kB available for your variables !
+
+To be able to load code from the SPI flash, the only thing we need to
+change is staying in the `WAIT_INSTR` state until `mem_rbusy` is zero, hence we
+just need to test `mem_rbusy` before changing `state` to `EXECUTE`:
+
+```verilog
+   WAIT_INSTR: begin
+      instr <= mem_rdata[31:2];
+      rs1 <= RegisterBank[mem_rdata[19:15]];
+      rs2 <= RegisterBank[mem_rdata[24:20]];
+      if(!mem_rbusy) begin
+	 state <= EXECUTE;
+      end
+   end
+```
+
+and we initialize the BRAM with the following program, that jumps to address `0x00820000`:
+
+```verilog
+   initial begin
+      LI(a0,32'h00820000);
+      JR(a0);
+   end
+```
+
+This address corresponds to the address where the SPI flash is projected into the address space of our
+CPU (`0x00800000` = 1 << 23) plus an offset of 128kB (`0x20000`). This offset of 128 kB is
+necessary because remember, we share the SPI Flash with the FPGA that stores its configuration
+in it ! 
+
+OK, that's mostly it for the hardware part. Let us see now if we can execute code from there.
+To do that, we will need a new linker script ([FIRMWARE/spiflash0.ld](FIRMWARE/spiflash0.ld)):
+
+```
+MEMORY {
+   FLASH (RX)  : ORIGIN = 0x00820000, LENGTH = 0x100000 /* 4 MB in flash */
+}
+SECTIONS {
+    everything : {
+	. = ALIGN(4);
+	start.o (.text)
+        *(.*)
+    } >FLASH
+}
+```
+
+It is the same thing as before, but we tell the linker to put everything in flash memory (for now,
+we will see later how it works for global variables). Let us test it with a program that does not
+write to global variables, for instance [FIRMWARE/hello.S](FIRMWARE/hello.S). To link it using our
+new linker script, we do:
+```
+  $ riscv64-unknown-elf-ld -T spiflash0.ld -m elf32lriscv -nostdlib -norelax hello.o putchar.o -o hello.spiflash0.elf
+```
+
+But since it is tedious to type, it is automated by the Makefile:
+```
+  $ make hello.spiflash0.elf
+```
+
+Now you need to convert the ELF executable into a flat binary:
+```
+  $ riscv64-unknown-elf-objcopy hello.spiflash0.elf hello.spiflash0.bin -O binary
+```
+
+or with our Makefile:
+```
+  $ make hello.spiflash0.bin
+```
+
+and send it to the SPI flash at offset 128k:
+```
+  $ iceprog -o 128k hello.spiflash0.bin
+```
+
+or with our Makefile:
+```
+  $ make hello.spiflash0.prog
+```
 
 ## Files for all the steps
 
@@ -3160,9 +3231,10 @@ and send the design and the program to the device:
 - step 19: Faster simulation with Verilator
 - [step 20](step20.v): Using the GNU toolchain to compile assembly programs
 - step 21: Using the GNU toolchain to compile C programs
+- [step 22](step22.v): More memory ! Using the SPI Flash
+- [step 23](step23.v): Running programs from the SPI Flash
 
 _WIP_
 
-- step 22: More devices (LED matrix, OLED screen...)
-- step 23: Running programs from the SPI Flash
-- step 24: Raytracing with the IceStick
+- step 24: More devices (LED matrix, OLED screen...)
+- step 25: Raytracing with the IceStick

@@ -282,9 +282,7 @@ module Processor (
 	      instr <= mem_rdata[31:2];
 	      rs1 <= RegisterBank[mem_rdata[19:15]];
 	      rs2 <= RegisterBank[mem_rdata[24:20]];
-	      if(!mem_rbusy) begin
-		 state <= EXECUTE;
-	      end
+	      state <= EXECUTE;
 	   end
 	   EXECUTE: begin
 	      if(!isSYSTEM) begin

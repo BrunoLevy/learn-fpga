@@ -746,6 +746,14 @@ task J;
    end
 endtask
 
+task JR;
+   input [4:0]  rs1;
+   input [31:0] imm;   
+   begin
+      JALR(zero,rs1,imm);
+   end
+endtask
+   
 task BEQZ;
    input [4:0]  rs1;
    input [31:0] imm;
