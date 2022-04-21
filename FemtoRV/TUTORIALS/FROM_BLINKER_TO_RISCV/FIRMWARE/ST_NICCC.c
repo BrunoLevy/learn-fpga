@@ -22,6 +22,10 @@
 #include <unistd.h>
 #endif
 
+
+//#define RV32_FASTCODE __attribute((section(".fastcode")))
+#define RV32_FASTCODE
+
 int wireframe = 0;
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -45,7 +49,7 @@ void GL_clear() {
  * Set background color using 6x6x6 colorcube codes
  * see https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences
  */
-void GL_setcolor(int color) {
+static inline void GL_setcolor(int color) {
    static int last_color = -1;
    if(color != last_color) {
       printf("\033[48;5;%dm",color);
@@ -57,6 +61,7 @@ static inline void GL_setpixel(int x, int y) {
    printf("\033[%d;%dH ",y,x); // Goto_XY(x1,y) and print space
 }
 
+void GL_line(int x1, int y1, int x2, int y2) RV32_FASTCODE;
 void GL_line(int x1, int y1, int x2, int y2) {
     int x,y,dx,dy,sy,tmp;
 
@@ -115,6 +120,7 @@ void GL_line(int x1, int y1, int x2, int y2) {
     }
 }
 
+void GL_fillpoly(int nb_pts, int* points) RV32_FASTCODE;
 void GL_fillpoly(int nb_pts, int* points) {
     static int last_color = -1;
    
@@ -276,7 +282,7 @@ uint8_t next_spi_byte() {
 /**
  * Reads one byte from the SPI flash, using the mapped SPI flash interface.
  */
-uint8_t next_spi_byte() {
+static inline uint8_t next_spi_byte() {
    uint8_t result;
    if(spi_word_addr != spi_addr >> 2) {
       spi_word_addr = spi_addr >> 2;
@@ -289,7 +295,7 @@ uint8_t next_spi_byte() {
 
 #endif
 
-uint16_t next_spi_word() {
+static inline uint16_t next_spi_word() {
    /* In the ST-NICCC file,  
     * words are stored in big endian format.
     * (see DATA/scene_description.txt).
@@ -336,6 +342,7 @@ int      poly[30];
  *   See DATA/test_ST_NICCC.c for an example
  * program.
  */
+int read_frame() RV32_FASTCODE;
 int read_frame() {
     uint8_t frame_flags = next_spi_byte();
 

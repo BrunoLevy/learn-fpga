@@ -3208,6 +3208,57 @@ or with our Makefile:
   $ make hello.spiflash0.prog
 ```
 
+and then:
+```
+  $ ./terminal.sh
+```
+
+## Step 24: running programs from SPI Flash, linker script
+
+Before starting, let us make a little change in our core: when pushing the reset
+button, it jumps at address 0, which is initialized as a jump to flash memory, but
+after executing our program, it is possible (and highly probable) that the RAM will
+have been used for something else, and no longer has the jump-to-flash instruction.
+To fix this, one can make the CPU jump to flash memory each time reset goes low:
+
+```verilog
+   if(!resetn) begin
+     PC    <= 32'h00820000; 
+     state <= WAIT_DATA;    
+   end
+```
+
+Note that state is set to WAIT_DATA, so that it waits for `mem_rbusy` to go low before
+doing anything else.
+
+OK, so now we have a large quantity of flash memory in which we can install the code
+and run it from there. We can also install readonly variables in there, like the
+string `.asciz "Hello, world !\n"` in the previous example. And what about local
+variables ? They are allocated on the stack, that resides in the 6 kB of RAM that
+we have, so it will work. How does it know where the stack is ? Remember, we
+have written [FIRMWARE/start.S](FIRMWARE/start.S), that initializes `sp` at the
+end of the RAM (`0x1800`) and it suffices.
+
+But how does it work for a program like that ?
+```C
+  int x = 3;
+  void main() {
+     x = x + 1;
+     printf("%d\n",x);
+  }
+```
+
+The global variable `x` has an initial value that needs to be stored somewhere,
+so we need to put it in flash memory, but we are modifying it after,
+so we need to put it in RAM, how is it possible ?
+In fact, what we need is a mechanism for storing all the initial values of the
+(initialized) global variables in flash memory and copy them to RAM on startup.
+To do that, we will need a new linker script (that indicates where to put the variables and
+where to put their initial values) and a new `start.S` (that copies the initial
+values to the variables). Let us see how to do that.
+
+
+
 ## Files for all the steps
 
 - [step 1](step1.v): Blinker, too fast, can't see anything
