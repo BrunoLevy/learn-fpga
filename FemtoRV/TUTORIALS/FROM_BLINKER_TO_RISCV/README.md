@@ -3124,7 +3124,7 @@ and send the design and the program to the device:
 You can use `printf("\033[48;2;%d;%d;%dm ",R,G,B);` to send a pixel (where `R`,`G`,`B` are numbers between 0 and 255),
 and `printf("\033[48;2;0;0;0m\n");` after each scanline.
 
-## Step 23: running programs from SPI Flash
+## Step 23: running programs from SPI Flash, first steps
 
 With what we have done in the previous step, we are now able to load data from the SPI flash, and we
 have ample space for all our data, but we still have only 6 kB that is shared between our code and
@@ -3215,7 +3215,7 @@ and then:
   $ ./terminal.sh
 ```
 
-## Step 24: running programs from SPI Flash, linker script
+## Step 24: running programs from SPI Flash, a better linker script
 
 Before starting, let us make a little change in our core: when pushing the reset
 button, it jumps at address 0, which is initialized as a jump to flash memory, but
@@ -3498,7 +3498,7 @@ follows:
  }
 ```
 
-** Try this ** run the `ST_NICCC` demo (`make ST_NICCC.spiflash2.prog`). Then uncomment
+**Try this** run the `ST_NICCC` demo (`make ST_NICCC.spiflash2.prog`). Then uncomment
 the line in `ST_NICCC.c` with the definition for `RV32_FASTCODE` and re-run it. 
 
 ![](tinyraytracer_tty.png)
@@ -3540,9 +3540,10 @@ to run existing binary code on a processor that you create on your own !
 - [step 20](step20.v): Using the GNU toolchain to compile assembly programs
 - step 21: Using the GNU toolchain to compile C programs
 - [step 22](step22.v): More memory ! Using the SPI Flash
-- [step 23](step23.v): Running programs from the SPI Flash
+- [step 23](step23.v): Running programs from the SPI Flash, first steps
+- [step 24](step24.v): Running programs from the SPI Flash, better linker script
 
 _WIP_
 
 - step 24: More devices (LED matrix, OLED screen...)
-- step 25: Raytracing with the IceStick
+
