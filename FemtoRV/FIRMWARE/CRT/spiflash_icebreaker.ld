@@ -20,23 +20,21 @@ MEMORY {
 
 SECTIONS {
 
-    /*
-     * I do not understand why, but if I do not put this section, I got
-     * an overlapping sections error with some programs (for instance pi.c
-     * or C++ programs)
-     */
-    .misc : {
-        . = ALIGN(4);
-        *(.eh_frame)
-        *(.eh_frame_hdr)
-        *(.init_array)
-        *(.gcc_except_table*)	
-    } >FLASH
-
     /* C runtime initialization code and readonly data goes to the FLASH */
     .text : {
         . = ALIGN(4);
         crt0_spiflash.o(.text)  /* c runtime initialization (code) */
+
+        /* 
+	 * I do not understand why, but if I do not put that here, I got
+	 * an overlapping sections error with some programs (for instance pi.c
+	 * or C++ programs) 
+	 */
+        *(.eh_frame)
+        *(.eh_frame_hdr)
+        *(.init_array)
+        *(.gcc_except_table*)	
+
         . = ALIGN(4);
         *(.rodata)              /* .rodata sections (constants, strings, etc.) */
         *(.rodata*)             /* .rodata* sections (constants, strings, etc.) */

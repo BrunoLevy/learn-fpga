@@ -15,19 +15,6 @@ MEMORY {
 
 SECTIONS {
 
-    /*
-     * I do not understand why, but if I do not put this section, I got
-     * an overlapping sections error with some programs (for instance pi.c
-     * or C++ programs)
-     */
-    .misc : {
-        . = ALIGN(4);
-        *(.eh_frame)
-        *(.eh_frame_hdr)
-        *(.init_array)
-        *(.gcc_except_table*)	
-    } >FLASH
-
     /* 
      * This is the initialized data and fastcode section
      * The program executes knowing that the data is in the RAM
@@ -73,6 +60,17 @@ SECTIONS {
     .text : {
         . = ALIGN(4);
         crt0_spiflash.o(.text)  /* c runtime initialization (code) */
+
+        /* 
+	 * I do not understand why, but if I do not put that here, I got
+	 * an overlapping sections error with some programs (for instance pi.c
+	 * or C++ programs) 
+	 */
+        *(.eh_frame)
+        *(.eh_frame_hdr)
+        *(.init_array)
+        *(.gcc_except_table*)	
+
         *(.text)                /* .text sections (code) */
         *(.text*)               /* .text* sections (code) */
         . = ALIGN(4);

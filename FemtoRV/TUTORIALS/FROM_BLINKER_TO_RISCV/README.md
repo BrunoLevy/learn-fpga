@@ -2845,6 +2845,8 @@ For this reason, we include a much smaller / much simpler version in
 [FIRMWARE/print.c](FIRMWARE/print.c) (also taken from picorv), and included in the objects
 to be linked with executables.
 
+![](mandel_and_riscvlogo.png)
+
 There are two other examples, a C version of the Mandelbrot program:
 [FIRMWARE/mandel_C.c](FIRMWARE/mandel_C.c). It uses
 [ANSI colors](https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences) to display
