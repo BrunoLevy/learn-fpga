@@ -3259,7 +3259,262 @@ To do that, we will need a new linker script (that indicates where to put the va
 where to put their initial values) and a new `start.S` (that copies the initial
 values to the variables). Let us see how to do that.
 
+When you compile C code, the compiler inserts directives to indicate where the different
+things go (sections). To take a look, generate assembly from one of our C programs:
+```
+$ cd FIRMWARE
+$ make ST_NICCC.o
+$ readelf -S ST_NICCC.o
+```
 
+it will show you the different sections that are present in the object file. 
+
+| section     | description        |
+|-------------|--------------------|
+| text        | executable code    |
+| bss, sbss   | uninitialized data |
+| data, sdata | read-only data     |
+| rodata      | read-only data     |
+
+The section name (bss) for uninitialized data has an historic reason
+that dates back to the 60's (BSS: Block Started by Symbol is a
+pseudo-instruction of an assembler for the IBM 704). Uninitialized
+and initialized data sections come in two flavor, sbss and sdata
+is for small uninitialized (resp) initialized) data.
+
+In `readelf` output, there is also a `type` field. `PROGBIT` means that
+some data needs to be loaded from the file (for `text`, `data` and `rodata`)
+segments. `NOBITS` means that no data should be loaded (for `bss`). Then the `Addr`
+indicates where the section will be mapped into memory (for a `.o` file, it is always 0,
+but it is useful for a linked elf executable, you can check using `readelf`). Then
+the `Offs` field indicates the offset for the section's data in the `.o` file, and
+the `Size` field the number of bytes in the section.
+
+So what we have to do is writing a linker script that will say the following things:
+- `text` sections go to the flash memory
+- `bss` sections go to BRAM
+- `data` sections go to BRAM, but have their initial values stored in the flash memory
+
+For `text` and `bss`, we already know how to do it. For `data`, linker scripts can specify
+a LMA (Load Memory Address), that indicates where initial values need to be stored. In our
+linker script, we will have something like:
+
+```
+  MEMORY {
+      FLASH (rx)  : ORIGIN = 0x00820000, LENGTH = 0x100000
+      RAM   (rwx) : ORIGIN = 0x00000000, LENGTH = 0x1800  
+  }
+  SECTIONS {
+  
+    .data: AT(address_in_spi_flash) {
+      *(.data*)          
+      *(.sdata*)
+    } > RAM
+    
+    .text : {
+      start_spiflash1.o(.text) 
+      *(.text*) 
+      *(.rodata*) 
+      *(.srodata*)
+    } >FLASH
+    
+    .bss : {
+      *(.bss*)
+      *(.sbss*)
+    } >RAM
+  }
+```
+
+Each section indicates how to map sections read from object files to sections in the executable
+(`.data`, `.text` and `.bss`), and how to map these sections to the flash memory and to the BRAM.
+For each section, some pattern matching rules indicate which sections from the object files are
+concerned. For the `.text` section, we make sure that the first section is the
+text section of `start_spiflash1.o`, because our processor jumps there on reset.
+Note also that we put the readonly data (`.rodata` and `.srodata`) into the flash.
+
+For the `.data` section, the `AT` keyword indicates the LMA (Load
+Memory Address) where the linker will put the initial values (an
+address in spi flash), and whenever a symbol in a `data` or `sdata`
+section is referenced, the linker will use its address in RAM.
+
+But a question remains: how does the system know that it should copy initialization data from
+the flash into BRAM ? How does it know at which address ? How can we initialize uninitialized
+data (BSS) to zero ? In fact we need to do it by hand,
+in the startup code `start_spiflash1.S`, that looks like that:
+
+```asm
+.equ IO_BASE, 0x400000  
+
+.text
+.global _start
+.type _start, @function
+
+_start:
+.option push
+.option norelax
+     li  gp,IO_BASE
+.option pop
+
+     li   sp,0x1800
+
+# zero-init bss section:
+     la a0, _sbss
+     la a1, _ebss
+     bge a0, a1, end_init_bss
+loop_init_bss:
+     sw zero, 0(a0)
+     addi a0, a0, 4
+     blt a0, a1, loop_init_bss
+end_init_bss:
+
+# copy data section from SPI Flash to BRAM:
+     la a0, _sidata
+     la a1, _sdata
+     la a2, _edata
+     bge a1, a2, end_init_data
+loop_init_data:
+     lw a3, 0(a0)
+     sw a3, 0(a1)
+     addi a0, a0, 4
+     addi a1, a1, 4
+     blt a1, a2, loop_init_data
+end_init_data:
+
+     call main
+     ebreak
+```
+
+- The first thing that we do is initializing the stack pointer and the general
+  pointer `gp` (with the IO page address in our case).
+- the first loop clears the memory between `_sbss` and `_ebss`.
+- the second loop copies data from `_sidata` to `_sdata` ... `_edata`
+- finally we call `main`
+
+... but wait a minute, how do we know the values
+for `_sbss`,`_ebss`,`_sidata`,`_sdata`,`_edata` ?
+
+In fact, the linker script can generate them for us. Here is
+what the `.data` section looks like:
+
+```
+    .data : AT ( _sidata ) {
+        . = ALIGN(4); 
+        _sdata = .;
+        *(.data*)          
+        *(.sdata*)
+        . = ALIGN(4);
+        _edata = .;  
+    } > RAM
+```
+
+where `.` denotes the current address. In addition, lines like `. = ALIGN(4);`
+make sure that addresses remain aligned on 4-bytes boundaries, since our
+initialization loops in `start_spiflash1.S` depend on that.
+
+The declaration for the `.text` section looks like:
+
+```
+    .text : {
+        . = ALIGN(4);
+        start_spiflash1.o(.text)  
+        *(.text*)                 
+        . = ALIGN(4);
+        *(.rodata*)              
+        *(.srodata*)             
+        _etext = .;              
+        _sidata = _etext;        
+    } >FLASH
+```
+
+note that it declares `_sidata` right at the end of the text section, so that the `.data` section can
+put its initialization data there.
+
+OK, so let us try it with one of our examples:
+```
+  $ cd FIRMWARE
+  $ make mandel_C.spiflash1.prog
+  $ cd ..
+  $ ./terminal.sh
+```
+
+Yes, it works, but _wait a minute_, it is significantly slower than before. Can you guess why ?
+
+Remember that the FLASH memory is a *serial* memory, wich means that addresses are sent one bit
+at a time and the result is obtained also one bit at a time (well, in fact two bits at a time
+for both in our case), it is much slower than the BRAM that gets a 32-bits value in one cycle.
+Can we do something ? Sure we can ! What about putting some critical functions in BRAM ? To do
+that, we can change our linker script as follows (result in [FIRMWARE/spiflash2.ld](FIRMWARE/spiflash2.ld)):
+
+```
+    .data_and_fastcode : AT ( _sidata ) {
+        . = ALIGN(4);
+        _sdata = .;  
+	
+	/* Initialized data */
+        *(.data*)          
+        *(.sdata*)
+
+	/* integer mul and div */
+	*/libgcc.a:muldi3.o(.text)
+	*/libgcc.a:div.o(.text)    
+
+	putchar.o(.text)
+	print.o(.text)	
+
+	/* functions with attribute((section(".fastcode"))) */	
+	*(.fastcode*)      
+
+        . = ALIGN(4);
+        _edata = .;  
+    } > RAM
+```
+
+By doing so, we indicate that some specific functions (integer multiply and
+divide from libgcc and IO functions) should be put in fast RAM, and that's
+all we have to do ! The linker will put the code for these functions in the
+same section as the initialization data for initialized variables, and
+our runtime `start_spiflash1.S` will copies them with the initialization data
+to RAM at startup, cool !
+
+Let us try it with our example:
+
+```
+  $ cd FIRMWARE
+  $ make mandel_C.spiflash2.prog
+  $ cd ..
+  $ ./terminal.sh
+```
+
+Aaaah, much better !
+
+Note also the line `*(.fastcode*)`: you can put your own functions in BRAM, by
+indicating that they are in a `fastcode` section. In C, you can do that as
+follows:
+
+```C
+ void my_function(my args ...) __attribute((section(".fastcode")));
+ void my_function(my args ...) {
+      ...
+ }
+```
+
+** Try this ** run the `ST_NICCC` demo (`make ST_NICCC.spiflash2.prog`). Then uncomment
+the line in `ST_NICCC.c` with the definition for `RV32_FASTCODE` and re-run it. 
+
+![](tinyraytracer_tty.png)
+
+Now we can run larger programs on our device:
+- [FIRMWARE/pi.c](FIRMWARE/pi.c) (by Fabrice Beillard, computes the decimals of pi)
+- [FIRMWARE/tinyraytracer.c](FIRMWARE/tinyraytracer.c) (by Dmitry Sokolov, raytracing)
+
+Both of them use floating point numbers. For a RV32I core such as ours, floating point numbers use
+routines implemented in `libgcc`. As a consequence, executables are larger (`pi` weights 17 kB and
+`tinyraytracer` weights 25 kB) and would have been impossible to run in 6 kB of RAM. The additional
+memory offered by the SPI FLASH offers much more possibilities to our device !
+
+At this point, not only our device runs code compiled using standard tools (gcc), but also it runs
+existing code, independently developped (the mathematical routines in `libgcc`). It is quite exciting
+to run existing binary code on a processor that you create on your own !
 
 ## Files for all the steps
 

@@ -20,7 +20,7 @@ SECTIONS {
      * but the loader puts the initial values in the FLASH (inidata).
      * It is one task of the startup (crt0_spiflash.S) to copy the initial values from FLASH to RAM. 
      */
-    .data_and_fastcode : AT ( _sidata ) {
+    .data : AT ( _sidata ) {
     
         . = ALIGN(4); 
 	
