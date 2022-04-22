@@ -3006,7 +3006,7 @@ as follows:
       instr <= mem_rdata;
       rs1 <= RegisterBank[mem_rdata[19:15]];
       rs2 <= RegisterBank[mem_rdata[24:20]];
-      state <= FETCH_REGS;
+      state <= EXECUTE;
    end
 ```
 Doing so we gain one cycle per instruction, and it is an easy win !
