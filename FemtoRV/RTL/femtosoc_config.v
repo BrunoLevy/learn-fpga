@@ -24,6 +24,10 @@
 `include "CONFIGS/arty_config.v"
 `endif
 
+`ifdef ICE_SUGAR_NANO
+`include "CONFIGS/icesugarnano_config.v"
+`endif
+
 `ifdef BENCH_VERILATOR
 `include "CONFIGS/bench_config.v"
 `endif
