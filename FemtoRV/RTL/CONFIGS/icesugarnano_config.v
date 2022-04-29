@@ -21,8 +21,8 @@
 
 /************************* RAM (in bytes, needs to be a multiple of 4)***********************************************/
 
-//`define NRV_RAM 4096 // 4kB, for less LUTs usage
-`define NRV_RAM 6144 // 6kB, default for iCESugar-nano (cannot do more !)
+//`define NRV_RAM 4096 // 4kB, for less LUTs usage, edit spiflash_icesugar_nano.ld too for 4kB RAM
+`define NRV_RAM 6144 // 6kB, default for iCESugar-nano (iCE40LP1KCM36) (cannot do more !)
 
 /************************* Advanced devices configuration ***********************************************************/
 
