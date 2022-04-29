@@ -3,10 +3,11 @@ set_io pclk D1
 set_io TXD B3
 set_io RXD A3
 
-#set_io spi_cs_n 16
-#set_io spi_miso 14
-#set_io spi_mosi 17
-#set_io spi_clk  15
+set_io spi_cs_n D5
+set_io spi_miso F5
+set_io spi_mosi E4
+set_io spi_clk  E5
+
 #
 #set_io oled_DIN  46
 #set_io oled_CLK  44
@@ -14,7 +15,9 @@ set_io RXD A3
 #set_io oled_DC   37
 #set_io oled_RST  36
 #
-set_io D1 B4
+
+# B6 is the in-board LED
+set_io D1 B6
 set_io D2 C6
 set_io D3 B5
 set_io D4 E3
@@ -27,3 +30,4 @@ set_io D5 E1
 
 
 set_io RESET    C5
+
