@@ -83,6 +83,12 @@ RVGCC_LIB= $(RVTOOLCHAIN_LIB_DIR)/libc.a \
 # My utility that converts elf executables into a format understood by Verilog
 FIRMWARE_WORDS=$(FIRMWARE_DIR)/TOOLS/firmware_words
 
+ifeq ($(BOARD),icesugar_nano)
+    TOOLCHAIN_PROG_CMD=icesprog -o 0x20000
+else
+    TOOLCHAIN_PROG_CMD=iceprog -o 128k
+endif
+
 ################################################################################
 
 RVINCS=-I$(FIRMWARE_DIR)/LIBFEMTOGL -I$(FIRMWARE_DIR)/LIBFEMTORV32 -I$(FIRMWARE_DIR)/LIBFEMTOC
@@ -142,7 +148,7 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 
 # Sends the generated executable in flat binary form to SPI flash
 %.prog: %.spiflash.bin
-	iceprog -o 128k $<
+	TOOLCHAIN_PROG_CMD $<
 
 # Generate a disassembly (for inspection if need be)
 %.list: %.baremetal.elf
