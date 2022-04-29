@@ -16,8 +16,10 @@ int main() {
    GL_set_font(&Font8x16);
    
    for(;;) {
+     *(volatile uint32_t*)(0x400004) = 3; // D1 LED/Pin
      delay(500);
      printf("Hello world !!\n Let me introduce myself, I am FemtoRV32, one of the smallest RISC-V cores\n");
+     *(volatile uint32_t*)(0x400004) = 0; // D1 LED/Pin
      delay(1000);
      printf("Freq: %d MHz\n", FEMTORV32_FREQ);
    }
