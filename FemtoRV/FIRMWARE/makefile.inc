@@ -84,9 +84,9 @@ RVGCC_LIB= $(RVTOOLCHAIN_LIB_DIR)/libc.a \
 FIRMWARE_WORDS=$(FIRMWARE_DIR)/TOOLS/firmware_words
 
 ifeq ($(BOARD),icesugar_nano)
-    TOOLCHAIN_PROG_CMD=icesprog -o 0x20000
+    TOOLCHAIN_PROG_CMD=icesprog -o 0x20000 
 else
-    TOOLCHAIN_PROG_CMD=iceprog -o 128k
+    TOOLCHAIN_PROG_CMD=iceprog -o 128k 
 endif
 
 ################################################################################
@@ -148,7 +148,7 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 
 # Sends the generated executable in flat binary form to SPI flash
 %.prog: %.spiflash.bin
-	TOOLCHAIN_PROG_CMD $<
+	$(TOOLCHAIN_PROG_CMD) $<
 
 # Generate a disassembly (for inspection if need be)
 %.list: %.baremetal.elf
