@@ -25,25 +25,29 @@ SECTIONS {
         _sdata = .;        /* create a global symbol at data start; used by startup code in order to initialise the .data section in RAM */
         _ram_start = .;    /* create a global symbol at ram start (e.g., for garbage collector) */
 	
-	/* Initialized data */
+	    /* Initialized data */
         *(.data)                     
         *(.data*)          
         *(.sdata)          
         *(.sdata*)
 	
-	/* functions with attribute((section(".fastcode"))) */	
-	/* (e.g., some functions in femtoGL)                */
-	*(.fastcode*)      
+	    /* functions with attribute((section(".fastcode"))) */	
+	    /* (e.g., some functions in femtoGL)                */
+	    *(.fastcode*)      
 
-	/* integer mul and div */
-	*/libgcc.a:muldi3.o(.text)
-	*/libgcc.a:div.o(.text)    
+	    /* integer mul and div */
+	    /*libgcc.a:muldi3.o(.text)
+	    libgcc.a:div.o(.text)*/
+	    
+	    /* Put soft floating-point and math functions in fast ram */
+	    libgcc.a:*.o(.text)
+        libm.a:*.o(.text)
 
         /* low-level graphics functions */
-	*/libfemtorv32.a:ssd1351_1331.o(.text) 
+	    libfemtorv32.a:ssd1351_1331.o(.text) 
 
-        /* timing */
-	wait_cycles.o(.text)
+            /* timing */
+	    wait_cycles.o(.text)
 
         . = ALIGN(4);
         _edata = .;        /* define a global symbol at data end; used by startup code in order to initialise the .data section in RAM */
@@ -55,10 +59,10 @@ SECTIONS {
         crt0_spiflash.o(.text)  /* c runtime initialization (code) */
 
         /* 
-	 * I do not understand why, but if I do not put that here, I got
-	 * an overlapping sections error with some programs (for instance pi.c
-	 * or C++ programs) 
-	 */
+	     * I do not understand why, but if I do not put that here, I got
+	     * an overlapping sections error with some programs (for instance pi.c
+	     * or C++ programs) 
+	     */
         *(.eh_frame)
         *(.eh_frame_hdr)
         *(.init_array)
@@ -73,7 +77,7 @@ SECTIONS {
         *(.srodata*)            /* .rodata* sections (constants, strings, etc.) */
         _etext = .;             /* define a global symbol at end of code */
         _sidata = _etext;       /* This is used by the startup in order to initialize the .data section */
-    } >FLASH
+    } > FLASH
 
     /* Uninitialized data section */
     .bss : {
@@ -86,14 +90,15 @@ SECTIONS {
         *(COMMON)
         . = ALIGN(4);
         _ebss = .;         /* define a global symbol at bss end; used by startup code */
-    } >RAM
+    } > RAM
 
     /* this is to define the start of the heap, and make sure we have a minimum size */
     .heap : {
         . = ALIGN(4);
         _heap_start = .;    /* define a global symbol at heap start */
 	_end = .;           /* as expected by syscalls.c            */
-    } >RAM
+    } > RAM
     
     
 }
+

@@ -96,7 +96,7 @@ RVCFLAGS=$(OPTIMIZE) $(RVINCS) $(DEVICES) -fno-pic -march=$(ARCH) -mabi=$(ABI) \
          -fno-stack-protector -w -Wl,--no-relax 
         # Note: --no-relax because I'm using gp for fast access to mapped IO.
 RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) $(DEVICES_ASM) $(RVINCS)
-RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax 
+RVLDFLAGS=-m elf32lriscv -b elf32-littleriscv --no-relax --print-memory-usage
 RVCPPFLAGS=-fno-exceptions -fno-enforce-eh-specs
 
 #Rule to compile C objects
