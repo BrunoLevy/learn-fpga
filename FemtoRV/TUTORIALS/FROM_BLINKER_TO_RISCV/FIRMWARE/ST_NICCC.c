@@ -35,9 +35,17 @@ int wireframe = 0;
 /* Graphics routines                                                              */
 /**********************************************************************************/
 
-// SHRINK=1: 256x128 (you will need to set a tiny font in the tty to see smthg)
-// SHRINK=2: 128x64
-#define SHRINK 2
+
+// Map coordinates from file to screen
+
+static inline uint8_t map_x(uint8_t x) {
+    return x >> 1;
+}
+
+static inline uint8_t map_y(uint8_t y) {
+    return y >> 2;
+}
+
 
 void GL_clear() {
     printf("\033[48;5;16m"   // set background color black
@@ -375,8 +383,8 @@ int read_frame() {
     if(frame_flags & INDEXED_BIT) {
 	uint8_t nb_vertices = next_spi_byte();
 	for(int v=0; v<nb_vertices; ++v) {
-	    X[v] = (next_spi_byte() >> (SHRINK-1));
-	    Y[v] = (next_spi_byte() >> SHRINK);
+	    X[v] = map_x(next_spi_byte());
+	    Y[v] = map_y(next_spi_byte());
 	}
     }
 
@@ -410,8 +418,8 @@ int read_frame() {
 		poly[2*i]   = X[index];
 		poly[2*i+1] = Y[index];
 	    } else {
-		poly[2*i]   = (next_spi_byte() >> (SHRINK-1));
-		poly[2*i+1] = (next_spi_byte() >> SHRINK);
+		poly[2*i]   = map_x(next_spi_byte());
+		poly[2*i+1] = map_y(next_spi_byte());
 	    }
 	}
         GL_setcolor(cmap[poly_col]);
