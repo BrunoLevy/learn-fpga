@@ -2,6 +2,7 @@
 #include <femtoGL.h>
 
 int main() {
+    int i = 0;
    /*
     * redirects display to UART (default), OLED display
     * or led matrix, based on configured devices (in femtosoc.v).
@@ -20,8 +21,9 @@ int main() {
      delay(500);
      printf("Hello world !!\n Let me introduce myself, I am FemtoRV32, one of the smallest RISC-V cores\n");
      *(volatile uint32_t*)(0x400004) = 0; // D1 LED/Pin
-     delay(1000);
-     printf("Freq: %d MHz\n", FEMTORV32_FREQ);
+     delay(500);
+     i++;
+     printf("Freq: %d MHz ; loop=%d\n", FEMTORV32_FREQ, i);
    }
 
    return 0;
