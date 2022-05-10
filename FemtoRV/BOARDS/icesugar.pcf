@@ -3,9 +3,11 @@ set_io pclk 35
 set_io TXD 6
 set_io RXD 4
 
+# https://github.com/wuxx/icesugar/blob/master/src/basic/verilog/flash/top.v 
+# from ice40 ultraplus datasheet, miso/mosi are inverted in flash-prog mode
 set_io spi_cs_n 16
-set_io spi_miso 14
-set_io spi_mosi 17
+set_io spi_miso 17
+set_io spi_mosi 14
 set_io spi_clk  15
 
 set_io D1 45
