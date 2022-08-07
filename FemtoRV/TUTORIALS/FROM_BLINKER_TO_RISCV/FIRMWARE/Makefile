@@ -2,7 +2,7 @@ include ../../../FIRMWARE/makefile.inc
 RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) 
 RVCFLAGS=-Os -fno-pic -march=$(ARCH) -mabi=$(ABI) -fno-stack-protector -w -Wl,--no-relax 
 
-RAMSIZE=6144
+RAM_SIZE=6144
 
 LIBOBJECTS=putchar.o wait.o print.o memcpy.o errno.o
 
@@ -13,7 +13,7 @@ LIBOBJECTS=putchar.o wait.o print.o memcpy.o errno.o
 
 
 %.hex: %.elf $(FIRMWARE_DIR)/TOOLS/firmware_words 
-	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram $(RAM_SIZE) -max_addr 65535 -hex $@
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram $(RAM_SIZE) -max_addr $(RAM_SIZE) -out $@
 	cp $@ ../firmware.hex
 	mkdir -p ../obj_dir
 	cp $@ ../obj_dir/firmware.hex

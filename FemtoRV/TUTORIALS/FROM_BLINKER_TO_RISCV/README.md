@@ -1604,7 +1604,7 @@ on the stack and pop them before returning.
 For all the other registers, you cannot expect them to be preserved through
 function calls.
 
-The gloval pointer `gp` can be used as a "shortcut" to reach memory areas that are
+The global pointer `gp` can be used as a "shortcut" to reach memory areas that are
 far away in 1 instruction. We will see that later (once we have `Load` and `Store`).
 
 In our VERILOG assembler [riscv_assembly.v](riscv_assembly.v), we just need to declare
