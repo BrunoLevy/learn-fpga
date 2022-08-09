@@ -19,7 +19,7 @@
     #include <stdlib.h>
     #include <stdio.h>
     #include <math.h>
-    #include "errno_fix.h"
+//    #include "errno_fix.h"
 
 
 //#define RV32_FASTCODE __attribute((section(".fastcode")))

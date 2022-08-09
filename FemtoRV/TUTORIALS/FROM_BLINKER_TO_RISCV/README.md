@@ -3516,6 +3516,10 @@ At this point, not only our device runs code compiled using standard tools (gcc)
 existing code, independently developped (the mathematical routines in `libgcc`). It is quite exciting
 to run existing binary code on a processor that you create on your own !
 
+## Next tutorial
+
+[Pipelining](PIPELINE.md)
+
 ## Files for all the steps
 
 - [step 1](step1.v): Blinker, too fast, can't see anything
@@ -3545,5 +3549,5 @@ to run existing binary code on a processor that you create on your own !
 
 _WIP_
 
-- step 24: More devices (LED matrix, OLED screen...)
+- step 25: More devices (LED matrix, OLED screen...)
 
