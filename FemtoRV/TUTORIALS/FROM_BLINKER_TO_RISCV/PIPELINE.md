@@ -428,13 +428,24 @@ massively uses floating point operations, either implemented in
 software or by an FPU.
 
 Besides CPI (cycles per instruction), the program also computes the
-"raystones" score of the PCU. "raystones" (pixels/s/MHz) is an 
+"raystones" score of the PCU.
+
+"raystones" (`pixels/s/MHz` or `pixels/Mticks`) is an 
 interesting measure of the core's floating-point performance in
-a realistic scenario (raytracing). 
+a realistic scenario (raytracing). For our core, we obtain the
+following numbers:
+
+| CPI   | RAYSTONES |
+|-------|-----------|
+| 3.034 | 2.614     |
+
+Our core runs at slightly more than 3 CPIs. Most instructions
+take 3 cycles, except loads that take 4 cycles. Raytracing is
+quite compute intensive, for a more data intensive program,
+the average CPI will be nearer to 4.
 
 The table below gives the raystone performance of several popular
 cores:
-
 
  | core                 | instr set  | raystones |
  |----------------------|------------|-----------|
@@ -450,3 +461,23 @@ cores:
  |                      |            |           |
  | vexriscv imac        | rv32imac   |   7.987   |
  | vexriscv_smp         | rv32imafd  | 124.121   |
+
+The present core is faster than `femtorv-quark`, because
+it has a barrel shifter that shifts in 1 cycle. It is slower
+than `femtorv-electron` that supports `rv32im` with multiplications
+in 1 cycle and divisions in 32 cycles.
+
+What can we expect to gain with pipelining ? Ideally, a pipelined
+processor would run at 1 CPI, but this is without stalls required
+to resolve certain configurations (rependencies and branches). 
+If you compare `femtorv-gracilis` (`rv32imc`) with `vexriscv imac`
+(that is pipelined), you can see that `vexriscv` is more than
+twice faster.
+
+So our goal is to turn the present processor into a pipelined version,
+similar to `vexriscv` but simpler: for now, our ALU, that only supports
+the `rv32i` instruction set, operates in a single cycle. Moreover, for
+now, we use a separate program memory and data memory, all in BRAM, that
+read/writes to memory in 1 cycle. We will see later how to implement
+caches.
+

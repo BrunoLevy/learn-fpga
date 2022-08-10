@@ -87,19 +87,31 @@ static inline stats_begin_pixel() {
 static inline stats_end_pixel() {
 }
 
+// Print "fixed point" number (integer/1000)
+static void printk(uint64_t kx) {
+    int intpart  = (int)(kx / 1000);
+    int fracpart = (int)(kx % 1000);
+    printf("%d.",intpart);
+    if(fracpart<100) {
+	printf("0");
+    }
+    if(fracpart<10) {
+	printf("0");
+    }
+    printf("%d",fracpart);
+}
+
 // Ends statistics collection for current frame
 // and displays result.
 // Leave emtpy if not needed.
 static inline stats_end_frame() {
    uint64_t cycles = rdcycle();
    uint64_t instret = rdinstret();
-   int CPI = (int)(cycles*100/instret);
-   printf("CPI=%d.",CPI/100);
-   CPI = CPI % 100;
-   if(CPI < 10) {
-      printf("0");
-   }
-   printf("%d\n",CPI);
+   uint64_t kCPI       = cycles*1000/instret;
+   uint64_t pixels     = graphics_width * graphics_height;
+   uint64_t kRAYSTONES = (pixels*1000000000)/cycles;
+   printf("CPI      ="); printk(kCPI); printf("\n");
+   printf("RAYSTONES="); printk(kRAYSTONES); printf("\n");
 }
 
 // Normally you will not need to modify anything beyond that point.
