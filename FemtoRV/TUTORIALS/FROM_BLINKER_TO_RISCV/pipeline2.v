@@ -84,11 +84,9 @@ module Processor (
    // The 5 immediate formats
    wire [31:0] Uimm={    instr[31],   instr[30:12], {12{1'b0}}};
    wire [31:0] Iimm={{21{instr[31]}}, instr[30:20]};
-   /* verilator lint_off UNUSED */ // MSBs of SBJimms are not used by addr adder
    wire [31:0] Simm={{21{instr[31]}}, instr[30:25],instr[11:7]};
    wire [31:0] Bimm={{20{instr[31]}}, instr[7],instr[30:25],instr[11:8],1'b0};
    wire [31:0] Jimm={{12{instr[31]}}, instr[19:12],instr[20],instr[30:21],1'b0};
-   /* verilator lint_on UNUSED */
 
    // Destination registers
    wire [4:0] rdId  = instr[11:7];
@@ -112,7 +110,7 @@ module Processor (
    reg [63:0] instret;
 
    always @(posedge clk) begin
-      cycle <= cycle + 1;
+      cycle <= !resetn ? 0 : cycle + 1;
    end
    
 `ifdef BENCH   
@@ -299,9 +297,8 @@ module Processor (
    always @(posedge clk) begin
       if(!resetn) begin
 	 PC      <= 32'h00000000;
-	 cycle   <= 0;
+	 state   <= WAIT_DATA;    // just wait for !mem_rbusy
 	 instret <= 0;
-	 state <= WAIT_DATA;    // just wait for !mem_rbusy
       end else begin
 	 if(writeBackEn && rdId != 0) begin
 	    RegisterBank[rdId] <= writeBackData;
@@ -358,10 +355,7 @@ module SOC (
     input 	     RESET,// reset button
     output reg [4:0] LEDS, // system LEDs
     input 	     RXD, // UART receive
-    output 	     TXD, // UART transmit
-    output 	     SPIFLASH_CLK,  // SPI flash clock
-    output 	     SPIFLASH_CS_N, // SPI flash chip select (active low)
-    inout [1:0]      SPIFLASH_IO    // SPI flash IO pins
+    output 	     TXD  // UART transmit
 );
 
    wire clk;

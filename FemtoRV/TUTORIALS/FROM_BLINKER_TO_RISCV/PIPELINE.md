@@ -1,11 +1,14 @@
 # From Blinker to RISC-V episode II
 
-In the previous episode, we learnt how to create a fully functional
+In the [previous episode](README.md), we learnt how to create a fully functional
 RISC-V processor on a FPGA. Our processor is not the most efficient,
 since it uses between 3 and 4 cycles per instruction. Modern
 processors are much more efficient, and can execute several instructions
 per cycle, thanks to different techniques. We will see here how to morph
 our super-simple processor into a more efficient pipelined processor.
+
+For this episode, you will need a FPGA with at least 128kB BRAM
+(e.g., ULX3S). You can also run it purely in simulation. 
 
 ## Step 1: separate instruction and data memory
 
@@ -221,6 +224,12 @@ $ cd ..
 $ ./run_verilator.sh pipeline1.v
 ```
 
+If you have a ULX3S, plug it to a USB port, then:
+```
+$ BOARDS/run_ulx3s.sh pipeline1.v
+$ ./terminal.sh
+```
+
 ## Step 2: performance counters
 
 The goal of pipelining is to gain some performance, so we need a way
@@ -421,6 +430,12 @@ $ ./run_verilator.sh pipeline2.v
 It will compute and display a simple raytracing scene, and give the
 CPI and "raystones" score of the core. 
 
+You can also run it on device (ULX3S):
+```
+$ BOARDS/run_ulx3s.sh pipeline1.v
+$ ./terminal.sh
+```
+
 This program is a C version
 of Dmitry Sokolov's [tinyraytracer](https://github.com/ssloy/tinyraytracer).
 Raytracing is interesting for benchmarking cores, because it
@@ -469,7 +484,7 @@ in 1 cycle and divisions in 32 cycles.
 
 What can we expect to gain with pipelining ? Ideally, a pipelined
 processor would run at 1 CPI, but this is without stalls required
-to resolve certain configurations (rependencies and branches). 
+to resolve certain configurations (dependencies and branches). 
 If you compare `femtorv-gracilis` (`rv32imc`) with `vexriscv imac`
 (that is pipelined), you can see that `vexriscv` is more than
 twice faster.
@@ -481,3 +496,65 @@ now, we use a separate program memory and data memory, all in BRAM, that
 read/writes to memory in 1 cycle. We will see later how to implement
 caches.
 
+
+
+## Step 3: a sequential 5-stages pipeline
+
+A pipelined processor is like a multi-cycle processor that uses a state machine,
+but each state has its own circuitry, and runs concurrently with the other states,
+and passes its outputs to the next state (one talks about stages rather than states).
+Since there are several tricky situations to handle, and since I don't know for now
+exactly how to do that, my idea is to go step by step, and first write a core that
+has all the stages, but drive it with a state machine that fires one stage at a time
+instead of running them concurrently. Then we will see what needs to be modified when
+all the stages run concurrently.
+
+Following all good books in processor design (Patterson, Harris...) we will start
+with a super classical design with 5 stages:
+
+| acronym | long name            | description                           |
+|---------|----------------------|---------------------------------------|
+| IF      | Instruction fetch    | reads instruction from program memory |
+| ID      | Instruction decode   | decodes instruction and immediates    |
+| EX      | Execute              | computes ALU, tests and addresses     |
+| MEM     | read or write memory | load and store                        |
+| WB      | Write back           | write result to register file         |
+
+Each stage will read its input from a set of registers and write its outputs
+to a set of registers. In particular, each stage will have its own copy of the
+program counter, the current instruction, and some other fields derived from
+them. Why is this so ?
+- rember that in the next step, all stages will be running concurrently, which
+  means that each stage will process a *different* instruction;
+- besides the advantage of increasing throughput, by separating execution into
+  multiple register-to-register stages, pipelining results in a shorter critical
+  path (hence supports a higher frequency).
+
+_WIP_
+
+### Instruction fetch
+- Input: `WBIF_PC`
+- Output: `IFID_PC`, `IFID_instr`
+
+### Instruction decode
+- Output: `IDEX_PC`, `IDEX_instr_is`, `IDEX_rs1`, `IDEX_rs2`, `IDEX_Uimm`, `IDEX_Iimm`, `IDEX_Simm`, `IDEX_Bimm`, `IDEX_Jimm`
+  (or a single imm ?)
+
+### Execute
+- Output: `EXMEM_instr_is`, `EXMEM_alu`, `EXMEM_takebranch`, `EXMEM_loadstore_addr`, `EXMEM_PC_plus_imm`, `EXMEM_PC_plus_4`
+
+  Q: do we compute a EXMEM_writeback here ? or later ?
+
+### Memory
+- Output: MEMWB_wbenable, MEMWB_wbdata, MEMWB_nextPC
+
+### WriteBack
+- Output: WBIF_PC
+
+
+
+## Step 4: solving hazards by stalling and flushing
+
+### data hazards
+
+### structural hazards

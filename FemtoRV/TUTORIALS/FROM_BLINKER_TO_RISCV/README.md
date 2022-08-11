@@ -11,6 +11,32 @@ It works with the following boards:
 If you do not have a board, you can run everything in simulation (but
 it is not as fun).
 
+## About this tutorial
+- it is a progressive introduction, changing only one thing at a time. It
+  is a curated version of my logbook when I learnt these notions (2020-2022). I also tryed
+  to keep track of all the dead ends I explored and traps that caught me, they
+  are often indicated as side remarks and notes;
+- I try to keep hardware requirement as minimal as possible. With the tiniest FPGA
+  (IceStick Ice40HX1K) you can do the first episode of the tutorial and transform it
+  into a fully functional RV32I microcontroller that can execute compiled C code.
+- in the end, the obtained processor is not the most efficient, but it is not a toy:
+  it can execute any program. To anwser the question you may ask, yes, it
+  [runs DOOM](https://github.com/BrunoLevy/learn-fpga/tree/master/LiteX/software/Doom)!
+  (with the help of LiteX that has a nice SDRAM controller, because Doom needs some RAM);
+- the tutorial is both about hardware and software: you will learn how to compile programs
+  in assembly and in C for your core;
+- I try to make all example programs fun and interesting while reasonably short. The bundled
+  demo programs include:
+    - mandelbrot set in assembly and in C
+    - rotozoom graphic effect
+    - drawing filled polygons
+    - raytracing
+  These graphic program are all displayed in text mode on the terminal, using ANSI escape
+  sequences (yes, this makes BIG pixels). For more fun, it is also possible to use a small OLED display
+  instead (will add instructions for that in the future). 
+- [Episode II](PIPELINE.md) is a WIP on pipelining, that I'm currently trying to understand (and writing
+  a tutorial about something is a good way of making sure you understand it !).
+
 ## Introduction and references on processor design
 
 To understand processor design, the first thing that I have read was
