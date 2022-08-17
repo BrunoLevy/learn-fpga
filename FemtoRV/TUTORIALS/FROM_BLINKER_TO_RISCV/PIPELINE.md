@@ -532,6 +532,12 @@ them. Why is this so ?
 
 _WIP_
 
+
+| CPI   | RAYSTONES |
+|-------|-----------|
+| 5     | 1.589     |
+
+
 ### Instruction fetch
 - Input: `WBIF_PC`
 - Output: `IFID_PC`, `IFID_instr`
