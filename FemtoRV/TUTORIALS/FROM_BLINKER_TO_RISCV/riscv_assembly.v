@@ -132,7 +132,7 @@ task SRA;
    input [4:0] rd;
    input [4:0] rs1;
    input [4:0] rs2;
-   RType(7'b0110011, rd, rs1, rs2, 3'b101, 7'b0000010);
+   RType(7'b0110011, rd, rs1, rs2, 3'b101, 7'b0100000);
 endtask
 
 task OR;
