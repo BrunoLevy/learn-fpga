@@ -105,8 +105,8 @@ static void printk(uint64_t kx) {
 // and displays result.
 // Leave emtpy if not needed.
 static inline stats_end_frame() {
-   uint64_t cycles = rdcycle();
    uint64_t instret = rdinstret();
+   uint64_t cycles = rdcycle();
    uint64_t kCPI       = cycles*1000/instret;
    uint64_t pixels     = graphics_width * graphics_height;
    uint64_t kRAYSTONES = (pixels*1000000000)/cycles;

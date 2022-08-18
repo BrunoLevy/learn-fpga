@@ -6,8 +6,8 @@ int main() {
       uint64_t instret = rdinstret();      
       printf("i=%d    cycles=%d     instret=%d\n", i, (int)cycles, (int)instret);
    }
-   uint64_t cycles = rdcycle();
    uint64_t instret = rdinstret();      
+   uint64_t cycles = rdcycle();
    printf("cycles=%d     instret=%d    100CPI=%d\n", (int)cycles, (int)instret, (int)(100*cycles/instret));
    
 }
