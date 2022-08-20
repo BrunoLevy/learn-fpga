@@ -61,6 +61,7 @@ LIBOBJECTS=putchar.o wait.o print.o memcpy.o errno.o perf.o
 
 %.dual_memory.elf: %.o start_dual_memory.o $(LIBOBJECTS) $(RV_BINARIES)
 	$(RVLD) -T dual_memory.ld -m elf32lriscv -nostdlib -norelax $< $(LIBOBJECTS) -L$(RVTOOLCHAIN_LIB_DIR) -lm $(RVTOOLCHAIN_GCC_LIB_DIR)/libgcc.a  -o $@
+	$(RVOBJDUMP) -Mnumeric -D $@ > $@.list
 
 %.PROGROM.hex: %.dual_memory.elf $(FIRMWARE_DIR)/TOOLS/firmware_words 
 	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram 0x20000 -max_addr 0x20000 -out $@ -from_addr 0 -to_addr 0xFFFF
