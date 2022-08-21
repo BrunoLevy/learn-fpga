@@ -256,8 +256,12 @@ module Processor (
    end
    
    
-   wire E_JumpOrBranch = DE_isJAL || DE_isJALR || 
- 	                     (DE_isBranch && E_takeBranch);
+   wire E_JumpOrBranch = 
+	!DE_bubble && (DE_isJAL || DE_isJALR || (DE_isBranch && E_takeBranch));
+
+
+   wire [31:0] E_addr  = (DE_isBranch || DE_isJAL) ? E_PCplusImm            :
+                                        {E_aluPlus[31:1],1'b0} ;
    
    /***************************************************************************/
    
@@ -429,31 +433,30 @@ module Processor (
    end
 
 /******************************************************************************/
-   assign jumpOrBranchAddress = EM_addr;
-   assign jumpOrBranch        = EM_JumpOrBranch;
+   assign jumpOrBranchAddress = E_addr;
+   assign jumpOrBranch        = E_JumpOrBranch;
 /******************************************************************************/
 
    always @(posedge clk) begin
       if(resetn) begin
-	 
-	 $display("[F] PC=%h JoB=%d JoBaddr=%h ",F_PC, 
-		  jumpOrBranch, jumpOrBranchAddress
-         );
-	 
-	 $write("[D] PC=%h B=%d ", FD_PC, FD_bubble); 
-	 riscv_disasm(FD_instr,FD_PC);
+	 $write("[W] PC=%h [%s] ", MW_PC, MW_bubble?"O":" "); 
+	 riscv_disasm(MW_instr,MW_PC);
 	 $write("\n");
 
-	 $write("[E] PC=%h B=%d ", DE_PC, DE_bubble); 
-	 riscv_disasm(DE_instr,DE_PC);
-	 $write("\n");
-
-	 $write("[M] PC=%h B=%d ", EM_PC, EM_bubble); 
+	 $write("[M] PC=%h [%s] ", EM_PC, EM_bubble?"O":" "); 
 	 riscv_disasm(EM_instr,EM_PC);
 	 $write("\n");
 
-	 $write("[W] PC=%h B=%d ", MW_PC, MW_bubble); 
-	 riscv_disasm(MW_instr,MW_PC);
+	 $write("[E] PC=%h [%s] ", DE_PC, DE_bubble?"O":" "); 
+	 riscv_disasm(DE_instr,DE_PC);
+	 $write("\n");
+
+	 $write("[D] PC=%h [%s] ", FD_PC, FD_bubble?"O":" "); 
+	 riscv_disasm(FD_instr,FD_PC);
+	 $write("\n");
+
+	 $write("[F] PC=%h [%s] ", F_PC, jumpOrBranch?"O":" "); 
+	 if(jumpOrBranch) $write(" -> 0x%0h",jumpOrBranchAddress);
 	 $write("\n");
 	 
 	 $display("");

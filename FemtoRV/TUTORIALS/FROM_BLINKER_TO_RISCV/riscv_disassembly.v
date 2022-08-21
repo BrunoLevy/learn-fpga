@@ -44,17 +44,21 @@ task riscv_disasm;
    begin
       case(instr[6:0])
 	7'b0110011: begin
-	   case(instr[14:12])
-	     3'b000: $write("%s", instr[30] ? "sub" : "add");
-	     3'b001: $write("sll");
-	     3'b010: $write("slt");
-	     3'b011: $write("sltu");
-	     3'b100: $write("xor");
-	     3'b101: $write("%s", instr[30] ? "sra" : "srl");
-	     3'b110: $write("or");
-	     3'b111: $write("and");
-	   endcase 
-	   $write(" x%0d,x%0d,x%0d",instr[11:7],instr[19:15],instr[24:20]);
+	   if(instr[31:7] == 0) begin
+	     $write("nop");
+	   end else begin
+	      case(instr[14:12])
+		3'b000: $write("%s", instr[30] ? "sub" : "add");
+		3'b001: $write("sll");
+		3'b010: $write("slt");
+		3'b011: $write("sltu");
+		3'b100: $write("xor");
+		3'b101: $write("%s", instr[30] ? "sra" : "srl");
+		3'b110: $write("or");
+		3'b111: $write("and");
+	      endcase 
+	      $write(" x%0d,x%0d,x%0d",instr[11:7],instr[19:15],instr[24:20]);
+	   end
 	end
 	7'b0010011: begin
 	   case(instr[14:12])
