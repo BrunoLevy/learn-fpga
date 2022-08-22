@@ -2,13 +2,6 @@
  * pipeline4.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
  * Step 4: stalling and bubbles
- * *** BROKEN ***
- *   Debugging strategy:
- *     1) ignore data hazards for now
- *     2) implement stalling for branch/jump
- *     3) add "bubble" attribute for each stage
- *     4) debug: display all states + bubble status
- *     5) implement stalling for data hazard
  */
  
 `default_nettype none
@@ -132,7 +125,6 @@ module Processor (
    
 /******************************************************************************/
    
-   reg ebreak; // TODO
    reg [63:0] cycle;   
    reg [63:0] instret;
 
@@ -145,6 +137,8 @@ module Processor (
    
    wire F_stall;
    wire D_stall;
+
+   wire halt; // Halt execution (on ebreak)
    
 /******************************************************************************/
 
@@ -154,7 +148,7 @@ module Processor (
 
    reg  [31:0] 	  F_PC;
 
-   /** These two signals come from Execute **/
+   /** These two signals come from the Execute stage **/
    wire [31:0] 	  jumpOrBranchAddress;
    wire 	  jumpOrBranch;
 
@@ -165,21 +159,26 @@ module Processor (
    end
 
    always @(posedge clk) begin
-      if(!resetn) begin
-	 F_PC    <= 0;
-	 FD_instr <= NOP;
-      end else if(jumpOrBranch) begin
-	 FD_instr <= PROGROM[F_PC[15:2]]; 
-	 FD_PC    <= F_PC;
-	 F_PC     <= jumpOrBranchAddress;
-      end else if(!F_stall) begin
+
+      if(!F_stall) begin
 	 FD_instr <= PROGROM[F_PC[15:2]]; 
 	 FD_PC    <= F_PC;
 	 F_PC     <= F_PC+4;
       end
+
+      if(jumpOrBranch) begin
+	 F_PC     <= jumpOrBranchAddress;
+      end
+
       if(D_flush) begin
 	 FD_instr <= NOP;
       end
+      
+      if(!resetn) begin
+	 F_PC <= 0;
+	 FD_instr <= NOP;
+      end
+      
    end
    
 /******************************************************************************/
@@ -189,23 +188,26 @@ module Processor (
 
                      /*** D: Instruction decode ***/
 
-   /** These three signals come from Writeback **/
+   /** These three signals come from the Writeback stage **/
    wire        wbEnable;
    wire [31:0] wbData;
    wire [4:0]  wbRdId;
 
    reg [31:0] RegisterBank [0:31];
    always @(posedge clk) begin
-      if(D_stall) begin
-	 if(E_flush) begin
-	    DE_instr <= NOP;
-	 end
-      end else begin
-	 DE_PC          <= FD_PC;
-	 DE_instr       <= E_flush ? NOP : FD_instr;
+
+      if(!D_stall) begin
+	 DE_PC    <= FD_PC;
+	 DE_instr <= E_flush ? NOP : FD_instr;
       end
+      
+      if(E_flush) begin
+	 DE_instr <= NOP;
+      end
+      
       DE_rs1 <= RegisterBank[rs1Id(FD_instr)];
       DE_rs2 <= RegisterBank[rs2Id(FD_instr)];
+      
       if(wbEnable) begin
 	 RegisterBank[wbRdId] <= wbData;
       end
@@ -302,29 +304,29 @@ module Processor (
 	isBranch(DE_instr) ? DE_PC + Bimm(DE_instr) :
 	isJAL(DE_instr)    ? DE_PC + Jimm(DE_instr) :
 	/* JALR */           {E_aluPlus[31:1],1'b0} ;
+
+   wire [31:0] E_result = 
+	(isJAL(DE_instr) | isJALR(DE_instr)) ? DE_PC+4                :
+	isLUI(DE_instr)                      ? Uimm(DE_instr)         :
+	isAUIPC(DE_instr)                    ? DE_PC + Uimm(DE_instr) : 
+        E_aluOut                                                      ;
 	
    /**************************************************************/
    
    always @(posedge clk) begin
       EM_PC      <= DE_PC;
       EM_instr   <= DE_instr;
-      EM_rs1     <= DE_rs1;
       EM_rs2     <= DE_rs2;
-      EM_Eresult <= 
-	    (isJAL(DE_instr) | isJALR(DE_instr)) ? DE_PC+4                :
-	    isLUI(DE_instr)                      ? Uimm(DE_instr)         :
-	    isAUIPC(DE_instr)                    ? DE_PC + Uimm(DE_instr) : 
-            E_aluOut                                                      ;
-      
-      EM_addr <= isStore(DE_instr) ? DE_rs1 + Simm(DE_instr) : 
+      EM_Eresult <= E_result;
+      EM_addr    <= isStore(DE_instr) ? DE_rs1 + Simm(DE_instr) : 
                                         DE_rs1 + Iimm(DE_instr) ;
-      ebreak  <= !resetn ? 1'b0 : isEBREAK(DE_instr);
    end
+
+   assign halt = resetn & isEBREAK(DE_instr);
    
 /******************************************************************************/
    reg [31:0] EM_PC;
    reg [31:0] EM_instr;
-   reg [31:0] EM_rs1; // for debugging
    reg [31:0] EM_rs2;
    reg [31:0] EM_Eresult;
    reg [31:0] EM_addr;
@@ -459,8 +461,8 @@ module Processor (
    
    wire dataHazard = rs1Hazard || rs2Hazard;
    
-   assign F_stall = dataHazard;
-   assign D_stall = dataHazard;
+   assign F_stall = dataHazard | halt;
+   assign D_stall = dataHazard | halt;
    
    assign D_flush = E_JumpOrBranch;
    assign E_flush = E_JumpOrBranch | dataHazard;
@@ -468,13 +470,11 @@ module Processor (
 /******************************************************************************/
 
    always @(posedge clk) begin
-      if(ebreak) $finish();
+      if(halt) $finish();
    end
    
    always @(posedge clk) begin
       if(1'b0 & resetn) begin
-	 if(ebreak) $display("===EBREAK");
-	 
 	 $write("[W] PC=%h ", MW_PC);
 	 $write("     ");
 	 riscv_disasm(MW_instr,MW_PC);
