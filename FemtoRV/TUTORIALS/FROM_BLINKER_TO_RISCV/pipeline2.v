@@ -29,40 +29,34 @@ module Processor (
       $readmemh("DATARAM.hex",DATARAM);      
    end
 
-   /****************************************************************************
-    * Internal memory data bus, used by Load and Store
-    * (used for both DATARAM and IO)
-    ***************************************************************************/
-   wire [31:0] data_mem_addr;
-   wire [31:0] data_mem_rdata;
-   wire [31:0] data_mem_wdata;
-   wire [3:0]  data_mem_wmask;
+   // Internal memory busses, used by Load and Store
+   // (used for both DATARAM and IO)
+   wire [31:0] mem_addr;
+   wire [31:0] mem_rdata;
+   wire [31:0] mem_wdata;
+   wire [3:0]  mem_wmask;
 
    // bit 22 of memory address is set for IO page (and zero for RAM)
-   wire isIO  = data_mem_addr[22];
+   wire isIO  = mem_addr[22];
    wire isRAM = !isIO;
    
-   wire [13:0] data_mem_word_addr = data_mem_addr[15:2];
+   wire [13:0] mem_word_addr = mem_addr[15:2];
 
    // RAM access
    reg [31:0] dataram_rdata;
-   wire [3:0] dataram_wmask = data_mem_wmask & {4{isRAM}};
+   wire [3:0] dataram_wmask = mem_wmask & {4{isRAM}};
    always @(posedge clk) begin
-      dataram_rdata <= DATARAM[data_mem_word_addr];
-      if(dataram_wmask[0]) 
-	DATARAM[data_mem_word_addr][ 7:0 ] <= data_mem_wdata[ 7:0 ];
-      if(dataram_wmask[1]) 
-	DATARAM[data_mem_word_addr][15:8 ] <= data_mem_wdata[15:8 ];
-      if(dataram_wmask[2]) 
-	DATARAM[data_mem_word_addr][23:16] <= data_mem_wdata[23:16];
-      if(dataram_wmask[3]) 
-	DATARAM[data_mem_word_addr][31:24] <= data_mem_wdata[31:24];	 
+      dataram_rdata <= DATARAM[mem_word_addr];
+      if(dataram_wmask[0]) DATARAM[mem_word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
+      if(dataram_wmask[1]) DATARAM[mem_word_addr][15:8 ] <= mem_wdata[15:8 ];
+      if(dataram_wmask[2]) DATARAM[mem_word_addr][23:16] <= mem_wdata[23:16];
+      if(dataram_wmask[3]) DATARAM[mem_word_addr][31:24] <= mem_wdata[31:24];
    end
    
-   assign data_mem_rdata = isRAM ? dataram_rdata : IO_mem_rdata;
-   assign IO_mem_addr  = data_mem_addr;
-   assign IO_mem_wdata = data_mem_wdata;
-   assign IO_mem_wr    = isIO & data_mem_wmask[0];
+   assign mem_rdata = isRAM ? dataram_rdata : IO_mem_rdata;
+   assign IO_mem_addr  = mem_addr;
+   assign IO_mem_wdata = mem_wdata;
+   assign IO_mem_wr    = isIO & mem_wmask[0];
    
    reg [31:0] PC=0;  // program counter
    reg [31:0] instr; // current instruction (ignore two LSBs, always 11)
@@ -159,8 +153,6 @@ module Processor (
 
    wire [31:0] leftshift = flip32(shifter);
    
-
-   
    // ADD/SUB/ADDI: 
    // funct7[5] is 1 for SUB and 0 for ADD. We need also to test instr[5]
    // to make the difference with ADDI
@@ -240,13 +232,13 @@ module Processor (
    // reason, we need some circuitry that does unaligned halfword
    // and byte load/store, based on:
    // - funct3[1:0]:  00->byte 01->halfword 10->word
-   // - data_mem_addr[1:0]: indicates which byte/halfword is accessed
+   // - mem_addr[1:0]: indicates which byte/halfword is accessed
 
-   wire data_mem_byteAccess     = funct3[1:0] == 2'b00;
-   wire data_mem_halfwordAccess = funct3[1:0] == 2'b01;
+   wire mem_byteAccess     = funct3[1:0] == 2'b00;
+   wire mem_halfwordAccess = funct3[1:0] == 2'b01;
 
    wire [15:0] LOAD_halfword =
-	       loadstore_addr[1] ? data_mem_rdata[31:16] : data_mem_rdata[15:0];
+	       loadstore_addr[1] ? mem_rdata[31:16] : mem_rdata[15:0];
 
    wire  [7:0] LOAD_byte =
 	       loadstore_addr[0] ? LOAD_halfword[15:8] : LOAD_halfword[7:0];
@@ -254,20 +246,20 @@ module Processor (
    // LOAD, in addition to funct3[1:0], LOAD depends on:
    // - funct3[2] (instr[14]): 0->do sign expansion   1->no sign expansion
    wire LOAD_sign =
-	!funct3[2] & (data_mem_byteAccess ? LOAD_byte[7] : LOAD_halfword[15]);
+	!funct3[2] & (mem_byteAccess ? LOAD_byte[7] : LOAD_halfword[15]);
 
    wire [31:0] LOAD_data =
-         data_mem_byteAccess ? {{24{LOAD_sign}},     LOAD_byte} :
-     data_mem_halfwordAccess ? {{16{LOAD_sign}}, LOAD_halfword} :
-                          data_mem_rdata ;
+         mem_byteAccess ? {{24{LOAD_sign}},     LOAD_byte} :
+     mem_halfwordAccess ? {{16{LOAD_sign}}, LOAD_halfword} :
+                          mem_rdata ;
 
    // Store
    // ------------------------------------------------------------------------
 
-   assign data_mem_wdata[ 7: 0] = rs2[7:0];
-   assign data_mem_wdata[15: 8] = loadstore_addr[0] ? rs2[7:0]  : rs2[15: 8];
-   assign data_mem_wdata[23:16] = loadstore_addr[1] ? rs2[7:0]  : rs2[23:16];
-   assign data_mem_wdata[31:24] = loadstore_addr[0] ? rs2[7:0]  :
+   assign mem_wdata[ 7: 0] = rs2[7:0];
+   assign mem_wdata[15: 8] = loadstore_addr[0] ? rs2[7:0]  : rs2[15: 8];
+   assign mem_wdata[23:16] = loadstore_addr[1] ? rs2[7:0]  : rs2[23:16];
+   assign mem_wdata[31:24] = loadstore_addr[0] ? rs2[7:0]  :
 				  loadstore_addr[1] ? rs2[15:8] : rs2[31:24];
 
    // The memory write mask:
@@ -278,12 +270,12 @@ module Processor (
    //                                (depending on loadstore_addr[1:0])
 
    wire [3:0] STORE_wmask =
-	      data_mem_byteAccess      ?
+	      mem_byteAccess      ?
 	            (loadstore_addr[1] ?
 		          (loadstore_addr[0] ? 4'b1000 : 4'b0100) :
 		          (loadstore_addr[0] ? 4'b0010 : 4'b0001)
                     ) :
-	      data_mem_halfwordAccess ?
+	      mem_halfwordAccess ?
 	            (loadstore_addr[1] ? 4'b1100 : 4'b0011) :
               4'b1111;
    
@@ -315,7 +307,6 @@ module Processor (
 `endif	      
 	   end
 	   WAIT_INSTR: begin
-
 	      rs1 <= RegisterBank[instr[19:15]];
 	      rs2 <= RegisterBank[instr[24:20]];
 	      state <= EXECUTE;
@@ -328,8 +319,8 @@ module Processor (
 	      state <= isLoad  ? WAIT_DATA : FETCH_INSTR;
 `ifdef BENCH
 	      if(isLoad || isStore) begin
-		 if(data_mem_addr <  32'h10000) begin
-		    $display("invalid data addr: %h",data_mem_addr);
+		 if(mem_addr <  32'h10000) begin
+		    $display("invalid data addr: %h",mem_addr);
 		    $finish();
 		 end
 	      end
@@ -345,8 +336,8 @@ module Processor (
 
    assign writeBackEn = (state==EXECUTE && !isBranch && !isStore) ||
 			(state==WAIT_DATA) ;
-   assign data_mem_addr = loadstore_addr;
-   assign data_mem_wmask = {4{(state == EXECUTE) & isStore}} & STORE_wmask;
+   assign mem_addr = loadstore_addr;
+   assign mem_wmask = {4{(state == EXECUTE) & isStore}} & STORE_wmask;
 endmodule
 
 

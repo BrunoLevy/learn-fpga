@@ -122,7 +122,7 @@ SECTIONS {
 
     .text : {
         . = ALIGN(4);
-	start_dual_memory.o (.text)
+	start_pipeline.o (.text)
         *(.text*)
     } > PROGROM
 
@@ -144,7 +144,7 @@ SECTIONS {
 }
 ```
 
-The text segment starts with the content of `start_dual_memory.S`:
+The text segment starts with the content of `start_pipeline.S`:
 ```asm
 .equ IO_BASE, 0x400000  
 .section .text
@@ -164,23 +164,23 @@ how to compile Fabrice Bellard's program that computes the decimals of pi:
 ```
 $ cd FIRMWARE
 $ riscv64-unknown-elf-gcc -Os -fno-pic -march=rv32i -mabi=ilp32 -fno-stack-protector -w -Wl,--no-relax   -c pi.c
-$ riscv64-unknown-elf-as -march=rv32i -mabi=ilp32   start_dual_memory.S -o start_dual_memory.o 
+$ riscv64-unknown-elf-as -march=rv32i -mabi=ilp32   start_pipeline.S -o start_pipeline.o 
 $ riscv64-unknown-elf-as -march=rv32i -mabi=ilp32   putchar.S -o putchar.o 
 $ riscv64-unknown-elf-as -march=rv32i -mabi=ilp32   wait.S -o wait.o 
 $ riscv64-unknown-elf-gcc -Os -fno-pic -march=rv32i -mabi=ilp32 -fno-stack-protector -w -Wl,--no-relax   -c print.c
 $ riscv64-unknown-elf-gcc -Os -fno-pic -march=rv32i -mabi=ilp32 -fno-stack-protector -w -Wl,--no-relax   -c memcpy.c
 $ riscv64-unknown-elf-gcc -Os -fno-pic -march=rv32i -mabi=ilp32 -fno-stack-protector -w -Wl,--no-relax   -c errno.c
-$ riscv64-unknown-elf-ld -T dual_memory.ld -m elf32lriscv -nostdlib -norelax pi.o putchar.o wait.o print.o memcpy.o errno.o -lm libgcc.a -o pi.dual_memory.elf
+$ riscv64-unknown-elf-ld -T pipeline.ld -m elf32lriscv -nostdlib -norelax pi.o putchar.o wait.o print.o memcpy.o errno.o -lm libgcc.a -o pi.pipeline.elf
 ```
 
 The `Makefile` does it for you as follows:
 ```
-$ make pi.dual_memory.elf
+$ make pi.pipeline.elf
 ```
 
 You can take a look at the memory map:
 ```
-$ readelf -a pi.dual_memory.elf | more
+$ readelf -a pi.pipeline.elf | more
 ```
 
 then you'll see that `.text` and `.data` are where we expected them to be:
@@ -197,15 +197,15 @@ utility that has a `-from_addr` and a `-to_addr` argument to select a portion
 of the memory to be written to a `.hex` file:
 
 ```
-$ firmware_words pi.dual_memory.elf -ram 0x20000 -max_addr 0x20000 -out pi.PROGROM.hex -from_addr 0 -to_addr 0xFFFF
-$ firmware_words pi.dual_memory.elf -ram 0x20000 -max_addr 0x20000 -out pi.DATARAM.hex -from_addr 0x10000 -to_addr 0x1FFFF
+$ firmware_words pi.pipeline.elf -ram 0x20000 -max_addr 0x20000 -out pi.PROGROM.hex -from_addr 0 -to_addr 0xFFFF
+$ firmware_words pi.pipeline.elf -ram 0x20000 -max_addr 0x20000 -out pi.DATARAM.hex -from_addr 0x10000 -to_addr 0x1FFFF
 ```
 
 Again, the `Makefile` does it for you (and in addition copies the `.hex` files where they are needed):
 
 ```
 $ make clean
-$ make pi.dual_memory.hex
+$ make pi.pipeline.hex
 ```
 _(you need to `make clean` before else it gets confused by the pre-existing `.elf` file)_
 
@@ -219,7 +219,7 @@ $ ./run_verilator.sh pipeline1.v
 You can also try other programs (e.g., `tinyraytracer`):
 ```
 $ cd FIRMWARE
-$ make tinyraytracer.dual_memory.hex
+$ make tinyraytracer.pipeline.hex
 $ cd ..
 $ ./run_verilator.sh pipeline1.v
 ```
@@ -402,7 +402,7 @@ content, and start simulation as follows:
 
 ```
 $ cd FIRMWARE
-$ make test_rdcycle.dual_memory.hex
+$ make test_rdcycle.pipeline.hex
 $ cd ..
 $ ./run_verilator.sh pipeline2.v
 ```
@@ -422,7 +422,7 @@ Let's see what it gives:
 
 ```
 $ cd FIRMWARE
-$ make raystones.dual_memory.hex
+$ make raystones.pipeline.hex
 $ cd ..
 $ ./run_verilator.sh pipeline2.v
 ```
