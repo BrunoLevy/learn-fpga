@@ -1,7 +1,7 @@
 /**
- * pipeline1.v
+ * pipeline2.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
- * Step 1: Separate program memory from data memory
+ * Step 1: separate program memory and data memory, both included in CPU
  *   (not a pipelined processor yet)
  */
 
@@ -11,61 +11,61 @@
 
 /******************************************************************************/
 
-module ProgramMemory (
-   input             clk,
-   input      [15:0] mem_addr,  // address to be read
-   output reg [31:0] mem_rdata  // data read from memory
-);
-   reg [31:0] MEM [0:16383]; // 16384 4-bytes words  
-                             // 64 Kb of program RAM 
-   wire [13:0] word_addr = mem_addr[15:2];
-   always @(posedge clk) begin
-      mem_rdata <= MEM[word_addr];
-   end
-   initial begin
-      $readmemh("PROGROM.hex",MEM);
-   end
-endmodule
-
-/******************************************************************************/
-
-module DataMemory (
-   input             clk,
-   input      [15:0] mem_addr,  // address to be read
-   output reg [31:0] mem_rdata, // data read from memory
-   input      [31:0] mem_wdata, // data to be written
-   input      [3:0]  mem_wmask	// masks for writing the 4 bytes (1=write byte)
-);
-   reg [31:0] MEM [0:16383]; // 16384 4-bytes words 
-                             // 64 Kb of data RAM in total
-   wire [13:0] word_addr = mem_addr[15:2];
-   always @(posedge clk) begin
-      mem_rdata <= MEM[word_addr];
-      if(mem_wmask[0]) MEM[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
-      if(mem_wmask[1]) MEM[word_addr][15:8 ] <= mem_wdata[15:8 ];
-      if(mem_wmask[2]) MEM[word_addr][23:16] <= mem_wdata[23:16];
-      if(mem_wmask[3]) MEM[word_addr][31:24] <= mem_wdata[31:24];	 
-   end
-   initial begin
-      $readmemh("DATARAM.hex",MEM);
-   end
-endmodule
-
-/******************************************************************************/
-
 module Processor (
     input 	  clk,
     input 	  resetn,
-    output [31:0] prog_mem_addr,  // program memory address 
-    input [31:0]  prog_mem_rdata, // data read from program memory
-    output [31:0] data_mem_addr,  // data memory address
-    input [31:0]  data_mem_rdata, // data read from data memory
-    output [31:0] data_mem_wdata, // data written to data memory
-    output [3:0]  data_mem_wmask  // write mask (1 bit per byte)
+    output [31:0] IO_mem_addr,  // IO memory address
+    input [31:0]  IO_mem_rdata, // data read from IO memory
+    output [31:0] IO_mem_wdata, // data written to IO memory
+    output 	  IO_mem_wr     // IO write flag
 );
 
+
+   reg [31:0] PROGROM [0:16383];
+   reg [31:0] DATARAM [0:16383];   
+
+   initial begin
+      $readmemh("PROGROM.hex",PROGROM);
+      $readmemh("DATARAM.hex",DATARAM);      
+   end
+
+   /****************************************************************************
+    * Internal memory data bus, used by Load and Store
+    * (used for both DATARAM and IO)
+    ***************************************************************************/
+   wire [31:0] data_mem_addr;
+   wire [31:0] data_mem_rdata;
+   wire [31:0] data_mem_wdata;
+   wire [3:0]  data_mem_wmask;
+
+   // bit 22 of memory address is set for IO page (and zero for RAM)
+   wire isIO  = data_mem_addr[22];
+   wire isRAM = !isIO;
+   
+   wire [13:0] data_mem_word_addr = data_mem_addr[15:2];
+
+   // RAM access
+   reg [31:0] dataram_rdata;
+   wire [3:0] dataram_wmask = data_mem_wmask & {4{isRAM}};
+   always @(posedge clk) begin
+      dataram_rdata <= DATARAM[data_mem_word_addr];
+      if(dataram_wmask[0]) 
+	DATARAM[data_mem_word_addr][ 7:0 ] <= data_mem_wdata[ 7:0 ];
+      if(dataram_wmask[1]) 
+	DATARAM[data_mem_word_addr][15:8 ] <= data_mem_wdata[15:8 ];
+      if(dataram_wmask[2]) 
+	DATARAM[data_mem_word_addr][23:16] <= data_mem_wdata[23:16];
+      if(dataram_wmask[3]) 
+	DATARAM[data_mem_word_addr][31:24] <= data_mem_wdata[31:24];	 
+   end
+   
+   assign data_mem_rdata = isRAM ? dataram_rdata : IO_mem_rdata;
+   assign IO_mem_addr  = data_mem_addr;
+   assign IO_mem_wdata = data_mem_wdata;
+   assign IO_mem_wr    = isIO & data_mem_wmask[0];
+   
    reg [31:0] PC=0;  // program counter
-   reg [31:2] instr; // current instruction (ignore two LSBs, always 11)
+   reg [31:0] instr; // current instruction (ignore two LSBs, always 11)
 
    // See the table P. 105 in RISC-V manual
    
@@ -80,7 +80,7 @@ module Processor (
    wire isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
    wire isStore   =  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
    wire isSYSTEM  =  (instr[6:2] == 5'b11100); // special
-
+   
    // The 5 immediate formats
    wire [31:0] Uimm={    instr[31],   instr[30:12], {12{1'b0}}};
    wire [31:0] Iimm={{21{instr[31]}}, instr[30:20]};
@@ -94,6 +94,9 @@ module Processor (
    // function codes
    wire [2:0] funct3 = instr[14:12];
    wire [6:0] funct7 = instr[31:25];
+
+   // SYSTEM: EBREAK 
+   wire isEBREAK     = isSYSTEM & (funct3 == 3'b000);
    
    // The registers bank
    reg [31:0] RegisterBank [0:31];
@@ -102,9 +105,18 @@ module Processor (
    wire [31:0] writeBackData; // data to be written to rd
    wire        writeBackEn;   // asserted if data should be written to rd
 
+   reg [63:0] cycle;   
+   reg [63:0] instret;
+
+   always @(posedge clk) begin
+      cycle <= !resetn ? 0 : cycle + 1;
+   end
+   
 `ifdef BENCH   
    integer     i;
    initial begin
+      cycle = 0;
+      instret = 0;
       for(i=0; i<32; ++i) begin
 	 RegisterBank[i] = 0;
       end
@@ -207,8 +219,6 @@ module Processor (
 
    wire [31:0] loadstore_addr = rs1 + (isStore ? Simm : Iimm);
 
-
-   // register write back
    assign writeBackData = (isJAL || isJALR) ? PCplus4   :
 			      isLUI         ? Uimm      :
 			      isAUIPC       ? PCplusImm :
@@ -275,8 +285,9 @@ module Processor (
    
    always @(posedge clk) begin
       if(!resetn) begin
-	 PC    <= 32'h00000000; 
-	 state <= WAIT_DATA;    // just wait for !mem_rbusy
+	 PC      <= 32'h00000000;
+	 state   <= WAIT_DATA;    // just wait for !mem_rbusy
+	 instret <= 0;
       end else begin
 	 if(writeBackEn && rdId != 0) begin
 	    RegisterBank[rdId] <= writeBackData;
@@ -284,6 +295,7 @@ module Processor (
 	 case(state)
 	   FETCH_INSTR: begin
 	      state <= WAIT_INSTR;
+	      instr <= PROGROM[PC[15:2]]; 	      
 `ifdef BENCH
 	      if(PC >= 32'h10000) begin
 		 $display("invalid PC, out of range: %h",PC);
@@ -292,13 +304,14 @@ module Processor (
 `endif	      
 	   end
 	   WAIT_INSTR: begin
-	      instr <= prog_mem_rdata[31:2];
-	      rs1 <= RegisterBank[prog_mem_rdata[19:15]];
-	      rs2 <= RegisterBank[prog_mem_rdata[24:20]];
+
+	      rs1 <= RegisterBank[instr[19:15]];
+	      rs2 <= RegisterBank[instr[24:20]];
 	      state <= EXECUTE;
+	      instret <= instret + 1;
 	   end
 	   EXECUTE: begin
-	      if(!isSYSTEM) begin
+	      if(!isEBREAK) begin
 		 PC <= nextPC;
 	      end
 	      state <= isLoad  ? WAIT_DATA : FETCH_INSTR;
@@ -309,7 +322,7 @@ module Processor (
 		    $finish();
 		 end
 	      end
-	      if(isSYSTEM) $finish();
+	      if(isEBREAK) $finish();
 `endif      
 	   end
 	   WAIT_DATA: begin
@@ -321,10 +334,7 @@ module Processor (
 
    assign writeBackEn = (state==EXECUTE && !isBranch && !isStore) ||
 			(state==WAIT_DATA) ;
-
    assign data_mem_addr = loadstore_addr;
-   assign prog_mem_addr = PC;
-   
    assign data_mem_wmask = {4{(state == EXECUTE) & isStore}} & STORE_wmask;
 endmodule
 
@@ -339,56 +349,22 @@ module SOC (
 
    wire clk;
    wire resetn;
-
-   wire [31:0] prog_mem_addr;
-   wire [31:0] prog_mem_rdata;
    
-   wire [31:0] data_mem_addr;
-   wire [31:0] data_mem_rdata;
-   wire [31:0] data_mem_wdata;
-   wire [3:0]  data_mem_wmask;
+   wire [31:0] IO_mem_addr;
+   wire [31:0] IO_mem_rdata;
+   wire [31:0] IO_mem_wdata;
+   wire        IO_mem_wr;
 
    Processor CPU(
       .clk(clk),
       .resetn(resetn),
-      .prog_mem_addr(prog_mem_addr),
-      .prog_mem_rdata(prog_mem_rdata),
-      .data_mem_addr(data_mem_addr),
-      .data_mem_rdata(data_mem_rdata),
-      .data_mem_wdata(data_mem_wdata),
-      .data_mem_wmask(data_mem_wmask)
+      .IO_mem_addr(IO_mem_addr),
+      .IO_mem_rdata(IO_mem_rdata),
+      .IO_mem_wdata(IO_mem_wdata),
+      .IO_mem_wr(IO_mem_wr)
    );
 
-   /*
-    * Memory map: three pages of 64kB each
-    *   page 0: instruction mem (readonly)
-    *   page 1: data mem        (readwrite)
-    *   page 2: IO              (readwrite)
-    *
-    *  mem_addr[15:0] : offset in page
-    *  mem_addr[16]   : data / code
-    *  mem_addr[22]   : IO (same bit as the rest of this tutorial)
-    */
-   
-   wire [31:0] RAM_rdata;
-   wire [13:0] mem_wordaddr = data_mem_addr[15:2];
-   wire        isIO         = data_mem_addr[22];
-   wire        isRAM        = !isIO;
-   wire        mem_wstrb    = |data_mem_wmask;
-
-   ProgramMemory progROM(
-      .clk(clk),
-      .mem_addr(prog_mem_addr[15:0]),
-      .mem_rdata(prog_mem_rdata)
-   );
-   
-   DataMemory RAM(
-      .clk(clk),
-      .mem_addr(data_mem_addr[15:0]),
-      .mem_rdata(RAM_rdata),
-      .mem_wdata(data_mem_wdata),
-      .mem_wmask({4{isRAM}}&data_mem_wmask)
-   );
+   wire [13:0] IO_wordaddr = IO_mem_addr[15:2];
    
    // Memory-mapped IO in IO page, 1-hot addressing in word address.   
    localparam IO_LEDS_bit      = 0;  // W five leds
@@ -396,12 +372,12 @@ module SOC (
    localparam IO_UART_CNTL_bit = 2;  // R status. bit 9: busy sending
    
    always @(posedge clk) begin
-      if(isIO & mem_wstrb & mem_wordaddr[IO_LEDS_bit]) begin
-	 LEDS <= data_mem_wdata[4:0];
+      if(IO_mem_wr & IO_wordaddr[IO_LEDS_bit]) begin
+	 LEDS <= IO_mem_wdata[4:0];
       end
    end
 
-   wire uart_valid = isIO & mem_wstrb & mem_wordaddr[IO_UART_DAT_bit];
+   wire uart_valid = IO_mem_wr & IO_wordaddr[IO_UART_DAT_bit];
    wire uart_ready;
 
    corescore_emitter_uart #(
@@ -410,22 +386,21 @@ module SOC (
    ) UART(
       .i_clk(clk),
       .i_rst(!resetn),
-      .i_data(data_mem_wdata[7:0]),
+      .i_data(IO_mem_wdata[7:0]),
       .i_valid(uart_valid),
       .o_ready(uart_ready),
       .o_uart_tx(TXD)      			       
    );
    
-   wire [31:0] IO_rdata = 
-	       mem_wordaddr[IO_UART_CNTL_bit] ? { 22'b0, !uart_ready, 9'b0}
-	                                      : 32'b0;
-
-   assign data_mem_rdata = isRAM ? RAM_rdata : IO_rdata ;
+   assign IO_mem_rdata = 
+		    IO_wordaddr[IO_UART_CNTL_bit] ? { 22'b0, !uart_ready, 9'b0}
+	                                          : 32'b0;
 
 `ifdef BENCH
    always @(posedge clk) begin
       if(uart_valid) begin
-	 $write("%c", data_mem_wdata[7:0] );
+//	 $display("UART: %c", IO_mem_wdata[7:0]);
+	 $write("%c", IO_mem_wdata[7:0] );
 	 $fflush(32'h8000_0001);
       end
    end
@@ -441,3 +416,5 @@ module SOC (
 
 endmodule
 
+
+ 
