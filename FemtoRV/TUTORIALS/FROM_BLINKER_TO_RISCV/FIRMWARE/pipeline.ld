@@ -7,7 +7,7 @@ SECTIONS {
 
     .text : {
         . = ALIGN(4);
-	start_dual_memory.o (.text)
+	start_pipeline.o (.text)
         *(.text*)
     } > PROGROM
 

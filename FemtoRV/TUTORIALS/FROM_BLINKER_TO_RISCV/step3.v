@@ -1,3 +1,5 @@
+TAGADA
+
 /**
  * Step 3: Display a led pattern "animation" stored in BRAM.
  * DONE*

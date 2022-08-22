@@ -436,9 +436,11 @@ module Processor (
    assign jumpOrBranch        = E_JumpOrBranch;
 /******************************************************************************/
 
+`ifdef BENCH   
    always @(posedge clk) begin
       if(halt) $finish();
    end
+`endif   
 
    /*
    always @(posedge clk) begin

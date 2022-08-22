@@ -470,11 +470,13 @@ module Processor (
 
 /******************************************************************************/
 
-/*
+`ifdef BENCH
    always @(posedge clk) begin
       if(halt) $finish();
    end
-   
+`endif
+
+/*   
    always @(posedge clk) begin
       if(1'b0 & resetn) begin
 	 $write("[W] PC=%h ", MW_PC);
