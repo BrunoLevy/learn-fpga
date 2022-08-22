@@ -2,6 +2,7 @@
  * pipeline4.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
  * Step 4: stalling and bubbles
+ * Do not try to synthesize on real device !
  */
  
 `default_nettype none
@@ -469,6 +470,7 @@ module Processor (
 
 /******************************************************************************/
 
+/*
    always @(posedge clk) begin
       if(halt) $finish();
    end
@@ -504,7 +506,8 @@ module Processor (
 	 $display("");
       end
    end
-   
+*/
+
 /******************************************************************************/
    
 endmodule
