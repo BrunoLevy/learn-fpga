@@ -167,7 +167,6 @@ module Processor (
    always @(posedge clk) begin
       if(!resetn) begin
 	 F_PC    <= 0;
-	 instret <= 0;
 	 FD_instr <= NOP;
       end else if(jumpOrBranch) begin
 	 FD_instr <= PROGROM[F_PC[15:2]]; 
@@ -224,7 +223,10 @@ module Processor (
    /*********** the ALU *************************************************/
 
    wire [31:0] E_aluIn1 = DE_rs1;
-   wire [31:0] E_aluIn2 = (isALUreg(DE_instr) | isBranch(DE_instr)) ? DE_rs2 : Iimm(DE_instr);
+   
+   wire [31:0] E_aluIn2 = 
+         (isALUreg(DE_instr) | isBranch(DE_instr)) ? DE_rs2 : Iimm(DE_instr);
+   
    wire [4:0]  E_shamt  = isALUreg(DE_instr) ? DE_rs2[4:0] : shamt(DE_instr); 
 
    wire E_minus = DE_instr[30] & isALUreg(DE_instr);
@@ -309,10 +311,10 @@ module Processor (
       EM_rs1     <= DE_rs1;
       EM_rs2     <= DE_rs2;
       EM_Eresult <= 
-		    (isJAL(DE_instr) | isJALR(DE_instr)) ? DE_PC+4                :
-		    isLUI(DE_instr)                      ? Uimm(DE_instr)         :
-		    isAUIPC(DE_instr)                    ? DE_PC + Uimm(DE_instr) : 
-                    E_aluOut                                                      ;
+	    (isJAL(DE_instr) | isJALR(DE_instr)) ? DE_PC+4                :
+	    isLUI(DE_instr)                      ? Uimm(DE_instr)         :
+	    isAUIPC(DE_instr)                    ? DE_PC + Uimm(DE_instr) : 
+            E_aluOut                                                      ;
       
       EM_addr <= isStore(DE_instr) ? DE_rs1 + Simm(DE_instr) : 
                                         DE_rs1 + Iimm(DE_instr) ;
@@ -385,8 +387,8 @@ module Processor (
    end
    
    always @(posedge clk) begin
-      MW_PC     <= EM_PC;
-      MW_instr  <= EM_instr;
+      MW_PC        <= EM_PC;
+      MW_instr     <= EM_instr;
       MW_Eresult   <= EM_Eresult;
       MW_IOresult  <= IO_mem_rdata;
       MW_addr      <= EM_addr;
@@ -396,6 +398,11 @@ module Processor (
 	2'b01: MW_CSRresult = instret[31:0];
 	2'b11: MW_CSRresult = instret[63:32];	 
       endcase 
+      if(!resetn) begin
+	 instret <= 0;
+      end else if(MW_instr != NOP) begin
+	 instret <= instret + 1;
+      end
    end
 
 /******************************************************************************/
@@ -432,8 +439,7 @@ module Processor (
 	       MW_Eresult;
 
    assign wbEnable =
-        !isBranch(MW_instr) && !isStore(MW_instr) && (rdId(MW_instr) != 0);		    
-   
+        !isBranch(MW_instr) && !isStore(MW_instr) && (rdId(MW_instr) != 0);
 
    assign wbRdId = rdId(MW_instr);
    
@@ -478,7 +484,6 @@ module Processor (
 	 $write("[M] PC=%h ", EM_PC);
 	 $write("     ");	 
 	 riscv_disasm(EM_instr,EM_PC);
-	 if(isLoad(EM_instr)) $write("   mem_addr=0x%h rs1=0x%h Iimm=%d ", EM_addr, EM_rs1, Iimm(EM_instr));
 	 $write("\n");
 
 	 $write("[E] PC=%h ", DE_PC);
