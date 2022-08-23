@@ -1,8 +1,10 @@
 /**
- * pipeline4.v
+ * pipeline6.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
- * Step 4: stalling and bubbles
+ * Step 6: full register forwarding
  * Do not try to synthesize on real device !
+ * 
+ * BROKEN (but almost there...)
  */
  
 `default_nettype none
@@ -205,9 +207,20 @@ module Processor (
       if(E_flush) begin
 	 DE_instr <= NOP;
       end
-      
-      DE_rs1 <= RegisterBank[rs1Id(FD_instr)];
-      DE_rs2 <= RegisterBank[rs2Id(FD_instr)];
+
+      // W to D register forwarding (read and write RF in same cycle)
+      if(wbEnable && rdId(MW_instr) == rs1Id(FD_instr)) begin
+	 DE_rs1 <= wbData;
+      end else begin
+	 DE_rs1 <= RegisterBank[rs1Id(FD_instr)];
+      end
+
+      // W to D register forwarding (read and write RF in same cycle)     
+      if(wbEnable && rdId(MW_instr) == rs2Id(FD_instr)) begin
+	 DE_rs2 <= wbData;
+      end else begin
+	 DE_rs2 <= RegisterBank[rs2Id(FD_instr)];
+      end
       
       if(wbEnable) begin
 	 RegisterBank[wbRdId] <= wbData;
@@ -223,14 +236,30 @@ module Processor (
 
                      /*** E: Execute ***/
 
+   /*********** Registrer forwarding ************************************/
+
+   wire E_M_fwd_rs1 = readsRs1(DE_instr) && (rdId(EM_instr) == rs1Id(DE_instr));
+   wire E_W_fwd_rs1 = !E_M_fwd_rs1 && readsRs1(DE_instr) && (rdId(MW_instr) == rs1Id(DE_instr));
+
+   wire E_M_fwd_rs2 = readsRs2(DE_instr) && (rdId(EM_instr) == rs2Id(DE_instr));
+   wire E_W_fwd_rs2 = !E_M_fwd_rs2 && readsRs2(DE_instr) && (rdId(MW_instr) == rs2Id(DE_instr));
+   
+   wire [31:0] E_rs1 = E_M_fwd_rs1 ? EM_Eresult :
+	               E_W_fwd_rs1 ? wbData     :
+	               DE_rs1;
+	       
+   wire [31:0] E_rs2 = E_M_fwd_rs2 ? EM_Eresult :
+	               E_W_fwd_rs2 ? wbData     :
+	               DE_rs2;
+
    /*********** the ALU *************************************************/
 
-   wire [31:0] E_aluIn1 = DE_rs1;
+   wire [31:0] E_aluIn1 = E_rs1;
    
    wire [31:0] E_aluIn2 = 
-         (isALUreg(DE_instr) | isBranch(DE_instr)) ? DE_rs2 : Iimm(DE_instr);
+         (isALUreg(DE_instr) | isBranch(DE_instr)) ? E_rs2 : Iimm(DE_instr);
    
-   wire [4:0]  E_shamt  = isALUreg(DE_instr) ? DE_rs2[4:0] : shamt(DE_instr); 
+   wire [4:0]  E_shamt  = isALUreg(DE_instr) ? E_rs2[4:0] : shamt(DE_instr); 
 
    wire E_minus = DE_instr[30] & isALUreg(DE_instr);
    wire E_arith_shift = DE_instr[30];
@@ -317,7 +346,7 @@ module Processor (
    always @(posedge clk) begin
       EM_PC      <= DE_PC;
       EM_instr   <= DE_instr;
-      EM_rs2     <= DE_rs2;
+      EM_rs2     <= E_rs2;
       EM_Eresult <= E_result;
       EM_addr    <= isStore(DE_instr) ? DE_rs1 + Simm(DE_instr) : 
                                         DE_rs1 + Iimm(DE_instr) ;
@@ -450,15 +479,15 @@ module Processor (
    assign jumpOrBranchAddress = E_JumpOrBranchAddr;
    assign jumpOrBranch        = E_JumpOrBranch;
 
-   wire rs1Hazard = readsRs1(FD_instr) && 
-                           (rs1Id(FD_instr) == rdId(DE_instr) ||
-                            rs1Id(FD_instr) == rdId(EM_instr) ||
-			    rs1Id(FD_instr) == rdId(MW_instr)  ) ;
+   wire rs1Hazard = 
+	 readsRs1(FD_instr)                     && 
+	(isLoad(DE_instr) || isCSRRS(DE_instr)) &&
+        (rs1Id(FD_instr) == rdId(DE_instr))     ;
 
-   wire rs2Hazard = readsRs2(FD_instr) && 
-                           (rs2Id(FD_instr) == rdId(DE_instr) ||
-                            rs2Id(FD_instr) == rdId(EM_instr) ||
-			    rs2Id(FD_instr) == rdId(MW_instr)  ) ;
+   wire rs2Hazard = 
+	  readsRs2(FD_instr)                     &&
+	 (isLoad(DE_instr) || isCSRRS(DE_instr)) &&	 
+         (rs2Id(FD_instr) == rdId(DE_instr))     ;
    
    wire dataHazard = rs1Hazard || rs2Hazard;
    
@@ -476,9 +505,9 @@ module Processor (
    end
 `endif
 
-/*   
+
    always @(posedge clk) begin
-      if(1'b0 & resetn) begin
+      if(resetn) begin
 	 $write("[W] PC=%h ", MW_PC);
 	 $write("     ");
 	 riscv_disasm(MW_instr,MW_PC);
@@ -491,13 +520,21 @@ module Processor (
 	 $write("\n");
 
 	 $write("[E] PC=%h ", DE_PC);
-	 $write("     ");	 
+	 $write("[%s%s] ",
+		E_M_fwd_rs1 ? "M": E_W_fwd_rs1 ? "W" : " ",
+		E_M_fwd_rs2 ? "M": E_W_fwd_rs2 ? "W" : " "
+	 );	 
 	 riscv_disasm(DE_instr,DE_PC);
-	 $write("  rs1=0x%h  rs2=0x%h  ",DE_rs1, DE_rs2);
+	 if(DE_instr != NOP) begin
+	    $write("  rs1=0x%h  rs2=0x%h  ",E_rs1, E_rs2);
+	 end
 	 $write("\n");
 
 	 $write("[D] PC=%h ", FD_PC);
-	 $write("[%s%s] ",rs1Hazard?"*":" ",rs2Hazard?"*":" ");	 
+	 $write("[%s%s] ",
+		rs1Hazard ? "*" : " ",
+		rs2Hazard ? "*" : " "
+	 );	 
 	 riscv_disasm(FD_instr,FD_PC);
 	 $write("\n");
 
@@ -508,7 +545,7 @@ module Processor (
 	 $display("");
       end
    end
-*/
+
 
 /******************************************************************************/
    
@@ -575,9 +612,9 @@ module SOC (
 `ifdef BENCH
    always @(posedge clk) begin
       if(uart_valid) begin
-//	 $display("UART: %c", IO_mem_wdata[7:0]);
-	 $write("%c", IO_mem_wdata[7:0] );
-	 $fflush(32'h8000_0001);
+	 $display("UART: %c", IO_mem_wdata[7:0]);
+//	 $write("%c", IO_mem_wdata[7:0] );
+//	 $fflush(32'h8000_0001);
       end
    end
 `endif   

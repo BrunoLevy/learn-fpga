@@ -1,7 +1,7 @@
 /**
- * pipeline4.v
+ * pipeline5.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
- * Step 4: stalling and bubbles
+ * Step 5: register forwarding 1/2: D reads and writes RF in same cycle
  * Do not try to synthesize on real device !
  */
  
@@ -205,9 +205,20 @@ module Processor (
       if(E_flush) begin
 	 DE_instr <= NOP;
       end
-      
-      DE_rs1 <= RegisterBank[rs1Id(FD_instr)];
-      DE_rs2 <= RegisterBank[rs2Id(FD_instr)];
+
+      // W to D register forwarding (read and write RF in same cycle)
+      if(wbEnable && rdId(MW_instr) == rs1Id(FD_instr)) begin
+	 DE_rs1 <= wbData;
+      end else begin
+	 DE_rs1 <= RegisterBank[rs1Id(FD_instr)];
+      end
+
+      // W to D register forwarding (read and write RF in same cycle)     
+      if(wbEnable && rdId(MW_instr) == rs2Id(FD_instr)) begin
+	 DE_rs2 <= wbData;
+      end else begin
+	 DE_rs2 <= RegisterBank[rs2Id(FD_instr)];
+      end
       
       if(wbEnable) begin
 	 RegisterBank[wbRdId] <= wbData;
@@ -452,13 +463,11 @@ module Processor (
 
    wire rs1Hazard = readsRs1(FD_instr) && 
                            (rs1Id(FD_instr) == rdId(DE_instr) ||
-                            rs1Id(FD_instr) == rdId(EM_instr) ||
-			    rs1Id(FD_instr) == rdId(MW_instr)  ) ;
+                            rs1Id(FD_instr) == rdId(EM_instr)  ) ;
 
    wire rs2Hazard = readsRs2(FD_instr) && 
                            (rs2Id(FD_instr) == rdId(DE_instr) ||
-                            rs2Id(FD_instr) == rdId(EM_instr) ||
-			    rs2Id(FD_instr) == rdId(MW_instr)  ) ;
+                            rs2Id(FD_instr) == rdId(EM_instr)  ) ;
    
    wire dataHazard = rs1Hazard || rs2Hazard;
    

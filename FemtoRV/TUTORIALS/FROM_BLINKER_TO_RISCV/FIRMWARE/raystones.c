@@ -36,8 +36,8 @@ static inline float min(float x, float y) { return x<y?x:y; }
 
 // Size of the screen
 // Replace with your own variables or values
-#define graphics_width  120
-#define graphics_height 60
+#define graphics_width  30 // 120
+#define graphics_height 15 // 60
 
 // Two pixels per character using UTF8 character set
 // (comment-out if terminal does not support it)
