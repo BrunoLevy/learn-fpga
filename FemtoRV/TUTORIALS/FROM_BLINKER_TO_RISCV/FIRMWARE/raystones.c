@@ -54,6 +54,10 @@ static inline void graphics_init() {
 // Here I send <ctrl><D> to the UART, to exit the simulation in Verilator,
 // it is captured by special code in RTL/DEVICES/uart.v
 static inline void graphics_terminate() {
+    printf("\033[48;5;16m"   // set background color black
+	   "\033[38;5;15m"   // set foreground color white
+    );
+
 }
 
 
@@ -411,6 +415,7 @@ static inline void render_pixel(
 
 void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
    stats_begin_frame();
+   graphics_init();
 #ifdef graphics_double_lines  
    for (int j = 0; j<graphics_height; j+=2) { 
       for (int i = 0; i<graphics_width; i++) {
@@ -424,7 +429,8 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
 	  render_pixel(i,j  ,spheres,nb_spheres,lights,nb_lights);
       }
    }
-#endif   
+#endif
+   graphics_terminate();
    stats_end_frame();
 }
 
@@ -460,8 +466,6 @@ void init_scene() {
 
 int main() {
     init_scene();
-    graphics_init();
     render(spheres, nb_spheres, lights, nb_lights);
-    graphics_terminate();
     return 0;
 }

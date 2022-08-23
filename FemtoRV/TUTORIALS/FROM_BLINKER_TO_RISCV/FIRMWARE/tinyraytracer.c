@@ -388,6 +388,7 @@ static inline void render_pixel(
 
 void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
    stats_begin_frame();
+   graphics_init();
 #ifdef graphics_double_lines  
    for (int j = 0; j<graphics_height; j+=2) { 
       for (int i = 0; i<graphics_width; i++) {
@@ -401,7 +402,8 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
 	  render_pixel(i,j  ,spheres,nb_spheres,lights,nb_lights);
       }
    }
-#endif   
+#endif
+   graphics_terminate();   
    stats_end_frame();
 }
 
@@ -437,8 +439,6 @@ void init_scene() {
 
 int main() {
     init_scene();
-    graphics_init();
     render(spheres, nb_spheres, lights, nb_lights);
-    graphics_terminate();
     return 0;
 }
