@@ -408,7 +408,7 @@ module Processor (
    wire [2:0] W_funct3 = funct3(MW_instr);
    wire W_isB = (W_funct3[1:0] == 2'b00);
    wire W_isH = (W_funct3[1:0] == 2'b01);
-   wire W_sext = W_funct3[2];		     
+   wire W_sext = !W_funct3[2];		     
    wire W_isIO = MW_addr[22];
 
    /*************** LOAD ****************************/

@@ -307,9 +307,8 @@ program memory:
 ```verilog
      ...
      WAIT_INSTR: begin
-        instr <= prog_mem_rdata[31:2];
-        rs1 <= RegisterBank[prog_mem_rdata[19:15]];
-        rs2 <= RegisterBank[prog_mem_rdata[24:20]];
+        rs1 <= RegisterBank[instr[19:15]];
+        rs2 <= RegisterBank[instr[24:20]];
         state <= EXECUTE;
         instret <= instret + 1;
      end
@@ -489,7 +488,8 @@ in 1 cycle and divisions in 32 cycles.
 
 What can we expect to gain with pipelining ? Ideally, a pipelined
 processor would run at 1 CPI, but this is without stalls required
-to resolve certain configurations (dependencies and branches). 
+to resolve certain configurations (dependencies and branches), more
+on this later. 
 If you compare `femtorv-gracilis` (`rv32imc`) with `vexriscv imac`
 (that is pipelined), you can see that `vexriscv` is more than
 twice faster.
@@ -508,7 +508,7 @@ but each state has its own circuitry, and runs concurrently with the other state
 and passes its outputs to the next state (one talks about stages rather than states).
 Since there are several tricky situations to handle, and since I don't know for now
 exactly how to do that, my idea is to go step by step, and first write a core that
-has all the stages, but drive it with a state machine that fires one stage at a time
+has all the stages, but drive it with a state machine that executes one stage at a time
 instead of running them concurrently. Then we will see what needs to be modified when
 all the stages run concurrently.
 
@@ -527,11 +527,14 @@ Each stage will read its input from a set of registers and write its outputs
 to a set of registers. In particular, each stage will have its own copy of the
 program counter, the current instruction, and some other fields derived from
 them. Why is this so ?
-- rember that in the next step, all stages will be running concurrently, which
-  means that each stage will process a *different* instruction;
+- rember that even if for now we lanuch them sequentially, all stages are supposed to run
+  concurrently (it will be so in our next step). In particular, it means that each stage
+  will process a *different* instruction;
 - besides the advantage of increasing throughput, by separating execution into
   multiple register-to-register stages, pipelining results in a shorter critical
   path (hence supports a higher frequency).
+
+
 
 _WIP_
 
