@@ -12,92 +12,97 @@ For this episode, you will need a FPGA with at least 128kB BRAM
 
 ## Step 1: separate instruction and data memory
 
-A pipelined processor always has an instruction cache and a data cache. For now,
-I do not know how a cache works, so to make things simpler, the idea is to
-design a system with two separate memories.
-
-There is a "program memory":
-
-```verilog
-module ProgramMemory (
-     input             clk,
-     input      [15:0] mem_addr,  
-     output reg [31:0] mem_rdata  
-);
-   reg [31:0] MEM [0:16383]; 
-   wire [13:0] word_addr = mem_addr[15:2];
-   always @(posedge clk) begin
-      mem_rdata <= MEM[word_addr];
-   end
-   initial begin
-      $readmemh("PROGROM.hex",MEM);
-   end
-endmodule
-```
-
-This memory is readonly. It is were the instructions are stored. As can be
-seen, it is initialized from a `PROGRAM.hex` file. We will see later how
-to create it from an ELF executable.
-
-There is also a "data memory":
+Our previous processor [step24.v](step24.v) has a "unified memory",
+and accesses both program and
+data using the same wires. For a pipelined processor, things are different
+internally: it has a separate program memory and data memory. In fact, these
+memories are caches, filled from a unique memory bus connected to the outside
+world. For now, I don't know how a cache works (will be for next steps), so
+to make things simpler, we will have a "program ROM" and a "data RAM" in the
+processor (64 kB each), directly initialized from a `.hex` file (we will see
+later how to create these `.hex` files from an `ELF` executable):
 
 ```verilog
-module DataMemory (
-   input             clk,
-   input      [15:0] mem_addr,  
-   output reg [31:0] mem_rdata, 
-   input      [31:0] mem_wdata, 
-   input      [3:0]  mem_wmask	
-);
-   reg [31:0] MEM [0:16383]; 
-   wire [13:0] word_addr = mem_addr[15:2];
-   always @(posedge clk) begin
-      mem_rdata <= MEM[word_addr];
-      if(mem_wmask[0]) MEM[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
-      if(mem_wmask[1]) MEM[word_addr][15:8 ] <= mem_wdata[15:8 ];
-      if(mem_wmask[2]) MEM[word_addr][23:16] <= mem_wdata[23:16];
-      if(mem_wmask[3]) MEM[word_addr][31:24] <= mem_wdata[31:24];	 
-   end
+   reg [31:0] PROGROM [0:16383];
+   reg [31:0] DATARAM [0:16383];   
    initial begin
-      $readmemh("DATARAM.hex",MEM);
+      $readmemh("PROGROM.hex",PROGROM);
+      $readmemh("DATARAM.hex",DATARAM);      
    end
-endmodule
 ```
 
-This is where the variables will be stored. `LOAD` and `STORE`
+- `PROGROM` is where instructions are stored;
+- `DATARAM` is where the variables are stored. `LOAD` and `STORE`
 instructions will be able to read and write from/to this memory
-(but they won't be agle to access the program memory).
+(but they won't be able to access the program memory).
 
-So we will transform our previous processor [step24.v](step24.v) to make it
-work with these two memories (of 64 kB each).
-First thing to do is changing its interface as follows:
+
+The previous memory busses are replaced with internal wires:
+
+```verilog
+   wire [31:0] mem_addr;
+   wire [31:0] mem_rdata;
+   wire [31:0] mem_wdata;
+   wire [3:0]  mem_wmask;
+```
+
+As compared to before, `mem_rstrobe` and `mem_rbusy` are no longer here:
+the internal memories always delivers the data at `mem_addr` at the next
+cycle. 
+
+To be able to talk to the outside world, our processor still has a 
+memory bus for the mapped IO page (that we use to communicate with
+the `UART` and other devices):
 
 ```verilog
 module Processor (
-    input 	  clk,
-    input 	  resetn,
-    output [31:0] prog_mem_addr,  
-    input [31:0]  prog_mem_rdata, 
-    output [31:0] data_mem_addr,  
-    input [31:0]  data_mem_rdata, 
-    output [31:0] data_mem_wdata, 
-    output [3:0]  data_mem_wmask  
+    ...
+    output [31:0] IO_mem_addr,  
+    input [31:0]  IO_mem_rdata, 
+    output [31:0] IO_mem_wdata, 
+    output 	  IO_mem_wr     
 );
 ```
 
-- program memory and data memory are now separated
-- there is no longer a `mem_rstrb` signal to read the memory.
-  We make it simpler, program memory is read at each cycle, and
-  data memory is either read or written at each cycle.
-- there is no longer a `mem_rbusy` signal. Memory data is always
-  available at the next cycle _so we won't be able to execute from
-  SPI flash as before_
+Now we need to route everything to the internal memory busses. We keep the
+same IO page as before (so that we can reuse the same code), indicared by
+bit 22 of memory addresses:
 
-The processor needs to be modified to route the `prog_mem_xxx` signals
-to instruction fetch, and to route the `data_mem_xxx` signals to the
-load/store circuitry. The SOC needs also to be adapted. We keep
-address bit 22 for the IO page, and keep the same addresses for the UART,
-so that our programs will still work on this processor.
+```verilog
+   wire isIO  = mem_addr[22];
+   wire isRAM = !isIO;
+```
+
+Data ram is read and optionally written at each cycle, as follows:
+
+```verilog
+   wire [13:0] mem_word_addr = mem_addr[15:2];
+   reg [31:0] dataram_rdata;
+   wire [3:0] dataram_wmask = mem_wmask & {4{isRAM}};
+   always @(posedge clk) begin
+      dataram_rdata <= DATARAM[mem_word_addr];
+      if(dataram_wmask[0]) DATARAM[mem_word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
+      if(dataram_wmask[1]) DATARAM[mem_word_addr][15:8 ] <= mem_wdata[15:8 ];
+      if(dataram_wmask[2]) DATARAM[mem_word_addr][23:16] <= mem_wdata[23:16];
+      if(dataram_wmask[3]) DATARAM[mem_word_addr][31:24] <= mem_wdata[31:24];
+   end
+```
+
+Then we can plug the external IO busses:
+
+```verilog
+   assign mem_rdata = isRAM ? dataram_rdata : IO_mem_rdata;
+   assign IO_mem_addr  = mem_addr;
+   assign IO_mem_wdata = mem_wdata;
+   assign IO_mem_wr    = isIO & mem_wmask[0];
+```
+
+Finally, there is a couple of simple modifications to make:
+- Instruction is fetched from `PROGROM` during `FETCH_INSTR` state: `instr <= PROGROM[PC[15:2]];`
+- The `mem_rbusy` signal is no longer there (remember, `DATARAM` and `PROGROM` are systematically
+  accessed in one cycle), so the state machine is simplified. The price to pay is that we
+  will not be able to execute programs from SPI flash as before (when `PROGROM` will be replaced
+  with an _instruction cache_ it will be possible again).
 
 The updated VERILOG source is here: [pipeline1.v](pipeline1.v)
 
@@ -234,7 +239,7 @@ $ ./terminal.sh
 
 The goal of pipelining is to gain some performance, so we need a way
 of measuring performance. The RISC-V ISA has a set of special registers
-(called CSR for Constrol and Status Registers). There are many CSRs,
+(called "CSR" for Constrol and Status Registers). There are many CSRs,
 used to control interrupts, protection levels, virtual memory... Here
 we will only implement two (or four) of them:
 - `CYCLE`: counts the clock ticks
@@ -496,8 +501,6 @@ now, we use a separate program memory and data memory, all in BRAM, that
 read/writes to memory in 1 cycle. We will see later how to implement
 caches.
 
-
-
 ## Step 3: a sequential 5-stages pipeline
 
 A pipelined processor is like a multi-cycle processor that uses a state machine,
@@ -518,7 +521,7 @@ with a super classical design with 5 stages:
 | ID      | Instruction decode   | decodes instruction and immediates    |
 | EX      | Execute              | computes ALU, tests and addresses     |
 | MEM     | read or write memory | load and store                        |
-| WB      | Write back           | write result to register file         |
+| WB      | Write back           | writes result to register file        |
 
 Each stage will read its input from a set of registers and write its outputs
 to a set of registers. In particular, each stage will have its own copy of the

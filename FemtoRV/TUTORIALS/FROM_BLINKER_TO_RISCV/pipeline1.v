@@ -1,5 +1,5 @@
 /**
- * pipeline2.v
+ * pipeline1.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
  * Step 1: separate program memory and data memory, both included in CPU
  *   (not a pipelined processor yet)
