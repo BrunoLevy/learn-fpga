@@ -149,6 +149,17 @@ module Processor (
    wire [31:0] wbData;
    wire [4:0]  wbRdId;
 
+   wire D_isALUreg = (FD_instr[6:2]==5'b01100); 
+   wire D_isALUimm = (FD_instr[6:2]==5'b00100); 
+   wire D_isBranch = (FD_instr[6:2]==5'b11000); 
+   wire D_isJALR   = (FD_instr[6:2]==5'b11001); 
+   wire D_isJAL    = (FD_instr[6:2]==5'b11011); 
+   wire D_isAUIPC  = (FD_instr[6:2]==5'b00101); 
+   wire D_isLUI    = (FD_instr[6:2]==5'b01101); 
+   wire D_isLoad   = (FD_instr[6:2]==5'b00000); 
+   wire D_isStore  = (FD_instr[6:2]==5'b01000); 
+   wire D_isSYSTEM = (FD_instr[6:2]==5'b11100);
+   
    reg [31:0] RegisterBank [0:31];
    always @(posedge clk) begin
 
@@ -164,17 +175,17 @@ module Processor (
 	 DE_Jimm <= {{12{FD_instr[31]}}, 
                      FD_instr[19:12],FD_instr[20],FD_instr[30:21],1'b0};
 
-	 DE_isALUreg <= (FD_instr[6:2]==5'b01100); 
-	 DE_isALUimm <= (FD_instr[6:2]==5'b00100); 
-	 DE_isBranch <= (FD_instr[6:2]==5'b11000); 
-	 DE_isJALR   <= (FD_instr[6:2]==5'b11001); 
-	 DE_isJAL    <= (FD_instr[6:2]==5'b11011); 
-	 DE_isAUIPC  <= (FD_instr[6:2]==5'b00101); 
-	 DE_isLUI    <= (FD_instr[6:2]==5'b01101); 
-	 DE_isLoad   <= (FD_instr[6:2]==5'b00000); 
-	 DE_isStore  <= (FD_instr[6:2]==5'b01000); 
-	 DE_isCSRRS  <= (FD_instr[6:2]==5'b11100) && (FD_instr[14:12]==3'b010);
-	 DE_isEBREAK <= (FD_instr[6:2]==5'b11100) && (FD_instr[14:12]==3'b000);	 
+	 DE_isALUreg <= D_isALUreg;
+	 DE_isALUimm <= D_isALUimm;
+	 DE_isBranch <= D_isBranch;
+	 DE_isJALR   <= D_isJALR;
+	 DE_isJAL    <= D_isJAL;
+	 DE_isAUIPC  <= D_isAUIPC;
+	 DE_isLUI    <= D_isLUI;
+	 DE_isLoad   <= D_isLoad;
+	 DE_isStore  <= D_isStore;
+	 DE_isCSRRS  <= D_isSYSTEM && (FD_instr[14:12]==3'b010);
+	 DE_isEBREAK <= D_isSYSTEM && (FD_instr[14:12]==3'b000);	 
 
 	 // wbEnable = !isBranch & !isStore & rdId != 0
 	 DE_wbEnable <= (FD_instr[5:2] != 4'b1000) && (FD_instr[11:7] != 5'b00000); 
