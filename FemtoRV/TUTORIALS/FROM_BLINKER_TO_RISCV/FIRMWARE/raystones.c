@@ -37,7 +37,7 @@ static inline float min(float x, float y) { return x<y?x:y; }
 // Size of the screen
 // Replace with your own variables or values
 #define graphics_width  30 // 120
-#define graphics_height 15 // 60
+#define graphics_height 15  // 60
 
 // Two pixels per character using UTF8 character set
 // (comment-out if terminal does not support it)
@@ -77,7 +77,7 @@ void graphics_set_pixel(int x, int y, float r, float g, float b) {
        if((R == prev_R) && (G == prev_G) && (B == prev_B)) {
 	   printf("\033[48;2;%d;%d;%dm ",(int)R,(int)G,(int)B);
        } else {
-	   printf("\033[48;2;%d;%d;%dm",(int)prev_R,(int)prev_G,(int)prev_B);	   	   
+	   printf("\033[48;2;%d;%d;%dm",(int)prev_R,(int)prev_G,(int)prev_B);
 	   printf("\033[38;2;%d;%d;%dm",(int)R,(int)G,(int)B);
 	   // https://www.w3.org/TR/xml-entity-names/025.html
 	   // https://onlineunicodetools.com/convert-unicode-to-utf8

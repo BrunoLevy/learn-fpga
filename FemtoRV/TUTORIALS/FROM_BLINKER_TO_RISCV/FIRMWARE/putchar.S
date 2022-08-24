@@ -12,11 +12,11 @@
 .globl putchar
 
 putchar:
-  sw a0, IO_UART_DAT(gp)
-  li t0, 1<<9
+   sw a0, IO_UART_DAT(gp)
+#  li t0, 1<<9
 .L0:  
-  lw t1, IO_UART_CNTL(gp)
-  and t1, t1, t0
-  bnez t1, .L0
+#  lw t1, IO_UART_CNTL(gp)
+#  and t1, t1, t0
+#  bnez t1, .L0
   ret
 
