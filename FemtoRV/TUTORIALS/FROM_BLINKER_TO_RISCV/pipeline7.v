@@ -88,12 +88,14 @@ module Processor (
       end
       
    end
-   
+
+/******************************************************************************/
 /******************************************************************************/
    reg [31:0] FD_PC;   
    reg [31:0] FD_instr;
    reg        FD_nop; // Needed because I cannot directly write NOP to FD_instr
                       // because FD_instr is plugged to PROGROM's output port.
+/******************************************************************************/
 /******************************************************************************/
 
                      /*** D: Instruction decode ***/
@@ -199,7 +201,8 @@ module Processor (
 
       DE_isJALorJALRorLUIorAUIPC <= D_isJALorJALR | D_isLUIorAUIPC;
    end
-   
+
+/******************************************************************************/
 /******************************************************************************/
    reg        DE_nop; // Needed by instret in W stage
    reg [4:0]  DE_rdId;
@@ -232,7 +235,7 @@ module Processor (
    reg [31:0] DE_PCplus4orUimm;
    
 /******************************************************************************/
-
+/******************************************************************************/
                      /*** E: Execute ***/
 
    /*********** Registrer forwarding ************************************/
@@ -304,12 +307,12 @@ module Processor (
    /*********** Branch, JAL, JALR ***********************************/
 
    wire E_takeBranch = 
-        DE_funct3_is[0] &  E_EQ  | // BEQ
-        DE_funct3_is[1] & !E_EQ  | // BNE
-        DE_funct3_is[4] &  E_LT  | // BLT
-        DE_funct3_is[5] & !E_LT  | // BGE
-        DE_funct3_is[6] &  E_LTU | // BLTU
-        DE_funct3_is[7] & !E_LTU ; // BGEU
+        (DE_funct3_is[0] &  E_EQ ) | // BEQ
+        (DE_funct3_is[1] & !E_EQ ) | // BNE
+        (DE_funct3_is[4] &  E_LT ) | // BLT
+        (DE_funct3_is[5] & !E_LT ) | // BGE
+        (DE_funct3_is[6] &  E_LTU) | // BLTU
+        (DE_funct3_is[7] & !E_LTU) ; // BGEU
    
    wire E_JumpOrBranch = 
 	DE_isJAL  || DE_isJALR ||  (DE_isBranch && E_takeBranch);
@@ -319,7 +322,9 @@ module Processor (
    
    wire [31:0] E_result =
 	       DE_isJALorJALRorLUIorAUIPC ? DE_PCplus4orUimm : E_aluOut; 
-	
+
+   wire [31:0] E_addr = E_rs1 + DE_IorSimm;
+   
    /**************************************************************/
    
    always @(posedge clk) begin
@@ -331,7 +336,8 @@ module Processor (
       EM_csrId_is <= 4'b0001 << DE_csrId;
       EM_rs2      <= E_rs2;
       EM_Eresult  <= E_result;
-      EM_addr     <= E_rs1 + DE_IorSimm;
+      EM_addr     <= E_addr;
+      EM_Mdata    <= DATARAM[E_addr[15:2]];
       EM_isLoad   <= DE_isLoad;
       EM_isStore  <= DE_isStore;
       EM_isCSRRS  <= DE_isCSRRS;
@@ -340,6 +346,7 @@ module Processor (
 
    assign halt = resetn & DE_isEBREAK;
    
+/******************************************************************************/
 /******************************************************************************/
    reg        EM_nop; // Needed by instret in W stage   
    reg [4:0]  EM_rdId;
@@ -350,10 +357,12 @@ module Processor (
    reg [31:0] EM_rs2;
    reg [31:0] EM_Eresult;
    reg [31:0] EM_addr;
+   reg [31:0] EM_Mdata;   
    reg        EM_isStore;
    reg        EM_isLoad;
    reg        EM_isCSRRS;
    reg 	      EM_wbEnable;
+/******************************************************************************/
 /******************************************************************************/
 
                      /*** M: Memory ***/
@@ -401,13 +410,24 @@ module Processor (
    wire [13:0] M_word_addr = EM_addr[15:2];
    
    always @(posedge clk) begin
-      MW_Mdata <= DATARAM[M_word_addr];
       if(M_wmask[0]) DATARAM[M_word_addr][ 7:0 ] <= M_STORE_data[ 7:0 ];
       if(M_wmask[1]) DATARAM[M_word_addr][15:8 ] <= M_STORE_data[15:8 ];
       if(M_wmask[2]) DATARAM[M_word_addr][23:16] <= M_STORE_data[23:16];
       if(M_wmask[3]) DATARAM[M_word_addr][31:24] <= M_STORE_data[31:24]; 
    end
 
+   wire M_sext = !EM_funct3[2];		     
+
+   /*************** LOAD ****************************/
+   
+   wire [15:0] M_LOAD_H=EM_addr[1] ? EM_Mdata[31:16]: EM_Mdata[15:0];
+   wire  [7:0] M_LOAD_B=EM_addr[0] ? M_LOAD_H[15:8] : M_LOAD_H[7:0];
+   wire        M_LOAD_sign=M_sext & (M_isB ? M_LOAD_B[7] : M_LOAD_H[15]);
+
+   wire [31:0] M_Mdata = M_isB ? {{24{M_LOAD_sign}},M_LOAD_B} :
+	                 M_isH ? {{16{M_LOAD_sign}},M_LOAD_H} :
+                                                    EM_Mdata ;
+   
    wire [31:0] M_CSR_data =
 	(EM_csrId_is[0] ? cycle[31:0]    : 32'b0) |
 	(EM_csrId_is[2] ? cycle[63:32]   : 32'b0) |	       
@@ -423,19 +443,13 @@ module Processor (
       MW_rdId      <= EM_rdId;
       MW_rs1Id     <= EM_rs1Id;
       MW_rs2Id     <= EM_rs2Id;
-      MW_funct3    <= EM_funct3;
 
-      MW_E_IO_CSR <=
-	  EM_isLoad  ? IO_mem_rdata :
+      MW_wbData <=
+	  EM_isLoad  ? (M_isIO ? IO_mem_rdata : M_Mdata) :
           EM_isCSRRS ? M_CSR_data   :
           EM_Eresult;
  		    
-      MW_useMdata <= EM_isLoad & !M_isIO;
-      
-      MW_addr      <= EM_addr[1:0];
       MW_wbEnable  <= EM_wbEnable;
-      MW_isLoad    <= EM_isLoad;
-      MW_isCSRRS   <= EM_isCSRRS;
 
       if(!resetn) begin
 	 instret <= 0;
@@ -448,39 +462,21 @@ module Processor (
    end
 
 /******************************************************************************/
+/******************************************************************************/
    reg        MW_nop; // Needed by instret in W stage
    reg [4:0]  MW_rdId;
    reg [4:0]  MW_rs1Id;
    reg [4:0]  MW_rs2Id;
-   reg [2:0]  MW_funct3;
-   reg [1:0]  MW_addr;
-   reg [31:0] MW_Mdata;
-   reg [31:0] MW_E_IO_CSR;
-   reg        MW_useMdata;
-   reg        MW_isLoad;
-   reg        MW_isCSRRS;
+   reg [31:0] MW_wbData;
    reg 	      MW_wbEnable;
+/******************************************************************************/
 /******************************************************************************/
 
                      /*** W: WriteBack ***/
 		     
-   wire W_isB = (MW_funct3[1:0] == 2'b00);
-   wire W_isH = (MW_funct3[1:0] == 2'b01);
-   wire W_sext = !MW_funct3[2];		     
-
-   /*************** LOAD ****************************/
-   
-   wire [15:0] W_LOAD_H=MW_addr[1] ? MW_Mdata[31:16]: MW_Mdata[15:0];
-   wire  [7:0] W_LOAD_B=MW_addr[0] ? W_LOAD_H[15:8] : W_LOAD_H[7:0];
-   wire        W_LOAD_sign=W_sext & (W_isB ? W_LOAD_B[7] : W_LOAD_H[15]);
-
-   wire [31:0] W_Mresult = W_isB ? {{24{W_LOAD_sign}},W_LOAD_B} :
-	                   W_isH ? {{16{W_LOAD_sign}},W_LOAD_H} :
-                                                       MW_Mdata ;
-   
-   assign wbData = MW_useMdata ? W_Mresult : MW_E_IO_CSR;
+   assign wbData   = MW_wbData;
    assign wbEnable = MW_wbEnable;
-   assign wbRdId = MW_rdId;
+   assign wbRdId   = MW_rdId;
    
 /******************************************************************************/
    assign jumpOrBranchAddress = E_JumpOrBranchAddr;
