@@ -145,16 +145,10 @@ module Processor (
       DE_funct3_is <= 8'b00000001 << FD_instr[14:12];
       DE_funct7    <= FD_instr[30];
       DE_csrId     <= {FD_instr[27],FD_instr[21]};
+
+      DE_nop <= 1'b0;
       
       if(!D_stall) begin
-	 DE_nop <= (E_flush | FD_nop);
-	 
-	 DE_IorSimm <= {
-			{21{FD_instr[31]}}, 
-			 D_isStore ? {FD_instr[30:25],FD_instr[11:7]} : 
-			             FD_instr[30:20]
-			};
-	 
 	 DE_isALUreg <= D_isALUreg;
 	 DE_isALUimm <= D_isALUimm;
 	 DE_isBranch <= D_isBranch;
@@ -192,6 +186,12 @@ module Processor (
 	 RegisterBank[wbRdId] <= wbData;
       end
 
+      DE_IorSimm <= {
+		     {21{FD_instr[31]}}, 
+		     D_isStore ? {FD_instr[30:25],FD_instr[11:7]} : 
+			          FD_instr[30:20]
+		    };
+      
       //                       isJAL---. (in this context)
       //                               v
       DE_PCplusBorJimm <= FD_PC + (FD_instr[2] ? D_Jimm : D_Bimm);
