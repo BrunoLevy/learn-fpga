@@ -128,13 +128,10 @@ module Processor (
 	 F_PC     <= jumpOrBranchAddress;
       end
 
-      if(D_flush) begin
-	 FD_instr <= NOP;
-      end
+      FD_nop <= D_flush | !resetn;
       
       if(!resetn) begin
 	 F_PC <= 0;
-	 FD_instr <= NOP;
       end
       
    end
@@ -142,6 +139,7 @@ module Processor (
 /******************************************************************************/
    reg [31:0] FD_PC;   
    reg [31:0] FD_instr;
+   reg        FD_nop; 
 /******************************************************************************/
 
                      /*** D: Instruction decode ***/
@@ -156,7 +154,7 @@ module Processor (
 
       if(!D_stall) begin
 	 DE_PC    <= FD_PC;
-	 DE_instr <= E_flush ? NOP : FD_instr;
+	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
 	 
 	 DE_Uimm <= {    FD_instr[31],   FD_instr[30:12], {12{1'b0}}};
 	 DE_Iimm <= {{21{FD_instr[31]}}, FD_instr[30:20]};
@@ -182,7 +180,7 @@ module Processor (
 	 DE_wbEnable <= (FD_instr[5:2] != 4'b1000) && (FD_instr[11:7] != 5'b00000); 
       end
       
-      if(E_flush) begin
+      if(E_flush | FD_nop) begin
 	 DE_instr <= NOP;
 	 DE_isALUreg <= 1'b0;
 	 DE_isALUimm <= 1'b0;
@@ -492,23 +490,24 @@ module Processor (
 	           MW_Eresult;
 
    assign wbEnable = MW_wbEnable;
-//        !isBranch(MW_instr) && !isStore(MW_instr) && (rdId(MW_instr) != 0);
-
    assign wbRdId = rdId(MW_instr);
    
 /******************************************************************************/
    assign jumpOrBranchAddress = E_JumpOrBranchAddr;
    assign jumpOrBranch        = E_JumpOrBranch;
 
-   wire rs1Hazard = readsRs1(FD_instr)        && 
+   
+   wire rs1Hazard = !FD_nop && readsRs1(FD_instr) && 
 	            (DE_isLoad || DE_isCSRRS) &&
                     (rs1Id(FD_instr) == rdId(DE_instr)) ;
 
-   wire rs2Hazard = readsRs2(FD_instr)        &&
+   wire rs2Hazard = !FD_nop && readsRs2(FD_instr)  &&
  	            (DE_isLoad || DE_isCSRRS) &&	 
                     (rs2Id(FD_instr) == rdId(DE_instr)) ;
    
-   wire dataHazard = rs1Hazard || rs2Hazard;
+   wire dataHazard = rs1Hazard || rs2Hazard; // add bubble only if next instr uses result of latency-2 instr
+   //wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS); // always add bubble after latency-2 instr
+   
    
    assign F_stall = dataHazard | halt;
    assign D_stall = dataHazard | halt;
@@ -554,7 +553,7 @@ module Processor (
 		rs1Hazard ? "*" : " ",
 		rs2Hazard ? "*" : " "
 	 );	 
-	 riscv_disasm(FD_instr,FD_PC);
+	 riscv_disasm(FD_nop ? NOP : FD_instr,FD_PC);
 	 $write("\n");
 
 	 $write("[F] PC=%h ", F_PC); 
