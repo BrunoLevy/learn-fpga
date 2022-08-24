@@ -1,8 +1,7 @@
-/**
+/*
  * pipeline6.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
- * Step 6: full register forwarding
- * Do not try to synthesize on real device !
+ * Step 6: register forwarding 2/2: full register forwarding
  */
  
 `default_nettype none
@@ -106,22 +105,17 @@ module Processor (
 
    function writesRd;
       input [31:0] I;
-      writesRd = (rdId(I) != 0) && !isStore(I) && !isBranch(I);
+      writesRd = !isStore(I) && !isBranch(I);
    endfunction
 
    function readsRs1;
       input [31:0] I;
-      readsRs1 = (rs1Id(I) != 0) && (
-         isALUreg(I) || isALUimm(I) || isBranch(I) || 
-	 isJALR(I)   || isLoad(I)   || isStore(I)
-      );
+      readsRs1 = !(isJAL(I) || isAUIPC(I) || isLUI(I));
    endfunction
 
    function readsRs2;
       input [31:0] I;
-      readsRs2 = (rs2Id(I) != 0) && (
-         isALUreg(I) || isBranch(I) || isStore(I)
-      );
+      readsRs2 = isALUreg(I) || isBranch(I) || isStore(I);
    endfunction
    
 /******************************************************************************/
@@ -171,20 +165,21 @@ module Processor (
 	 F_PC     <= jumpOrBranchAddress;
       end
 
-      if(D_flush) begin
-	 FD_instr <= NOP;
-      end
+      // Cannot write NOP to FD_instr, because
+      // whenever a BRAM read is involved, do
+      // nothing else than sending the result
+      // to a reg.
+      FD_nop <= D_flush | !resetn;
       
       if(!resetn) begin
 	 F_PC <= 0;
-	 FD_instr <= NOP;
       end
-      
    end
    
 /******************************************************************************/
    reg [31:0] FD_PC;   
    reg [31:0] FD_instr;
+   reg 	      FD_nop;
 /******************************************************************************/
 
                      /*** D: Instruction decode ***/
@@ -199,13 +194,13 @@ module Processor (
 
       if(!D_stall) begin
 	 DE_PC    <= FD_PC;
-	 DE_instr <= E_flush ? NOP : FD_instr;
+	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
       end
       
       if(E_flush) begin
 	 DE_instr <= NOP;
       end
-
+      
       // W to D register forwarding (read and write RF in same cycle)
       if(wbEnable && rdId(MW_instr) == rs1Id(FD_instr)) begin
 	 DE_rs1 <= wbData;
@@ -236,13 +231,17 @@ module Processor (
 
    /*********** Registrer forwarding ************************************/
 
-   wire E_M_fwd_rs1 = readsRs1(DE_instr) && (rdId(EM_instr) == rs1Id(DE_instr));
-   wire E_W_fwd_rs1 = !E_M_fwd_rs1 && 
-	              readsRs1(DE_instr) && (rdId(MW_instr) == rs1Id(DE_instr));
+   wire E_M_fwd_rs1 = rdId(EM_instr) != 0 && writesRd(EM_instr) && 
+	              (rdId(EM_instr) == rs1Id(DE_instr));
+   
+   wire E_W_fwd_rs1 = rdId(MW_instr) != 0 && writesRd(MW_instr) && 
+	              (rdId(MW_instr) == rs1Id(DE_instr));
 
-   wire E_M_fwd_rs2 = readsRs2(DE_instr) && (rdId(EM_instr) == rs2Id(DE_instr));
-   wire E_W_fwd_rs2 = !E_M_fwd_rs2 && 
-	              readsRs2(DE_instr) && (rdId(MW_instr) == rs2Id(DE_instr));
+   wire E_M_fwd_rs2 = rdId(EM_instr) != 0 && writesRd(EM_instr) && 
+	              (rdId(EM_instr) == rs2Id(DE_instr));
+   
+   wire E_W_fwd_rs2 = rdId(MW_instr) != 0 && writesRd(MW_instr) && 
+	              (rdId(MW_instr) == rs2Id(DE_instr));
    
    wire [31:0] E_rs1 = E_M_fwd_rs1 ? EM_Eresult :
 	               E_W_fwd_rs1 ? wbData     :
@@ -470,26 +469,19 @@ module Processor (
 	       isCSRRS(MW_instr) ? MW_CSRresult :
 	       MW_Eresult;
 
-   assign wbEnable =
-        !isBranch(MW_instr) && !isStore(MW_instr) && (rdId(MW_instr) != 0);
-
+   assign wbEnable = writesRd(MW_instr) && rdId(MW_instr) != 0;
    assign wbRdId = rdId(MW_instr);
    
 /******************************************************************************/
    assign jumpOrBranchAddress = E_JumpOrBranchAddr;
    assign jumpOrBranch        = E_JumpOrBranch;
 
-   wire rs1Hazard = 
-	 readsRs1(FD_instr)                     && 
-	(isLoad(DE_instr) || isCSRRS(DE_instr)) &&
-        (rs1Id(FD_instr) == rdId(DE_instr))     ;
-
-   wire rs2Hazard = 
-	  readsRs2(FD_instr)                     &&
-	 (isLoad(DE_instr) || isCSRRS(DE_instr)) &&	 
-         (rs2Id(FD_instr) == rdId(DE_instr))     ;
+   // Not testing that rdId(DE_instr) != 0 because in general one
+   // does not Load to zero ! (idem for CSRRS).
+   wire rs1Hazard = readsRs1(FD_instr) && (rs1Id(FD_instr) == rdId(DE_instr)) ;
+   wire rs2Hazard = readsRs2(FD_instr) && (rs2Id(FD_instr) == rdId(DE_instr)) ;
    
-   wire dataHazard = rs1Hazard || rs2Hazard;
+   wire dataHazard = !FD_nop && (isLoad(DE_instr)||isCSRRS(DE_instr)) && (rs1Hazard || rs2Hazard);
    
    assign F_stall = dataHazard | halt;
    assign D_stall = dataHazard | halt;
@@ -505,7 +497,7 @@ module Processor (
    end
 `endif
 
-
+/*   
    always @(posedge clk) begin
       if(1'b0 & resetn) begin
 	 $write("[W] PC=%h ", MW_PC);
@@ -520,21 +512,13 @@ module Processor (
 	 $write("\n");
 
 	 $write("[E] PC=%h ", DE_PC);
-	 $write("[%s%s] ",
-		E_M_fwd_rs1 ? "M": E_W_fwd_rs1 ? "W" : " ",
-		E_M_fwd_rs2 ? "M": E_W_fwd_rs2 ? "W" : " "
-	 );	 
+	 $write("     ");	 
 	 riscv_disasm(DE_instr,DE_PC);
-	 if(DE_instr != NOP) begin
-	    $write("  rs1=0x%h  rs2=0x%h  ",E_rs1, E_rs2);
-	 end
+	 $write("  rs1=0x%h  rs2=0x%h  ",DE_rs1, DE_rs2);
 	 $write("\n");
 
 	 $write("[D] PC=%h ", FD_PC);
-	 $write("[%s%s] ",
-		rs1Hazard ? "*" : " ",
-		rs2Hazard ? "*" : " "
-	 );	 
+	 $write("[%s%s] ",rs1Hazard?"*":" ",rs2Hazard?"*":" ");	 
 	 riscv_disasm(FD_instr,FD_PC);
 	 $write("\n");
 
@@ -545,7 +529,7 @@ module Processor (
 	 $display("");
       end
    end
-
+*/
 
 /******************************************************************************/
    
