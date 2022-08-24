@@ -27,34 +27,20 @@ module Processor (
  /* 
    Reminder for the 10 RISC-V codeops
    ----------------------------------
-   7'b0110011 | ALUreg  | rd <- rs1 OP rs2   
-   7'b0010011 | ALUimm  | rd <- rs1 OP Iimm
-   7'b1100011 | Branch  | if(rs1 OP rs2) PC<-PC+Bimm
-   7'b1100111 | JALR    | rd <- PC+4; PC<-rs1+Iimm
-   7'b1101111 | JAL     | rd <- PC+4; PC<-PC+Jimm
-   7'b0010111 | AUIPC   | rd <- PC + Uimm
-   7'b0110111 | LUI     | rd <- Uimm   
-   7'b0000011 | Load    | rd <- mem[rs1+Iimm]
-   7'b0100011 | Store   | mem[rs1+Simm] <- rs2
-   7'b1110011 | SYSTEM  | special
+   5'b01100 | ALUreg  | rd <- rs1 OP rs2   
+   5'b00100 | ALUimm  | rd <- rs1 OP Iimm
+   5'b11000 | Branch  | if(rs1 OP rs2) PC<-PC+Bimm
+   5'b11001 | JALR    | rd <- PC+4; PC<-rs1+Iimm
+   5'b11011 | JAL     | rd <- PC+4; PC<-PC+Jimm
+   5'b00101 | AUIPC   | rd <- PC + Uimm
+   5'b01101 | LUI     | rd <- Uimm   
+   5'b00000 | Load    | rd <- mem[rs1+Iimm]
+   5'b01000 | Store   | mem[rs1+Simm] <- rs2
+   5'b11100 | SYSTEM  | special
  */
 
 /******************************************************************************/
 
-   /* Instruction decoder as functions (we will use them several times) */
-
-   /* The 10 "recognizers" for the 10 codeops */
-   function isALUreg; input [31:0] I; isALUreg=(I[6:2]==5'b01100); endfunction
-   function isALUimm; input [31:0] I; isALUimm=(I[6:2]==5'b00100); endfunction
-   function isBranch; input [31:0] I; isBranch=(I[6:2]==5'b11000); endfunction
-   function isJALR;   input [31:0] I; isJALR  =(I[6:2]==5'b11001); endfunction
-   function isJAL;    input [31:0] I; isJAL   =(I[6:2]==5'b11011); endfunction
-   function isAUIPC;  input [31:0] I; isAUIPC =(I[6:2]==5'b00101); endfunction
-   function isLUI;    input [31:0] I; isLUI   =(I[6:2]==5'b01101); endfunction
-   function isLoad;   input [31:0] I; isLoad  =(I[6:2]==5'b00000); endfunction
-   function isStore;  input [31:0] I; isStore =(I[6:2]==5'b01000); endfunction
-   function isSYSTEM; input [31:0] I; isSYSTEM=(I[6:2]==5'b11100); endfunction
-   
    /* Register indices */
    function [4:0] rs1Id; input [31:0] I; rs1Id = I[19:15];      endfunction
    function [4:0] rs2Id; input [31:0] I; rs2Id = I[24:20];      endfunction
@@ -66,21 +52,6 @@ module Processor (
    function [2:0] funct3; input [31:0] I; funct3 = I[14:12]; endfunction
    function [6:0] funct7; input [31:0] I; funct7 = I[31:25]; endfunction      
 
-
-   // Not testing rs1==0 (resp rs2==0) in readsRs1 (resp readsRs2) has
-   // little consequence (one does not want to Load to zero in general,
-   // and in this case having 1 bubble is no drama...)
-   
-   function readsRs1;
-      input [31:0] I;
-      readsRs1 = !(isJAL(I) || isAUIPC(I) || isLUI(I));
-   endfunction
-
-   function readsRs2;
-      input [31:0] I;
-      readsRs2 = isALUreg(I) || isBranch(I) || isStore(I);
-   endfunction
-   
 /******************************************************************************/
    
    reg [63:0] cycle;   
@@ -159,6 +130,21 @@ module Processor (
    wire D_isLoad   = (FD_instr[6:2]==5'b00000); 
    wire D_isStore  = (FD_instr[6:2]==5'b01000); 
    wire D_isSYSTEM = (FD_instr[6:2]==5'b11100);
+
+   
+   wire D_isJALorJALR   = (FD_instr[6:4] == 3'b110 && FD_instr[2] == 1'b1);
+   wire D_isLUIorAUIPC  = (FD_instr[6] == 1'b0 && FD_instr[4:2] == 3'b101);
+
+   wire D_readsRs1 = !(D_isJAL || D_isLUIorAUIPC);
+   wire D_readsRs2 = D_isALUreg || D_isBranch || D_isStore;
+   
+   wire [31:0] D_Uimm = {    FD_instr[31],   FD_instr[30:12], {12{1'b0}}};
+   wire [31:0] D_Iimm = {{21{FD_instr[31]}}, FD_instr[30:20]};
+   wire [31:0] D_Simm = {{21{FD_instr[31]}}, FD_instr[30:25],FD_instr[11:7]};
+   wire [31:0] D_Bimm = {{20{FD_instr[31]}}, 
+               FD_instr[7],FD_instr[30:25],FD_instr[11:8],1'b0};
+   wire [31:0] D_Jimm = {{12{FD_instr[31]}}, 
+               FD_instr[19:12],FD_instr[20],FD_instr[30:21],1'b0};
    
    reg [31:0] RegisterBank [0:31];
    always @(posedge clk) begin
@@ -167,13 +153,11 @@ module Processor (
 	 DE_PC    <= FD_PC;
 	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
 	 
-	 DE_Uimm <= {    FD_instr[31],   FD_instr[30:12], {12{1'b0}}};
-	 DE_Iimm <= {{21{FD_instr[31]}}, FD_instr[30:20]};
-	 DE_Simm <= {{21{FD_instr[31]}}, FD_instr[30:25],FD_instr[11:7]};
-	 DE_Bimm <= {{20{FD_instr[31]}}, 
-                     FD_instr[7],FD_instr[30:25],FD_instr[11:8],1'b0};
-	 DE_Jimm <= {{12{FD_instr[31]}}, 
-                     FD_instr[19:12],FD_instr[20],FD_instr[30:21],1'b0};
+	 DE_Uimm <= D_Uimm;
+	 DE_Iimm <= D_Iimm;
+	 DE_Simm <= D_Simm;
+	 DE_Bimm <= D_Bimm;
+	 DE_Jimm <= D_Jimm;
 
 	 DE_isALUreg <= D_isALUreg;
 	 DE_isALUimm <= D_isALUimm;
@@ -225,6 +209,11 @@ module Processor (
       if(wbEnable) begin
 	 RegisterBank[wbRdId] <= wbData;
       end
+
+      DE_PCplusBorJimm <= FD_PC + (FD_instr[2] ? D_Jimm : D_Bimm); // isJAL ? ... : ...
+      DE_PCplus4orUimm <= (D_isLUI ? 32'b0 : FD_PC) + (D_isJALorJALR ? 4 : D_Uimm);
+
+      DE_isJALorJALRorLUIorAUIPC <= D_isJALorJALR | D_isLUIorAUIPC;
    end
    
 /******************************************************************************/
@@ -252,6 +241,10 @@ module Processor (
    reg DE_isEBREAK;
 
    reg DE_wbEnable; // !isBranch && !isStore && rdId != 0
+
+   reg DE_isJALorJALRorLUIorAUIPC;
+   reg [31:0] DE_PCplusBorJimm;
+   reg [31:0] DE_PCplus4orUimm;
    
 /******************************************************************************/
 
@@ -264,7 +257,7 @@ module Processor (
 
    wire E_M_fwd_rs2 = EM_wbEnable && (rdId(EM_instr) == rs2Id(DE_instr));
    wire E_W_fwd_rs2 = MW_wbEnable && (rdId(MW_instr) == rs2Id(DE_instr));
-   
+
    wire [31:0] E_rs1 = E_M_fwd_rs1 ? EM_Eresult :
 	               E_W_fwd_rs1 ? wbData     :
 	               DE_rs1;
@@ -272,7 +265,7 @@ module Processor (
    wire [31:0] E_rs2 = E_M_fwd_rs2 ? EM_Eresult :
 	               E_W_fwd_rs2 ? wbData     :
 	               DE_rs2;
-
+   
    /*********** the ALU *************************************************/
 
    wire [31:0] E_aluIn1 = E_rs1;
@@ -346,15 +339,10 @@ module Processor (
 	DE_isJAL  || DE_isJALR ||  (DE_isBranch && E_takeBranch);
 
    wire [31:0] E_JumpOrBranchAddr =
-	DE_isBranch ? DE_PC + DE_Bimm :
-	DE_isJAL    ? DE_PC + DE_Jimm :
-	/* JALR */    {E_aluPlus[31:1],1'b0} ;
+	       DE_isJALR ? {E_aluPlus[31:1],1'b0} : DE_PCplusBorJimm;
 
-   wire [31:0] E_result = 
-	(DE_isJAL | DE_isJALR) ? DE_PC+4         :
-	DE_isLUI               ? DE_Uimm         :
-	DE_isAUIPC             ? DE_PC + DE_Uimm : 
-        E_aluOut                                 ;
+   wire [31:0] E_result =
+	       DE_isJALorJALRorLUIorAUIPC ? DE_PCplus4orUimm : E_aluOut; 
 	
    /**************************************************************/
    
@@ -508,9 +496,9 @@ module Processor (
 
    // we do not test rdId == 0 because in general, one loads data to
    // a register, not to zero !
-   wire rs1Hazard = readsRs1(FD_instr) && (rs1Id(FD_instr) == rdId(DE_instr));
-   wire rs2Hazard = readsRs2(FD_instr) && (rs2Id(FD_instr) == rdId(DE_instr));
-
+   wire rs1Hazard = D_readsRs1 && (rs1Id(FD_instr) == rdId(DE_instr));
+   wire rs2Hazard = D_readsRs2 && (rs2Id(FD_instr) == rdId(DE_instr));
+   
    // Add bubble only if next instr uses result of latency-2 instr   
    wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS) && 
 	             (rs1Hazard || rs2Hazard); 
