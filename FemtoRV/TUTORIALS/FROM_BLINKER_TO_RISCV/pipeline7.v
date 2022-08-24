@@ -41,19 +41,6 @@ module Processor (
 
 /******************************************************************************/
 
-   /* Register indices */
-   function [4:0] rs1Id; input [31:0] I; rs1Id = I[19:15];      endfunction
-   function [4:0] rs2Id; input [31:0] I; rs2Id = I[24:20];      endfunction
-   function [4:0] shamt; input [31:0] I; shamt = I[24:20];      endfunction   
-   function [4:0] rdId;  input [31:0] I; rdId  = I[11:7];       endfunction
-   function [1:0] csrId; input [31:0] I; csrId = {I[27],I[21]}; endfunction
-
-   /* funct3 and funct7 */
-   function [2:0] funct3; input [31:0] I; funct3 = I[14:12]; endfunction
-   function [6:0] funct7; input [31:0] I; funct7 = I[31:25]; endfunction      
-
-/******************************************************************************/
-   
    reg [63:0] cycle;   
    reg [63:0] instret;
 
@@ -110,7 +97,7 @@ module Processor (
 /******************************************************************************/
    reg [31:0] FD_PC;   
    reg [31:0] FD_instr;
-   reg        FD_nop; 
+   reg        FD_nop;  
 /******************************************************************************/
 
                      /*** D: Instruction decode ***/
@@ -120,6 +107,10 @@ module Processor (
    wire [31:0] wbData;
    wire [4:0]  wbRdId;
 
+   wire [4:0]  D_rdId  = FD_instr[11:7];
+   wire [4:0]  D_rs1Id = FD_instr[19:15];
+   wire [4:0]  D_rs2Id = FD_instr[24:20];   
+   
    wire D_isALUreg = (FD_instr[6:2]==5'b01100); 
    wire D_isALUimm = (FD_instr[6:2]==5'b00100); 
    wire D_isBranch = (FD_instr[6:2]==5'b11000); 
@@ -131,16 +122,13 @@ module Processor (
    wire D_isStore  = (FD_instr[6:2]==5'b01000); 
    wire D_isSYSTEM = (FD_instr[6:2]==5'b11100);
 
-   
    wire D_isJALorJALR   = (FD_instr[6:4] == 3'b110 && FD_instr[2] == 1'b1);
    wire D_isLUIorAUIPC  = (FD_instr[6] == 1'b0 && FD_instr[4:2] == 3'b101);
 
    wire D_readsRs1 = !(D_isJAL || D_isLUIorAUIPC);
    wire D_readsRs2 = D_isALUreg || D_isBranch || D_isStore;
    
-   wire [31:0] D_Uimm = {    FD_instr[31],   FD_instr[30:12], {12{1'b0}}};
-   wire [31:0] D_Iimm = {{21{FD_instr[31]}}, FD_instr[30:20]};
-   wire [31:0] D_Simm = {{21{FD_instr[31]}}, FD_instr[30:25],FD_instr[11:7]};
+   wire [31:0] D_Uimm = { FD_instr[31],FD_instr[30:12], {12{1'b0}}};
    wire [31:0] D_Bimm = {{20{FD_instr[31]}}, 
                FD_instr[7],FD_instr[30:25],FD_instr[11:8],1'b0};
    wire [31:0] D_Jimm = {{12{FD_instr[31]}}, 
@@ -149,16 +137,23 @@ module Processor (
    reg [31:0] RegisterBank [0:31];
    always @(posedge clk) begin
 
-      if(!D_stall) begin
-	 DE_PC    <= FD_PC;
-	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
-	 
-	 DE_Uimm <= D_Uimm;
-	 DE_Iimm <= D_Iimm;
-	 DE_Simm <= D_Simm;
-	 DE_Bimm <= D_Bimm;
-	 DE_Jimm <= D_Jimm;
+      DE_rdId  <= D_rdId;
+      DE_rs1Id <= D_rs1Id;
+      DE_rs2Id <= D_rs2Id;
 
+      DE_funct3 <= FD_instr[14:12];
+      DE_funct7 <= FD_instr[30];
+      DE_csrId  <= {FD_instr[27],FD_instr[21]};
+      
+      if(!D_stall) begin
+	 DE_nop <= (E_flush | FD_nop);
+	 
+	 DE_IorSimm <= {
+			{21{FD_instr[31]}}, 
+			 D_isStore ? {FD_instr[30:25],FD_instr[11:7]} : 
+			             FD_instr[30:20]
+			};
+	 
 	 DE_isALUreg <= D_isALUreg;
 	 DE_isALUimm <= D_isALUimm;
 	 DE_isBranch <= D_isBranch;
@@ -172,11 +167,12 @@ module Processor (
 	 DE_isEBREAK <= D_isSYSTEM && (FD_instr[14:12]==3'b000);	 
 
 	 // wbEnable = !isBranch & !isStore & rdId != 0
-	 DE_wbEnable <= (FD_instr[5:2] != 4'b1000) && (FD_instr[11:7] != 5'b00000); 
+	 DE_wbEnable <= (FD_instr[5:2]  != 4'b1000) && 
+			(FD_instr[11:7] != 5'b00000); 
       end
       
       if(E_flush | FD_nop) begin
-	 DE_instr <= NOP;
+	 DE_nop      <= 1'b1;
 	 DE_isALUreg <= 1'b0;
 	 DE_isALUimm <= 1'b0;
 	 DE_isBranch <= 1'b0;
@@ -188,46 +184,52 @@ module Processor (
 	 DE_isStore  <= 1'b0;
 	 DE_isCSRRS  <= 1'b0;
 	 DE_isEBREAK <= 1'b0;
-
 	 DE_wbEnable  <= 1'b0;
       end
 
       // W to D register forwarding (read and write RF in same cycle)
-      if(wbEnable && rdId(MW_instr) == rs1Id(FD_instr)) begin
+      if(wbEnable && MW_rdId == D_rs1Id) begin
 	 DE_rs1 <= wbData;
       end else begin
-	 DE_rs1 <= RegisterBank[rs1Id(FD_instr)];
+	 DE_rs1 <= RegisterBank[D_rs1Id];
       end
 
       // W to D register forwarding (read and write RF in same cycle)     
-      if(wbEnable && rdId(MW_instr) == rs2Id(FD_instr)) begin
+      if(wbEnable && MW_rdId == D_rs2Id) begin
 	 DE_rs2 <= wbData;
       end else begin
-	 DE_rs2 <= RegisterBank[rs2Id(FD_instr)];
+	 DE_rs2 <= RegisterBank[D_rs2Id];
       end
 
       if(wbEnable) begin
 	 RegisterBank[wbRdId] <= wbData;
       end
 
-      DE_PCplusBorJimm <= FD_PC + (FD_instr[2] ? D_Jimm : D_Bimm); // isJAL ? ... : ...
-      DE_PCplus4orUimm <= (D_isLUI ? 32'b0 : FD_PC) + (D_isJALorJALR ? 4 : D_Uimm);
+      //                       isJAL---. (in this context)
+      //                               v
+      DE_PCplusBorJimm <= FD_PC + (FD_instr[2] ? D_Jimm : D_Bimm);
+      
+      DE_PCplus4orUimm <= (D_isLUI ? 32'b0 : FD_PC) + 
+                          (D_isJALorJALR ? 4 : D_Uimm);
 
       DE_isJALorJALRorLUIorAUIPC <= D_isJALorJALR | D_isLUIorAUIPC;
    end
    
 /******************************************************************************/
-   reg [31:0] DE_PC;
-   reg [31:0] DE_instr;
+   reg        DE_nop;    
+   reg [4:0]  DE_rdId;
+   reg [4:0]  DE_rs1Id;
+   reg [4:0]  DE_rs2Id;
+   
    reg [31:0] DE_rs1;
    reg [31:0] DE_rs2;
-   
-   reg [31:0] DE_Iimm;
-   reg [31:0] DE_Bimm;
-   reg [31:0] DE_Jimm;
-   reg [31:0] DE_Uimm;
-   reg [31:0] DE_Simm;
 
+   reg [1:0]  DE_csrId;
+   reg [2:0]  DE_funct3;
+   reg [5:5]  DE_funct7;
+   
+   reg [31:0] DE_IorSimm;
+   
    reg DE_isALUreg;
    reg DE_isALUimm;
    reg DE_isBranch;
@@ -252,11 +254,11 @@ module Processor (
 
    /*********** Registrer forwarding ************************************/
 
-   wire E_M_fwd_rs1 = EM_wbEnable && (rdId(EM_instr) == rs1Id(DE_instr));
-   wire E_W_fwd_rs1 = MW_wbEnable && (rdId(MW_instr) == rs1Id(DE_instr));
+   wire E_M_fwd_rs1 = EM_wbEnable && (EM_rdId == DE_rs1Id);
+   wire E_W_fwd_rs1 = MW_wbEnable && (MW_rdId == DE_rs1Id);
 
-   wire E_M_fwd_rs2 = EM_wbEnable && (rdId(EM_instr) == rs2Id(DE_instr));
-   wire E_W_fwd_rs2 = MW_wbEnable && (rdId(MW_instr) == rs2Id(DE_instr));
+   wire E_M_fwd_rs2 = EM_wbEnable && (EM_rdId == DE_rs2Id);
+   wire E_W_fwd_rs2 = MW_wbEnable && (MW_rdId == DE_rs2Id);
 
    wire [31:0] E_rs1 = E_M_fwd_rs1 ? EM_Eresult :
 	               E_W_fwd_rs1 ? wbData     :
@@ -269,11 +271,11 @@ module Processor (
    /*********** the ALU *************************************************/
 
    wire [31:0] E_aluIn1 = E_rs1;
-   wire [31:0] E_aluIn2 = (DE_isALUreg | DE_isBranch) ? E_rs2 : DE_Iimm;
-   wire [4:0]  E_shamt  = DE_isALUreg ? E_rs2[4:0] : shamt(DE_instr); 
+   wire [31:0] E_aluIn2 = (DE_isALUreg | DE_isBranch) ? E_rs2 : DE_IorSimm;
+   wire [4:0]  E_shamt  = DE_isALUreg ? E_rs2[4:0] : DE_rs2Id;
 
-   wire E_minus = DE_instr[30] & DE_isALUreg;
-   wire E_arith_shift = DE_instr[30];
+   wire E_minus = DE_funct7[5] & DE_isALUreg;
+   wire E_arith_shift = DE_funct7[5]; 
    
    // The adder is used by both arithmetic instructions and JALR.
    wire [31:0] E_aluPlus = E_aluIn1 + E_aluIn2;
@@ -296,8 +298,7 @@ module Processor (
 		x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
    endfunction
 
-   wire [31:0] E_shifter_in = 
-                      (funct3(DE_instr)==3'b001) ? flip32(E_aluIn1) : E_aluIn1;
+   wire [31:0] E_shifter_in = (DE_funct3==3'b001) ? flip32(E_aluIn1) : E_aluIn1;
    
    /* verilator lint_off WIDTH */
    wire [31:0] E_shifter = 
@@ -308,7 +309,7 @@ module Processor (
 
    reg [31:0] E_aluOut;
    always @(*) begin
-      case(funct3(DE_instr))
+      case(DE_funct3)
 	3'b000: E_aluOut = E_minus ? E_aluMinus[31:0] : E_aluPlus;
 	3'b001: E_aluOut = E_leftshift;
 	3'b010: E_aluOut = {31'b0, E_LT};
@@ -324,7 +325,7 @@ module Processor (
 
    reg E_takeBranch;
    always @(*) begin
-      case (funct3(DE_instr))
+      case (DE_funct3)
 	3'b000: E_takeBranch = E_EQ;
 	3'b001: E_takeBranch = !E_EQ;
 	3'b100: E_takeBranch = E_LT;
@@ -347,12 +348,15 @@ module Processor (
    /**************************************************************/
    
    always @(posedge clk) begin
-      EM_PC      <= DE_PC;
-      EM_instr   <= DE_instr;
-      EM_rs2     <= E_rs2;
-      EM_Eresult <= E_result;
-      EM_addr    <= DE_isStore ? E_rs1 + DE_Simm : 
-                                 E_rs1 + DE_Iimm ;
+      EM_nop      <= DE_nop;
+      EM_rdId     <= DE_rdId;
+      EM_rs1Id    <= DE_rs1Id;
+      EM_rs2Id    <= DE_rs2Id;
+      EM_funct3   <= DE_funct3;
+      EM_csrId    <= DE_csrId;
+      EM_rs2      <= E_rs2;
+      EM_Eresult  <= E_result;
+      EM_addr     <= E_rs1 + DE_IorSimm;
       EM_isLoad   <= DE_isLoad;
       EM_isStore  <= DE_isStore;
       EM_isCSRRS  <= DE_isCSRRS;
@@ -362,8 +366,12 @@ module Processor (
    assign halt = resetn & DE_isEBREAK;
    
 /******************************************************************************/
-   reg [31:0] EM_PC;
-   reg [31:0] EM_instr;
+   reg        EM_nop;    
+   reg [4:0]  EM_rdId;
+   reg [4:0]  EM_rs1Id;
+   reg [4:0]  EM_rs2Id;
+   reg [1:0]  EM_csrId;
+   reg [2:0]  EM_funct3;
    reg [31:0] EM_rs2;
    reg [31:0] EM_Eresult;
    reg [31:0] EM_addr;
@@ -375,9 +383,8 @@ module Processor (
 
                      /*** M: Memory ***/
 
-   wire [2:0] M_funct3 = funct3(EM_instr);
-   wire M_isB = (M_funct3[1:0] == 2'b00);
-   wire M_isH = (M_funct3[1:0] == 2'b01);
+   wire M_isB = (EM_funct3[1:0] == 2'b00);
+   wire M_isH = (EM_funct3[1:0] == 2'b01);
 
    /*************** STORE **************************/
 
@@ -430,30 +437,37 @@ module Processor (
    end
    
    always @(posedge clk) begin
-      MW_PC        <= EM_PC;
-      MW_instr     <= EM_instr;
+      MW_nop       <= EM_nop;
+      MW_rdId      <= EM_rdId;
+      MW_rs1Id     <= EM_rs1Id;
+      MW_rs2Id     <= EM_rs2Id;
+      MW_funct3    <= EM_funct3;
       MW_Eresult   <= EM_Eresult;
       MW_IOresult  <= IO_mem_rdata;
       MW_addr      <= EM_addr;
       MW_wbEnable  <= EM_wbEnable;
       MW_isLoad    <= EM_isLoad;
       MW_isCSRRS   <= EM_isCSRRS;
-      case(csrId(EM_instr)) 
+      case(EM_csrId) 
 	2'b00: MW_CSRresult = cycle[31:0];
 	2'b10: MW_CSRresult = cycle[63:32];
 	2'b01: MW_CSRresult = instret[31:0];
 	2'b11: MW_CSRresult = instret[63:32];	 
       endcase 
+
       if(!resetn) begin
 	 instret <= 0;
-      end else if(MW_instr != NOP) begin
+      end else if(!MW_nop) begin 
 	 instret <= instret + 1;
       end
    end
 
 /******************************************************************************/
-   reg [31:0] MW_PC; 
-   reg [31:0] MW_instr; 
+   reg        MW_nop;
+   reg [4:0]  MW_rdId;
+   reg [4:0]  MW_rs1Id;
+   reg [4:0]  MW_rs2Id;
+   reg [2:0]  MW_funct3;
    reg [31:0] MW_Eresult;
    reg [31:0] MW_addr;
    reg [31:0] MW_Mdata;
@@ -466,10 +480,9 @@ module Processor (
 
                      /*** W: WriteBack ***/
 		     
-   wire [2:0] W_funct3 = funct3(MW_instr);
-   wire W_isB = (W_funct3[1:0] == 2'b00);
-   wire W_isH = (W_funct3[1:0] == 2'b01);
-   wire W_sext = !W_funct3[2];		     
+   wire W_isB = (MW_funct3[1:0] == 2'b00);
+   wire W_isH = (MW_funct3[1:0] == 2'b01);
+   wire W_sext = !MW_funct3[2];		     
    wire W_isIO = MW_addr[22];
 
    /*************** LOAD ****************************/
@@ -487,7 +500,7 @@ module Processor (
 	           MW_Eresult;
 
    assign wbEnable = MW_wbEnable;
-   assign wbRdId = rdId(MW_instr);
+   assign wbRdId = MW_rdId;
    
 /******************************************************************************/
    assign jumpOrBranchAddress = E_JumpOrBranchAddr;
@@ -496,8 +509,8 @@ module Processor (
 
    // we do not test rdId == 0 because in general, one loads data to
    // a register, not to zero !
-   wire rs1Hazard = D_readsRs1 && (rs1Id(FD_instr) == rdId(DE_instr));
-   wire rs2Hazard = D_readsRs2 && (rs2Id(FD_instr) == rdId(DE_instr));
+   wire rs1Hazard = D_readsRs1 && (D_rs1Id == DE_rdId);
+   wire rs2Hazard = D_readsRs2 && (D_rs2Id == DE_rdId);
    
    // Add bubble only if next instr uses result of latency-2 instr   
    wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS) && 
@@ -521,6 +534,7 @@ module Processor (
 `endif
 
 
+   /*
    always @(posedge clk) begin
       if(1'b0 & resetn) begin
 	 $write("[W] PC=%h ", MW_PC);
@@ -560,7 +574,7 @@ module Processor (
 	 $display("");
       end
    end
-
+   */
 
 /******************************************************************************/
    
