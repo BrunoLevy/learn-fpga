@@ -527,11 +527,11 @@ Each stage will read its input from a set of registers and write its outputs
 to a set of registers. In particular, each stage will have its own copy of the
 program counter, the current instruction, and some other fields derived from
 them. Why is this so ?
-- rember that even if for now we lanuch them sequentially, all stages are supposed to run
+- rember that even if for now we launch them sequentially, all stages are supposed to run
   concurrently (it will be so in our next step). In particular, it means that each stage
   will process a *different* instruction;
 - besides the advantage of increasing throughput, by separating execution into
-  multiple register-to-register stages, pipelining results in a shorter critical
+  multiple register-to-register stages, pipelining often results in a shorter critical
   path (hence supports a higher frequency).
 
 
