@@ -2,7 +2,6 @@
  * pipeline4.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
  * Step 4: stalling and bubbles
- * Do not try to synthesize on real device !
  */
  
 `default_nettype none
@@ -106,22 +105,17 @@ module Processor (
 
    function writesRd;
       input [31:0] I;
-      writesRd = (rdId(I) != 0) && !isStore(I) && !isBranch(I);
+      writesRd = !isStore(I) && !isBranch(I);
    endfunction
 
    function readsRs1;
       input [31:0] I;
-      readsRs1 = (rs1Id(I) != 0) && (
-         isALUreg(I) || isALUimm(I) || isBranch(I) || 
-	 isJALR(I)   || isLoad(I)   || isStore(I)
-      );
+      readsRs1 = !(isJAL(I) || isAUIPC(I) || isLUI(I));
    endfunction
 
    function readsRs2;
       input [31:0] I;
-      readsRs2 = (rs2Id(I) != 0) && (
-         isALUreg(I) || isBranch(I) || isStore(I)
-      );
+      readsRs2 = isALUreg(I) || isBranch(I) || isStore(I);
    endfunction
    
 /******************************************************************************/
@@ -171,20 +165,21 @@ module Processor (
 	 F_PC     <= jumpOrBranchAddress;
       end
 
-      if(D_flush) begin
-	 FD_instr <= NOP;
-      end
+      // Cannot write NOP to FD_instr, because
+      // whenever a BRAM read is involved, do
+      // nothing else than sending the result
+      // to a reg.
+      FD_nop <= D_flush | !resetn;
       
       if(!resetn) begin
 	 F_PC <= 0;
-	 FD_instr <= NOP;
       end
-      
    end
    
 /******************************************************************************/
    reg [31:0] FD_PC;   
    reg [31:0] FD_instr;
+   reg 	      FD_nop;
 /******************************************************************************/
 
                      /*** D: Instruction decode ***/
@@ -199,7 +194,7 @@ module Processor (
 
       if(!D_stall) begin
 	 DE_PC    <= FD_PC;
-	 DE_instr <= E_flush ? NOP : FD_instr;
+	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
       end
       
       if(E_flush) begin
@@ -441,24 +436,22 @@ module Processor (
 	       isCSRRS(MW_instr) ? MW_CSRresult :
 	       MW_Eresult;
 
-   assign wbEnable =
-        !isBranch(MW_instr) && !isStore(MW_instr) && (rdId(MW_instr) != 0);
-
+   assign wbEnable = writesRd(MW_instr) && rdId(MW_instr) != 0;
    assign wbRdId = rdId(MW_instr);
    
 /******************************************************************************/
    assign jumpOrBranchAddress = E_JumpOrBranchAddr;
    assign jumpOrBranch        = E_JumpOrBranch;
 
-   wire rs1Hazard = readsRs1(FD_instr) && 
-                           (rs1Id(FD_instr) == rdId(DE_instr) ||
-                            rs1Id(FD_instr) == rdId(EM_instr) ||
-			    rs1Id(FD_instr) == rdId(MW_instr)  ) ;
+   wire rs1Hazard = !FD_nop && readsRs1(FD_instr) && rs1Id(FD_instr) != 0 && (
+               (writesRd(DE_instr) && rs1Id(FD_instr) == rdId(DE_instr)) ||
+               (writesRd(EM_instr) && rs1Id(FD_instr) == rdId(EM_instr)) ||
+	       (writesRd(MW_instr) && rs1Id(FD_instr) == rdId(MW_instr)) ) ;
 
-   wire rs2Hazard = readsRs2(FD_instr) && 
-                           (rs2Id(FD_instr) == rdId(DE_instr) ||
-                            rs2Id(FD_instr) == rdId(EM_instr) ||
-			    rs2Id(FD_instr) == rdId(MW_instr)  ) ;
+   wire rs2Hazard = !FD_nop && readsRs2(FD_instr) && rs2Id(FD_instr) != 0 && (
+               (writesRd(DE_instr) && rs2Id(FD_instr) == rdId(DE_instr)) ||
+               (writesRd(EM_instr) && rs2Id(FD_instr) == rdId(EM_instr)) ||
+	       (writesRd(MW_instr) && rs2Id(FD_instr) == rdId(MW_instr)) ) ;
    
    wire dataHazard = rs1Hazard || rs2Hazard;
    
