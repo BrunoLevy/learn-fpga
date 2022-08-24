@@ -249,12 +249,10 @@ module Processor (
    /*********** Registrer forwarding ************************************/
 
    wire E_M_fwd_rs1 = EM_wbEnable && (rdId(EM_instr) == rs1Id(DE_instr));
-   wire E_W_fwd_rs1 = !E_M_fwd_rs1 && 
-	              MW_wbEnable && (rdId(MW_instr) == rs1Id(DE_instr));
+   wire E_W_fwd_rs1 = MW_wbEnable && (rdId(MW_instr) == rs1Id(DE_instr));
 
    wire E_M_fwd_rs2 = EM_wbEnable && (rdId(EM_instr) == rs2Id(DE_instr));
-   wire E_W_fwd_rs2 = !E_M_fwd_rs2 && 
-	              MW_wbEnable && (rdId(MW_instr) == rs2Id(DE_instr));
+   wire E_W_fwd_rs2 = MW_wbEnable && (rdId(MW_instr) == rs2Id(DE_instr));
    
    wire [31:0] E_rs1 = E_M_fwd_rs1 ? EM_Eresult :
 	               E_W_fwd_rs1 ? wbData     :
@@ -496,18 +494,18 @@ module Processor (
    assign jumpOrBranchAddress = E_JumpOrBranchAddr;
    assign jumpOrBranch        = E_JumpOrBranch;
 
-   
-   wire rs1Hazard = !FD_nop && readsRs1(FD_instr) && 
-	            (DE_isLoad || DE_isCSRRS) &&
-                    (rs1Id(FD_instr) == rdId(DE_instr)) ;
 
-   wire rs2Hazard = !FD_nop && readsRs2(FD_instr)  &&
- 	            (DE_isLoad || DE_isCSRRS) &&	 
-                    (rs2Id(FD_instr) == rdId(DE_instr)) ;
-   
-   wire dataHazard = rs1Hazard || rs2Hazard; // add bubble only if next instr uses result of latency-2 instr
-   //wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS); // always add bubble after latency-2 instr
-   
+   // we do not test rdId == 0 because in general, one loads data to
+   // a register, not to zero !
+   wire rs1Hazard = readsRs1(FD_instr) && (rs1Id(FD_instr) == rdId(DE_instr));
+   wire rs2Hazard = readsRs2(FD_instr) && (rs2Id(FD_instr) == rdId(DE_instr));
+
+   // Add bubble only if next instr uses result of latency-2 instr   
+   wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS) && 
+	             (rs1Hazard || rs2Hazard); 
+
+   // (other option: always add bubble after latency-2 instr).   
+   //wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS);
    
    assign F_stall = dataHazard | halt;
    assign D_stall = dataHazard | halt;
