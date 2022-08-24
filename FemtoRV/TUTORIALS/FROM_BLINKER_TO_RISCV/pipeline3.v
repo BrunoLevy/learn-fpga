@@ -2,7 +2,6 @@
  * pipeline3.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
  * Step 3: "sequential pipeline"
- * Do not synthesize on real device !
  */
  
 `default_nettype none
