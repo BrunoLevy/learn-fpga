@@ -20,8 +20,6 @@ module Processor (
     output        IO_mem_wr     // IO write flag
 );
 
-`include "riscv_disassembly.v"
-
 /******************************************************************************/
 
  /* 
@@ -58,8 +56,6 @@ module Processor (
    
 /******************************************************************************/
 
-   localparam NOP = 32'b0000000_00000_00000_000_00000_0110011;
-   
                       /***  F: Instruction fetch ***/   
 
    reg  [31:0] 	  F_PC;
@@ -97,7 +93,8 @@ module Processor (
 /******************************************************************************/
    reg [31:0] FD_PC;   
    reg [31:0] FD_instr;
-   reg        FD_nop;  
+   reg        FD_nop; // Needed because I cannot directly write NOP to FD_instr
+                      // because FD_instr is plugged to PROGROM's output port.
 /******************************************************************************/
 
                      /*** D: Instruction decode ***/
@@ -216,7 +213,7 @@ module Processor (
    end
    
 /******************************************************************************/
-   reg        DE_nop;    
+   reg        DE_nop; // Needed by intret in W stage
    reg [4:0]  DE_rdId;
    reg [4:0]  DE_rs1Id;
    reg [4:0]  DE_rs2Id;
@@ -366,7 +363,7 @@ module Processor (
    assign halt = resetn & DE_isEBREAK;
    
 /******************************************************************************/
-   reg        EM_nop;    
+   reg        EM_nop; // Needed by intret in W stage   
    reg [4:0]  EM_rdId;
    reg [4:0]  EM_rs1Id;
    reg [4:0]  EM_rs2Id;
@@ -457,13 +454,16 @@ module Processor (
 
       if(!resetn) begin
 	 instret <= 0;
-      end else if(!MW_nop) begin 
+      end else if(!MW_nop) begin
+	 // It's easier to count the retired instructions when 
+	 // they *exit* the pipeline (but it requires to pass
+	 // a _nop flag through the pipeline).
 	 instret <= instret + 1;
       end
    end
 
 /******************************************************************************/
-   reg        MW_nop;
+   reg        MW_nop; // Needed by instret in W stage
    reg [4:0]  MW_rdId;
    reg [4:0]  MW_rs1Id;
    reg [4:0]  MW_rs2Id;
@@ -516,7 +516,8 @@ module Processor (
    wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS) && 
 	             (rs1Hazard || rs2Hazard); 
 
-   // (other option: always add bubble after latency-2 instr).   
+   // (other option: always add bubble after latency-2 instr 
+   // like Samsoniuk's DarkRiscV):
    //wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS);
    
    assign F_stall = dataHazard | halt;
@@ -533,53 +534,9 @@ module Processor (
    end
 `endif
 
-
-   /*
-   always @(posedge clk) begin
-      if(1'b0 & resetn) begin
-	 $write("[W] PC=%h ", MW_PC);
-	 $write("     ");
-	 riscv_disasm(MW_instr,MW_PC);
-	 if(wbEnable) $write("    x%0d <- 0x%0h",rdId(MW_instr),wbData);
-	 $write("\n");
-
-	 $write("[M] PC=%h ", EM_PC);
-	 $write("     ");	 
-	 riscv_disasm(EM_instr,EM_PC);
-	 $write("\n");
-
-	 $write("[E] PC=%h ", DE_PC);
-	 $write("[%s%s] ",
-		E_M_fwd_rs1 ? "M": E_W_fwd_rs1 ? "W" : " ",
-		E_M_fwd_rs2 ? "M": E_W_fwd_rs2 ? "W" : " "
-	 );	 
-	 riscv_disasm(DE_instr,DE_PC);
-	 if(DE_instr != NOP) begin
-	    $write("  rs1=0x%h  rs2=0x%h  ",E_rs1, E_rs2);
-	 end
-	 $write("\n");
-
-	 $write("[D] PC=%h ", FD_PC);
-	 $write("[%s%s] ",
-		rs1Hazard ? "*" : " ",
-		rs2Hazard ? "*" : " "
-	 );	 
-	 riscv_disasm(FD_nop ? NOP : FD_instr,FD_PC);
-	 $write("\n");
-
-	 $write("[F] PC=%h ", F_PC); 
-	 if(jumpOrBranch) $write(" PC <- 0x%0h",jumpOrBranchAddress);
-	 $write("\n");
-	 
-	 $display("");
-      end
-   end
-   */
-
 /******************************************************************************/
    
 endmodule
-
 
 module SOC (
     input 	     CLK, // system clock 
