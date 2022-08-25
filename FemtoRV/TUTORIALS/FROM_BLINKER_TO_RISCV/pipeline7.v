@@ -108,24 +108,27 @@ module Processor (
    wire [4:0]  D_rdId  = FD_instr[11:7];
    wire [4:0]  D_rs1Id = FD_instr[19:15];
    wire [4:0]  D_rs2Id = FD_instr[24:20];   
-   
+
+   wire D_isJAL    = FD_instr[3]; 
+                 //= (FD_instr[6:2]==5'b11011);    
    wire D_isALUreg = (FD_instr[6:2]==5'b01100); 
    wire D_isALUimm = (FD_instr[6:2]==5'b00100); 
    wire D_isBranch = (FD_instr[6:2]==5'b11000); 
    wire D_isJALR   = (FD_instr[6:2]==5'b11001); 
-   wire D_isJAL    = (FD_instr[6:2]==5'b11011); 
    wire D_isAUIPC  = (FD_instr[6:2]==5'b00101); 
    wire D_isLUI    = (FD_instr[6:2]==5'b01101); 
    wire D_isLoad   = (FD_instr[6:2]==5'b00000); 
    wire D_isStore  = (FD_instr[6:2]==5'b01000); 
    wire D_isSYSTEM = (FD_instr[6:2]==5'b11100);
 
-   wire D_isJALorJALR   = (FD_instr[6:4] == 3'b110 && FD_instr[2] == 1'b1);
-   wire D_isLUIorAUIPC  = (FD_instr[6] == 1'b0 && FD_instr[4:2] == 3'b101);
+   wire D_isJALorJALR  = (FD_instr[2] & FD_instr[6]); 
+   wire D_isLUIorAUIPC = (FD_instr[4] & FD_instr[6]); 
 
    wire D_readsRs1 = !(D_isJAL || D_isLUIorAUIPC);
-   wire D_readsRs2 = D_isALUreg || D_isBranch || D_isStore;
-   
+   // wire D_readsRs2 = D_isALUreg || D_isBranch || D_isStore;
+   wire D_readsRs2 = (FD_instr[5] && (FD_instr[3:2] == 2'b00));
+                     // includes is_SYSTEM but not a problem
+      
    wire [31:0] D_Uimm = { FD_instr[31],FD_instr[30:12], {12{1'b0}}};
    
    wire [31:0] D_Bimm = {{20{FD_instr[31]}}, 
@@ -192,14 +195,12 @@ module Processor (
 			          FD_instr[30:20]
 		    };
       
-      //                       isJAL---. (in this context)
-      //                               v
-      DE_PCplusBorJimm <= FD_PC + (FD_instr[2] ? D_Jimm : D_Bimm);
+      DE_PCplusBorJimm <= FD_PC + (D_isJAL ? D_Jimm : D_Bimm);      
       
       DE_PCplus4orUimm <= (D_isLUI ? 32'b0 : FD_PC) + 
                           (D_isJALorJALR ? 4 : D_Uimm);
 
-      DE_isJALorJALRorLUIorAUIPC <= D_isJALorJALR | D_isLUIorAUIPC;
+      DE_isJALorJALRorLUIorAUIPC <= FD_instr[2]; // D_isJALorJALR | D_isLUIorAUIPC;
    end
 
 /******************************************************************************/
@@ -488,7 +489,7 @@ module Processor (
    wire rs1Hazard = D_readsRs1 && (D_rs1Id == DE_rdId);
    wire rs2Hazard = D_readsRs2 && (D_rs2Id == DE_rdId);
    
-   // Add bubble only if next instr uses result of latency-2 instr   
+   // Add bubble only if next instr uses result of latency-2 instr
    wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS) && 
 	             (rs1Hazard || rs2Hazard); 
 
