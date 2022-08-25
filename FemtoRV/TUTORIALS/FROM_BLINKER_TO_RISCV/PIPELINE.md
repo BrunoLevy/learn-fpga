@@ -884,17 +884,18 @@ The rules make sure that each stage is independent on the other
 critical path is shorter than in our previous version that executes instructions
 in 3 or 4 cycles (even with the exceptional wires).
 
-** Summary ** We have taken our core from Episode I with its 3 or 4 states architecture.
+**Summary** We have taken our core from Episode I with its 3 or 4 states architecture.
 We have redesigned it according to the following ideas:
 - 5 states: Fetch, Decode, Execut, Memory, Writeback
 - each state is systematically executed
 - each state only depends on the previous state and writes its result to the next state
 - for now, each state has its own copy of the program counter and the instruction
 - there are two exceptions: jumps/branches and register write back
+
 There is nothing complicated in what we have done in this step.
 
 Let us see now how to get nearer to 1 CPI by running all stages in parallel. We just
-need to change a couple of things (but these things are a bit subtle).
+need to change a couple of things (but these things are a bit more subtle).
 
 ## Step 4: pipeline
 
@@ -1083,6 +1084,44 @@ file in the `D` stage.  These wires are going to create another type of problem.
 
 ### data hazards
 
+Let us continue to examine the same program:
+```asm
+00000000 <start>:
+   0:	004001b7          	lui	x3,0x400
+   4:	00020137          	lui	x2,0x20
+   8:	008000ef          	jal	x1,10 <main>
+   c:	00100073          	ebreak
+
+00000010 <main>:
+  10:	ff010113          	addi	x2,x2,-16 # 1fff0 <val.1514+0xffb8>
+  14:	00112623          	sw	x1,12(x2)
+  18:	004007b7          	lui	x15,0x400
+  1c:	0ff00713          	li	x14,255
+  20:	00010537          	lui	x10,0x10
+  ...
+```
+Now it runs like that:
+
+| clk  | F              | D              | E              | M              | W              |
+|------|----------------|----------------|----------------|----------------|----------------|
+|  1   | lui x3,0x400   | nop            | nop            | nop            | nop            |
+|  2   | lui x2,0x20    | lui x3,0x400   | nop            | nop            | nop            |
+|  3   | jal x1,0x10    | lui x2,0x20    | lui x3,0x400   | nop            | nop            | 
+|  4   | ebreak         | jal x1,0x10    | lui x2,0x20    | lui x3,0x400   | nop            |
+|  5   | addi x2,x2,-16 | ebreak         | jal x1,0x10    | lui x2,0x20    | lui x3,0x400   |
+|  6   | addi x2,x2,-16 | nop            | nop            | jal x1,0x10    | lui x2,0x20    |  
+|  7   | sw   x1,12(x2) | addi x2,x2,-16 | nop            | nop            | jal x1,0x10    |
+|  8   | lui  x15,0x400 | sw   x1,12(x2) | addi x2,x2,-16 | nop            | nop            |
+|  9   | li   x14,255   | lui  x15,0x400 | sw   x1,12(x2) | addi x2,x2,-16 | nop            |
+|  10  | lui  x10,0x10  | li   x14,255   | lui  x15,0x400 | sw   x1,12(x2) | addi x2,x2,-16 | 
+
+
+Do you see the problem ? The instruction `sw x1,12(x2)` uses register `x2`, that is
+set by the instruction right before (`addi x2,x2,-16`), but `x2` will be updated not before
+the end of clock 10, when it leaves the `W` stage, hence `sw x1,12(x2)` gets a wrong value
+of `x2` at clock 8, when it is in the `D` stage.
+
+WIP...
 
 Where do we stand ?
 
