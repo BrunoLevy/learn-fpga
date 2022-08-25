@@ -1056,7 +1056,7 @@ instruction in `D` should be cleared:
 ```
 
 And the Decode stage is updated as follows:
-``verilog
+```verilog
    /* D */
    always @(posedge clk) begin
       ...
