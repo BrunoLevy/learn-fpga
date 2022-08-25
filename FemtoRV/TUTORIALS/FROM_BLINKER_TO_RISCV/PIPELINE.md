@@ -746,7 +746,67 @@ the way they are used to write back into the register file.
 
 ### Execute
 
+The `E`xecute stage works exactly like in Episode I, it has a big combinatorial
+function `E_aluOut` (with the 32-bits result of the current operation)
+and `E_takeBranch` (the 1-bit result of the tests for branches), not reproduced
+here. Then one can derive the following signals:
 
+```verilog
+   wire E_JumpOrBranch = (
+         isJAL(DE_instr)  || 
+         isJALR(DE_instr) || 
+         (isBranch(DE_instr) && E_takeBranch)
+   );
+
+   wire [31:0] E_JumpOrBranchAddr =
+	isBranch(DE_instr) ? DE_PC + Bimm(DE_instr) :
+	isJAL(DE_instr)    ? DE_PC + Jimm(DE_instr) :
+	/* JALR */           {E_aluPlus[31:1],1'b0} ;
+
+   wire [31:0] E_result = 
+	(isJAL(DE_instr) | isJALR(DE_instr)) ? DE_PC+4                :
+	isLUI(DE_instr)                      ? Uimm(DE_instr)         :
+	isAUIPC(DE_instr)                    ? DE_PC + Uimm(DE_instr) : 
+        E_aluOut                                                      ;
+```
+
+Finally, the Execute stage computes both the result of the operation
+(`Eresult`), the address for Load and Store instructions (`addr`) and
+passes them to the next stage (as well as the PC, instruction and value
+of the second source register):
+
+```
+   always @(posedge clk) begin
+      if(state[E_bit]) begin
+	 EM_PC      <= DE_PC;
+	 EM_instr   <= DE_instr;
+	 EM_rs2     <= DE_rs2;
+	 EM_Eresult <= E_result;
+	 EM_addr    <= isStore(DE_instr) ? DE_rs1 + Simm(DE_instr) : 
+                                           DE_rs1 + Iimm(DE_instr) ;
+      end
+   end
+   
+/******************************************************************************/
+   reg [31:0] EM_PC;
+   reg [31:0] EM_instr;
+   reg [31:0] EM_rs2;
+   reg [31:0] EM_Eresult;
+   reg [31:0] EM_addr;
+/******************************************************************************/
+```
+
+Then the two "exception to the rule" signals of the Fetch stage are connected
+as follows:
+
+```verilog
+   assign jumpOrBranchAddress = E_JumpOrBranchAddr;
+   assign jumpOrBranch        = E_JumpOrBranch & state[E_bit];
+```
+
+### Memory
+
+### WriteBack
 
 
 _WIP_
@@ -755,27 +815,6 @@ _WIP_
 | CPI   | RAYSTONES |
 |-------|-----------|
 | 5     | 1.589     |
-
-
-### Instruction fetch
-- Input: `WBIF_PC`
-- Output: `IFID_PC`, `IFID_instr`
-
-### Instruction decode
-- Output: `IDEX_PC`, `IDEX_instr_is`, `IDEX_rs1`, `IDEX_rs2`, `IDEX_Uimm`, `IDEX_Iimm`, `IDEX_Simm`, `IDEX_Bimm`, `IDEX_Jimm`
-  (or a single imm ?)
-
-### Execute
-- Output: `EXMEM_instr_is`, `EXMEM_alu`, `EXMEM_takebranch`, `EXMEM_loadstore_addr`, `EXMEM_PC_plus_imm`, `EXMEM_PC_plus_4`
-
-  Q: do we compute a EXMEM_writeback here ? or later ?
-
-### Memory
-- Output: MEMWB_wbenable, MEMWB_wbdata, MEMWB_nextPC
-
-### WriteBack
-- Output: WBIF_PC
-
 
 
 ## Step 4: solving hazards by stalling and flushing
