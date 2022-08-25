@@ -58,7 +58,7 @@ module Processor (
    function [4:0] rs1Id; input [31:0] I; rs1Id = I[19:15];      endfunction
    function [4:0] rs2Id; input [31:0] I; rs2Id = I[24:20];      endfunction
    function [4:0] shamt; input [31:0] I; shamt = I[24:20];      endfunction   
-   function [4:0] rdId;  input [31:0] I; rdId  = (isBranch(I) | isStore(I)) ? 0 : I[11:7]; endfunction
+   function [4:0] rdId;  input [31:0] I; rdId  = I[11:7];       endfunction
    function [1:0] csrId; input [31:0] I; csrId = {I[27],I[21]}; endfunction
 
    /* funct3 and funct7 */
@@ -179,7 +179,7 @@ module Processor (
 /******************************************************************************/
    reg [31:0] FD_PC;   
    reg [31:0] FD_instr;
-   reg 	      FD_nop;
+   reg        FD_nop;
 /******************************************************************************/
 
                      /*** D: Instruction decode ***/
@@ -469,9 +469,9 @@ module Processor (
    end
 `endif
 
-/*   
+   
    always @(posedge clk) begin
-      if(1'b0 & resetn) begin
+      if(resetn) begin
 	 $write("[W] PC=%h ", MW_PC);
 	 $write("     ");
 	 riscv_disasm(MW_instr,MW_PC);
@@ -486,12 +486,14 @@ module Processor (
 	 $write("[E] PC=%h ", DE_PC);
 	 $write("     ");	 
 	 riscv_disasm(DE_instr,DE_PC);
-	 $write("  rs1=0x%h  rs2=0x%h  ",DE_rs1, DE_rs2);
+	 if(DE_instr != NOP) begin
+	    $write("  rs1=0x%h  rs2=0x%h  ",DE_rs1, DE_rs2);
+	 end
 	 $write("\n");
 
 	 $write("[D] PC=%h ", FD_PC);
 	 $write("[%s%s] ",rs1Hazard?"*":" ",rs2Hazard?"*":" ");	 
-	 riscv_disasm(FD_instr,FD_PC);
+	 riscv_disasm(FD_nop ? NOP : FD_instr,FD_PC);
 	 $write("\n");
 
 	 $write("[F] PC=%h ", F_PC); 
@@ -501,7 +503,7 @@ module Processor (
 	 $display("");
       end
    end
-*/
+
 
 /******************************************************************************/
    
@@ -568,9 +570,9 @@ module SOC (
 `ifdef BENCH
    always @(posedge clk) begin
       if(uart_valid) begin
-//	 $display("UART: %c", IO_mem_wdata[7:0]);
-	 $write("%c", IO_mem_wdata[7:0] );
-	 $fflush(32'h8000_0001);
+	 $display("UART: %c", IO_mem_wdata[7:0]);
+//	 $write("%c", IO_mem_wdata[7:0] );
+//	 $fflush(32'h8000_0001);
       end
    end
 `endif   

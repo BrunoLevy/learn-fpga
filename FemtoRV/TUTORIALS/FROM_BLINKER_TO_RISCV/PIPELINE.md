@@ -641,6 +641,10 @@ OK, so to make things simple, and to be able to use the disassembler, we will st
 the current instruction in all stage (and of course, it will be a different instruction in all
 stage).
 
+Before we take a look at the Fetch state, I *highly* recommend to be super strict with the
+names of the registers and the signals: with a pipeline architectures, many things have the
+same name, and if they are not properly named, there is a high risk of confusing everything !
+
 ### Fetch
 
 Let us see what the `F`etch stage looks like:
@@ -674,13 +678,13 @@ Let us see what the `F`etch stage looks like:
 
 The `F` stage is a bit particular, in the sense that it is the first stage. It
 does not have any input, but it has the program counter `F_PC` and the instruction
-ROM. It outputs the PC and the loaded instruction to the `Ð`ecode stage. Note that
+ROM. It outputs the PC and the loaded instruction to the `D`ecode stage. Note that
 it handles the "exceptions to the rule" signals (`jumpOrBranch` and `jumpOrBranchAddress`)
 that come from later stages.
 
 ### Decode
 
-The `Ð`ecode stage is responsible for recognizing the opcodes, 
+The `D`ecode stage is responsible for recognizing the opcodes, 
 extracting the immediates from the instruction, and fetching the operands
 from the register file. To make things as simple as possible, for now, we
 are going to decode the instruction each time we need it instead of
@@ -739,7 +743,10 @@ functions to extract the different fields and immediates from an instruction:
    ...
 ```
 
-(they are also used in the subsequent stages).
+(they are also used in the subsequent stages). _Note that doing so is stupid, because
+it creates multiple "instruction decoders", but we will see later how to optimize it,
+we keep it like that for now because it is simpler and because it lets us display
+the instructions in all the stages using the disassembler_.
 
 Note also the "exception to the rule" signals `wbEnable`, `wbRdId` and `wbData` and
 the way they are used to write back into the register file.
@@ -801,24 +808,286 @@ as follows:
 
 ```verilog
    assign jumpOrBranchAddress = E_JumpOrBranchAddr;
-   assign jumpOrBranch        = E_JumpOrBranch & state[E_bit];
+   assign jumpOrBranch        = E_JumpOrBranch & state[M_bit];
 ```
 
 ### Memory
 
+The memory stage works nearly as in Episode I, with all this (a bit) complicated
+stuff to align the operands and to do sign extension for loads. There is a little
+subtelty though: remember that whenever something is read from a memory in a state
+(here `M`), we cannot do anything else than writing the content of that memory
+to a result register (here prefixed by `MW`), hence we cannot do alignment and sign
+extension in the `M` state. For this reason we pass the content of the memory word
+`MW_Mdata` to the next stage (WriteBack), that does the alignment and sign extension
+(but alignment for Store instructions are still done in the `M` stage since there
+is no restriction for the *input* of a memory operation).
+
 ### WriteBack
 
+Besides alignment and sign extension mentioned in the previous paragraph, the
+`W`riteback stage has a couple of multiplexers that generate the remaining
+"exception to the rules" signals that write back register data to the Decode
+stage:
 
-_WIP_
+```verilog
+   assign wbData = 
+	       isLoad(MW_instr)  ? (W_isIO ? MW_IOresult : W_Mresult) :
+	       isCSRRS(MW_instr) ? MW_CSRresult :
+	       MW_Eresult;
+
+   assign wbEnable =
+        !isBranch(MW_instr) && !isStore(MW_instr) && (rdId(MW_instr) != 0);
+
+   assign wbRdId = rdId(MW_instr);
+```
+
+And that's mostly it ! The result is implemented in [pipeline3.v](pipeline3.v).
+If you run RAYSTONES on it:
+
+```
+$ cd FIRMWARE
+$ make raystones.pipeline.hex
+$ cd ..
+$ ./run_verilator.sh pipeline3.v
+```
+
+then it gives the following result (result for `pipeline2.v` reported for reference):
 
 
-| CPI   | RAYSTONES |
-|-------|-----------|
-| 5     | 1.589     |
+| Version    | CPI   | RAYSTONES |
+|------------|-------|-----------|
+|pipeline2.v | 3.034 | 2.614     |
+|pipeline3.v | 5     | 1.589     |
 
+Oooh that's great, we worked like crazy to have a **less performant** core ?
+Wait wait wait, this one is not pipelined yet, we are going to start "shifting gears"
+in the next step, but in fact, we have gained something. If you try to synthesize
+the cores:
 
-## Step 4: solving hazards by stalling and flushing
+```
+   BOARDS/run_ulx3s.sh pipeline2.v
+   BOARDS/run_ulx3s.sh pipeline3.v   
+```
+then you can take a look at fmax (reported max frequency for the clock), it says:
+
+| Version    | fmax   |
+|------------|--------|
+|pipeline2.v | 50 MHz |
+|pipeline3.v | 80 MHz |
+
+Why is it so ? In fact, we have decomposed what the processor has to do into
+5 simple stages, and each stage is implemented according to the rules (except...
+the exceptional wires for *jumps and branches* and for *register write back*.
+The rules make sure that each stage is independent on the other
+(except the exceptional wires) and that it does simple things. As a consequence, the
+critical path is shorter than in our previous version that executes instructions
+in 3 or 4 cycles (even with the exceptional wires).
+
+** Summary ** We have taken our core from Episode I with its 3 or 4 states architecture.
+We have redesigned it according to the following ideas:
+- 5 states: Fetch, Decode, Execut, Memory, Writeback
+- each state is systematically executed
+- each state only depends on the previous state and writes its result to the next state
+- for now, each state has its own copy of the program counter and the instruction
+- there are two exceptions: jumps/branches and register write back
+There is nothing complicated in what we have done in this step.
+
+Let us see now how to get nearer to 1 CPI by running all stages in parallel. We just
+need to change a couple of things (but these things are a bit subtle).
+
+## Step 4: pipeline
+
+OK, so we start from the core of the previous step, and apply a bit of "surgery" to it:
+- first thing is removing the state machine
+- then we remove all the statements like `if(state[F_bit)`, `if(state[D_bit])`, `if(state[E_bit)` ...
+- we also remove the references to `state[M_bit]` in `IO_mem_wr` and `M_wmask`
+- and now we start to think about what could go wrong / what we have broken ...
+
+### control hazards
+
+We got two different problems to solve. The first one is related to jumps and branches. 
+Let us examine a simple program:
+
+```
+$ cd FIRMWARE
+$ make helloC.pipeline.hex
+```
+This also generates `helloC.pipeline.elf.list` with the generated assembly code.
+It starts like that:
+
+```asm
+00000000 <start>:
+   0:	004001b7          	lui	x3,0x400
+   4:	00020137          	lui	x2,0x20
+   8:	008000ef          	jal	x1,10 <main>
+   c:	00100073          	ebreak
+
+00000010 <main>:
+  10:	ff010113          	addi	x2,x2,-16 # 1fff0 <val.1514+0xffb8>
+  14:	00112623          	sw	x1,12(x2)
+  18:	004007b7          	lui	x15,0x400
+  1c:	0ff00713          	li	x14,255
+  20:	00010537          	lui	x10,0x10
+  ...
+```
+
+Now let us take a look at what our pipeline would do: 
+
+| clk  | F              | D            | E            | M            | W            |
+|------|----------------|--------------|--------------|--------------|--------------|
+|  1   | lui x3,0x400   | nop          | nop          | nop          | nop          |
+|  2   | lui x2,0x20    | lui x3,0x400 | nop          | nop          | nop          |
+|  3   | jal x1,0x10    | lui x2,0x20  | lui x3,0x400 | nop          | nop          | 
+|  4   | ebreak         | jal x1,0x10  | lui x2,0x20  | lui x3,0x400 | nop          |
+|  5   | addi x2,x2,-16 | ebreak       | jal x1,0x10  | lui x2,0x20  | lui x3,0x400 |
+
+- At clock 3, the `jal` instruction enters the pipeline in the `F` stage.
+- At clock 4, it enters the decode stage
+- At clock 5, it enters the execute stage, which means that we would like to jump to
+  the target (`0x10`) at clock 6. But two instructions have already entered the
+  pipeline. If `PC` denotes the address of our `jal` instructions, then we have the
+  instructions at `PC+4` in the `D` stage, and the one at `PC+8` in the `F` stage,
+  but they should not be there (even if `addi x2,x2,-16` corresponds to the instruction
+  at the branch target `0x10`, but here it is a special case, would be different if
+  `<main>` was further away...). So at clock 5, `jal x1,0x10` is executed, and sends
+  `0x10` to the `F` stage through `jumpOrBranch` and `jumpOrBranchAddress`. So if we do
+  nothing special, we will obtain the following configuration:
+  
+| clk  | F              | D              | E            | M            | W            |
+|------|----------------|----------------|--------------|--------------|--------------|
+|  6   | addi x2,x2,-16 | addi x2,x2,-16 | ebreak       | jal x1,0x10  | lui x2,0x20  | 
+
+- The instruction `ebreak` in `E` should not be there _(because it was at PC+4 and we jumped)_
+- The instruction `addi x2,x2,-16` in `D` shoud not be there _(because it was at PC+8 and we jumped)_
+- The (second) instruction `addi x2,x2,-16` in `F` is correct _(because it is the instruction at the jump target)_
+
+Such a configuration caused by the fact that the next PC value is known two cycles too late
+is called a *control hazard*.
+
+So the idea is simple: we are going to replace the instructions that should not be there with NOPs
+(or `add x0, x0, x0`), like that:
+
+| clk  | F              | D              | E            | M            | W            |
+|------|----------------|----------------|--------------|--------------|--------------|
+|  6   | addi x2,x2,-16 | nop            | nop          | jal x1,0x10  | lui x2,0x20  | 
+
+And that's all ! How can we implement that ?
+We declare two wires, `D_flush` and `E_flush`, that are asserted each time the instruction
+in `D` (resp. `E`) should be replaced with `nop` in the next cycle
+(that is, when the instruction in `E` is a jump or a taken branch).
+The code for the Fetch and Decode stages is updated as follows:
+
+```verilog
+   localparam NOP = 32'b0000000_00000_00000_000_00000_0110011;
+   wire D_flush;
+   wire E_flush;
+
+   ...
+   /* F */
+   always @(posedge clk) begin
+      FD_instr <= PROGROM[F_PC[15:2]]; 
+      FD_PC <= F_PC;
+      F_PC <= F_PC+4;
+
+      if(jumpOrBranch) begin
+	 F_PC     <= jumpOrBranchAddress;
+      end
+
+      if(D_flush | !resetn) begin
+         FD_instr <= NOP;
+      end
+      
+      if(!resetn) begin
+	 F_PC <= 0;
+      end
+   end
+   ...
+   /* D */
+   always @(posedge clk) begin
+      DE_PC    <= FD_PC;
+      DE_instr <= E_flush ? NOP : FD_instr;
+      DE_rs1 <= RegisterBank[rs1Id(FD_instr)];
+      DE_rs2 <= RegisterBank[rs2Id(FD_instr)];
+      if(wbEnable) begin
+	 RegisterBank[wbRdId] <= wbData;
+      end
+   end
+```
+
+And the signals `D_flush` and `E_flush` are wired to `E_JumpOrBranch`:
+
+```verilog
+   assign D_flush = E_JumpOrBranch;
+   assign E_flush = E_JumpOrBranch;
+```
+
+... but the VERILOG code above has a problem, can you spot it ?
+
+Remember the rules: whenever a memory is accessed, we should only write
+its value to a register, and do nothing else (and here we are replacing the
+register's value with `NOP` under certain conditions). In simulation, it has
+no consequence, but if you try to synthesize the design, then it is catastrophic !
+It will try to replace the 64 kB PROGROM with *combinatorial* memory, that is,
+a set of flipflops with a *gigantic* address decoder (that could fit on an ULX3S,
+but the routing does not converge, even when letting it run overnight, I tryed...).
+
+So what we do instead, we add a register `FD_nop` that is set to one whenever the
+instruction in `D` should be cleared:
+
+```verilog
+   /* F */
+   always @(posedge clk) begin
+      FD_instr <= PROGROM[F_PC[15:2]]; 
+      FD_PC    <= F_PC;
+      F_PC     <= F_PC+4;
+      if(jumpOrBranch) begin
+	 F_PC     <= jumpOrBranchAddress;
+      end
+
+      FD_nop <= D_flush | !resetn;
+      
+      if(!resetn) begin
+	 F_PC <= 0;
+      end
+   end
+   ...
+   reg FD_nop;
+```
+
+And the Decode stage is updated as follows:
+``verilog
+   /* D */
+   always @(posedge clk) begin
+      ...
+      DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
+      ...
+   end
+```
+
+(and keep in mind to test `FD_nop` each time `FD_instr` is concerned).
+
+OK, so we are done with jump and branches. Since jump and taken branches
+insert two NOPs in the pipeline, they take 3 cycles (1 cycle for the
+jump or branch instruction, plus 2 cycles for the NOPs).
+
+Well, we are not completely done. By executing all stages in parallel, we
+can encounter another type of problem, can you find it ?
+
+Rember what we have said, the problems come from the exceptions to the rules.
+The first type of problem is related to the `jumpOrBranch` and `jumpOrBranchAddress`
+wires, that go from the `E` to the `F` stage.
+
+We also got `wbEnable`,`wbData` and `wbRdId` that go from the `W` stage to the register
+file in the `D` stage.  These wires are going to create another type of problem.
 
 ### data hazards
 
-### structural hazards
+
+Where do we stand ?
+
+| Version    | CPI   | RAYSTONES |
+|------------|-------|-----------|
+|pipeline2.v | 3.034 | 2.614     |
+|pipeline3.v | 5     | 1.589     |
+|pipeline4.v | 2.193 | 3.734     |
