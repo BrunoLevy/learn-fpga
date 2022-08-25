@@ -125,9 +125,9 @@ module Processor (
    wire D_isLUIorAUIPC = (FD_instr[4] & FD_instr[6]); 
 
    wire D_readsRs1 = !(D_isJAL || D_isLUIorAUIPC);
-   // wire D_readsRs2 = D_isALUreg || D_isBranch || D_isStore;
+   
    wire D_readsRs2 = (FD_instr[5] && (FD_instr[3:2] == 2'b00));
-                     // includes is_SYSTEM but not a problem
+                  // <=> D_isALUreg || D_isBranch || D_isStore || D_isSYSTEM
       
    wire [31:0] D_Uimm = { FD_instr[31],FD_instr[30:12], {12{1'b0}}};
    
@@ -161,12 +161,12 @@ module Processor (
 	 DE_isLUI    <= D_isLUI;
 	 DE_isLoad   <= D_isLoad;
 	 DE_isStore  <= D_isStore;
-	 DE_isCSRRS  <= D_isSYSTEM && (FD_instr[14:12]==3'b010);
-	 DE_isEBREAK <= D_isSYSTEM && (FD_instr[14:12]==3'b000);	 
+	 DE_isCSRRS  <= D_isSYSTEM &&  FD_instr[13];
+	 DE_isEBREAK <= D_isSYSTEM && !FD_instr[13];
 
-	 // wbEnable = !isBranch & !isStore & rdId != 0
-	 DE_wbEnable <= (FD_instr[5:2]  != 4'b1000) && 
-			(FD_instr[11:7] != 5'b00000); 
+	 // wbEnable = !isBranch & !isStore
+	 // Note: EM_wbEnable = DE_wbEnable && (rdId != 0)
+	 DE_wbEnable <= (FD_instr[5:2]  != 4'b1000);
       end
       
       if(E_flush | FD_nop) begin
@@ -196,11 +196,12 @@ module Processor (
 		    };
       
       DE_PCplusBorJimm <= FD_PC + (D_isJAL ? D_Jimm : D_Bimm);      
-      
-      DE_PCplus4orUimm <= (D_isLUI ? 32'b0 : FD_PC) + 
+
+      // In this context: isLUI----------.
+      DE_PCplus4orUimm <= (FD_instr[6:5] == 2'b01 ? 32'b0 : FD_PC) + 
                           (D_isJALorJALR ? 4 : D_Uimm);
 
-      DE_isJALorJALRorLUIorAUIPC <= FD_instr[2]; // D_isJALorJALR | D_isLUIorAUIPC;
+      DE_isJALorJALRorLUIorAUIPC <= FD_instr[2]; 
    end
 
 /******************************************************************************/
@@ -342,7 +343,7 @@ module Processor (
       EM_isLoad   <= DE_isLoad;
       EM_isStore  <= DE_isStore;
       EM_isCSRRS  <= DE_isCSRRS;
-      EM_wbEnable <= DE_wbEnable;
+      EM_wbEnable <= DE_wbEnable && (DE_rdId != 0);
    end
 
    assign halt = resetn & DE_isEBREAK;
@@ -488,14 +489,23 @@ module Processor (
    // a register, not to zero !
    wire rs1Hazard = D_readsRs1 && (D_rs1Id == DE_rdId);
    wire rs2Hazard = D_readsRs2 && (D_rs2Id == DE_rdId);
+
+   // we could generate slightly more bubble with
+   // simpler test (to be used if critical path is here)
+   // wire rs1Hazard = (D_rs1Id == DE_rdId);
+   // wire rs2Hazard = (D_rs2Id == DE_rdId);
+   
+   // we are not obliged to compare all bits ! 
+   //wire rs1Hazard = (D_rs1Id[3:0] == DE_rdId[3:0]);
+   //wire rs2Hazard = (D_rs2Id[3:0] == DE_rdId[3:0]);
    
    // Add bubble only if next instr uses result of latency-2 instr
    wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS) && 
-	             (rs1Hazard || rs2Hazard); 
+   	             (rs1Hazard || rs2Hazard); 
 
    // (other option: always add bubble after latency-2 instr 
-   // like Samsoniuk's DarkRiscV):
-   //wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS);
+   // like Samsoniuk's DarkRiscV). Reduces critical path.
+   // wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS);
    
    assign F_stall = dataHazard | halt;
    assign D_stall = dataHazard | halt;
