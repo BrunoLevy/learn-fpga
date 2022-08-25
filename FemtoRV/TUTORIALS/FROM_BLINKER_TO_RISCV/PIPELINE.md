@@ -524,15 +524,228 @@ with a super classical design with 5 stages:
 | WB      | Write back           | writes result to register file        |
 
 Each stage will read its input from a set of registers and write its outputs
-to a set of registers. In particular, each stage will have its own copy of the
+to a set of registers.In particular, each stage will have its own copy of the
 program counter, the current instruction, and some other fields derived from
-them. Why is this so ?
-- rember that even if for now we launch them sequentially, all stages are supposed to run
+them (well, in fact we will be able to drop the program counter and the
+instruction word in the last stages, but for now we suppose we keep everyting).
+
+In short, to be more precise, each stage needs to have its own copy of everything it needs to
+operate properly. Why is this so ?
+
+- Remember that even if for now we launch them sequentially, all stages are supposed to run
   concurrently (it will be so in our next step). In particular, it means that each stage
-  will process a *different* instruction;
-- besides the advantage of increasing throughput, by separating execution into
-  multiple register-to-register stages, pipelining often results in a shorter critical
-  path (hence supports a higher frequency).
+  will process a *different* instruction (and a *different* associated PC);
+- besides the advantage of increasing throughput, there is another reason: by separating
+  execution into multiple register-to-register stages, pipelining often results in a
+  shorter critical path (hence supports a higher frequency).
+
+OK, so for this first step, we are going to create a multi-cycle CPU, and each state
+will correspond to the table above. So there will be a state machine that goes through
+all the states systematically, as follows:
+
+```verilog
+   localparam F_bit = 0; localparam F_state = 1 << F_bit;
+   localparam D_bit = 1; localparam D_state = 1 << D_bit;
+   localparam E_bit = 2; localparam E_state = 1 << E_bit;
+   localparam M_bit = 3; localparam M_state = 1 << M_bit;
+   localparam W_bit = 4; localparam W_state = 1 << W_bit;
+   reg [4:0] 	  state;
+   wire           halt;
+   always @(posedge clk) begin
+      if(!resetn) begin
+	 state  <= F_state;
+      end else if(!halt) begin
+	 state <= {state[3:0],state[4]};
+      end
+   end
+```
+
+We will remove this state machine in the next step, but for now it is better to run the stages
+sequentially, so that we do not have to worry about some nasty things. We will have no choice
+later, but it is easer, at least for me, to introduce one difficulty at a time, and test at
+each step that the CPU still works, by running the `RAYSTONES` benchmark.
+
+We can now review **the rules of the game** that we are going to play:
+- Consider stage names `A`,`B`,`C`,`D`,`E` (easier to remember than
+  `F`,`D`,`E`,`M`,`W` even if we will soon use these names instead).
+   Each stage reads its input from a set of registers and writes its output to a
+  set of registers. The output of a stage (for instance `B`) corresponds to the input of the
+  next stage (for instance `C`). To make things easier, the names of these registers
+  (that are both the output of `B` and the input of `C`) are prefixed by `BC_`. Still
+  considering `B`, it reads its input from registers prefixed by `AB_` and writes its
+  output to registers prefixed by `BC_`. Then, `C` reads its input from registers
+  prefixed by `BC_` and writes its output to registers prefixed by `CD_`, and so on
+  and so forth... Hence, the Verilog code for the `B` stage looks like:
+
+```verilog
+   always @(posedge clk) begin
+     if(state[B_bit]) begin
+         BC_xxx <= AB_aaa;
+	 BC_yyy <= AB_bbb;
+	 ...
+     end
+   end
+```
+
+- But that's not all, each stage can have some combinatorial logic. For instance, in the `E` stage,
+the ALU reads its input from two registers `DE_rs1` and `DE_rs2` and outputs its result in `EM_Eresult`.
+This combinatorial function can be written with intermediary signals, that are always wires, and that
+are prefixed by the name of the state. In stage `B`, these signals take as input either registers
+prefixed by `AB_` or other signals prefixed by `B_`.
+
+- And some states will read and/or write memories (the program ROM, the data RAM and the register file).
+In stage `B`, for writing to a memory, the address and the data to be written can be either an `AB_`-prefixed
+register or a `B_` prefixed wire. For reading from a memory, the output should always be a `BC_`-prefixed
+register and nothing else than reading the data should be done _(this is because each memory already has
+a registered reading port, and complying to this rule lets the synthesizer map the `BC_` target to this
+registered reading port)_.
+
+Let us summarize the rules:
+
+- **Rule 1** State `B` takes its inputs from `AB_`-prefixed registers and writes its output to `BC_`-prefixed
+   registers;
+
+- **Rule 2** State `B` can have intermediary wires. Their names are prefixed by `B_`. Their inputs are either
+  `AB_`-prefixed registers or `B_`-prefixed wires;
+
+- **Rule 3** If state `B` reads a memory, the result is always stored into a `BC_`-prefixed register and nothing
+   else is done to the result;
+
+Or put differently: in state `B`, on the left of `<=` there can be only a `BC_`-prefixed
+register. On the right of `<=` or `=` there can be only a `BC_`-prefixed register, a `B_`-prefixed
+wire or some combinations of these...
+
+However, there are two **exceptions to the rules** (else it would be too simple !):
+
+- When there is a jump or a taken branch, the program counter, managed by the `F`etch state, needs to be
+  modified. So there is a 32-bits signal `jumpOrBranchAddress` and a 1-bit signal `jumpOrBranch` that is
+  asserted whenever the program counter needs to be updated to `jumpOrBranchAddress`;
+
+- most instructions write back their result to the register file. Hence there is a 32-bits signal `wbData`
+  with the value to be written, a 5-bits signal `wbRdId` that indicates in which register the value should
+  be written, and a 1-bit signal `wbEnable` that is asserted each time `wbData` should be written to
+  register `wbRdId`.
+
+If you imagine that an instruction travels from the left to the right through all the states
+(`F`etch, `D`ecode, `E`xecute, `M`emory, `W`riteback), you can see that these two sets of signals
+travel from the right to the left (so in a certain sense, they go "back in time").
+This is what causes all the difficulties we will have in the next step
+(but we do not have any difficulty for now since we activate one stage at a time, sequentially).
+
+One more thing: I'm pretty sure that I'm not going to get this right directly, so debugging is
+important. For that, I've written in VERILOG a simple [RISC-V disassembler](riscv_disassembly.v).
+It can be used in simulation to display the instructions in all the stages of the pipeline, it
+is super-useful to track bugs.
+
+OK, so to make things simple, and to be able to use the disassembler, we will store the PC and
+the current instruction in all stage (and of course, it will be a different instruction in all
+stage).
+
+### Fetch
+
+Let us see what the `F`etch stage looks like:
+
+```verilog
+   reg  [31:0] F_PC;
+   reg  [31:0] PROGROM[0:16383]; 
+
+   initial begin
+      $readmemh("PROGROM.hex",PROGROM);
+   end
+
+   always @(posedge clk) begin
+      if(!resetn) begin
+	 F_PC    <= 0;
+      end else if(state[F_bit]) begin
+	 FD_instr <= PROGROM[F_PC[15:2]];
+	 FD_PC    <= F_PC;
+	 F_PC     <= F_PC+4;
+      end else if(jumpOrBranch) begin
+	 F_PC  <= jumpOrBranchAddress;	 
+      end      
+   end
+   
+/******************************************************************************/
+   reg [31:0] FD_PC;   
+   reg [31:0] FD_instr;
+/******************************************************************************/
+
+```
+
+The `F` stage is a bit particular, in the sense that it is the first stage. It
+does not have any input, but it has the program counter `F_PC` and the instruction
+ROM. It outputs the PC and the loaded instruction to the `Ð`ecode stage. Note that
+it handles the "exceptions to the rule" signals (`jumpOrBranch` and `jumpOrBranchAddress`)
+that come from later stages.
+
+### Decode
+
+The `Ð`ecode stage is responsible for recognizing the opcodes, 
+extracting the immediates from the instruction, and fetching the operands
+from the register file. To make things as simple as possible, for now, we
+are going to decode the instruction each time we need it instead of
+doing that in the decode stage. It sounds a bit crazy, but for now the goal
+is to understand how a pipelined design works. Then we will see later how
+to optimize the design. Another reason is that we want to be able to
+display the instructions in each stage with our disassembler, hence it
+requires each stage to have the instruction and PC, and I'd rather keep
+the information in a single form in the system (else it is a potential
+source of bugs). Hence our Decode stage is implemented as follows:
+
+```verilog
+   reg [31:0] RegisterBank [0:31];
+   
+   always @(posedge clk) begin
+      if(state[D_bit]) begin
+	 DE_PC    <= FD_PC;
+	 DE_instr <= FD_instr;
+	 DE_rs1 <= RegisterBank[rs1Id(FD_instr)];
+	 DE_rs2 <= RegisterBank[rs2Id(FD_instr)];
+      end
+   end
+
+   always @(posedge clk) begin
+      if(wbEnable) begin
+	 RegisterBank[wbRdId] <= wbData;
+      end
+   end
+   
+/******************************************************************************/
+   reg [31:0] DE_PC;
+   reg [31:0] DE_instr;
+   reg [31:0] DE_rs1;
+   reg [31:0] DE_rs2;
+/******************************************************************************/
+```
+
+It passes the PC and the instruction to the next stage (Execute) through `DE_PC`
+and `DE_instr`, and it fetches the two operands from the register file into
+`DE_rs1` and `DE_rs2`. To make the source more readable, there are some helper
+functions to extract the different fields and immediates from an instruction:
+
+```verilog
+   function isALUreg; input [31:0] I; isALUreg=(I[6:0]==7'b0110011); endfunction
+   function isALUimm; input [31:0] I; isALUimm=(I[6:0]==7'b0010011); endfunction
+   function isBranch; input [31:0] I; isBranch=(I[6:0]==7'b1100011); endfunction
+   ...
+   function [4:0] rs1Id; input [31:0] I; rs1Id = I[19:15];      endfunction
+   function [4:0] rs2Id; input [31:0] I; rs2Id = I[24:20];      endfunction
+   function [4:0] rdId;  input [31:0] I; rdId  = I[11:7];       endfunction
+   ...
+   function [2:0] funct3; input [31:0] I; funct3 = I[14:12]; endfunction
+   function [6:0] funct7; input [31:0] I; funct7 = I[31:25]; endfunction
+   ...
+   function [31:0] Uimm; input [31:0] I; Uimm={I[31:12],{12{1'b0}}}; endfunction
+   ...
+```
+
+(they are also used in the subsequent stages).
+
+Note also the "exception to the rule" signals `wbEnable`, `wbRdId` and `wbData` and
+the way they are used to write back into the register file.
+
+### Execute
+
 
 
 
