@@ -782,7 +782,7 @@ Finally, the Execute stage computes both the result of the operation
 passes them to the next stage (as well as the PC, instruction and value
 of the second source register):
 
-```
+```verilog
    always @(posedge clk) begin
       if(state[E_bit]) begin
 	 EM_PC      <= DE_PC;
@@ -973,6 +973,8 @@ So the idea is simple: we are going to replace the instructions that should not 
 |------|----------------|----------------|--------------|--------------|--------------|
 |  6   | addi x2,x2,-16 | nop            | nop          | jal x1,0x10  | lui x2,0x20  | 
 
+It is said that `D` and `E` are "flushed".
+
 And that's all ! How can we implement that ?
 We declare two wires, `D_flush` and `E_flush`, that are asserted each time the instruction
 in `D` (resp. `E`) should be replaced with `nop` in the next cycle
@@ -1116,12 +1118,176 @@ Now it runs like that:
 |  10  | lui  x10,0x10  | li   x14,255   | lui  x15,0x400 | sw   x1,12(x2) | addi x2,x2,-16 | 
 
 
-Do you see the problem ? The instruction `sw x1,12(x2)` uses register `x2`, that is
+Do you see the problem ? The instruction `sw x1,12(x2)` decoded at clock 8 uses register `x2`, that is
 set by the instruction right before (`addi x2,x2,-16`), but `x2` will be updated not before
 the end of clock 10, when it leaves the `W` stage, hence `sw x1,12(x2)` gets a wrong value
-of `x2` at clock 8, when it is in the `D` stage.
+of `x2` at clock 8, when it is in the `D` stage. It is called a *data hazard*.
 
-WIP...
+How can we solve the problem ? The idea is simple: we make `sw x1,12(x2)` remain in `D` until
+`addi x2,x2,-16` writes its result to `x2` (that is, when it leaves `W`), and we insert NOPs
+in `E`, like that:
+
+| clk  | F              | D              | E              | M              | W              |
+|------|----------------|----------------|----------------|----------------|----------------|
+|  8   | lui  x15,0x400 | sw   x1,12(x2) | addi x2,x2,-16 | nop            | nop            |
+|  9   | lui  x15,0x400 | sw   x1,12(x2) | nop            | addi x2,x2,-16 | nop            |
+|  10  | lui  x15,0x400 | sw   x1,12(x2) | nop            | nop            | addi x2,x2,-16 | 
+|  11  | lui  x15,0x400 | sw   x1,12(x2) | nop            | nop            | nop            |
+|  12  | li   x14,255   | lui  x15,0x400 | sw   x1,12(x2) | nop            | nop            | 
+|  13  | lui  x10,0x10  | li   x14,255   | lui  x15,0x400 | sw   x1,12(x2) | nop            | 
+
+It means that whenever an instruction in `D` uses a register written by an instruction in
+`E`, `M` or `W`, we need to:
+- keep that instruction in `D` (it is said that the `D` stage is "stalled")
+- clearly, `F` should be also stalled (like a mini traffic jam)
+- and `E` is flushed
+
+Or put differently, whenever a stage is stalled, all the previous stages should be stalled as
+well, and the next stage should be flushed. Here `D` is stalled, so the previous stages
+(only `F`) are stalled as well, and the next stage (`E`) is flushed.
+
+How can we do that ?
+
+We simply declare two new wires, `F_stall` and `D_stall`, and take them into account in
+`F` and `D` as follows:
+
+```verilog
+
+   ...
+   /* F */
+   always @(posedge clk) begin
+      if(!F_stall) begin
+	 FD_instr <= PROGROM[F_PC[15:2]]; 
+	 FD_PC    <= F_PC;
+	 F_PC     <= F_PC+4;
+      end
+
+      if(jumpOrBranch) begin
+	 F_PC     <= jumpOrBranchAddress;
+      end
+
+      FD_nop <= D_flush | !resetn;
+      
+      if(!resetn) begin
+	 F_PC <= 0;
+      end
+   end
+   ...
+   /* D */
+   always @(posedge clk) begin
+      if(!D_stall) begin
+	 DE_PC    <= FD_PC;
+	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
+      end
+      
+      if(E_flush) begin
+	 DE_instr <= NOP;
+      end
+      
+      DE_rs1 <= RegisterBank[rs1Id(FD_instr)];
+      DE_rs2 <= RegisterBank[rs2Id(FD_instr)];
+      
+      if(wbEnable) begin
+	 RegisterBank[wbRdId] <= wbData;
+      end
+   end
+```
+
+In other words, if a state is stalled, it does not update its output,
+unless it is flushed (flush has a higher priority than stall).
+
+The flush and stall signals are generated as follows:
+
+```verilog
+   wire rs1Hazard = !FD_nop && readsRs1(FD_instr) && rs1Id(FD_instr) != 0 && (
+               (writesRd(DE_instr) && rs1Id(FD_instr) == rdId(DE_instr)) ||
+               (writesRd(EM_instr) && rs1Id(FD_instr) == rdId(EM_instr)) ||
+	       (writesRd(MW_instr) && rs1Id(FD_instr) == rdId(MW_instr)) ) ;
+
+   wire rs2Hazard = !FD_nop && readsRs2(FD_instr) && rs2Id(FD_instr) != 0 && (
+               (writesRd(DE_instr) && rs2Id(FD_instr) == rdId(DE_instr)) ||
+               (writesRd(EM_instr) && rs2Id(FD_instr) == rdId(EM_instr)) ||
+	       (writesRd(MW_instr) && rs2Id(FD_instr) == rdId(MW_instr)) ) ;
+   
+   wire dataHazard = rs1Hazard || rs2Hazard;
+   
+   assign F_stall = dataHazard;
+   assign D_stall = dataHazard;
+   
+   assign D_flush = E_JumpOrBranch;
+   assign E_flush = E_JumpOrBranch | dataHazard;
+```
+
+This uses new functions `writesRd()`, `readsRs1()`, `readsRs2()` defined as
+follows:
+
+```verilog
+   function writesRd;
+      input [31:0] I;
+      writesRd = !isStore(I) && !isBranch(I);
+   endfunction
+
+   function readsRs1;
+      input [31:0] I;
+      readsRs1 = !(isJAL(I) || isAUIPC(I) || isLUI(I));
+   endfunction
+
+   function readsRs2;
+      input [31:0] I;
+      readsRs2 = isALUreg(I) || isBranch(I) || isStore(I);
+   endfunction
+```
+
+Looking at the following array, you see that all instructions
+except `Store` and `Branch` write `rd`, all instructions except
+`JAL`, `AUIPC` and `LUI` read `rs1`, and only `ALUreg`,
+`Branch` and `Store` read `rs2`:
+
+| instruction | what it does                   |
+|-------------|--------------------------------|
+| ALUreg      | `rd <- rs1 OP rs2`             |
+| ALUimm      | `rd <- rs1 OP Iimm`            |
+| Branch      | `if(rs1 OP rs2) PC<-PC+Bimm`   |
+| JALR        | `rd <- PC+4; PC<-rs1+Iimm`     |
+| JAL         | `rd <- PC+4; PC<-PC+Jimm`      |
+| AUIPC       | `rd <- PC + Uimm`              | 
+| LUI         | `rd <- Uimm`                   |
+| Load        | `rd <- mem[rs1+Iimm]`          |
+| Store       | `mem[rs1+Simm] <- rs2`         |
+| SYSTEM      | special                        |
+
+Now that we have a mechanism to stall the pipeline, we can also
+use it to halt execution, for instance when `EBREAK` is executed,
+as follows:
+
+```verilog
+   wire halt = resetn & isEBREAK(DE_instr);
+
+   assign F_stall = dataHazard | halt;
+   assign D_stall = dataHazard | halt;
+```
+
+** Summary ** So we have fixed the two types of problems, control hazards, caused
+by (`JumpOrBranch`,`JumpOrBranchAddress`) coming too late to the
+program counter in `F`, and data hazards, caused by (`wbEnable`, `wbData` and `wbRdId`)
+coming too late to the register file in `D`. The resulting processor is implemented
+in [pipeline4.v](pipeline4.v). If you look at the modifications we have
+done as compared to the "sequential pipeline" in the previous step
+[pipeline3.v](pipeline3.v) they are rather small:
+- removed the state machine
+- added the "pipeline control" signals `F_stall`, `D_stall`, `D_flush`, `E_flush`
+- added the small combinatorics circuitry to generate the pipeline control signals:
+   - whenever there is a control hazard, flush `F` and `D`
+   - whenever there is a data hazard, stall `F` and `D`, and flush `E`
+
+Time to test our new processor with RAYSTONES.
+
+```
+$ cd FIRMWARE
+$ make raystones.pipeline.hex
+$ cd ..
+$ ./run_verilator.sh pipeline4.v
+```
 
 Where do we stand ?
 
@@ -1130,3 +1296,19 @@ Where do we stand ?
 |pipeline2.v | 3.034 | 2.614     |
 |pipeline3.v | 5     | 1.589     |
 |pipeline4.v | 2.193 | 3.734     |
+
+Much better ! We are more than twice as fast as compared to the previous step, and we are slightly
+faster than our initial 3-4 states core. But we generate many NOPs (also called "bubbles") in the
+pipeline. Can we blow less bubbles in there ?
+
+## Step 5: reading and writing the register file in the same cycle
+
+_WIP_
+
+## Step 6: register forwarding
+
+_WIP_
+
+## Step 7: optimizations
+
+_WIP_
