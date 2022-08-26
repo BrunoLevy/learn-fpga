@@ -1504,7 +1504,7 @@ Time for benchmark !
 |pipeline3.v | "sequential pipeline"  | 5     | 1.589     | 
 |pipeline4.v | stall/flush            | 2.193 | 3.734     |
 |pipeline5.v | stall/flush comb. RF   | 1.889 | 4.330     |
-|pipeline5.v | stall/flush+reg fwding | 1.426 | 5.714     |
+|pipeline6.v | stall/flush+reg fwding | 1.426 | 5.714     |
 
 Good, our new pipelined CPU is more than twice faster than the initial
 3-4 states multicycle CPU !
