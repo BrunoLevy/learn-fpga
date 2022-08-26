@@ -1511,4 +1511,75 @@ Good, our new pipelined CPU is more than twice faster than the initial
 
 ## Step 7: optimizing for fmax
 
+So we have seen that we have gained something regarding CPI, but were do
+we stand for fmax (and also LUTs and FFs) ? Here are the values for
+the ULX3S:
+
+| Version        | Description            | Fmax   | LUTs  | FFs  |
+|----------------|------------------------|--------|-------|------|
+|pipeline2.v     | 3-4 states multicycle  | 50 MHz | 2100  | 532  |
+|pipeline3.v     | "sequential pipeline"  | 80 MHz | 1877  | 1092 |
+|pipeline4.v     | stall/flush            | 50 MHz | 2262  | 1148 |
+|pipeline5.v     | stall/flush RF bypas   | 55 MHz | 2115  | 1040 | 
+|pipeline5_bis.v | stall/flush comb. RF   | 55 MHz | 1903  | 1040 | 
+|pipeline6.v     | stall/flush+reg fwding | 40 MHz | 2478  | 1040 |
+
+- the "sequential pipeline" validates at 80 MHz. Then we see the
+  benefit of having simple stages
+- Fmax quickly drops when pipeline control logic is added (pipeline4)
+- ... but it gets higher with pipeline5 and pipeline5_vis that use
+  a combinatorial register file (emulated or real) where a written
+  value can be read in the same cycle (hence pipeline control logic
+  is simpler)
+- ... and finally it drops again when we add register forwaring logic.
+
+But we made no effort optimizing Fmax, our goal up to now was mainly to
+reduce CPI. Let us see what we can do now.
+
+### Read `DATARAM` in `E` stage, sign-extend and align in `M`
+
+_WIP_ 
+
+### `wbEn` register pipeline
+
+Seeing the drop in fmax in the last row, we can guess that register forwarding
+is also a limiting factor. Let us take a closer look at what we have done for
+register forwaring:
+
+```verilog
+   wire E_M_fwd_rs1 = rdId(EM_instr) != 0 && writesRd(EM_instr) && 
+	              (rdId(EM_instr) == rs1Id(DE_instr));
+   
+   wire E_W_fwd_rs1 = rdId(MW_instr) != 0 && writesRd(MW_instr) && 
+	              (rdId(MW_instr) == rs1Id(DE_instr));
+
+   wire E_M_fwd_rs2 = rdId(EM_instr) != 0 && writesRd(EM_instr) && 
+	              (rdId(EM_instr) == rs2Id(DE_instr));
+   
+   wire E_W_fwd_rs2 = rdId(MW_instr) != 0 && writesRd(MW_instr) && 
+	              (rdId(MW_instr) == rs2Id(DE_instr));
+   
+   wire [31:0] E_rs1 = E_M_fwd_rs1 ? EM_Eresult :
+	               E_W_fwd_rs1 ? wbData     :
+	               DE_rs1;
+	       
+   wire [31:0] E_rs2 = E_M_fwd_rs2 ? EM_Eresult :
+	               E_W_fwd_rs2 ? wbData     :
+	               DE_rs2;
+```
+
+and `writesRd(I)` is defined as `!isStore(I) & !isBranch(I)`, where
+`isStore()` and `isBranch()` test 7 bits each. Since they also test
+5 bits (`rdId`), the four expressions that control the two muxes `E_rs1` and `E_rs2`
+are quite wide. How can we reduce them ?
+
+The idea is to create in each stage a `wbEnable` pipeline register, that indicates
+whether the instruction writes back to the register file. The decode stage will
+do the `!isStore(I) & !isBranch(I)` test, then the execute test will test that
+`rdId` is not 0.
+
+### `D` decodes, and remove `instr` and `PC` from subsequent stages
+_WIP_
+
+### Careful optimizations in `D`
 _WIP_
