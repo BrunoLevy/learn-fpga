@@ -1217,8 +1217,12 @@ The flush and stall signals are generated as follows:
    assign D_flush = E_JumpOrBranch;
    assign E_flush = E_JumpOrBranch | dataHazard;
 ```
+(remember that `FD_nop` needs to be tested. `FD_nop` is there because we
+cannot write a `NOP` into `FD_instr` when `F` is flushed, because `FD_instr`
+is the output register of a memory).
 
-This uses new functions `writesRd()`, `readsRs1()`, `readsRs2()` defined as
+The `rs1Hazard` and `rs2Hazard` signals use
+new functions `writesRd()`, `readsRs1()`, `readsRs2()` defined as
 follows:
 
 ```verilog
@@ -1267,7 +1271,7 @@ as follows:
    assign D_stall = dataHazard | halt;
 ```
 
-** Summary ** So we have fixed the two types of problems, control hazards, caused
+**Summary** So we have fixed the two types of problems, control hazards, caused
 by (`JumpOrBranch`,`JumpOrBranchAddress`) coming too late to the
 program counter in `F`, and data hazards, caused by (`wbEnable`, `wbData` and `wbRdId`)
 coming too late to the register file in `D`. The resulting processor is implemented
