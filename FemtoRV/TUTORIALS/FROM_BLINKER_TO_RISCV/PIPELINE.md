@@ -855,10 +855,10 @@ $ ./run_verilator.sh pipeline3.v
 then it gives the following result (result for `pipeline2.v` reported for reference):
 
 
-| Version    | CPI   | RAYSTONES |
-|------------|-------|-----------|
-|pipeline2.v | 3.034 | 2.614     |
-|pipeline3.v | 5     | 1.589     |
+| Version    | Description           | CPI   | RAYSTONES |
+|------------|-----------------------|-------|-----------|
+|pipeline2.v | 3-4 states multicycle | 3.034 | 2.614     |
+|pipeline3.v | "sequential pipeline" | 5     | 1.589     | 
 
 Oooh that's great, we worked like crazy to have a **less performant** core ?
 Wait wait wait, this one is not pipelined yet, we are going to start "shifting gears"
@@ -1284,22 +1284,41 @@ done as compared to the "sequential pipeline" in the previous step
    - whenever there is a control hazard, flush `F` and `D`
    - whenever there is a data hazard, stall `F` and `D`, and flush `E`
 
-Time to test our new processor with RAYSTONES.
+Try this:
+uncomment the line with `//define VERBOSE` in [pipeline4.v](pipeline4.v), then:
+```
+   $ cd FIRMWARE
+   $ make helloC.pipeline.hex
+   $ cd ..
+   $ ./run_verilator.sh pipeline4.v 
+```
+and examine `log.txt`.
+- it gives for each stage the program counter and the instruction;
+- `F` also indicates whenever `jumpOrBranch` is active and when `PC`
+  received a new value from `jumpOrBranchAddress`;
+- `D` indicates in `[  ]` whenever there is a data hazard in `rs1` and
+  `rs2`;
+- `E` indicates the value of `rs1` and `rs2`
+- `W` indicates the value written back to the register file
+
+This tool helped me *a lot* to debug (I did not get all this right the first time !!!).
+
+Now it is time to test our new processor with RAYSTONES.
 
 ```
 $ cd FIRMWARE
 $ make raystones.pipeline.hex
 $ cd ..
-$ ./run_verilator.sh pipeline4.v
+$ ./run_verilator.sh pipeline4.v &> log.txt
 ```
 
 Where do we stand ?
 
-| Version    | CPI   | RAYSTONES |
-|------------|-------|-----------|
-|pipeline2.v | 3.034 | 2.614     |
-|pipeline3.v | 5     | 1.589     |
-|pipeline4.v | 2.193 | 3.734     |
+| Version    | Description           | CPI   | RAYSTONES |
+|------------|-----------------------|-------|-----------|
+|pipeline2.v | 3-4 states multicycle | 3.034 | 2.614     |
+|pipeline3.v | "sequential pipeline" | 5     | 1.589     | 
+|pipeline4.v | stall/flush           | 2.193 | 3.734     |
 
 Much better ! We are more than twice as fast as compared to the previous step, and we are slightly
 faster than our initial 3-4 states core. But we generate many NOPs (also called "bubbles") in the
@@ -1307,12 +1326,189 @@ pipeline. Can we blow less bubbles in there ?
 
 ## Step 5: reading and writing the register file in the same cycle
 
-_WIP_
+If you read the good books on processor design (Patterson, Harris and Harris), they say that
+the data written to the register file by `W` can be read by `D` *in the same cycle*, so why
+do we stall until the instruction leaves `W` ?
+
+In fact, our design supposes that the register file is accessed with a latency of 1 cycle, which
+is the case if the register file is mapped to DRAM. This implies that the data written in the
+register file by `W` is available 1 cycle later, so we need to test the instruction in `W` for
+data hazard.
+
+The register file can also be implemented as an array of flipflops that does not have this
+1-cycle latency (it is said it has a *combinatorial* access). We'll see how to do that later, for
+now, we keep our 1-cycle latency register file and see how to add wires to it:
+
+```verilog
+/* D */
+always @(posedge clk) begin
+  ...
+  if(wbEnable && rdId(MW_instr) == rs1Id(FD_instr)) begin
+      DE_rs1 <= wbData;
+  end else begin
+      DE_rs1 <= RegisterBank[rs1Id(FD_instr)];
+  end
+
+  if(wbEnable && rdId(MW_instr) == rs2Id(FD_instr)) begin
+      DE_rs2 <= wbData;
+  end else begin
+      DE_rs2 <= RegisterBank[rs2Id(FD_instr)];
+  end
+  ...
+end  
+```
+
+The idea is simple, if the register written by `W` is the one accessed by `D`, send it to `D`
+directly without accessing the register file (it is said to be "forwarded" to `D`). The additional
+wire is also called a "bypass".
+
+Now we can update the rules for the data hazards and remove from them the test for the instruction in `W`:
+```
+   wire rs1Hazard = !FD_nop && readsRs1(FD_instr) && rs1Id(FD_instr) != 0 && (
+               (writesRd(DE_instr) && rs1Id(FD_instr) == rdId(DE_instr)) ||
+	       (writesRd(EM_instr) && rs1Id(FD_instr) == rdId(EM_instr)) );
+   
+
+   wire rs2Hazard = !FD_nop && readsRs2(FD_instr) && rs2Id(FD_instr) != 0 && (
+               (writesRd(DE_instr) && rs2Id(FD_instr) == rdId(DE_instr)) ||
+	       (writesRd(EM_instr) && rs2Id(FD_instr) == rdId(EM_instr)) );
+```
+
+The source is in [pipeline5.v](pipeline5.v).
+
+Let us see now how to "do it right", with a combinatorial access in the register file,
+so that we really can write the register file and read it in the same cycle, as described
+in the good books (Patterson, Harris & Harris):
+
+```verilog
+   reg [31:0] RegisterBank [0:31];
+   always @(posedge clk) begin
+      if(!D_stall) begin
+	 DE_PC    <= FD_PC;
+	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
+      end
+      
+      if(E_flush) begin
+	 DE_instr <= NOP;
+      end
+
+      if(wbEnable) begin
+	 RegisterBank[wbRdId] <= wbData;
+      end
+   end
+   
+/******************************************************************************/
+   reg [31:0] DE_PC;
+   reg [31:0] DE_instr;
+   wire [31:0] DE_rs1 = RegisterBank[rs1Id(DE_instr)];
+   wire [31:0] DE_rs2 = RegisterBank[rs2Id(DE_instr)];
+/******************************************************************************/
+```
+
+As can be seen, `DE_rs1` and `DE_rs2` are now wires, directly connected to the register file
+(and of course, we have removed the instruction to read them, as well as the bypasses).
+The complete source is in [pipeline5_bis.v](pipeline5_bis.v).
+
+Where do we stand ?
+
+| Version    | Description           | CPI   | RAYSTONES |
+|------------|-----------------------|-------|-----------|
+|pipeline2.v | 3-4 states multicycle | 3.034 | 2.614     |
+|pipeline3.v | "sequential pipeline" | 5     | 1.589     | 
+|pipeline4.v | stall/flush           | 2.193 | 3.734     |
+|pipeline5.v | stall/flush comb. RF  | 1.889 | 4.330     |
+
+Not super spectacular, but you see we are (slowly) getting nearer to 1 CPI. 
 
 ## Step 6: register forwarding
 
-_WIP_
+In the previous step, we "emulated" the combinatorial access in the
+register file to write to it and read it in the same cycle, so that
+the instruction in `D` "sees" the value written back by the instruction
+in `W`. We also saw that it is not the best way, because an easier way
+of doing that exists, using a register file with combinatorial access.
+However, by desiging our "emulated" combinatorial access, we have
+learnt something: if the data that we need is available somewhere else
+in the pipeline, instead of waiting for it to be written to the register
+file (by stalling and blowing bubbles), it is better to directly send it
+where it is needed (and then we do not need to wait for it !).
 
-## Step 7: optimizations
+The data to be forwarded to `E` can be in two different places:
+- in `M`, that is, in `EM_Eresult`
+- in `W`, that is, in `wbData`
+
+so we can add bypasses that will "forward" the
+result to `rs1` and `rs2` at the beginning of the `E` stage, as follows:
+
+```verilog
+   wire E_M_fwd_rs1 = rdId(EM_instr) != 0 && writesRd(EM_instr) && 
+	              (rdId(EM_instr) == rs1Id(DE_instr));
+   
+   wire E_W_fwd_rs1 = rdId(MW_instr) != 0 && writesRd(MW_instr) && 
+	              (rdId(MW_instr) == rs1Id(DE_instr));
+
+   wire E_M_fwd_rs2 = rdId(EM_instr) != 0 && writesRd(EM_instr) && 
+	              (rdId(EM_instr) == rs2Id(DE_instr));
+   
+   wire E_W_fwd_rs2 = rdId(MW_instr) != 0 && writesRd(MW_instr) && 
+	              (rdId(MW_instr) == rs2Id(DE_instr));
+   
+   wire [31:0] E_rs1 = E_M_fwd_rs1 ? EM_Eresult :
+	               E_W_fwd_rs1 ? wbData     :
+	               DE_rs1;
+	       
+   wire [31:0] E_rs2 = E_M_fwd_rs2 ? EM_Eresult :
+	               E_W_fwd_rs2 ? wbData     :
+	               DE_rs2;
+```
+
+and then replace `EM_rs1` (resp `EM_rs2`) everywhere else in `E` with
+`E_rs1` (resp `E_rs2`). Do not forget any of them, else it will
+break everything ! (there is three instances of each).
+
+Now the only data hazard condition that we have is when a load
+is immediately followed by an instruction that uses its result
+(if a load instruction is used two instructions after, then its
+result is correctly forwarded from `W`).
+
+The pipeline control logic becomes simpler:
+```verilog
+   wire rs1Hazard = readsRs1(FD_instr) && (rs1Id(FD_instr) == rdId(DE_instr)) ;
+   wire rs2Hazard = readsRs2(FD_instr) && (rs2Id(FD_instr) == rdId(DE_instr)) ;
+   wire dataHazard = !FD_nop && (isLoad(DE_instr)||isCSRRS(DE_instr)) && (rs1Hazard || rs2Hazard);
+   
+   assign F_stall = dataHazard | halt;
+   assign D_stall = dataHazard | halt;
+   assign D_flush = E_JumpOrBranch;
+   assign E_flush = E_JumpOrBranch | dataHazard;
+```
+(the definitions of `F_stall`, `D_stall`, `D_flush` and `E_flush` have not changed).
+
+Notes:
+- Normally we should test in `datahazard` that `rdId(DE_instr)` is not zero, but
+  in general, loads and read CRS are not directed to zero ! And if one really
+  loads to zero, it will just generate a bubble that could have been avoided;
+- One could also systematically create a bubble when there is a Load, as follows:
+   `wire dataHazard = !FD_nop && (isLoad(DE_instr)||isCSRRS(DE_instr))`. It is
+   also correct, but it generates more bubbles. It may be interesting though, because
+   it makes the pipeline control logic simpler, and may allow to increase fmax. Other
+   strategies are possible, such as comparing only a subset of the bits in the register
+   ids if the critical path is there. Asserting `dataHazard` more often than necessary
+   is not incorrect (but it increases CPI).
+
+Time for benchmark !
+
+| Version    | Description            | CPI   | RAYSTONES |
+|------------|------------------------|-------|-----------|
+|pipeline2.v | 3-4 states multicycle  | 3.034 | 2.614     |
+|pipeline3.v | "sequential pipeline"  | 5     | 1.589     | 
+|pipeline4.v | stall/flush            | 2.193 | 3.734     |
+|pipeline5.v | stall/flush comb. RF   | 1.889 | 4.330     |
+|pipeline5.v | stall/flush+reg fwding | 1.426 | 5.714     |
+
+Good, our new pipelined CPU is more than twice faster than the initial
+3-4 states multicycle CPU !
+
+## Step 7: optimizing for fmax
 
 _WIP_

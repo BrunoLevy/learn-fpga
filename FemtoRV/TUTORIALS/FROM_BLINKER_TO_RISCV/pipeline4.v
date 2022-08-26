@@ -8,6 +8,8 @@
 `include "clockworks.v"
 `include "emitter_uart.v"
 
+`define VERBOSE
+
 /******************************************************************************/
 
 module Processor (
@@ -469,7 +471,7 @@ module Processor (
    end
 `endif
 
-   
+`ifdef VERBOSE   
    always @(posedge clk) begin
       if(resetn) begin
 	 $write("[W] PC=%h ", MW_PC);
@@ -503,7 +505,7 @@ module Processor (
 	 $display("");
       end
    end
-
+`endif
 
 /******************************************************************************/
    
@@ -570,9 +572,12 @@ module SOC (
 `ifdef BENCH
    always @(posedge clk) begin
       if(uart_valid) begin
+`ifdef VERBOSE	 
 	 $display("UART: %c", IO_mem_wdata[7:0]);
-//	 $write("%c", IO_mem_wdata[7:0] );
-//	 $fflush(32'h8000_0001);
+`else	 
+	 $write("%c", IO_mem_wdata[7:0] );
+	 $fflush(32'h8000_0001);
+`endif	 
       end
    end
 `endif   

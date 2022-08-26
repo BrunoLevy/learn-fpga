@@ -1,7 +1,8 @@
-/*
- * pipeline6.v
+/**
+ * pipeline5.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
- * Step 6: register forwarding 2/2: full register forwarding
+ * Step 5: register forwarding 1/2: D reads and writes RF in same cycle
+ *     done with combinatorial RF.
  */
  
 `default_nettype none
@@ -193,7 +194,6 @@ module Processor (
 
    reg [31:0] RegisterBank [0:31];
    always @(posedge clk) begin
-
       if(!D_stall) begin
 	 DE_PC    <= FD_PC;
 	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
@@ -202,7 +202,7 @@ module Processor (
       if(E_flush) begin
 	 DE_instr <= NOP;
       end
-      
+
       if(wbEnable) begin
 	 RegisterBank[wbRdId] <= wbData;
       end
@@ -217,36 +217,14 @@ module Processor (
 
                      /*** E: Execute ***/
 
-   /*********** Registrer forwarding ************************************/
-
-   wire E_M_fwd_rs1 = rdId(EM_instr) != 0 && writesRd(EM_instr) && 
-	              (rdId(EM_instr) == rs1Id(DE_instr));
-   
-   wire E_W_fwd_rs1 = rdId(MW_instr) != 0 && writesRd(MW_instr) && 
-	              (rdId(MW_instr) == rs1Id(DE_instr));
-
-   wire E_M_fwd_rs2 = rdId(EM_instr) != 0 && writesRd(EM_instr) && 
-	              (rdId(EM_instr) == rs2Id(DE_instr));
-   
-   wire E_W_fwd_rs2 = rdId(MW_instr) != 0 && writesRd(MW_instr) && 
-	              (rdId(MW_instr) == rs2Id(DE_instr));
-   
-   wire [31:0] E_rs1 = E_M_fwd_rs1 ? EM_Eresult :
-	               E_W_fwd_rs1 ? wbData     :
-	               DE_rs1;
-	       
-   wire [31:0] E_rs2 = E_M_fwd_rs2 ? EM_Eresult :
-	               E_W_fwd_rs2 ? wbData     :
-	               DE_rs2;
-
    /*********** the ALU *************************************************/
 
-   wire [31:0] E_aluIn1 = E_rs1;
+   wire [31:0] E_aluIn1 = DE_rs1;
    
    wire [31:0] E_aluIn2 = 
-         (isALUreg(DE_instr) | isBranch(DE_instr)) ? E_rs2 : Iimm(DE_instr);
+         (isALUreg(DE_instr) | isBranch(DE_instr)) ? DE_rs2 : Iimm(DE_instr);
    
-   wire [4:0]  E_shamt  = isALUreg(DE_instr) ? E_rs2[4:0] : shamt(DE_instr); 
+   wire [4:0]  E_shamt  = isALUreg(DE_instr) ? DE_rs2[4:0] : shamt(DE_instr); 
 
    wire E_minus = DE_instr[30] & isALUreg(DE_instr);
    wire E_arith_shift = DE_instr[30];
@@ -333,10 +311,10 @@ module Processor (
    always @(posedge clk) begin
       EM_PC      <= DE_PC;
       EM_instr   <= DE_instr;
-      EM_rs2     <= E_rs2;
+      EM_rs2     <= DE_rs2;
       EM_Eresult <= E_result;
-      EM_addr    <= isStore(DE_instr) ? E_rs1 + Simm(DE_instr) : 
-                                        E_rs1 + Iimm(DE_instr) ;
+      EM_addr    <= isStore(DE_instr) ? DE_rs1 + Simm(DE_instr) : 
+                                        DE_rs1 + Iimm(DE_instr) ;
    end
 
    assign halt = resetn & isEBREAK(DE_instr);
@@ -464,12 +442,16 @@ module Processor (
    assign jumpOrBranchAddress = E_JumpOrBranchAddr;
    assign jumpOrBranch        = E_JumpOrBranch;
 
-   // Not testing that rdId(DE_instr) != 0 because in general one
-   // does not Load to zero ! (idem for CSRRS).
-   wire rs1Hazard = readsRs1(FD_instr) && (rs1Id(FD_instr) == rdId(DE_instr)) ;
-   wire rs2Hazard = readsRs2(FD_instr) && (rs2Id(FD_instr) == rdId(DE_instr)) ;
+   wire rs1Hazard = !FD_nop && readsRs1(FD_instr) && rs1Id(FD_instr) != 0 && (
+               (writesRd(DE_instr) && rs1Id(FD_instr) == rdId(DE_instr)) ||
+	       (writesRd(EM_instr) && rs1Id(FD_instr) == rdId(EM_instr)) );
    
-   wire dataHazard = !FD_nop && (isLoad(DE_instr)||isCSRRS(DE_instr)) && (rs1Hazard || rs2Hazard);
+
+   wire rs2Hazard = !FD_nop && readsRs2(FD_instr) && rs2Id(FD_instr) != 0 && (
+               (writesRd(DE_instr) && rs2Id(FD_instr) == rdId(DE_instr)) ||
+	       (writesRd(EM_instr) && rs2Id(FD_instr) == rdId(EM_instr)) );
+   
+   wire dataHazard = rs1Hazard || rs2Hazard;
    
    assign F_stall = dataHazard | halt;
    assign D_stall = dataHazard | halt;
