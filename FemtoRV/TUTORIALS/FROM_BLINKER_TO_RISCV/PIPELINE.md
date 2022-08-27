@@ -512,7 +512,7 @@ has all the stages, but drive it with a state machine that executes one stage at
 instead of running them concurrently. Then we will see what needs to be modified when
 all the stages run concurrently.
 
-Following all good books in processor design (Patterson, Harris...) we will start
+Following all good books in processor design (Patterson & Hennessy, Harris & Harris) we will start
 with a super classical design with 5 stages:
 
 | acronym | long name            | description                           |
@@ -612,7 +612,7 @@ Let us summarize the rules:
    else is done to the result;
 
 Or put differently: in state `B`, on the left of `<=` there can be only a `BC_`-prefixed
-register. On the right of `<=` or `=` there can be only a `BC_`-prefixed register, a `B_`-prefixed
+register. On the right of `<=` or `=` there can be only a `AB_`-prefixed register, a `B_`-prefixed
 wire or some combinations of these...
 
 However, there are two **exceptions to the rules** (else it would be too simple !):
@@ -1326,7 +1326,7 @@ pipeline. Can we blow less bubbles in there ?
 
 ## Step 5: reading and writing the register file in the same cycle
 
-If you read the good books on processor design (Patterson, Harris and Harris), they say that
+If you read the good books on processor design (Patterson and Hennessy, Harris and Harris), they say that
 the data written to the register file by `W` can be read by `D` *in the same cycle*, so why
 do we stall until the instruction leaves `W` ?
 
@@ -1378,7 +1378,7 @@ The source is in [pipeline5.v](pipeline5.v).
 
 Let us see now how to "do it right", with a combinatorial access in the register file,
 so that we really can write the register file and read it in the same cycle, as described
-in the good books (Patterson, Harris & Harris):
+in the good books (Patterson & Hennessy, Harris & Harris):
 
 ```verilog
    reg [31:0] RegisterBank [0:31];
@@ -1531,7 +1531,7 @@ the ULX3S:
   a combinatorial register file (emulated or real) where a written
   value can be read in the same cycle (hence pipeline control logic
   is simpler)
-- ... and finally it drops again when we add register forwaring logic.
+- ... and finally it drops again when we add register forwarding logic.
 
 But we made no effort optimizing Fmax, our goal up to now was mainly to
 reduce CPI. Let us see what we can do now.
