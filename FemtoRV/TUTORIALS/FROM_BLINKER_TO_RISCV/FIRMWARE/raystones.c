@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include "perf.h"
+#include "io.h"
 
 /*******************************************************************/
 
@@ -466,6 +467,8 @@ void init_scene() {
 
 int main() {
     init_scene();
+    IO_OUT(IO_LEDS,5);   
     render(spheres, nb_spheres, lights, nb_lights);
+    IO_OUT(IO_LEDS,15);
     return 0;
 }

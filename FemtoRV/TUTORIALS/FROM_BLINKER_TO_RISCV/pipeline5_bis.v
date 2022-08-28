@@ -9,7 +9,7 @@
 `include "clockworks.v"
 `include "emitter_uart.v"
 
-//`define VERBOSE
+`define VERBOSE
 
 /******************************************************************************/
 
@@ -484,12 +484,14 @@ module Processor (
 	 $write("[E] PC=%h ", DE_PC);
 	 $write("     ");	 
 	 riscv_disasm(DE_instr,DE_PC);
-	 $write("  rs1=0x%h  rs2=0x%h  ",DE_rs1, DE_rs2);
+	 if(DE_instr != NOP) begin	 	 
+	    $write("  rs1=0x%h  rs2=0x%h  ",DE_rs1, DE_rs2);
+	 end
 	 $write("\n");
 
 	 $write("[D] PC=%h ", FD_PC);
 	 $write("[%s%s] ",rs1Hazard?"*":" ",rs2Hazard?"*":" ");	 
-	 riscv_disasm(FD_instr,FD_PC);
+	 riscv_disasm(FD_nop ? NOP : FD_instr,FD_PC);
 	 $write("\n");
 
 	 $write("[F] PC=%h ", F_PC); 

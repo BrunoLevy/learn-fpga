@@ -1,0 +1,35 @@
+# See https://github.com/emard/ulx3s/blob/master/doc/constraints/ulx3s_v20.lpf
+
+## Clock #########################################
+
+LOCATE COMP "CLK" SITE "A10";
+IOBUF PORT "CLK" IO_TYPE=LVCMOS33;
+FREQUENCY PORT "CLK" 12 MHZ;
+
+## RESET button ##################################
+
+LOCATE COMP "RESET" SITE "P4"; 
+IOBUF PORT "RESET" IO_TYPE=LVCMOS33;
+
+## LEDs ##########################################
+
+LOCATE COMP "LEDS[0]" SITE "B17";
+LOCATE COMP "LEDS[1]" SITE "A17";
+LOCATE COMP "LEDS[2]" SITE "C17";
+LOCATE COMP "LEDS[3]" SITE "B18";
+LOCATE COMP "LEDS[4]" SITE "A18";
+
+IOBUF PORT "LEDS[0]"  IO_TYPE=LVCMOS33;
+IOBUF PORT "LEDS[1]"  IO_TYPE=LVCMOS33;
+IOBUF PORT "LEDS[2]"  IO_TYPE=LVCMOS33;
+IOBUF PORT "LEDS[3]"  IO_TYPE=LVCMOS33;
+IOBUF PORT "LEDS[4]"  IO_TYPE=LVCMOS33;
+
+## UART ######################################################
+
+LOCATE COMP "TXD"   SITE "D11"; 
+LOCATE COMP "RXD"   SITE "D12"; 
+
+IOBUF PORT "TXD" PULLMODE=UP IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "RXD" PULLMODE=UP IO_TYPE=LVCMOS33;
+

@@ -60,7 +60,7 @@ module Processor (
    function [4:0] rs1Id; input [31:0] I; rs1Id = I[19:15];      endfunction
    function [4:0] rs2Id; input [31:0] I; rs2Id = I[24:20];      endfunction
    function [4:0] shamt; input [31:0] I; shamt = I[24:20];      endfunction   
-   function [4:0] rdId;  input [31:0] I; rdId  = (isBranch(I) | isStore(I)) ? 0 : I[11:7]; endfunction
+   function [4:0] rdId;  input [31:0] I; rdId  = I[11:7]; endfunction
    function [1:0] csrId; input [31:0] I; csrId = {I[27],I[21]}; endfunction
 
    /* funct3 and funct7 */
@@ -488,6 +488,7 @@ module Processor (
 `ifdef VERBOSE
    always @(posedge clk) begin
       if(resetn) begin
+	 $write("D_flush=%d E_flush=%d F_stall=%d D_stall=%d\n", D_flush, E_flush, F_stall, D_stall);
 	 $write("[W] PC=%h ", MW_PC);
 	 $write("     ");
 	 riscv_disasm(MW_instr,MW_PC);
@@ -502,12 +503,14 @@ module Processor (
 	 $write("[E] PC=%h ", DE_PC);
 	 $write("     ");	 
 	 riscv_disasm(DE_instr,DE_PC);
-	 $write("  rs1=0x%h  rs2=0x%h  ",DE_rs1, DE_rs2);
+	 if(DE_instr != NOP) begin
+	    $write("  rs1=0x%h  rs2=0x%h  ",DE_rs1, DE_rs2);
+	 end
 	 $write("\n");
 
 	 $write("[D] PC=%h ", FD_PC);
-	 $write("[%s%s] ",rs1Hazard?"*":" ",rs2Hazard?"*":" ");	 
-	 riscv_disasm(FD_instr,FD_PC);
+	 $write("[%s%s] ",dataHazard && rs1Hazard?"*":" ", dataHazard && rs2Hazard?"*":" ");	 
+	 riscv_disasm(FD_nop ? NOP: FD_instr,FD_PC);
 	 $write("\n");
 
 	 $write("[F] PC=%h ", F_PC); 

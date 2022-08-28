@@ -1509,7 +1509,11 @@ Time for benchmark !
 Good, our new pipelined CPU is more than twice faster than the initial
 3-4 states multicycle CPU !
 
-## Step 7: optimizing for fmax
+## Step 7: A flavor of branch prediction
+
+
+
+## Step X: optimizing for fmax
 
 So we have seen that we have gained something regarding CPI, but were do
 we stand for fmax (and also LUTs and FFs) ? Here are the values for

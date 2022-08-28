@@ -8,7 +8,7 @@
 `include "clockworks.v"
 `include "emitter_uart.v"
 
-`define VERBOSE
+//`define VERBOSE
 
 /******************************************************************************/
 

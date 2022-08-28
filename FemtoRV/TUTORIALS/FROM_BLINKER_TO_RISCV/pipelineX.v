@@ -496,8 +496,8 @@ module Processor (
    // wire rs2Hazard = (D_rs2Id == DE_rdId);
    
    // we are not obliged to compare all bits ! 
-   //wire rs1Hazard = (D_rs1Id[3:0] == DE_rdId[3:0]);
-   //wire rs2Hazard = (D_rs2Id[3:0] == DE_rdId[3:0]);
+   // wire rs1Hazard = (D_rs1Id[3:0] == DE_rdId[3:0]);
+   // wire rs2Hazard = (D_rs2Id[3:0] == DE_rdId[3:0]);
    
    // Add bubble only if next instr uses result of latency-2 instr
    wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS) && 
@@ -566,18 +566,19 @@ module SOC (
    wire uart_valid = IO_mem_wr & IO_wordaddr[IO_UART_DAT_bit];
    wire uart_ready;
 
+
    corescore_emitter_uart #(
       .clk_freq_hz(`CPU_FREQ*1000000),
-        .baud_rate(1000000)
+          .baud_rate(1000000)
    ) UART(
       .i_clk(clk),
       .i_rst(!resetn),
       .i_data(IO_mem_wdata[7:0]),
       .i_valid(uart_valid),
       .o_ready(uart_ready),
-      .o_uart_tx(TXD)      			       
+      .o_uart_tx(TXD)
    );
-   
+
    assign IO_mem_rdata = 
 		    IO_wordaddr[IO_UART_CNTL_bit] ? { 22'b0, !uart_ready, 9'b0}
 	                                          : 32'b0;
