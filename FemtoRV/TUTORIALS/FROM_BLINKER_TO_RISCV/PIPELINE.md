@@ -1511,7 +1511,93 @@ Good, our new pipelined CPU is more than twice faster than the initial
 
 ## Step 7: A flavor of branch prediction
 
+We always introduce two bubbles for jumps and branches. Let us examine
+the case of `JAL`: introducing two bubbles for `JAL` is a bit stupid,
+because we know that the next `PC` is supposed to be `PC+Jimm`. So we
+can compute `PC+Jimm` in the `D` stage and pass it directy to the
+`F` stage. Then the `F` stage looks like:
 
+```verilog
+   reg  [31:0] PC;
+   wire [31:0] F_PC = D_JumpOrBranchNow ? D_JumpOrBranchAddr : PC;
+   
+   always @(posedge clk) begin
+      
+      if(!F_stall) begin
+	 FD_instr <= PROGROM[F_PC[15:2]]; 
+	 FD_PC    <= F_PC;
+	 PC       <= F_PC+4;
+      end
+      
+      if(E_JumpOrBranch) begin 
+	 PC     <= E_JumpOrBranchAddr;
+      end
+
+      FD_nop <= D_flush | !resetn;
+      
+      if(!resetn) begin
+	 PC <= 0;
+      end
+   end
+```
+
+So the `F` stage can get the current PC from `D_JumpOrBranchAddress` and
+the next PC from `E_JumpOrBranchAddress`. Now that we have introduced this
+mechanism for `JAL`, we can do a little bit more: branches are more often taken
+when they are backward (with a target smaller than `PC`) and are less often
+taken when they are forward (with a target larget than `PC`). We just need to
+test the sign bit of `Jimm` to see whether a branch is forward or backward.
+Then we can decide that `D` always sends the branch target for a backward
+branch ("predict branch taken") and never sends it for a forward branch
+("predict branch not taken"), as follows:
+
+```verilog
+   wire D_JumpOrBranchNow = !FD_nop && (
+           isJAL(FD_instr) || 
+           (isBranch(FD_instr) && backwardBranch(FD_instr)))
+        );
+   
+   wire [31:0] D_JumpOrBranchAddr =  
+               FD_PC + (isJAL(FD_instr) ? Jimm(FD_instr) : Bimm(FD_instr)); 
+```
+
+Then `E` needs to send the "correction" if the branch was not taken, or if
+the instruction was `JALR`:
+
+```verilog
+   wire E_JumpOrBranch = (
+         isJALR(DE_instr) || 
+         (isBranch(DE_instr) && (E_takeBranch^backwardBranch(DE_instr)))
+   );
+
+   wire [31:0] E_JumpOrBranchAddr =
+	isBranch(DE_instr) ? 
+                     (DE_PC + (backwardBranch(DE_instr) ? 4 : Bimm(DE_instr))) :
+	/* JALR */   {E_aluPlus[31:1],1'b0} ;
+```
+
+We need to correct if it was a taken forward branch, or a not taken backward
+branch, that is, `E_takeBranch` different from the sign bit of `Bimm`.
+
+Note that we still generate two bubbles for `JALR`: this is because JALR
+depends on `rs1`, that is only available at the beginning of `E` (and
+potentially through register forwarding).
+
+The new version is in [pipeline7.v](pipeline7.v). What does it give ?
+
+| Version    | Description             | CPI   | RAYSTONES |
+|------------|-------------------------|-------|-----------|
+|pipeline2.v | 3-4 states multicycle   | 3.034 | 2.614     |
+|pipeline3.v | "sequential pipeline"   | 5     | 1.589     | 
+|pipeline4.v | stall/flush             | 2.193 | 3.734     |
+|pipeline5.v | stall/flush comb. RF    | 1.889 | 4.330     |
+|pipeline6.v | stall/flush+reg fwding  | 1.426 | 5.714     |
+|pipeline7.v | basic branch prediction | 1.226 | 6.077     |
+
+Interestingly, our core is much faster than femtorv-electron
+(3.373 raystones) that implements RV32IM ! 
+
+For more advanced branch prediction methods, see [this link](https://danluu.com/branch-prediction/).
 
 ## Step X: optimizing for fmax
 

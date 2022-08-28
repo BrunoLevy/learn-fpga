@@ -1,7 +1,7 @@
 /*
  * pipeline6.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
- * Step 6: register forwarding 2/2: full register forwarding
+ * Step 7: a flavor of branch prediction
  */
  
 `default_nettype none
@@ -60,7 +60,7 @@ module Processor (
    function [4:0] rs1Id; input [31:0] I; rs1Id = I[19:15];      endfunction
    function [4:0] rs2Id; input [31:0] I; rs2Id = I[24:20];      endfunction
    function [4:0] shamt; input [31:0] I; shamt = I[24:20];      endfunction   
-   function [4:0] rdId;  input [31:0] I; rdId  = I[11:7]; endfunction
+   function [4:0] rdId;  input [31:0] I; rdId  = I[11:7];       endfunction
    function [1:0] csrId; input [31:0] I; csrId = {I[27],I[21]}; endfunction
 
    /* funct3 and funct7 */
@@ -100,6 +100,11 @@ module Processor (
       Bimm = {{20{I[31]}},I[7],I[30:25],I[11:8],1'b0};
    endfunction 
 
+   function backwardBranch;
+      input [31:0] I;
+      backwardBranch = I[31];
+   endfunction
+   
    function [31:0] Jimm;
       input [31:0] I;
       Jimm = {{12{I[31]}},I[19:12],I[20],I[30:21],1'b0};      
@@ -143,28 +148,26 @@ module Processor (
    
                       /***  F: Instruction fetch ***/   
 
-   reg  [31:0] 	  F_PC;
-
-   /** These two signals come from the Execute stage **/
-   wire [31:0] 	  jumpOrBranchAddress;
-   wire 	  jumpOrBranch;
-
+   reg  [31:0] 	  PC;
+   
    reg [31:0] PROGROM[0:16383]; // 16384 4-bytes words  
                                 // 64 Kb of program ROM 
    initial begin
       $readmemh("PROGROM.hex",PROGROM);
    end
 
+   wire [31:0] F_PC = D_JumpOrBranchNow ? D_JumpOrBranchAddr : PC;
+   
    always @(posedge clk) begin
-
+      
       if(!F_stall) begin
 	 FD_instr <= PROGROM[F_PC[15:2]]; 
 	 FD_PC    <= F_PC;
-	 F_PC     <= F_PC+4;
+	 PC       <= F_PC+4;
       end
-
-      if(jumpOrBranch) begin
-	 F_PC     <= jumpOrBranchAddress;
+      
+      if(E_JumpOrBranch) begin 
+	 PC     <= E_JumpOrBranchAddr;
       end
 
       // Cannot write NOP to FD_instr, because
@@ -174,7 +177,7 @@ module Processor (
       FD_nop <= D_flush | !resetn;
       
       if(!resetn) begin
-	 F_PC <= 0;
+	 PC <= 0;
       end
    end
    
@@ -186,6 +189,17 @@ module Processor (
 
                      /*** D: Instruction decode ***/
 
+   // Next fetch gets address from JAL target or from Branch target
+   // if the branch target is backward
+   
+   wire        D_JumpOrBranchNow = !FD_nop && (
+                   isJAL(FD_instr) || 
+                  (isBranch(FD_instr) && backwardBranch(FD_instr))
+               );
+   
+   wire [31:0] D_JumpOrBranchAddr =  
+               FD_PC + (isJAL(FD_instr) ? Jimm(FD_instr) : Bimm(FD_instr)); 
+   
    /** These three signals come from the Writeback stage **/
    wire        wbEnable;
    wire [31:0] wbData;
@@ -207,7 +221,7 @@ module Processor (
 	 RegisterBank[wbRdId] <= wbData;
       end
    end
-   
+
 /******************************************************************************/
    reg [31:0] DE_PC;
    reg [31:0] DE_instr;
@@ -312,22 +326,21 @@ module Processor (
    end
    
    wire E_JumpOrBranch = (
-         isJAL(DE_instr)  || 
          isJALR(DE_instr) || 
-         (isBranch(DE_instr) && E_takeBranch)
+         (isBranch(DE_instr) && (E_takeBranch^backwardBranch(DE_instr)))
    );
 
    wire [31:0] E_JumpOrBranchAddr =
-	isBranch(DE_instr) ? DE_PC + Bimm(DE_instr) :
-	isJAL(DE_instr)    ? DE_PC + Jimm(DE_instr) :
-	/* JALR */           {E_aluPlus[31:1],1'b0} ;
+	isBranch(DE_instr) ? 
+                     (DE_PC + (backwardBranch(DE_instr) ? 4 : Bimm(DE_instr))) :
+	/* JALR */   {E_aluPlus[31:1],1'b0} ;
 
    wire [31:0] E_result = 
 	(isJAL(DE_instr) | isJALR(DE_instr)) ? DE_PC+4                :
 	isLUI(DE_instr)                      ? Uimm(DE_instr)         :
 	isAUIPC(DE_instr)                    ? DE_PC + Uimm(DE_instr) : 
         E_aluOut                                                      ;
-	
+
    /**************************************************************/
    
    always @(posedge clk) begin
@@ -461,15 +474,13 @@ module Processor (
    assign wbRdId = rdId(MW_instr);
    
 /******************************************************************************/
-   assign jumpOrBranchAddress = E_JumpOrBranchAddr;
-   assign jumpOrBranch        = E_JumpOrBranch;
 
    // Not testing that rdId(DE_instr) != 0 because in general one
    // does not Load to zero ! (idem for CSRRS).
    wire rs1Hazard = readsRs1(FD_instr) && (rs1Id(FD_instr) == rdId(DE_instr)) ;
    wire rs2Hazard = readsRs2(FD_instr) && (rs2Id(FD_instr) == rdId(DE_instr)) ;
    
-   wire dataHazard = !FD_nop && 
+   wire dataHazard = !FD_nop  &&  
                      (isLoad(DE_instr)||isCSRRS(DE_instr)) && 
                      (rs1Hazard || rs2Hazard);
    
@@ -490,7 +501,8 @@ module Processor (
 `ifdef VERBOSE
    always @(posedge clk) begin
       if(resetn) begin
-	 $write("D_flush=%d E_flush=%d F_stall=%d D_stall=%d\n", D_flush, E_flush, F_stall, D_stall);
+	 $write("D_JoB=%d E_JoB=%d  D_flush=%d E_flush=%d\n", D_JumpOrBranch, E_JumpOrBranch, D_flush, E_flush);
+	 
 	 $write("[W] PC=%h ", MW_PC);
 	 $write("     ");
 	 riscv_disasm(MW_instr,MW_PC);
@@ -512,17 +524,19 @@ module Processor (
 
 	 $write("[D] PC=%h ", FD_PC);
 	 $write("[%s%s] ",dataHazard && rs1Hazard?"*":" ", dataHazard && rs2Hazard?"*":" ");	 
-	 riscv_disasm(FD_nop ? NOP: FD_instr,FD_PC);
+	 riscv_disasm(FD_nop ? NOP : FD_instr,FD_PC);
 	 $write("\n");
 
-	 $write("[F] PC=%h ", F_PC); 
-	 if(jumpOrBranch) $write(" PC <- 0x%0h",jumpOrBranchAddress);
+	 $write("[F] PC=%h ", F_PC);
+	 if(D_JumpOrBranch) $write(" PC <- [D] 0x%0h",D_JumpOrBranchAddr);	 
+	 if(E_JumpOrBranch) $write(" PC <- [E] 0x%0h",E_JumpOrBranchAddr);
 	 $write("\n");
 	 
 	 $display("");
       end
    end
 `endif
+   
 
 /******************************************************************************/
    
@@ -581,7 +595,7 @@ module SOC (
       .o_ready(uart_ready),
       .o_uart_tx(TXD)      			       
    );
-   
+
    assign IO_mem_rdata = 
 		    IO_wordaddr[IO_UART_CNTL_bit] ? { 22'b0, !uart_ready, 9'b0}
 	                                          : 32'b0;
