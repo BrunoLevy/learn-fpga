@@ -10,6 +10,13 @@
 #include "perf.h"
 #include "io.h"
 
+// Uncomment to deactivate all "graphic" output and get more accurate
+// statistics: the putchar() function in putchar.S sends the character
+// then waits for the UART to be not busy. The number of iterations of
+// the waiting loop can vary *A LOT* depending of the ratio between CPU
+// frequency and UART baud rate.
+// #define NO_GRAPHIC
+
 /*******************************************************************/
 
 typedef int BOOL;
@@ -43,6 +50,8 @@ static inline float min(float x, float y) { return x<y?x:y; }
 // Two pixels per character using UTF8 character set
 // (comment-out if terminal does not support it)
 #define graphics_double_lines
+
+#ifndef NO_GRAPHIC
 
 // Replace with your own stuff to initialize graphics
 static inline void graphics_init() {
@@ -101,6 +110,18 @@ void graphics_set_pixel(int x, int y, float r, float g, float b) {
 #endif   
 }
 
+#else
+
+static inline void graphics_init() {
+}
+
+static inline void graphics_terminate() {
+}
+
+void graphics_set_pixel(int x, int y, float r, float g, float b) {
+}
+    
+#endif
 
 // Begins statistics collection for current frame.
 // Leave emtpy if not needed.

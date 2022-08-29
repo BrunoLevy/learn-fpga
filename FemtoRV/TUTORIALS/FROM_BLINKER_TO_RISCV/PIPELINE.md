@@ -501,6 +501,14 @@ now, we use a separate program memory and data memory, all in BRAM, that
 read/writes to memory in 1 cycle. We will see later how to implement
 caches.
 
+_Note on RAYSTONEs_: All RAYSTONES statistics should be obtained with
+the line `#define NO_GRAPHIC` uncommented
+in [FIRMWARE/raystones.c](FIRMWARE/raystones.c). This is because
+the `putchar()` function in [FIRMWARE/putchar.S](FIRMWARE/putchar.S)
+sends the character then waits for the UART to be not busy. The number
+of iterations of the waiting loop can vary *A LOT* depending of the ratio
+between CPU frequency and UART baud rate.
+
 ## Step 3: a sequential 5-stages pipeline
 
 A pipelined processor is like a multi-cycle processor that uses a state machine,
@@ -517,14 +525,18 @@ with a super classical design with 5 stages:
 
 | acronym | long name            | description                           |
 |---------|----------------------|---------------------------------------|
-| IF      | Instruction fetch    | reads instruction from program memory |
-| ID      | Instruction decode   | decodes instruction and immediates    |
-| EX      | Execute              | computes ALU, tests and addresses     |
-| MEM     | read or write memory | load and store                        |
-| WB      | Write back           | writes result to register file        |
+| I`F`    | Instruction fetch    | reads instruction from program memory |
+| I`D`    | Instruction decode   | decodes instruction and immediates    |
+| `E`X    | Execute              | computes ALU, tests and addresses     |
+| `M`EM   | read or write memory | load and store                        |
+| `W`B    | Write back           | writes result to register file        |
 
 Each stage will read its input from a set of registers and write its outputs
-to a set of registers.In particular, each stage will have its own copy of the
+to a set of registers. These registers, called "pipeline registers" are
+different from the standard RISC-V ISA registers (called "architectural
+registers"), they are there for internal bookkeeping.
+
+In particular, each stage will have its own copy of the
 program counter, the current instruction, and some other fields derived from
 them (well, in fact we will be able to drop the program counter and the
 instruction word in the last stages, but for now we suppose we keep everyting).

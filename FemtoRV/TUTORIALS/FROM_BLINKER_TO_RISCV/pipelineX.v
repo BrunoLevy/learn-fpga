@@ -57,11 +57,7 @@ module Processor (
 
                       /***  F: Instruction fetch ***/   
 
-   reg  [31:0] 	  F_PC;
-
-   /** These two signals come from the Execute stage **/
-   wire [31:0] 	  jumpOrBranchAddress;
-   wire 	  jumpOrBranch;
+   reg  [31:0] 	  PC;
 
    reg [31:0] PROGROM[0:16383]; // 16384 4-bytes words  
                                 // 64 Kb of program ROM 
@@ -69,22 +65,24 @@ module Processor (
       $readmemh("PROGROM.hex",PROGROM);
    end
 
+   wire [31:0] F_PC = D_JumpOrBranchNow ? D_JumpOrBranchAddr : PC;
+   
    always @(posedge clk) begin
 
       if(!F_stall) begin
 	 FD_instr <= PROGROM[F_PC[15:2]]; 
 	 FD_PC    <= F_PC;
-	 F_PC     <= F_PC+4;
+	 PC       <= F_PC+4;
       end
 
-      if(jumpOrBranch) begin
-	 F_PC     <= jumpOrBranchAddress;
+      if(E_JumpOrBranch) begin
+	 PC     <= E_JumpOrBranchAddr;
       end
 
       FD_nop <= D_flush | !resetn;
       
       if(!resetn) begin
-	 F_PC <= 0;
+	 PC <= 0;
       end
       
    end
@@ -136,6 +134,14 @@ module Processor (
    
    wire [31:0] D_Jimm = {{12{FD_instr[31]}}, 
                          FD_instr[19:12],FD_instr[20],FD_instr[30:21],1'b0};
+
+
+   wire D_JumpOrBranchNow = !FD_nop && (
+	  D_isJAL || 
+         (D_isBranch && FD_instr[31])
+        );
+   
+   wire [31:0] D_JumpOrBranchAddr = FD_PC + (D_isJAL ? D_Jimm : D_Bimm);
    
    reg [31:0] RegisterBank [0:31];
    always @(posedge clk) begin
@@ -195,13 +201,16 @@ module Processor (
 			          FD_instr[30:20]
 		    };
       
-      DE_PCplusBorJimm <= FD_PC + (D_isJAL ? D_Jimm : D_Bimm);      
-
+      // DE_PCplusBorJimm <= FD_PC + (D_isJAL ? D_Jimm : D_Bimm);      
+      DE_PCplus4orBimm <= FD_PC + (FD_instr[31] ? 4 : D_Bimm);
+      
       // In this context: isLUI----------.
       DE_PCplus4orUimm <= (FD_instr[6:5] == 2'b01 ? 32'b0 : FD_PC) + 
                           (D_isJALorJALR ? 4 : D_Uimm);
 
-      DE_isJALorJALRorLUIorAUIPC <= FD_instr[2]; 
+      DE_isJALorJALRorLUIorAUIPC <= FD_instr[2];
+
+      DE_back <= FD_instr[31];
    end
 
 /******************************************************************************/
@@ -234,7 +243,10 @@ module Processor (
 
    reg DE_isJALorJALRorLUIorAUIPC;
    reg [31:0] DE_PCplusBorJimm;
+   reg [31:0] DE_PCplus4orBimm;   
    reg [31:0] DE_PCplus4orUimm;
+
+   reg DE_back;
    
 /******************************************************************************/
 /******************************************************************************/
@@ -315,13 +327,27 @@ module Processor (
         (DE_funct3_is[5] & !E_LT ) | // BGE
         (DE_funct3_is[6] &  E_LTU) | // BLTU
         (DE_funct3_is[7] & !E_LTU) ; // BGEU
-   
+
+
+   /*
    wire E_JumpOrBranch = 
 	DE_isJAL  || DE_isJALR ||  (DE_isBranch && E_takeBranch);
 
    wire [31:0] E_JumpOrBranchAddr =
 	       DE_isJALR ? {E_aluPlus[31:1],1'b0} : DE_PCplusBorJimm;
+   */
+
+   wire E_JumpOrBranch = (
+         DE_isJALR || 
+         ((DE_isBranch) && (E_takeBranch^DE_back))
+   );
+
+   wire [31:0] E_JumpOrBranchAddr =
+	DE_isBranch ? DE_PCplus4orBimm :
+	/* JALR */    {E_aluPlus[31:1],1'b0} ;
+
    
+    
    wire [31:0] E_result =
 	       DE_isJALorJALRorLUIorAUIPC ? DE_PCplus4orUimm : E_aluOut; 
 
@@ -481,9 +507,6 @@ module Processor (
    assign wbRdId   = MW_rdId;
    
 /******************************************************************************/
-   assign jumpOrBranchAddress = E_JumpOrBranchAddr;
-   assign jumpOrBranch        = E_JumpOrBranch;
-
 
    // we do not test rdId == 0 because in general, one loads data to
    // a register, not to zero !
