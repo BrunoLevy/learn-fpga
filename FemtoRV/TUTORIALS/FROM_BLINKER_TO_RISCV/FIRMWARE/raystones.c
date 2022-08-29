@@ -15,7 +15,7 @@
 // then waits for the UART to be not busy. The number of iterations of
 // the waiting loop can vary *A LOT* depending of the ratio between CPU
 // frequency and UART baud rate.
-// #define NO_GRAPHIC
+#define NO_GRAPHIC
 
 /*******************************************************************/
 
@@ -44,8 +44,8 @@ static inline float min(float x, float y) { return x<y?x:y; }
 
 // Size of the screen
 // Replace with your own variables or values
-#define graphics_width  120
-#define graphics_height 60
+#define graphics_width  16 // 120
+#define graphics_height 8 // 60
 
 // Two pixels per character using UTF8 character set
 // (comment-out if terminal does not support it)

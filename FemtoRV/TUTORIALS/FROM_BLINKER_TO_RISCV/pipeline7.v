@@ -5,6 +5,9 @@
  *  static branch prediction
  *     Backward branch: predict branch
  *     Forward  branch: predict no branch
+ * 
+ * TODO: double check, triple check with always predict, never predict
+ *    and forward/backward.
  */
  
 `default_nettype none
@@ -195,7 +198,7 @@ module Processor (
 
    // BTFNT (Backwards taken forwards not taken)
    
-   wire D_predictBranch = FD_instr[31];
+   wire       D_predictBranch = FD_instr[31];
    
    // Next fetch gets address from JAL target or from Branch target
    // if branch is predicted.
@@ -336,6 +339,14 @@ module Processor (
    end
 
    // Jump if mispredicted branch or JALR
+
+`ifdef BENCH
+   integer nbBranch = 0;
+   integer nbPredictOk = 0;
+   integer nbTaken = 0;
+   integer nbPredictTaken = 0;   
+`endif   
+   
    wire E_JumpOrBranch = (
          isJALR(DE_instr) || 
          (isBranch(DE_instr) && (E_takeBranch^DE_predictBranch))
@@ -365,6 +376,24 @@ module Processor (
       EM_JumpOrBranchAddr <= E_JumpOrBranchAddr;
    end
 
+`ifdef BENCH
+   always @(posedge clk) begin
+      if(isBranch(EM_instr)) begin
+	 nbBranch <= nbBranch + 1;
+	 if(E_takeBranch == DE_predictBranch) begin
+	    nbPredictOk <= nbPredictOk + 1;
+	 end
+	 if(E_takeBranch) begin
+	    nbTaken <= nbTaken + 1;
+	 end
+	 if(DE_predictBranch) begin
+	    nbPredictTaken <= nbPredictTaken + 1;
+	 end
+      end
+   end
+`endif	 
+
+   
    assign halt = resetn & isEBREAK(DE_instr);
    
 /******************************************************************************/
@@ -509,7 +538,13 @@ module Processor (
 
 `ifdef BENCH
    always @(posedge clk) begin
-      if(halt) $finish();
+      if(halt) begin
+	 $display("Branches predicted =%0d\%%",nbPredictOk*100/nbBranch);
+	 $display("Taken branches     =%0d\%%",nbTaken*100/nbBranch);
+	 $display("Not taken branches =%0d\%%",(nbBranch-nbTaken)*100/nbBranch);
+	 $display("Predict taken      =%0d\%%",nbPredictTaken*100/nbBranch);	 	 
+	 $finish();
+      end
    end
 `endif
 

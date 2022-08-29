@@ -1699,7 +1699,7 @@ Interestingly, our core is much faster than femtorv-electron
 
 For more advanced branch prediction methods, see:
 - [this link](https://danluu.com/branch-prediction/);
-- Onur Mutlu's ETH Zurich lectures on YouTube (thank you Luke Wren).
+- [Onur Mutlu's ETH Zurich lectures](https://www.youtube.com/watch?v=hl4eiN8ZMJg) (thank you Luke Wren).
 
 ## Step 8: dynamic branch prediction
 
