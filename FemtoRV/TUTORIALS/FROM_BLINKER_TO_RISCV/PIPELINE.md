@@ -1600,6 +1600,64 @@ Note that we still generate two bubbles for `JALR`: this is because JALR
 depends on `rs1`, that is only available at the beginning of `E` (and
 potentially through register forwarding).
 
+The pipeline control signals are still has follows.
+- note that `D_flush` and `E_flush` are still connected
+  to the (non-registerd) `E_JumpOrBranch` signal: the decision
+  to flush `E` needs to be taken at the same cycle;
+- note that `E_JumpOrBranch` is much less often asserted than before:
+  `JAL` now works in one cycle, and one branch out of two works in
+  one cycle (when prediction works).
+
+```verilog
+   assign F_stall = dataHazard | halt;
+   assign D_stall = dataHazard | halt;
+   
+   assign D_flush = E_JumpOrBranch;
+   assign E_flush = E_JumpOrBranch | dataHazard;
+```
+
+Note that our design has a very long critical path: the mux before
+`PC` is driven by `E_JumpOrBranch`, that comes from the ALU, and
+the two inputs of the ALU are connected to the register-forwarding
+logic. What we can do is storing `E_JumpOrBranch` and
+`E_JumpOrBranchAddress` in `EM` pipeline registers:
+
+```verilog
+   /* E */
+   always @(posedge clk) begin
+      ...
+      EM_JumpOrBranchNow  <= E_JumpOrBranch;
+      EM_JumpOrBranchAddr <= E_JumpOrBranchAddr;
+   end		  
+```
+
+Then they will be available one cycle later, but it is not a problem
+if we mux them into `F_PC` instead of `PC`, as follows:
+
+```verilog
+
+   /* F */
+   
+   wire [31:0] F_PC = 
+	       D_JumpOrBranchNow  ? D_JumpOrBranchAddr  :
+	       EM_JumpOrBranchNow ? EM_JumpOrBranchAddr :
+	                            PC;
+   
+   always @(posedge clk) begin
+      if(!F_stall) begin
+	 FD_instr <= PROGROM[F_PC[15:2]]; 
+	 FD_PC    <= F_PC;
+	 PC       <= F_PC+4;
+      end
+      
+      FD_nop <= D_flush | !resetn;
+      
+      if(!resetn) begin
+	 PC <= 0;
+      end
+   end
+```
+
 The new version is in [pipeline7.v](pipeline7.v). What does it give ?
 
 | Version    | Description             | CPI   | RAYSTONES |

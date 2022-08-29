@@ -12,6 +12,7 @@ If you do not have a board, you can run everything in simulation (but
 it is not as fun).
 
 ## About this tutorial
+
 - it is a progressive introduction, changing only one thing at a time. It
   is a curated version of my logbook when I learnt these notions (2020-2022). I also tryed
   to keep track of all the dead ends I explored and traps that caught me, they

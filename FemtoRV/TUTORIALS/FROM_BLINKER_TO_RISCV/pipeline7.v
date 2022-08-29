@@ -1,7 +1,10 @@
 /*
  * pipeline6.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
- * Step 7: a flavor of branch prediction
+ * Step 7: a flavor of branch prediction 
+ *  static branch prediction
+ *     Backward branch: predict branch
+ *     Forward  branch: predict no branch
  */
  
 `default_nettype none
@@ -156,7 +159,16 @@ module Processor (
       $readmemh("PROGROM.hex",PROGROM);
    end
 
-   wire [31:0] F_PC = D_JumpOrBranchNow ? D_JumpOrBranchAddr : PC;
+   // Note: E's jumpOrBranch signals are registered in EM (1 cycle later), 
+   // hence taken into account in F_PC mux (1 cycle before). Doing so
+   // avoids a *huge* critical path (that generates E_JumpOrBranch, that
+   // uses the ALU branch result E_takeBranch, and hence that comprises 
+   // register forwarding  & ALU)
+   
+   wire [31:0] F_PC = 
+	       D_JumpOrBranchNow  ? D_JumpOrBranchAddr  :
+	       EM_JumpOrBranchNow ? EM_JumpOrBranchAddr :
+	                            PC;
    
    always @(posedge clk) begin
       
@@ -166,9 +178,6 @@ module Processor (
 	 PC       <= F_PC+4;
       end
       
-      if(E_JumpOrBranch) begin 
-	 PC     <= E_JumpOrBranchAddr;
-      end
 
       // Cannot write NOP to FD_instr, because
       // whenever a BRAM read is involved, do
@@ -350,6 +359,8 @@ module Processor (
       EM_Eresult <= E_result;
       EM_addr    <= isStore(DE_instr) ? E_rs1 + Simm(DE_instr) : 
                                         E_rs1 + Iimm(DE_instr) ;
+      EM_JumpOrBranchNow <= E_JumpOrBranch;
+      EM_JumpOrBranchAddr <= E_JumpOrBranchAddr;
    end
 
    assign halt = resetn & isEBREAK(DE_instr);
@@ -360,6 +371,8 @@ module Processor (
    reg [31:0] EM_rs2;
    reg [31:0] EM_Eresult;
    reg [31:0] EM_addr;
+   reg        EM_JumpOrBranchNow;
+   reg [31:0] EM_JumpOrBranchAddr;
 /******************************************************************************/
 
                      /*** M: Memory ***/

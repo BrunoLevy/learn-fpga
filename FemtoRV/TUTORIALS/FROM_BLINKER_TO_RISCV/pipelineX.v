@@ -65,12 +65,6 @@ module Processor (
       $readmemh("PROGROM.hex",PROGROM);
    end
 
-   // Note: E's jumpOrBranch signals are registered in EM (1 cycle later), 
-   // hence taken into account in F_PC mux (1 cycle before). Doing so
-   // avoids a *huge* critical path (that generates E_JumpOrBranch, that
-   // uses the ALU branch result E_takeBranch, and hence that comprises 
-   // register forwarding  & ALU)
-
    wire [31:0] F_PC = 
 	       D_JumpOrBranchNow  ? D_JumpOrBranchAddr  :
 	       EM_JumpOrBranchNow ? EM_JumpOrBranchAddr :
@@ -211,8 +205,9 @@ module Processor (
 		     D_isStore ? {FD_instr[30:25],FD_instr[11:7]} : 
 			          FD_instr[30:20]
 		    };
-      
-      // DE_PCplusBorJimm <= FD_PC + (D_isJAL ? D_Jimm : D_Bimm);      
+
+      // Used in case of misprediction: 
+      //    PC+Bimm if branch forward, PC+4 if branch backward
       DE_PCplus4orBimm <= FD_PC + (FD_instr[31] ? 4 : D_Bimm);
       
       // In this context: isLUI----------.
