@@ -65,7 +65,16 @@ module Processor (
       $readmemh("PROGROM.hex",PROGROM);
    end
 
-   wire [31:0] F_PC = D_JumpOrBranchNow ? D_JumpOrBranchAddr : PC;
+   // Note: E's jumpOrBranch signals are registered in EM (1 cycle later), 
+   // hence taken into account in F_PC mux (1 cycle before). Doing so
+   // avoids a *huge* critical path (that generates E_JumpOrBranch, that
+   // uses the ALU branch result E_takeBranch, and hence that comprises 
+   // register forwarding  & ALU)
+
+   wire [31:0] F_PC = 
+	       D_JumpOrBranchNow  ? D_JumpOrBranchAddr  :
+	       EM_JumpOrBranchNow ? EM_JumpOrBranchAddr :
+	                            PC;
    
    always @(posedge clk) begin
 
@@ -73,10 +82,6 @@ module Processor (
 	 FD_instr <= PROGROM[F_PC[15:2]]; 
 	 FD_PC    <= F_PC;
 	 PC       <= F_PC+4;
-      end
-
-      if(E_JumpOrBranch) begin
-	 PC     <= E_JumpOrBranchAddr;
       end
 
       FD_nop <= D_flush | !resetn;
@@ -107,14 +112,14 @@ module Processor (
    wire [4:0]  D_rs1Id = FD_instr[19:15];
    wire [4:0]  D_rs2Id = FD_instr[24:20];   
 
-   wire D_isJAL    = FD_instr[3]; 
-                 //= (FD_instr[6:2]==5'b11011);    
+/// commented-out codeop recognizers are optimized below
+// wire D_isJAL    = (FD_instr[6:2]==5'b11011);
+// wire D_isJALR   = (FD_instr[6:2]==5'b11001);
+// wire D_isAUIPC  = (FD_instr[6:2]==5'b00101); 
+// wire D_isLUI    = (FD_instr[6:2]==5'b01101);
+// wire D_isBranch = (FD_instr[6:2]==5'b11000); 
    wire D_isALUreg = (FD_instr[6:2]==5'b01100); 
    wire D_isALUimm = (FD_instr[6:2]==5'b00100); 
-   wire D_isBranch = (FD_instr[6:2]==5'b11000); 
-   wire D_isJALR   = (FD_instr[6:2]==5'b11001); 
-   wire D_isAUIPC  = (FD_instr[6:2]==5'b00101); 
-   wire D_isLUI    = (FD_instr[6:2]==5'b01101); 
    wire D_isLoad   = (FD_instr[6:2]==5'b00000); 
    wire D_isStore  = (FD_instr[6:2]==5'b01000); 
    wire D_isSYSTEM = (FD_instr[6:2]==5'b11100);
@@ -122,6 +127,12 @@ module Processor (
    wire D_isJALorJALR  = (FD_instr[2] & FD_instr[6]); 
    wire D_isLUIorAUIPC = (FD_instr[4] & FD_instr[6]); 
 
+   wire D_isJAL    = FD_instr[3]; 
+   wire D_isJALR   = D_isJALorJALR  & !FD_instr[3];
+   wire D_isLUI    = D_isLUIorAUIPC &  FD_instr[5];
+   wire D_isAUIPC  = D_isLUIorAUIPC & !FD_instr[5];   
+   wire D_isBranch = FD_instr[6] & !FD_instr[4] & !FD_instr[2];
+   
    wire D_readsRs1 = !(D_isJAL || D_isLUIorAUIPC);
    
    wire D_readsRs2 = (FD_instr[5] && (FD_instr[3:2] == 2'b00));
@@ -138,7 +149,7 @@ module Processor (
 
    wire D_JumpOrBranchNow = !FD_nop && (
 	  D_isJAL || 
-         (D_isBranch && FD_instr[31])
+         (D_isBranch && FD_instr[31]) // I[31]=Bimm sgn (pred bkwd branch taken)
         );
    
    wire [31:0] D_JumpOrBranchAddr = FD_PC + (D_isJAL ? D_Jimm : D_Bimm);
@@ -210,7 +221,7 @@ module Processor (
 
       DE_isJALorJALRorLUIorAUIPC <= FD_instr[2];
 
-      DE_back <= FD_instr[31];
+      DE_back <= FD_instr[31]; // Bimm sign (pred=bkwd branch taken)
    end
 
 /******************************************************************************/
@@ -328,15 +339,6 @@ module Processor (
         (DE_funct3_is[6] &  E_LTU) | // BLTU
         (DE_funct3_is[7] & !E_LTU) ; // BGEU
 
-
-   /*
-   wire E_JumpOrBranch = 
-	DE_isJAL  || DE_isJALR ||  (DE_isBranch && E_takeBranch);
-
-   wire [31:0] E_JumpOrBranchAddr =
-	       DE_isJALR ? {E_aluPlus[31:1],1'b0} : DE_PCplusBorJimm;
-   */
-
    wire E_JumpOrBranch = (
          DE_isJALR || 
          ((DE_isBranch) && (E_takeBranch^DE_back))
@@ -370,6 +372,8 @@ module Processor (
       EM_isStore  <= DE_isStore;
       EM_isCSRRS  <= DE_isCSRRS;
       EM_wbEnable <= DE_wbEnable && (DE_rdId != 0);
+      EM_JumpOrBranchNow  <= E_JumpOrBranch;
+      EM_JumpOrBranchAddr <= E_JumpOrBranchAddr;
    end
 
    assign halt = resetn & DE_isEBREAK;
@@ -390,6 +394,9 @@ module Processor (
    reg        EM_isLoad;
    reg        EM_isCSRRS;
    reg 	      EM_wbEnable;
+   reg        EM_JumpOrBranchNow;
+   reg [31:0] EM_JumpOrBranchAddr;
+   
 /******************************************************************************/
 /******************************************************************************/
 
@@ -510,13 +517,15 @@ module Processor (
 
    // we do not test rdId == 0 because in general, one loads data to
    // a register, not to zero !
-   wire rs1Hazard = D_readsRs1 && (D_rs1Id == DE_rdId);
-   wire rs2Hazard = D_readsRs2 && (D_rs2Id == DE_rdId);
+//   wire rs1Hazard = D_readsRs1 && (D_rs1Id == DE_rdId);
+//   wire rs2Hazard = D_readsRs2 && (D_rs2Id == DE_rdId);
 
    // we could generate slightly more bubble with
    // simpler test (to be used if critical path is here)
-   // wire rs1Hazard = (D_rs1Id == DE_rdId);
-   // wire rs2Hazard = (D_rs2Id == DE_rdId);
+   // -> keeping this one (seems it has no influence on CPI,
+   //   and results in slightly better timings)
+   wire  rs1Hazard = (D_rs1Id == DE_rdId);
+   wire  rs2Hazard = (D_rs2Id == DE_rdId);
    
    // we are not obliged to compare all bits ! 
    // wire rs1Hazard = (D_rs1Id[3:0] == DE_rdId[3:0]);
@@ -532,7 +541,9 @@ module Processor (
    
    assign F_stall = dataHazard | halt;
    assign D_stall = dataHazard | halt;
-   
+
+   // Here we need to use E_JumpOrBranch (the registered version
+   // DE_JumpOrBranch is not ready on time).
    assign D_flush = E_JumpOrBranch;
    assign E_flush = E_JumpOrBranch | dataHazard;
 

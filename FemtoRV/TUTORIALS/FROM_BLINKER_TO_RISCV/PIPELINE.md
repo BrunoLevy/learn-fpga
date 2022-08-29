@@ -531,6 +531,11 @@ with a super classical design with 5 stages:
 | **M**EM | read or write memory | load and store                        |
 | **W**B  | Write back           | writes result to register file        |
 
+_(I am using single-letter stage names (F,D,E,M,W) in what follows instead
+of the more classical (IF,IF,EX,MEM,WB) names. This is because later,
+we will name pipeline registers, with names that are prefixed by the letter
+of the state that writes them and the letter of the state that reads them)_
+
 Each stage will read its input from a set of registers and write its outputs
 to a set of registers. These registers, called "pipeline registers" are
 different from the standard RISC-V ISA registers (called "architectural
