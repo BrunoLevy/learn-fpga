@@ -103,11 +103,6 @@ module Processor (
       Bimm = {{20{I[31]}},I[7],I[30:25],I[11:8],1'b0};
    endfunction 
 
-   function backwardBranch;
-      input [31:0] I;
-      backwardBranch = I[31];
-   endfunction
-   
    function [31:0] Jimm;
       input [31:0] I;
       Jimm = {{12{I[31]}},I[19:12],I[20],I[30:21],1'b0};      
@@ -198,12 +193,16 @@ module Processor (
 
                      /*** D: Instruction decode ***/
 
+   // BTFNT (Backwards taken forwards not taken)
+   
+   wire D_predictBranch = FD_instr[31];
+   
    // Next fetch gets address from JAL target or from Branch target
-   // if the branch target is backward
+   // if branch is predicted.
    
    wire        D_JumpOrBranchNow = !FD_nop && (
                    isJAL(FD_instr) || 
-                  (isBranch(FD_instr) && backwardBranch(FD_instr))
+                  (isBranch(FD_instr) && D_predictBranch)
                );
    
    wire [31:0] D_JumpOrBranchAddr =  
@@ -220,6 +219,7 @@ module Processor (
       if(!D_stall) begin
 	 DE_PC    <= FD_PC;
 	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
+	 DE_predictBranch <= D_predictBranch;
       end
       
       if(E_flush) begin
@@ -236,6 +236,7 @@ module Processor (
    reg [31:0] DE_instr;
    wire [31:0] DE_rs1 = RegisterBank[rs1Id(DE_instr)];
    wire [31:0] DE_rs2 = RegisterBank[rs2Id(DE_instr)];
+   reg 	       DE_predictBranch;
 /******************************************************************************/
 
                      /*** E: Execute ***/
@@ -333,15 +334,16 @@ module Processor (
 	default: E_takeBranch = 1'b0;
       endcase 
    end
-   
+
+   // Jump if mispredicted branch or JALR
    wire E_JumpOrBranch = (
          isJALR(DE_instr) || 
-         (isBranch(DE_instr) && (E_takeBranch^backwardBranch(DE_instr)))
+         (isBranch(DE_instr) && (E_takeBranch^DE_predictBranch))
    );
 
    wire [31:0] E_JumpOrBranchAddr =
 	isBranch(DE_instr) ? 
-                     (DE_PC + (backwardBranch(DE_instr) ? 4 : Bimm(DE_instr))) :
+                     (DE_PC + (DE_predictBranch ? 4 : Bimm(DE_instr))) :
 	/* JALR */   {E_aluPlus[31:1],1'b0} ;
 
    wire [31:0] E_result = 

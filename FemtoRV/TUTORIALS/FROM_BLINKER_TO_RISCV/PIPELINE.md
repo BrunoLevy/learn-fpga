@@ -1526,7 +1526,7 @@ Time for benchmark !
 Good, our new pipelined CPU is more than twice faster than the initial
 3-4 states multicycle CPU !
 
-## Step 7: A flavor of branch prediction
+## Step 7: A flavor of branch prediction 
 
 We always introduce two bubbles for jumps and branches. Let us examine
 the case of `JAL`: introducing two bubbles for `JAL` is a bit stupid,
@@ -1569,13 +1569,34 @@ branch ("predict branch taken") and never sends it for a forward branch
 ("predict branch not taken"), as follows:
 
 ```verilog
+
+   wire D_predictBranch = FD_instr[31];
+
    wire D_JumpOrBranchNow = !FD_nop && (
            isJAL(FD_instr) || 
-           (isBranch(FD_instr) && backwardBranch(FD_instr)))
+           (isBranch(FD_instr) && D_predictBranch))
         );
    
    wire [31:0] D_JumpOrBranchAddr =  
                FD_PC + (isJAL(FD_instr) ? Jimm(FD_instr) : Bimm(FD_instr)); 
+```
+
+This branch prediction strategy is referred to as "static" (because it keeps no state),
+and is called BTFNT (Backwards taken forwards not taken). We will see more elaborate
+branch prediction strategies later.
+
+We pass the prediction to `E` through a new `DE_predictBranch` reg:
+```verilog
+/* D */
+   always @(posedge clk) begin
+      ...
+      if(!D_stall) begin
+         ...
+	 DE_predictBranch <= D_predictBranch;
+	 ...
+      end
+      ...
+   end      
 ```
 
 Then `E` needs to send the "correction" if the branch was not taken, or if
@@ -1584,29 +1605,24 @@ the instruction was `JALR`:
 ```verilog
    wire E_JumpOrBranch = (
          isJALR(DE_instr) || 
-         (isBranch(DE_instr) && (E_takeBranch^backwardBranch(DE_instr)))
+         (isBranch(DE_instr) && (E_takeBranch^DE_predictBranch))
    );
 
    wire [31:0] E_JumpOrBranchAddr =
 	isBranch(DE_instr) ? 
-                     (DE_PC + (backwardBranch(DE_instr) ? 4 : Bimm(DE_instr))) :
+                     (DE_PC + (DE_predictBranch ? 4 : Bimm(DE_instr))) :
 	/* JALR */   {E_aluPlus[31:1],1'b0} ;
 ```
 
-We need to correct if it was a taken forward branch, or a not taken backward
-branch, that is, `E_takeBranch` different from the sign bit of `Bimm`.
+We need to correct if the prediction and the actual decision differ
+(`E_takeBranch^DE_predictBranch`). If the branch was predicted but is
+suppoed to be not taken, we send `PC+4`, and if the branch was not predicted but
+suppoed to be taken, we send `PC+Bimm`.
 
-Note that we still generate two bubbles for `JALR`: this is because JALR
-depends on `rs1`, that is only available at the beginning of `E` (and
-potentially through register forwarding).
-
-The pipeline control signals are still has follows.
-- note that `D_flush` and `E_flush` are still connected
-  to the (non-registerd) `E_JumpOrBranch` signal: the decision
-  to flush `E` needs to be taken at the same cycle;
-- note that `E_JumpOrBranch` is much less often asserted than before:
-  `JAL` now works in one cycle, and one branch out of two works in
-  one cycle (when prediction works).
+Once a "correction" is sent (through `E_JumpOrBranchAddr`
+and by asserting `E_JumpOrBranch`), pipeline controls
+generates two bubbles. The pipeline control do not need to be
+changed and are still as below:
 
 ```verilog
    assign F_stall = dataHazard | halt;
@@ -1616,11 +1632,20 @@ The pipeline control signals are still has follows.
    assign E_flush = E_JumpOrBranch | dataHazard;
 ```
 
-Note that our design has a very long critical path: the mux before
-`PC` is driven by `E_JumpOrBranch`, that comes from the ALU, and
-the two inputs of the ALU are connected to the register-forwarding
-logic. What we can do is storing `E_JumpOrBranch` and
-`E_JumpOrBranchAddress` in `EM` pipeline registers:
+- note1 `D_flush` and `E_flush` are still connected
+  to the (non-registerd) `E_JumpOrBranch` signal: the decision
+  to flush `E` needs to be taken at the same cycle;
+- note2 `E_JumpOrBranch` is much less often asserted than before:
+  `JAL` now works in one cycle, and one branch out of two works in
+  one cycle (when prediction works).
+- note3 we still generate two bubbles for `JALR`: this is because JALR
+  depends on `rs1`, that is only available at the beginning of `E` (and
+  potentially through register forwarding).
+- note4 our design has a very long critical path: the mux before
+  `PC` is driven by `E_JumpOrBranch`, that comes from the ALU, and
+  the two inputs of the ALU are connected to the register-forwarding
+  logic. What we can do is storing `E_JumpOrBranch` and
+  `E_JumpOrBranchAddress` in `EM` pipeline registers:
 
 ```verilog
    /* E */
@@ -1672,7 +1697,12 @@ The new version is in [pipeline7.v](pipeline7.v). What does it give ?
 Interestingly, our core is much faster than femtorv-electron
 (3.373 raystones) that implements RV32IM ! 
 
-For more advanced branch prediction methods, see [this link](https://danluu.com/branch-prediction/).
+For more advanced branch prediction methods, see:
+- [this link](https://danluu.com/branch-prediction/);
+- Onur Mutlu's ETH Zurich lectures on YouTube (thank you Luke Wren).
+
+## Step 8: dynamic branch prediction
+
 
 ## Step X: optimizing for fmax
 

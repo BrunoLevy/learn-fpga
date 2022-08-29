@@ -106,7 +106,7 @@ module Processor (
    wire [4:0]  D_rs1Id = FD_instr[19:15];
    wire [4:0]  D_rs2Id = FD_instr[24:20];   
 
-/// commented-out codeop recognizers are optimized below
+   // commented-out codeop recognizers are optimized below
 // wire D_isJAL    = (FD_instr[6:2]==5'b11011);
 // wire D_isJALR   = (FD_instr[6:2]==5'b11001);
 // wire D_isAUIPC  = (FD_instr[6:2]==5'b00101); 
@@ -118,14 +118,17 @@ module Processor (
    wire D_isStore  = (FD_instr[6:2]==5'b01000); 
    wire D_isSYSTEM = (FD_instr[6:2]==5'b11100);
 
+   // optimized codop recognizers
+   wire D_isJAL    = FD_instr[3]; 
+   wire D_isJALR   = {FD_instr[6], FD_instr[3], FD_instr[2]} == 3'b101; 
+   wire D_isLUI    = FD_instr[6:4] == 3'b111; 
+   wire D_isAUIPC  = FD_instr[6:4] == 3'b101; 
+   wire D_isBranch = {FD_instr[6], FD_instr[4], FD_instr[2]} == 3'b100; 
+
+   
    wire D_isJALorJALR  = (FD_instr[2] & FD_instr[6]); 
    wire D_isLUIorAUIPC = (FD_instr[4] & FD_instr[6]); 
 
-   wire D_isJAL    = FD_instr[3]; 
-   wire D_isJALR   = D_isJALorJALR  & !FD_instr[3];
-   wire D_isLUI    = D_isLUIorAUIPC &  FD_instr[5];
-   wire D_isAUIPC  = D_isLUIorAUIPC & !FD_instr[5];   
-   wire D_isBranch = FD_instr[6] & !FD_instr[4] & !FD_instr[2];
    
    wire D_readsRs1 = !(D_isJAL || D_isLUIorAUIPC);
    
@@ -210,10 +213,13 @@ module Processor (
       //    PC+Bimm if branch forward, PC+4 if branch backward
       DE_PCplus4orBimm <= FD_PC + (FD_instr[31] ? 4 : D_Bimm);
       
-      // In this context: isLUI----------.
-      DE_PCplus4orUimm <= (FD_instr[6:5] == 2'b01 ? 32'b0 : FD_PC) + 
+      // DE_PCplus4orUimm = 
+      //    ((isLUI ? 0 : FD_PC)) + ((isJAL | isJALR) ? 4 : Uimm)
+      // (knowing that isLUI | isAUIPC | isJAL | isJALR)
+      DE_PCplus4orUimm <= ({32{FD_instr[6:5]!=2'b01}} & FD_PC) + 
                           (D_isJALorJALR ? 4 : D_Uimm);
 
+      
       DE_isJALorJALRorLUIorAUIPC <= FD_instr[2];
 
       DE_back <= FD_instr[31]; // Bimm sign (pred=bkwd branch taken)
