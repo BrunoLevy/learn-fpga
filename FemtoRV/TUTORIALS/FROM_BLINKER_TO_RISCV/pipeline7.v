@@ -378,7 +378,7 @@ module Processor (
 
 `ifdef BENCH
    always @(posedge clk) begin
-      if(isBranch(EM_instr)) begin
+      if(isBranch(DE_instr)) begin
 	 nbBranch <= nbBranch + 1;
 	 if(E_takeBranch == DE_predictBranch) begin
 	    nbPredictOk <= nbPredictOk + 1;
@@ -537,21 +537,24 @@ module Processor (
 /******************************************************************************/
 
 `ifdef BENCH
+   /* verilator lint_off WIDTH */
    always @(posedge clk) begin
       if(halt) begin
-	 $display("Branches predicted =%0d\%%",nbPredictOk*100/nbBranch);
-	 $display("Taken branches     =%0d\%%",nbTaken*100/nbBranch);
-	 $display("Not taken branches =%0d\%%",(nbBranch-nbTaken)*100/nbBranch);
-	 $display("Predict taken      =%0d\%%",nbPredictTaken*100/nbBranch);	 	 
+	 $display("Branches predict OK =%0d\%%",nbPredictOk*100/nbBranch);
+	 $display("Taken branches      =%0d\%%",nbTaken*100/nbBranch);
+	 $display("Not taken branches  =%0d\%%",(nbBranch-nbTaken)*100/nbBranch);
+	 $display("Predict taken       =%0d\%%",nbPredictTaken*100/nbBranch);	 
+	 $display("CPI                 =%0f",(cycle*1.0)/(instret*1.0));
 	 $finish();
       end
    end
+   /* verilator lint_on WIDTH */
 `endif
 
 `ifdef VERBOSE
    always @(posedge clk) begin
-      if(resetn) begin
-	 $write("D_JoB=%d E_JoB=%d  D_flush=%d E_flush=%d\n", D_JumpOrBranch, E_JumpOrBranch, D_flush, E_flush);
+      if(resetn & !halt) begin
+	 $write("D_JoB=%d E_JoB=%d  D_flush=%d E_flush=%d\n", D_JumpOrBranchNow, EM_JumpOrBranchNow, D_flush, E_flush);
 	 
 	 $write("[W] PC=%h ", MW_PC);
 	 $write("     ");
@@ -569,17 +572,26 @@ module Processor (
 	 riscv_disasm(DE_instr,DE_PC);
 	 if(DE_instr != NOP) begin
 	    $write("  rs1=0x%h  rs2=0x%h  ",DE_rs1, DE_rs2);
+	    if(isBranch(DE_instr)) begin
+	       $write(" taken:%0d  prediction OK:%0d",
+		      E_takeBranch, 
+		      (E_takeBranch == DE_predictBranch) ? 1 : 0
+               );
+	    end
 	 end
 	 $write("\n");
 
 	 $write("[D] PC=%h ", FD_PC);
 	 $write("[%s%s] ",dataHazard && rs1Hazard?"*":" ", dataHazard && rs2Hazard?"*":" ");	 
 	 riscv_disasm(FD_nop ? NOP : FD_instr,FD_PC);
+	 if(isBranch(FD_instr)) begin
+	    $write(" predict taken:%0d",D_predictBranch); 
+	 end
 	 $write("\n");
 
 	 $write("[F] PC=%h ", F_PC);
-	 if(D_JumpOrBranch) $write(" PC <- [D] 0x%0h",D_JumpOrBranchAddr);	 
-	 if(E_JumpOrBranch) $write(" PC <- [E] 0x%0h",E_JumpOrBranchAddr);
+	 if(D_JumpOrBranchNow) $write(" PC <- [D] 0x%0h",D_JumpOrBranchAddr);	 
+	 if(EM_JumpOrBranchNow) $write(" PC <- [E] 0x%0h",EM_JumpOrBranchAddr);
 	 $write("\n");
 	 
 	 $display("");
