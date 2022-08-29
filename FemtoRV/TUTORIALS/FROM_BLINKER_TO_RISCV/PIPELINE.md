@@ -525,11 +525,11 @@ with a super classical design with 5 stages:
 
 | acronym | long name            | description                           |
 |---------|----------------------|---------------------------------------|
-| I`F`    | Instruction fetch    | reads instruction from program memory |
-| I`D`    | Instruction decode   | decodes instruction and immediates    |
-| `E`X    | Execute              | computes ALU, tests and addresses     |
-| `M`EM   | read or write memory | load and store                        |
-| `W`B    | Write back           | writes result to register file        |
+| I**F**  | Instruction fetch    | reads instruction from program memory |
+| I**D**  | Instruction decode   | decodes instruction and immediates    |
+| **E**X  | Execute              | computes ALU, tests and addresses     |
+| **M**EM | read or write memory | load and store                        |
+| **W**B  | Write back           | writes result to register file        |
 
 Each stage will read its input from a set of registers and write its outputs
 to a set of registers. These registers, called "pipeline registers" are
