@@ -1,7 +1,7 @@
 /*
  * pipeline6.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
- * Step 8: dynamic branch prediction: gshare
+ * Step 8: dynamic branch prediction
  */
  
 `default_nettype none
@@ -192,22 +192,23 @@ module Processor (
 
    // Branch prediction
 
-   // 83% success with HISTO_BITS=8, ADDR_BITS=12
-   // 80% success with HISTO_BITS=5, ADDR_BITS=10   
-   // 78% success with HISTO_BITS=4, ADDR_BITS=8   
+   //     83% success with HISTO_BITS=8, ADDR_BITS=12
+   // *** 80% success with HISTO_BITS=5, ADDR_BITS=10   
+   //     78% success with HISTO_BITS=4, ADDR_BITS=8   
    localparam BP_HISTO_BITS=5;
    localparam BP_ADDR_BITS=10;
    localparam BP_SIZE=1<<BP_ADDR_BITS;
    
-   reg [BP_HISTO_BITS-1:0] BHT[BP_SIZE-1:0]; // Branch History Table
-   reg [1:0]               BPT[BP_SIZE-1:0]; // Branch Prediction Table
+   reg [BP_HISTO_BITS-1:0] PHT[BP_SIZE-1:0]; // Pattern History Table
+   reg [1:0]               BHT[BP_SIZE-1:0]; // Branch History Table
 
-   function [BP_ADDR_BITS-1:0] BHT_index;
+   function [BP_ADDR_BITS-1:0] PHT_index;
       input [31:0] PC;
-      BHT_index = PC[BP_ADDR_BITS+1:2];
+      PHT_index = PC[BP_ADDR_BITS+1:2]; // pshare
+      //PHT_index = 0; // gshare
    endfunction 
    
-   function [BP_ADDR_BITS-1:0] BPT_index;
+   function [BP_ADDR_BITS-1:0] BHT_index;
       input [31:0] PC;
 
       // Choose indexing for dynamic branch prediction
@@ -215,16 +216,18 @@ module Processor (
       // Used if D_predictBranch is set to dynamic (later in this file)
       
       // 1: simple 2-bits counter without history      
-      // BPT_index = BHT_index(PC); 
+      // BHT_index = PHT_index(PC); 
 
       // 2: gselect      
       // /* verilator lint_off WIDTH */
-      // BPT_index = {BHT_index(PC), BHT[BHT_index(PC)]}; 
+      // BHT_index = {PHT_index(PC), PHT[PHT_index(PC)]}; 
       // /* verilator lint_on WIDTH */      
 
-      // 3: gshare
-      BPT_index = BHT_index(PC) ^  
-                  {BHT[BHT_index(PC)],{BP_ADDR_BITS-BP_HISTO_BITS{1'b0}}}; 
+      // 3: pshare/gshare
+      BHT_index = PHT_index(PC) ^  
+                {PHT[PHT_index(PC)],{BP_ADDR_BITS-BP_HISTO_BITS{1'b0}}};
+
+
    endfunction
 
    // Choose branch prediction strategy
@@ -232,7 +235,7 @@ module Processor (
    //wire D_predictBranch = 1'd0;                   // 1. predict not taken
    //wire D_predictBranch = 1'd1;                   // 2. predict taken
    //wire D_predictBranch = FD_instr[31];           // 3. BTFNT 
-   wire D_predictBranch = BPT[BPT_index(FD_PC)][1]; // 4. dynamic
+   wire D_predictBranch = BHT[BHT_index(FD_PC)][1]; // 4. dynamic
 
    
    // Next fetch gets address from JAL target or from Branch target
@@ -258,8 +261,8 @@ module Processor (
 	 DE_PC    <= FD_PC;
 	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
 	 DE_predictBranch <= D_predictBranch;
+	 DE_PHTindex <= PHT_index(FD_PC);
 	 DE_BHTindex <= BHT_index(FD_PC);
-	 DE_BPTindex <= BPT_index(FD_PC);
       end
       
       if(E_flush) begin
@@ -277,8 +280,8 @@ module Processor (
    wire [31:0] DE_rs1 = RegisterBank[rs1Id(DE_instr)];
    wire [31:0] DE_rs2 = RegisterBank[rs2Id(DE_instr)];
    reg 	       DE_predictBranch;
+   reg [BP_ADDR_BITS-1:0] DE_PHTindex;
    reg [BP_ADDR_BITS-1:0] DE_BHTindex;
-   reg [BP_ADDR_BITS-1:0] DE_BPTindex;
 /******************************************************************************/
 
                      /*** E: Execute ***/
@@ -433,9 +436,9 @@ module Processor (
       EM_JumpOrBranchAddr <= E_JumpOrBranchAddr;
       
       if(isBranch(DE_instr)) begin
-	 BHT[DE_BHTindex] <= { BHT[DE_BHTindex][BP_HISTO_BITS-2:0], 
+	 PHT[DE_PHTindex] <= { PHT[DE_PHTindex][BP_HISTO_BITS-2:0], 
                                E_takeBranch                           };
-	 BPT[DE_BPTindex] <= incdec_sat(BPT[DE_BPTindex], E_takeBranch);
+	 BHT[DE_BHTindex] <= incdec_sat(BHT[DE_BHTindex], E_takeBranch);
       end
    end
 
