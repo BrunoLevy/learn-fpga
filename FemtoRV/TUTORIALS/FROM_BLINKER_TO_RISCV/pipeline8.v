@@ -200,7 +200,7 @@ module Processor (
    localparam BP_SIZE=1<<BP_ADDR_BITS;
    
    reg [BP_HISTO_BITS-1:0] BHT[BP_SIZE-1:0]; // Branch History Table
-   reg [1:0]               BPT[BP_SIZE-1:0]; // Branch Decision Table
+   reg [1:0]               BPT[BP_SIZE-1:0]; // Branch Prediction Table
 
    function [BP_ADDR_BITS-1:0] BHT_index;
       input [31:0] PC;
@@ -209,11 +209,18 @@ module Processor (
    
    function [BP_ADDR_BITS-1:0] BPT_index;
       input [31:0] PC;
-      //BPT_index = BHT_index(PC); // simple 2-bits counter without history
-      //BPT_index = {BHT_index(PC), BHT[BHT_index(PC)]}; // gselect
-      BPT_index = BHT_index(PC) ^ (
-		 BHT[BHT_index(PC)] << (BP_ADDR_BITS - BP_HISTO_BITS)
-      ); // gshare 
+
+      // simple 2-bits counter without history      
+      // BPT_index = BHT_index(PC); 
+
+      // gselect      
+      // /* verilator lint_off WIDTH */
+      // BPT_index = {BHT_index(PC), BHT[BHT_index(PC)]}; 
+      // /* verilator lint_on WIDTH */      
+
+      // gshare
+      BPT_index = BHT_index(PC) ^  
+                  {BHT[BHT_index(PC)],{BP_ADDR_BITS-BP_HISTO_BITS{1'b0}}}; 
    endfunction
 
    //wire D_predictBranch = 1'd1;
@@ -245,6 +252,8 @@ module Processor (
 	 DE_PC    <= FD_PC;
 	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
 	 DE_predictBranch <= D_predictBranch;
+	 DE_BHTindex <= BHT_index(FD_PC);
+	 DE_BPTindex <= BPT_index(FD_PC);
       end
       
       if(E_flush) begin
@@ -262,7 +271,6 @@ module Processor (
    wire [31:0] DE_rs1 = RegisterBank[rs1Id(DE_instr)];
    wire [31:0] DE_rs2 = RegisterBank[rs2Id(DE_instr)];
    reg 	       DE_predictBranch;
-
    reg [BP_ADDR_BITS-1:0] DE_BHTindex;
    reg [BP_ADDR_BITS-1:0] DE_BPTindex;
 /******************************************************************************/
@@ -367,9 +375,8 @@ module Processor (
 
 `ifdef BENCH
    integer nbBranch = 0;
-   integer nbPredictOk = 0;
-   integer nbTaken = 0;
-   integer nbPredictTaken = 0;   
+   integer nbPredictHit = 0;
+   integer nbJALR = 0;   
 `endif   
 
    function [1:0] incdec_sat;
@@ -414,30 +421,28 @@ module Processor (
       EM_Eresult <= E_result;
       EM_addr    <= isStore(DE_instr) ? E_rs1 + Simm(DE_instr) : 
                                         E_rs1 + Iimm(DE_instr) ;
+      
       EM_JumpOrBranchNow  <= E_JumpOrBranch;
       EM_JumpOrBranchAddr <= E_JumpOrBranchAddr;
-
+      
       if(isBranch(DE_instr)) begin
-	 BHT[BHT_index(DE_PC)] <= 
-             {BHT[BHT_index(DE_PC)][BP_HISTO_BITS-2:0], E_takeBranch};
-	 
-	 BPT[BPT_index(DE_PC)] <= 
-             incdec_sat(BPT[BPT_index(DE_PC)], E_takeBranch);
-      end      
+	 BHT[DE_BHTindex] <= { BHT[DE_BHTindex][BP_HISTO_BITS-2:0], 
+                               E_takeBranch                           };
+	 BPT[DE_BPTindex] <= incdec_sat(BPT[DE_BPTindex], E_takeBranch);
+      end
    end
 
 `ifdef BENCH
    always @(posedge clk) begin
-      if(resetn && isBranch(DE_instr)) begin
-	 nbBranch <= nbBranch + 1;
-	 if(E_takeBranch == DE_predictBranch) begin
-	    nbPredictOk <= nbPredictOk + 1;
+      if(resetn) begin
+	 if(isBranch(DE_instr)) begin
+	    nbBranch <= nbBranch + 1;
+	    if(E_takeBranch == DE_predictBranch) begin
+	       nbPredictHit <= nbPredictHit + 1;
+	    end
 	 end
-	 if(E_takeBranch) begin
-	    nbTaken <= nbTaken + 1;
-	 end
-	 if(DE_predictBranch) begin
-	    nbPredictTaken <= nbPredictTaken + 1;
+	 if(isJALR(DE_instr)) begin
+	    nbJALR <= nbJALR + 1;
 	 end
       end
    end
@@ -590,11 +595,13 @@ module Processor (
    /* verilator lint_off WIDTH */
    always @(posedge clk) begin
       if(halt) begin
-	 $display("Branches predict OK =%0d\%%",nbPredictOk*100/nbBranch);
-	 $display("Taken branches      =%0d\%%",nbTaken*100/nbBranch);
-	 $display("Not taken branches  =%0d\%%",(nbBranch-nbTaken)*100/nbBranch);
-	 $display("Predict taken       =%0d\%%",nbPredictTaken*100/nbBranch);	 
-	 $display("CPI                 =%0f",(cycle*1.0)/(instret*1.0));
+	 $display("Simulated processor's report");
+	 $display("----------------------------");
+	 $display("Pred hits  = %3.3f\%%",
+		   nbPredictHit*100.0/nbBranch	 );
+	 $display("CPI        = %3.3f",(cycle*1.0)/(instret*1.0));
+	 $display("Instr. mix = (Branch:%3.3f\%% JALR:%3.3f\%%)",
+		  nbBranch*100.0/instret, nbJALR*100.0/instret);
 	 $finish();
       end
    end
@@ -604,7 +611,9 @@ module Processor (
 `ifdef VERBOSE
    always @(posedge clk) begin
       if(resetn & !halt) begin
-	 $write("D_JoB=%d E_JoB=%d  D_flush=%d E_flush=%d\n", D_JumpOrBranchNow, EM_JumpOrBranchNow, D_flush, E_flush);
+	 $write("D_JoB=%d E_JoB=%d  D_flush=%d E_flush=%d\n", 
+		D_JumpOrBranchNow, EM_JumpOrBranchNow, D_flush, E_flush
+	 );
 	 
 	 $write("[W] PC=%h ", MW_PC);
 	 $write("     ");
@@ -632,7 +641,9 @@ module Processor (
 	 $write("\n");
 
 	 $write("[D] PC=%h ", FD_PC);
-	 $write("[%s%s] ",dataHazard && rs1Hazard?"*":" ", dataHazard && rs2Hazard?"*":" ");	 
+	 $write("[%s%s] ",
+		dataHazard && rs1Hazard?"*":" ", 
+		dataHazard && rs2Hazard?"*":" ");	 
 	 riscv_disasm(FD_nop ? NOP : FD_instr,FD_PC);
 	 if(isBranch(FD_instr)) begin
 	    $write(" predict taken:%0d",D_predictBranch); 
@@ -640,7 +651,7 @@ module Processor (
 	 $write("\n");
 
 	 $write("[F] PC=%h ", F_PC);
-	 if(D_JumpOrBranchNow) $write(" PC <- [D] 0x%0h",D_JumpOrBranchAddr);	 
+	 if(D_JumpOrBranchNow) $write(" PC <- [D] 0x%0h",D_JumpOrBranchAddr);
 	 if(EM_JumpOrBranchNow) $write(" PC <- [E] 0x%0h",EM_JumpOrBranchAddr);
 	 $write("\n");
 	 
