@@ -210,23 +210,29 @@ module Processor (
    function [BP_ADDR_BITS-1:0] BPT_index;
       input [31:0] PC;
 
-      // simple 2-bits counter without history      
+      // Choose indexing for dynamic branch prediction
+      // (uncomment one of the following choices)      
+      // Used if D_predictBranch is set to dynamic (later in this file)
+      
+      // 1: simple 2-bits counter without history      
       // BPT_index = BHT_index(PC); 
 
-      // gselect      
+      // 2: gselect      
       // /* verilator lint_off WIDTH */
       // BPT_index = {BHT_index(PC), BHT[BHT_index(PC)]}; 
       // /* verilator lint_on WIDTH */      
 
-      // gshare
+      // 3: gshare
       BPT_index = BHT_index(PC) ^  
                   {BHT[BHT_index(PC)],{BP_ADDR_BITS-BP_HISTO_BITS{1'b0}}}; 
    endfunction
 
-   //wire D_predictBranch = 1'd1;
-   //wire D_predictBranch = 1'd0;
-   //wire D_predictBranch = FD_instr[31];   
-   wire D_predictBranch = BPT[BPT_index(FD_PC)][1];
+   // Choose branch prediction strategy
+   // (uncomment one of the following choices)   
+   //wire D_predictBranch = 1'd0;                   // 1. predict not taken
+   //wire D_predictBranch = 1'd1;                   // 2. predict taken
+   //wire D_predictBranch = FD_instr[31];           // 3. BTFNT 
+   wire D_predictBranch = BPT[BPT_index(FD_PC)][1]; // 4. dynamic
 
    
    // Next fetch gets address from JAL target or from Branch target
@@ -376,6 +382,7 @@ module Processor (
 `ifdef BENCH
    integer nbBranch = 0;
    integer nbPredictHit = 0;
+   integer nbJAL  = 0;
    integer nbJALR = 0;   
 `endif   
 
@@ -440,6 +447,9 @@ module Processor (
 	    if(E_takeBranch == DE_predictBranch) begin
 	       nbPredictHit <= nbPredictHit + 1;
 	    end
+	 end
+	 if(isJAL(DE_instr)) begin
+	    nbJAL <= nbJAL + 1;
 	 end
 	 if(isJALR(DE_instr)) begin
 	    nbJALR <= nbJALR + 1;
@@ -600,8 +610,10 @@ module Processor (
 	 $display("Pred hits  = %3.3f\%%",
 		   nbPredictHit*100.0/nbBranch	 );
 	 $display("CPI        = %3.3f",(cycle*1.0)/(instret*1.0));
-	 $display("Instr. mix = (Branch:%3.3f\%% JALR:%3.3f\%%)",
-		  nbBranch*100.0/instret, nbJALR*100.0/instret);
+	 $display("Instr. mix = (Branch:%3.3f\%% JAL:%3.3f\%% JALR:%3.3f\%%)",
+		  nbBranch*100.0/instret,
+		     nbJAL*100.0/instret, 
+		    nbJALR*100.0/instret);
 	 $finish();
       end
    end
