@@ -10,13 +10,12 @@
 #include "perf.h"
 #include "io.h"
 
-#define NO_GRAPHIC
 // Uncomment to deactivate all "graphic" output and get more accurate
 // statistics: the putchar() function in putchar.S sends the character
 // then waits for the UART to be not busy. The number of iterations of
 // the waiting loop can vary *A LOT* depending of the ratio between CPU
 // frequency and UART baud rate.
-// #define NO_GRAPHIC
+#define NO_GRAPHIC
 
 /*******************************************************************/
 

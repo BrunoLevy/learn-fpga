@@ -1698,7 +1698,8 @@ Interestingly, our core is much faster than femtorv-electron
 (3.373 raystones) that implements RV32IM ! 
 
 For more advanced branch prediction methods, see:
-- [this link](https://danluu.com/branch-prediction/);
+- [link1](https://danluu.com/branch-prediction/);
+- [link2](https://people.engr.ncsu.edu/efg/521/f02/common/lectures/notes/lec16.pdf)
 - [Onur Mutlu's ETH Zurich lectures](https://www.youtube.com/watch?v=hl4eiN8ZMJg) (thank you Luke Wren).
 
 ## Step 8: dynamic branch prediction
