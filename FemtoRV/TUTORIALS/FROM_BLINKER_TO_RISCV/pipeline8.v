@@ -1,5 +1,5 @@
 /*
- * pipeline6.v
+ * pipeline8.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
  * Step 8: dynamic branch prediction
  */
@@ -610,7 +610,7 @@ module Processor (
       if(halt) begin
 	 $display("Simulated processor's report");
 	 $display("----------------------------");
-	 $display("Pred hits  = %3.3f\%%",
+	 $display("Branch hits= %3.3f\%%",
 		   nbPredictHit*100.0/nbBranch	 );
 	 $display("CPI        = %3.3f",(cycle*1.0)/(instret*1.0));
 	 $display("Instr. mix = (Branch:%3.3f\%% JAL:%3.3f\%% JALR:%3.3f\%%)",
