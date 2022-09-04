@@ -86,7 +86,8 @@ int main() {
       ++frame;
 #ifdef __linux__       
         usleep(100000);
-#endif       
+#endif
+//      if(frame>4) break;
    }
    
 }

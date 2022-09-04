@@ -190,44 +190,28 @@ module Processor (
 
                      /*** D: Instruction decode ***/
 
-   // Branch prediction
+   // ******* Branch prediction
 
-   //     83% success with HISTO_BITS=8, ADDR_BITS=12
-   // *** 80% success with HISTO_BITS=5, ADDR_BITS=10   
-   //     78% success with HISTO_BITS=4, ADDR_BITS=8   
-   localparam BP_HISTO_BITS=5;
-   localparam BP_ADDR_BITS=10;
-   localparam BP_SIZE=1<<BP_ADDR_BITS;
+   localparam BP_HISTO_BITS=9;
+   localparam BP_ADDR_BITS=12;
+
+   localparam BHT_INDEX_BITS=BP_ADDR_BITS;
+   localparam BHT_SIZE=1<<BHT_INDEX_BITS;
+
+   // global history
+   reg [BP_HISTO_BITS-1:0] branch_history;
    
-   reg [BP_HISTO_BITS-1:0] PHT[BP_SIZE-1:0]; // Pattern History Table
-   reg [1:0]               BHT[BP_SIZE-1:0]; // Branch History Table
+   // branch history table (2 bits per entry)
+   reg [1:0] BHT[BHT_SIZE-1:0]; 
 
-   function [BP_ADDR_BITS-1:0] PHT_index;
+   // gets the index in the branch prediction table
+   // from the PC
+   function [BHT_INDEX_BITS-1:0] BHT_index;
       input [31:0] PC;
-      PHT_index = PC[BP_ADDR_BITS+1:2]; // pshare
-      //PHT_index = 0; // gshare
-   endfunction 
-   
-   function [BP_ADDR_BITS-1:0] BHT_index;
-      input [31:0] PC;
-
-      // Choose indexing for dynamic branch prediction
-      // (uncomment one of the following choices)      
-      // Used if D_predictBranch is set to dynamic (later in this file)
-      
-      // 1: simple 2-bits counter without history      
-      // BHT_index = PHT_index(PC); 
-
-      // 2: gselect      
-      // /* verilator lint_off WIDTH */
-      // BHT_index = {PHT_index(PC), PHT[PHT_index(PC)]}; 
-      // /* verilator lint_on WIDTH */      
-
-      // 3: pshare/gshare
-      BHT_index = PHT_index(PC) ^  
-                {PHT[PHT_index(PC)],{BP_ADDR_BITS-BP_HISTO_BITS{1'b0}}};
-
-
+   /* verilator lint_off WIDTH */
+      BHT_index = PC[BP_ADDR_BITS+1:2] ^ 
+                  (branch_history << (BP_ADDR_BITS - BP_HISTO_BITS));
+   /* verilator lint_on WIDTH */      
    endfunction
 
    // Choose branch prediction strategy
@@ -237,7 +221,6 @@ module Processor (
    //wire D_predictBranch = FD_instr[31];           // 3. BTFNT 
    wire D_predictBranch = BHT[BHT_index(FD_PC)][1]; // 4. dynamic
 
-   
    // Next fetch gets address from JAL target or from Branch target
    // if branch is predicted.
    
@@ -271,7 +254,6 @@ module Processor (
 	 DE_instr <= (E_flush | FD_nop) ? NOP : FD_instr;
 	 DE_predictBranch <= D_predictBranch;
 	 DE_predictRA <= RAS_0;
-	 DE_PHTindex  <= PHT_index(FD_PC);
 	 DE_BHTindex  <= BHT_index(FD_PC);
 	 if(!FD_nop) begin
 	    if(isJAL(FD_instr)) begin
@@ -305,8 +287,7 @@ module Processor (
    wire [31:0] DE_rs2 = RegisterBank[rs2Id(DE_instr)];
    reg 	       DE_predictBranch;
    reg [31:0]  DE_predictRA;
-   reg [BP_ADDR_BITS-1:0] DE_PHTindex;
-   reg [BP_ADDR_BITS-1:0] DE_BHTindex;
+   reg [BHT_INDEX_BITS-1:0] DE_BHTindex;
 /******************************************************************************/
 
                      /*** E: Execute ***/
@@ -418,10 +399,8 @@ module Processor (
    function [1:0] incdec_sat;
       input [1:0] prev;
       input dir;
-//    incdec_sat = dir ? 2'b11 : 2'b00; // simple binary instead of bimodal
       incdec_sat = 
  	   {dir, prev} == 3'b000 ? 2'b00 :
-	   {dir, prev} == 3'b000 ? 2'b00 :
            {dir, prev} == 3'b001 ? 2'b00 :
 	   {dir, prev} == 3'b010 ? 2'b01 :
 	   {dir, prev} == 3'b011 ? 2'b10 :		
@@ -463,13 +442,11 @@ module Processor (
       EM_Eresult <= E_result;
       EM_addr    <= isStore(DE_instr) ? E_rs1 + Simm(DE_instr) : 
                                         E_rs1 + Iimm(DE_instr) ;
-      
       EM_JumpOrBranchNow  <= E_JumpOrBranch;
       EM_JumpOrBranchAddr <= E_JumpOrBranchAddr;
       
       if(isBranch(DE_instr)) begin
-	 PHT[DE_PHTindex] <= { PHT[DE_PHTindex][BP_HISTO_BITS-2:0], 
-                               E_takeBranch                           };
+	 branch_history <= {E_takeBranch,branch_history[BP_HISTO_BITS-1:1]};
 	 BHT[DE_BHTindex] <= incdec_sat(BHT[DE_BHTindex], E_takeBranch);
       end
    end

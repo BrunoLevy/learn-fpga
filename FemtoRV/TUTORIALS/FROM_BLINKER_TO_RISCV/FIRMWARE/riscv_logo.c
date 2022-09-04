@@ -129,6 +129,7 @@ void main() {
         ++frame;
 #ifdef __linux__       
         usleep(20000);
-#endif       
+#endif
+//       if(frame > 20) break;
     }
 }
