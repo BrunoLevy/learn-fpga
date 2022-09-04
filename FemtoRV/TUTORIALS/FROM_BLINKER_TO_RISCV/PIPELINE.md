@@ -1513,7 +1513,7 @@ Notes:
    ids if the critical path is there. Asserting `dataHazard` more often than necessary
    is not incorrect (but it increases CPI).
 
-Time for benchmark !
+New version is in [pipeline6.v](pipeline6.v). Time for benchmark !
 
 | Version    | Description            | CPI   | RAYSTONES |
 |------------|------------------------|-------|-----------|
@@ -1697,13 +1697,211 @@ The new version is in [pipeline7.v](pipeline7.v). What does it give ?
 Interestingly, our core is much faster than femtorv-electron
 (3.373 raystones) that implements RV32IM ! 
 
-For more advanced branch prediction methods, see:
+
+## Step 8: dynamic branch prediction
+
+In fact, we can now take a more general point of view of what we have done:
+- During the `D` stage, we make a prediction of whether a branch will be taken
+  or not, and based on this prediction, the `D` stage gives the address of the
+  predicted next instruction to the `F` stage;
+- The `D` stage also passes the prediction to the `E` stage. Then the `E` stage
+  compares this prediction with the actual branch. If they mismatch, it sends
+  the corrected address to the `F` stage and flushes two instructions in the
+  pipeline.
+
+This mechanism is completely generic, and parameterized by the `D_predictBranch`
+signal (that is for now wired to the sign bit of `BImm`, that is, `instr[31]`).
+It solely uses the current instruction word to make a decision. We could do
+something smarter: why not having a mechanism that "learns" from the preceding
+decisions ? It means we are going to have a state, that will be updated
+dynamically (hence "dynamic" branch prediction).
+
+For an introduction on dynamic branch prediction, I recommend the following links:
 - [link1](https://danluu.com/branch-prediction/);
 - [link2](https://people.engr.ncsu.edu/efg/521/f02/common/lectures/notes/lec16.pdf)
 - [Onur Mutlu's ETH Zurich lectures](https://www.youtube.com/watch?v=hl4eiN8ZMJg) (thank you Luke Wren).
 
-## Step 8: dynamic branch prediction
+Let us see what it means in practice for our core. The idea is to store the latest outcome
+of each branch (that is, taken or not taken). Clearly it is not possible to do that for all
+addresses, but one can hash them, using the low bits of the PC. We declare a
+`BHT` (for Branch History Table). In our case it will have 4096 entries:
 
+```verilog
+   localparam BP_ADDR_BITS=12;
+   localparam BHT_SIZE=1<<BHT_INDEX_BITS;
+   reg BHT[BHT_SIZE-1:0];
+```
+
+It is also convenient to declare a function to address the `BHT` from the PC (of
+course, we ignore the two LSBs because they are always `00` since instructions are
+aligned on 32-bit boundaries).
+
+```verilog
+   function [BP_ADDR_BITS-1:0] BHT_index;
+      input [31:0] PC;
+      BHT_index = PC[BP_ADDR_BITS+1:2];
+   endfunction
+```
+
+And now we can define the `D_predictBranch` signal. It will be also passed to
+`E` through a pipeline register, as follows:
+
+```verilog
+   /* D */
+   wire D_predictBranch = BHT[BHT_index(FD_PC)][1];
+   ...
+   always @(posedge clk) begin
+      ...
+      if(!D_stall) begin
+         ...
+	 DE_predictBranch <= D_predictBranch;
+	 DE_BHTindex <= BHT_index(FD_PC);
+      end
+      ...
+   end
+```
+
+Then the `E` state has two things to do:
+- send the correction and two bubbles if the prediction and the
+ decision do not match
+- update the Branch History Table with the decision
+
+```verilog
+  /* E */
+  wire E_JumpOrBranch = (
+         isJALR(DE_instr) || 
+         (isBranch(DE_instr) && (E_takeBranch^DE_predictBranch))
+  );
+  ...  
+  always @(posedge clk) begin
+     ...
+     if(isBranch(DE_instr)) begin
+	BHT[DE_BHTindex] <= E_takeBranch;
+     end
+     ...
+  end     
+```
+
+I also added some VERILOG instructions to measure the hit rate for
+the prediction, so that we can track our progress. Clearly, it can be
+*very* different depending on the program that you run. So
+we do that for our RAYSTONES test, and also for the more popular DHRYSTONES
+one (`make dhrystone.pipeline.hex` in `FIRMWARE`):
+
+|  prediction strategy     | raystones | dhrystones |
+|--------------------------|-----------|------------|
+| predict taken (always)   | 68.6%     | 89.2%      |
+| bkwd taken fwd not taken | 63%       | 93.4%      |
+| 1 bit BHT                | 74%       | 92.7%      |
+
+It's inresting: smarter strategies do not systematically gain something !
+The "BTFNT" strategy gains something in DHRYSTONE, but is worse than the
+super trivial "predict taken" strategy in RAYSTONE. For our 1-bit branch
+history table, the situation is inversed.
+
+If you read the references above, you have seen they say that it is
+better to store a 2-bits status (using saturating counter). Then the
+`D_predictBranch` signal is the most significant bit:
+
+```verilog
+   reg [1:0] BHT[BHT_SIZE-1:0];
+   ...
+   wire D_predictBranch = BHT[BHT_index(FD_PC)][1]; 
+```
+
+Then the `E` stage updates the `BHT` as follows, using a function
+to increment or decrement a 2-bits saturated counter:
+
+```verilog
+
+   /* E */
+   function [1:0] incdec_sat;
+      input [1:0] prev;
+      input dir;
+      incdec_sat = 
+ 	   {dir, prev} == 3'b000 ? 2'b00 :
+           {dir, prev} == 3'b001 ? 2'b00 :
+	   {dir, prev} == 3'b010 ? 2'b01 :
+	   {dir, prev} == 3'b011 ? 2'b10 :		
+	   {dir, prev} == 3'b100 ? 2'b01 :
+	   {dir, prev} == 3'b101 ? 2'b10 :
+	   {dir, prev} == 3'b110 ? 2'b11 :
+	                           2'b11 ;
+   endfunction;
+
+   ...
+   always @(posedge clk) begin
+      if(isBranch(DE_instr)) begin
+	 BHT[DE_BHTindex] <= incdec_sat(BHT[DE_BHTindex], E_takeBranch);
+      end
+   end   
+```
+
+Where do we stand ? Not bad ! It increases the prediction rate for
+both test programs:
+
+|  prediction strategy     | raystones | dhrystones |
+|--------------------------|-----------|------------|
+| predict taken (always)   | 68.6%     | 89.2%      |
+| bkwd taken fwd not taken | 63%       | 93.4%      |
+| 1 bit BHT                | 74%       | 92.7%      |
+| 2 bits BHT               | 76.8%     | 95.97%     |
+
+
+It is possible to improve the prediction rate by injecting more
+information about the history of branches. One can create a
+FIFO that memorizes the latest results for a small number of
+branches (here 9):
+
+```verilog
+   localparam BP_HISTO_BITS=9;
+   reg [BP_HISTO_BITS-1:0] branch_history;
+
+   /* E */
+   always @(posedge clk) begin
+      ...
+      if(isBranch(DE_instr)) begin
+	 branch_history <= {E_takeBranch,branch_history[BP_HISTO_BITS-1:1]};
+	 BHT[DE_BHTindex] <= incdec_sat(BHT[DE_BHTindex], E_takeBranch);
+      end
+   end
+```
+
+Then this history is XORed with the lower bits of PC to index the BHT:
+
+```verilog
+   function [BHT_INDEX_BITS-1:0] BHT_index;
+      input [31:0] PC;
+   /* verilator lint_off WIDTH */
+      BHT_index = PC[BP_ADDR_BITS+1:2] ^ 
+                  (branch_history << (BP_ADDR_BITS - BP_HISTO_BITS));
+   /* verilator lint_on WIDTH */      
+   endfunction
+```
+
+The new version is in [pipeline8.v](pipeline8.v)
+
+This strategy, known as "gshare", costs almost nothing and can significantly
+improve the accuracy of branch prediction, as can be seen in the table below:
+
+|  prediction strategy     | raystones | dhrystones |
+|--------------------------|-----------|------------|
+| predict taken (always)   | 68.6%     | 89.2%      |
+| bkwd taken fwd not taken | 63%       | 93.4%      |
+| 1 bit BHT                | 74%       | 92.7%      |
+| 2 bits BHT               | 76.8%     | 95.97%     |
+| gshare                   | 82%       | 96.3%      |
+
+It is more significant for RAYSTONES
+than for DHRYSTONES, maybe because DHRYSTONES has long loops with repetitive
+patterns for which the two-bits counters in the BHT do the job in most cases,
+whereas RAYSTONES does floating point computations (in software in the present case),
+with much more irregular branching patterns that are captured by the global
+history.
+
+## Step 9: return address stack
+
+_WIP_
 
 ## Step X: optimizing for fmax
 
