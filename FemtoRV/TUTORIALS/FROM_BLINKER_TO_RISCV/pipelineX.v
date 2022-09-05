@@ -1,7 +1,9 @@
 /**
  * pipeline6.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
- * Step 7: Simplify for higher maxfreq and smaller area
+ * Step X: Simplify for higher maxfreq and smaller area
+ *   - register forwarding
+ *   TODO: reintegrate branch prediction and return address stack
  */
  
 `default_nettype none

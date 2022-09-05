@@ -1796,7 +1796,7 @@ one (`make dhrystone.pipeline.hex` in `FIRMWARE`):
 | bkwd taken fwd not taken | 63%       | 93.4%      |
 | 1 bit BHT                | 74%       | 92.7%      |
 
-It's inresting: smarter strategies do not systematically gain something !
+It's interesting: smarter strategies do not systematically gain something !
 The "BTFNT" strategy gains something in DHRYSTONE, but is worse than the
 super trivial "predict taken" strategy in RAYSTONE. For our 1-bit branch
 history table, the situation is inversed.
