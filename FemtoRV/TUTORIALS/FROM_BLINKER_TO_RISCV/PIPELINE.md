@@ -1616,8 +1616,8 @@ the instruction was `JALR`:
 
 We need to correct if the prediction and the actual decision differ
 (`E_takeBranch^DE_predictBranch`). If the branch was predicted but is
-suppoed to be not taken, we send `PC+4`, and if the branch was not predicted but
-suppoed to be taken, we send `PC+Bimm`.
+supposed to be not taken, we send `PC+4`, and if the branch was not predicted but
+supposed to be taken, we send `PC+Bimm`.
 
 Once a "correction" is sent (through `E_JumpOrBranchAddr`
 and by asserting `E_JumpOrBranch`), pipeline controls
@@ -1697,8 +1697,10 @@ The new version is in [pipeline7.v](pipeline7.v). What does it give ?
 Interestingly, our core is much faster than femtorv-electron
 (3.373 raystones) that implements RV32IM ! 
 
-
 ## Step 8: dynamic branch prediction
+
+Let us see now how to further improve it using dynamic branch prediction
+(thank you Bruce Hoult for the suggestion of using gshare, more on this below).
 
 In fact, we can now take a more general point of view of what we have done:
 - During the `D` stage, we make a prediction of whether a branch will be taken
@@ -1717,7 +1719,7 @@ decisions ? It means we are going to have a state, that will be updated
 dynamically (hence "dynamic" branch prediction).
 
 For an introduction on dynamic branch prediction, I recommend the following links:
-- [link1](https://danluu.com/branch-prediction/);
+- [link1](https://danluu.com/branch-prediction/)
 - [link2](https://people.engr.ncsu.edu/efg/521/f02/common/lectures/notes/lec16.pdf)
 - [Onur Mutlu's ETH Zurich lectures](https://www.youtube.com/watch?v=hl4eiN8ZMJg) (thank you Luke Wren).
 

@@ -247,6 +247,9 @@ module Processor (
    wire [4:0]  wbRdId;
 
    reg [31:0] RegisterBank [0:31];
+
+//   integer    depth = 0;
+   
    always @(posedge clk) begin
 
       if(!D_stall) begin
@@ -255,18 +258,34 @@ module Processor (
 	 DE_predictBranch <= D_predictBranch;
 	 DE_predictRA <= RAS_0;
 	 DE_BHTindex  <= BHT_index(FD_PC);
-	 if(!FD_nop) begin
-	    if(isJAL(FD_instr)) begin
+	 if(!FD_nop && !D_flush) begin
+	    if(isJAL(FD_instr) && rdId(FD_instr)==1 ) begin
 	       RAS_3 <= RAS_2;
 	       RAS_2 <= RAS_1;
 	       RAS_1 <= RAS_0;
 	       RAS_0 <= FD_PC + 4;
-//	       $display("push(%0h)",FD_PC+4);
-	    end else if(isJALR(FD_instr)) begin
-//	       $display("pop()");	       
+
+/*
+	       $write("***PC=%0h  ",FD_PC);
+	       riscv_disasm(FD_instr, FD_PC);
+               $write(" ");
+	       $display("jal(%0h) push(%0h) depth=%0d",FD_PC+Jimm(FD_instr), FD_PC+4, depth); 
+	       depth <= depth + 1;
+*/	       
+	    end else if(isJALR(FD_instr) && rdId(FD_instr)==0 && rs1Id(FD_instr) == 1) begin 
+
+/*
+	       $write("***PC=%0h  ",FD_PC);
+	       riscv_disasm(FD_instr, FD_PC);
+               $write(" ");
+	       $display("jalr pop() depth=%0d", depth);
+	       depth <= depth - 1;	       
+*/
+
 	       RAS_0 <= RAS_1;
 	       RAS_1 <= RAS_2;
 	       RAS_2 <= RAS_3;
+
 	    end
 	 end
       end
