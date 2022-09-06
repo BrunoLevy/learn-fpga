@@ -413,6 +413,9 @@ module Processor (
    integer nbJAL  = 0;
    integer nbJALR = 0;
    integer nbJALRhit = 0;
+   integer nbLoad = 0;
+   integer nbStore = 0;
+   integer nbLoadHazard = 0;
 `endif   
 
    function [1:0] incdec_sat;
@@ -472,7 +475,7 @@ module Processor (
 
 `ifdef BENCH
    always @(posedge clk) begin
-      if(resetn) begin
+      if(resetn & !D_stall) begin
 	 if(isBranch(DE_instr)) begin
 	    nbBranch <= nbBranch + 1;
 	    if(E_takeBranch == DE_predictBranch) begin
@@ -580,6 +583,19 @@ module Processor (
       end
    end
 
+`ifdef BENCH
+   always @(posedge clk) begin
+      if(resetn) begin
+	 if(isLoad(MW_instr)) begin
+	    nbLoad <= nbLoad + 1;
+	 end
+	 if(isStore(MW_instr)) begin
+	    nbStore <= nbStore + 1;
+	 end
+      end
+   end
+`endif
+   
 /******************************************************************************/
    reg [31:0] MW_PC; 
    reg [31:0] MW_instr; 
@@ -622,17 +638,26 @@ module Processor (
    // does not Load to zero ! (idem for CSRRS).
    wire rs1Hazard = readsRs1(FD_instr) && (rs1Id(FD_instr) == rdId(DE_instr)) ;
    wire rs2Hazard = readsRs2(FD_instr) && (rs2Id(FD_instr) == rdId(DE_instr)) ;
+
    
    wire dataHazard = !FD_nop  &&  
                      (isLoad(DE_instr)||isCSRRS(DE_instr)) && 
                      (rs1Hazard || rs2Hazard);
-   
+
    assign F_stall = dataHazard | halt;
    assign D_stall = dataHazard | halt;
    
    assign D_flush = E_JumpOrBranch;
    assign E_flush = E_JumpOrBranch | dataHazard;
 
+`ifdef BENCH
+   always @(posedge clk) begin
+      if(dataHazard) begin
+	 nbLoadHazard <= nbLoadHazard + 1;
+      end
+   end   
+`endif
+   
 /******************************************************************************/
 
 `ifdef BENCH
@@ -645,11 +670,15 @@ module Processor (
 		   nbBranchHit*100.0/nbBranch	 );
 	 $display("JALR   hit = %3.3f\%%",
 		   nbJALRhit*100.0/nbJALR	 );
+	 $display("Load hzrds = %3.3f\%%", nbLoadHazard*100.0/nbLoad);
 	 $display("CPI        = %3.3f",(cycle*1.0)/(instret*1.0));
-	 $display("Instr. mix = (Branch:%3.3f\%% JAL:%3.3f\%% JALR:%3.3f\%%)",
+	 $display("Instr. mix = (Branch:%3.3f\%% JAL:%3.3f\%% JALR:%3.3f\%% Load:%3.3f\%% Store:%3.3f\%%)",
 		  nbBranch*100.0/instret,
 		     nbJAL*100.0/instret, 
-		    nbJALR*100.0/instret);
+		    nbJALR*100.0/instret,
+		    nbLoad*100.0/instret,		  		  
+		   nbStore*100.0/instret
+	 );
 	 $finish();
       end
    end

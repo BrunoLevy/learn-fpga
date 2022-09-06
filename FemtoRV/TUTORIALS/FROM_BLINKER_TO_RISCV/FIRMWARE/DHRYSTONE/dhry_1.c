@@ -16,13 +16,7 @@
  */
 
 #include "dhry.h"
-
-#ifdef USE_MYSTDLIB
-extern char     *malloc ();
-#else
-#  include <stdlib.h>
-#  include <string.h>
-#endif
+#include <stdint.h>
 
 /* Global Variables: */
 
@@ -48,35 +42,14 @@ Enumeration     Func_1 ();
 #endif
 
 /* variables for time measurement: */
-
-#ifdef IGN_TIMES
-#define HZ 50000000
-struct tms      time_info;
-extern  time_t     times ();
-                /* see library function "times" */
-#define Too_Small_Time 120
-                /* Measurements should last at least about 2 seconds */
-#endif
-#ifdef TIME
-extern long     time();
-#ifdef RISCV
-extern long     insn();
-#endif
-                /* see library function "time"  */
-#define Too_Small_Time 2
-                /* Measurements should last at least 2 seconds */
-#endif
-
-long            Begin_Time,
+extern uint64_t rdcycle();
+extern uint64_t rdinstret();
+uint64_t        Begin_Time,
                 End_Time,
                 User_Time;
-#ifdef RISCV
-long            Begin_Insn,
+uint64_t        Begin_Insn,
                 End_Insn,
                 User_Insn;
-#endif
-float           Microseconds,
-                Dhrystones_Per_Second;
 /* end of variables for time measurement */
 
 
@@ -114,26 +87,8 @@ main ()
   Ptr_Glob = &R2; // (Rec_Pointer) malloc (sizeof (Rec_Type));
 
   /*
-   * Initialize IO (redirect to UART or OLED screen depending on 
-   * femtosoc.v configuration).
-   */ 
-  // femtosoc_tty_init();
-  
-   /*
-    * Verify that this core was synthetized with counters. 
-    * The generation script extracts configuration 
-    * from femtosoc.v and writes values at specific memory addresses. 
-    * See stubs.c and LIB/femtorv32.h
-    */
-  if(!has_counters()) {
-      printf("This femtorv32 core does not have counters (see femtosoc.v)");
-      return -1;
-  }
-
-  /*
    * End of FEMTOSOC/FEMTORV32 modifications ======================
    */ 
-   
   Ptr_Glob->Ptr_Comp                    = Next_Ptr_Glob;
   Ptr_Glob->Discr                       = Ident_1;
   Ptr_Glob->variant.var_1.Enum_Comp     = Ident_3;
@@ -165,7 +120,7 @@ main ()
   {
     // int n;
     // scanf ("%d", &n);
-    Number_Of_Runs = 100;
+    Number_Of_Runs = 50000;
   }
   printf ("\n");
 
@@ -175,17 +130,12 @@ main ()
   /* Start timer */
   /***************/
 
-#ifdef IGN_TIMES
-  times (&time_info);
-  Begin_Time = (long) time_info.tms_utime;
-#endif
-#ifdef TIME
-  Begin_Time = time ( (long *) 0);
-#ifdef RISCV
-  Begin_Insn = insn ( (long *) 0);
-#endif
-#endif
+  Begin_Time = rdcycle();
+  Begin_Insn = rdinstret();
 
+  printf(">>> Begin_time=%d\n", (int)Begin_Time);
+  printf(">>> Begin_insn=%d\n", (int)Begin_Insn);
+  
   for (Run_Index = 1; Run_Index <= Number_Of_Runs; ++Run_Index)
   {
     Proc_5();
@@ -235,16 +185,8 @@ main ()
   /* Stop timer */
   /**************/
 
-#ifdef IGN_TIMES
-  times (&time_info);
-  End_Time = (long) time_info.tms_utime;
-#endif
-#ifdef TIME
-  End_Time = time ( (long *) 0);
-#ifdef RISCV
-  End_Insn = insn ( (long *) 0);
-#endif
-#endif
+  End_Time = rdcycle();
+  End_Insn = rdinstret();
 
   printf ("Execution ends\n");
   printf ("\n");
@@ -300,59 +242,36 @@ main ()
   printf ("\n");
 
   User_Time = End_Time - Begin_Time;
-
-#ifdef RISCV
   User_Insn = End_Insn - Begin_Insn;
 
   printf("Number_Of_Runs: %d\n", Number_Of_Runs);
-  printf("User_Time: %d cycles, %d insn\n", User_Time, User_Insn);
+  printf("User_Time: %d cycles, %d insn\n", (int)User_Time, (int)User_Insn);
 
-  int Cycles_Per_Instruction_x1000 = (1000 * User_Time) / User_Insn;
-  printf("Cycles_Per_Instruction: %d.%d%d%d\n", Cycles_Per_Instruction_x1000 / 1000,
-		(Cycles_Per_Instruction_x1000 / 100) % 10,
-		(Cycles_Per_Instruction_x1000 / 10) % 10,
-		(Cycles_Per_Instruction_x1000 / 1) % 10);
+  uint64_t Cycles_Per_Instruction_x1000 = (1000 * User_Time) / User_Insn;
+  printf("Cycles_Per_Instruction: %d.%d%d%d\n",
+	 (int)( Cycles_Per_Instruction_x1000 / 1000),
+	 (int)((Cycles_Per_Instruction_x1000 / 100 ) % 10),
+	 (int)((Cycles_Per_Instruction_x1000 / 10  ) % 10),
+	 (int)((Cycles_Per_Instruction_x1000 / 1   ) % 10)
+  );
 
-  int Dhrystones_Per_Second_Per_MHz = (Number_Of_Runs * 1000000) / User_Time;
-  printf("Dhrystones_Per_Second_Per_MHz: %d\n", Dhrystones_Per_Second_Per_MHz);
+  show_CPI_2();
 
+  uint64_t Dhrystones_Per_Second_Per_MHz = ((uint64_t)Number_Of_Runs * 1000000) / User_Time;
+  printf("Dhrystones_Per_Second_Per_MHz: %d\n", (int)Dhrystones_Per_Second_Per_MHz);
+  
    /*
     * "Another common representation of the Dhrystone benchmark is the DMIPS (Dhrystone MIPS) obtained 
     * when the Dhrystone score is divided by 1757 (the number of Dhrystones per second obtained on the 
     * VAX 11/780, nominally a 1 MIPS machine)."
     */
    
-  int DMIPS_Per_MHz_x1000 = (1000 * Dhrystones_Per_Second_Per_MHz) / 1757;
-  printf("DMIPS_Per_MHz: %d.%d%d%d\n", DMIPS_Per_MHz_x1000 / 1000,
-		(DMIPS_Per_MHz_x1000 / 100) % 10,
-		(DMIPS_Per_MHz_x1000 / 10) % 10,
-		(DMIPS_Per_MHz_x1000 / 1) % 10);
-#else
-  if (User_Time < Too_Small_Time)
-  {
-    printf ("Measured time too small to obtain meaningful results\n");
-    printf ("Please increase number of runs\n");
-    printf ("\n");
-  }
-  else
-  {
-#ifdef TIME
-    Microseconds = (float) User_Time * Mic_secs_Per_Second
-                        / (float) Number_Of_Runs;
-    Dhrystones_Per_Second = (float) Number_Of_Runs / (float) User_Time;
-#else
-    Microseconds = (float) User_Time * Mic_secs_Per_Second
-                        / ((float) HZ * ((float) Number_Of_Runs));
-    Dhrystones_Per_Second = ((float) HZ * (float) Number_Of_Runs)
-                        / (float) User_Time;
-#endif
-    printf ("Microseconds for one run through Dhrystone: ");
-    printf ("%6.1f \n", Microseconds);
-    printf ("Dhrystones per Second:                      ");
-    printf ("%6.1f \n", Dhrystones_Per_Second);
-    printf ("\n");
-  }
-#endif
+  int DMIPS_Per_MHz_x1000 = ((uint64_t)1000 * Dhrystones_Per_Second_Per_MHz) / 1757;
+  printf("DMIPS_Per_MHz: %d.%d%d%d\n",
+	 (int)(DMIPS_Per_MHz_x1000 / 1000),
+	 (int)((DMIPS_Per_MHz_x1000 / 100) % 10),
+	 (int)((DMIPS_Per_MHz_x1000 / 10) % 10),
+	 (int)((DMIPS_Per_MHz_x1000 / 1) % 10));
   return 0;
 }
 
