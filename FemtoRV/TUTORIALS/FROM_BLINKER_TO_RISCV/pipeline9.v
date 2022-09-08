@@ -8,7 +8,8 @@
 `include "clockworks.v"
 `include "emitter_uart.v"
 
-//`define VERBOSE
+//`define VERBOSE // uncomment to log pipeline for all executed instructions
+//`define LOG_RAS // uncomment to log return address stack operations
 
 /******************************************************************************/
 
@@ -248,8 +249,10 @@ module Processor (
 
    reg [31:0] RegisterBank [0:31];
 
-   // integer    depth = 0;
-   
+`ifdef LOG_RAS
+   integer    depth = 0;
+`endif
+
    always @(posedge clk) begin
 
       if(!D_stall) begin
@@ -265,22 +268,23 @@ module Processor (
 	       RAS_1 <= RAS_0;
 	       RAS_0 <= FD_PC + 4;
 
-               /*
+`ifdef LOG_RAS
 	       $write("***PC=%0h  ",FD_PC);
 	       riscv_disasm(FD_instr, FD_PC);
                $write(" ");
 	       $display("jal(%0h) push(%0h) depth=%0d",FD_PC+Jimm(FD_instr), FD_PC+4, depth); 
 	       depth <= depth + 1;
-	       */
+`endif
+
 	    end else if(isJALR(FD_instr) && rdId(FD_instr)==0 && (rs1Id(FD_instr) == 1 || rs1Id(FD_instr)==5)) begin
 
-               /*
+`ifdef LOG_RAS
 	       $write("***PC=%0h  ",FD_PC);
 	       riscv_disasm(FD_instr, FD_PC);
                $write(" ");
 	       $display("jalr pop() depth=%0d", depth);
 	       depth <= depth - 1;	       
-               */
+`endif
 
 	       RAS_0 <= RAS_1;
 	       RAS_1 <= RAS_2;

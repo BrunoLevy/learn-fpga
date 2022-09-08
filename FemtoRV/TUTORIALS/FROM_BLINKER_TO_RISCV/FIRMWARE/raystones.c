@@ -15,7 +15,7 @@
 // then waits for the UART to be not busy. The number of iterations of
 // the waiting loop can vary *A LOT* depending of the ratio between CPU
 // frequency and UART baud rate.
-#define NO_GRAPHIC
+//#define NO_GRAPHIC
 
 /*******************************************************************/
 

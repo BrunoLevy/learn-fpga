@@ -182,14 +182,18 @@ void printk(uint64_t kx) {
 
 void print_coremarks(uint64_t ticks) {
    const uint64_t MHz = CLOCKS_PER_SEC/1000000;
-   printf("*** MHz    : %d\n",(int)MHz);    
-   printf("*** Ticks  : %d\n",(int)ticks);
+   printf("*** MHz        : %d\n",(int)MHz);    
+   printf("*** Ticks      : %d\n",(int)ticks);
    uint64_t ksecs=ticks/(CLOCKS_PER_SEC/1000);
-   printf("*** Time   : "); printk(ksecs); printf("\n");
+   printf("*** Time       : "); printk(ksecs); printf("\n");
    uint64_t kiter_per_sec= (uint64_t)(ITERATIONS*1000*1000)/ksecs;
-   printf("*** Iter/s : "); printk(kiter_per_sec); printf("\n");
-   printf("*** Coremark/s  : "); printk(kiter_per_sec/MHz); printf("\n");
+   printf("*** Iter/s     : "); printk(kiter_per_sec); printf("\n");
+   printf("*** Coremark/s : "); printk(kiter_per_sec/MHz); printf("\n");
 
+   uint64_t kticks2 = rdcycle() * (uint64_t)1000;
+   uint64_t instret2 = rdinstret();
+   printf("*** CPI (2)    : "); printk(kticks2/instret2); printf("\n");
+   
 // This one is wrong, TODO: understand why
 // printk((uint64_t)(ITERATIONS)*((uint64_t)CLOCKS_PER_SEC*1000)/(uint64_t)total_time);   
 }

@@ -1,5 +1,5 @@
 /**
- * pipeline6.v
+ * pipelineX.v
  * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
  * Step X: Simplify for higher maxfreq and smaller area
  *   - register forwarding
@@ -146,12 +146,24 @@ module Processor (
                          FD_instr[19:12],FD_instr[20],FD_instr[30:21],1'b0};
 
 
-   wire D_JumpOrBranchNow = !FD_nop && (
-	  D_isJAL || 
-         (D_isBranch && FD_instr[31]) // I[31]=Bimm sgn (pred bkwd branch taken)
-        );
+   // BTFNT (Backwards taken forwards not taken)
+   // I[31]=Bimm sgn (pred bkwd branch taken)   
+   wire       D_predictBranch = FD_instr[31];
    
-   wire [31:0] D_JumpOrBranchAddr = FD_PC + (D_isJAL ? D_Jimm : D_Bimm);
+   wire D_JumpOrBranchNow = !FD_nop && (
+	  D_isJAL || D_isJALR || (D_isBranch && D_predictBranch) 
+        );
+
+   // Return address stack
+   
+   reg [31:0] RAS_0;
+   reg [31:0] RAS_1;
+   reg [31:0] RAS_2;
+   reg [31:0] RAS_3;   
+   
+   wire [31:0] D_JumpOrBranchAddr = 
+                D_isJALR ? RAS_0 : 
+	        (FD_PC + (D_isJAL ? D_Jimm : D_Bimm));
    
    reg [31:0] RegisterBank [0:31];
    always @(posedge clk) begin
@@ -220,11 +232,24 @@ module Processor (
       // (knowing that isLUI | isAUIPC | isJAL | isJALR)
       DE_PCplus4orUimm <= ({32{FD_instr[6:5]!=2'b01}} & FD_PC) + 
                           (D_isJALorJALR ? 4 : D_Uimm);
-
       
       DE_isJALorJALRorLUIorAUIPC <= FD_instr[2];
+      DE_predictBranch <= D_predictBranch;
+      DE_predictRA <= RAS_0;
 
-      DE_back <= FD_instr[31]; // Bimm sign (pred=bkwd branch taken)
+      if(!D_stall && !FD_nop && !D_flush) begin
+	 if(D_isJAL && D_rdId==1) begin
+	    RAS_3 <= RAS_2;
+	    RAS_2 <= RAS_1;
+	    RAS_1 <= RAS_0;
+	    RAS_0 <= FD_PC + 4;
+	 end 
+	 if(D_isJALR && D_rdId==0 && (D_rs1Id == 1 || D_rs1Id==5)) begin
+	    RAS_0 <= RAS_1;
+	    RAS_1 <= RAS_2;
+	    RAS_2 <= RAS_3;
+	 end
+      end
    end
 
 /******************************************************************************/
@@ -260,7 +285,8 @@ module Processor (
    reg [31:0] DE_PCplus4orBimm;   
    reg [31:0] DE_PCplus4orUimm;
 
-   reg DE_back;
+   reg DE_predictBranch;
+   reg [31:0] DE_predictRA;
    
 /******************************************************************************/
 /******************************************************************************/
@@ -342,17 +368,15 @@ module Processor (
         (DE_funct3_is[6] &  E_LTU) | // BLTU
         (DE_funct3_is[7] & !E_LTU) ; // BGEU
 
+   wire [31:0] E_JALRaddr = {E_aluPlus[31:1],1'b0};
+   
    wire E_JumpOrBranch = (
-         DE_isJALR || 
-         ((DE_isBranch) && (E_takeBranch^DE_back))
+	   (DE_isJALR    && (DE_predictRA != E_JALRaddr)   ) || 
+           (DE_isBranch  && (E_takeBranch^DE_predictBranch))
    );
 
-   wire [31:0] E_JumpOrBranchAddr =
-	DE_isBranch ? DE_PCplus4orBimm :
-	/* JALR */    {E_aluPlus[31:1],1'b0} ;
-
+   wire [31:0] E_JumpOrBranchAddr = DE_isBranch ? DE_PCplus4orBimm : E_JALRaddr;
    
-    
    wire [31:0] E_result =
 	       DE_isJALorJALRorLUIorAUIPC ? DE_PCplus4orUimm : E_aluOut; 
 
@@ -479,8 +503,6 @@ module Processor (
    always @(posedge clk) begin
       MW_nop       <= EM_nop;
       MW_rdId      <= EM_rdId;
-      MW_rs1Id     <= EM_rs1Id;
-      MW_rs2Id     <= EM_rs2Id;
 
       MW_wbData <=
 	  EM_isLoad  ? (M_isIO ? IO_mem_rdata : M_Mdata) :
@@ -503,8 +525,6 @@ module Processor (
 /******************************************************************************/
    reg        MW_nop; // Needed by instret in W stage
    reg [4:0]  MW_rdId;
-   reg [4:0]  MW_rs1Id;
-   reg [4:0]  MW_rs2Id;
    reg [31:0] MW_wbData;
    reg 	      MW_wbEnable;
 /******************************************************************************/
@@ -520,15 +540,15 @@ module Processor (
 
    // we do not test rdId == 0 because in general, one loads data to
    // a register, not to zero !
-//   wire rs1Hazard = D_readsRs1 && (D_rs1Id == DE_rdId);
-//   wire rs2Hazard = D_readsRs2 && (D_rs2Id == DE_rdId);
+   wire rs1Hazard = D_readsRs1 && (D_rs1Id == DE_rdId);
+   wire rs2Hazard = D_readsRs2 && (D_rs2Id == DE_rdId);
 
    // we could generate slightly more bubble with
    // simpler test (to be used if critical path is here)
    // -> keeping this one (seems it has no influence on CPI,
    //   and results in slightly better timings)
-   wire  rs1Hazard = (D_rs1Id == DE_rdId);
-   wire  rs2Hazard = (D_rs2Id == DE_rdId);
+   // wire  rs1Hazard = (D_rs1Id == DE_rdId);
+   // wire  rs2Hazard = (D_rs2Id == DE_rdId);
    
    // we are not obliged to compare all bits ! 
    // wire rs1Hazard = (D_rs1Id[3:0] == DE_rdId[3:0]);
