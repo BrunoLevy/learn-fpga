@@ -1,11 +1,11 @@
 /**
- * pipelineX.v
- * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
- * Step X: Simplify for higher maxfreq and smaller area
- *   - register forwarding
- *   TODO: reintegrate branch prediction and return address stack
+ * pipelineX_brpred.v
+ * maxfreq optimized
+ * register forwarding
+ * static branch prediction, 1-cycle JAL with PC bypass
+ * return address stack
  */
- 
+
 `default_nettype none
 `include "clockworks.v"
 `include "emitter_uart.v"
@@ -148,7 +148,7 @@ module Processor (
 
    // BTFNT (Backwards taken forwards not taken)
    // I[31]=Bimm sgn (pred bkwd branch taken)   
-   wire       D_predictBranch = FD_instr[31];
+   wire D_predictBranch = FD_instr[31];
    
    wire D_JumpOrBranchNow = !FD_nop && (
 	  D_isJAL || D_isJALR || (D_isBranch && D_predictBranch) 
@@ -225,7 +225,7 @@ module Processor (
 
       // Used in case of misprediction: 
       //    PC+Bimm if branch forward, PC+4 if branch backward
-      DE_PCplus4orBimm <= FD_PC + (FD_instr[31] ? 4 : D_Bimm);
+      DE_PCplus4orBimm <= FD_PC + (D_predictBranch ? 4 : D_Bimm);
       
       // DE_PCplus4orUimm = 
       //    ((isLUI ? 0 : FD_PC)) + ((isJAL | isJALR) ? 4 : Uimm)

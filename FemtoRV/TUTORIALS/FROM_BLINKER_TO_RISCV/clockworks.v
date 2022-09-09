@@ -26,6 +26,10 @@
 `define NEGATIVE_RESET
 `endif
 
+`ifdef ARTY
+`define NEGATIVE_RESET
+`endif
+
 module Clockworks 
 (
    input  CLK, // clock pin of the board

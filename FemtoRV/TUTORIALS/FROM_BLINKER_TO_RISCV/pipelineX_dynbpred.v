@@ -1,7 +1,9 @@
 /**
- * pipelineX_regfwd.v
+ * pipelineX_brpred.v
  * maxfreq optimized
  * register forwarding
+ * dynamic branch prediction, 1-cycle JAL with PC bypass
+ * return address stack
  */
  
 `default_nettype none
@@ -65,7 +67,10 @@ module Processor (
       $readmemh("PROGROM.hex",PROGROM);
    end
 
-   wire [31:0] F_PC = EM_JumpOrBranchNow ? EM_JumpOrBranchAddr : PC;
+   wire [31:0] F_PC = 
+	       D_JumpOrBranchNow  ? D_JumpOrBranchAddr  :
+	       EM_JumpOrBranchNow ? EM_JumpOrBranchAddr :
+	                            PC;
    
    always @(posedge clk) begin
 
@@ -108,10 +113,10 @@ module Processor (
 // wire D_isJALR   = (FD_instr[6:2]==5'b11001);
 // wire D_isAUIPC  = (FD_instr[6:2]==5'b00101); 
 // wire D_isLUI    = (FD_instr[6:2]==5'b01101);
-// wire D_isBranch = (FD_instr[6:2]==5'b11000);
-// wire D_isLoad   = (FD_instr[6:2]==5'b00000); 
+// wire D_isBranch = (FD_instr[6:2]==5'b11000); 
    wire D_isALUreg = (FD_instr[6:2]==5'b01100); 
    wire D_isALUimm = (FD_instr[6:2]==5'b00100); 
+   wire D_isLoad   = (FD_instr[6:2]==5'b00000); 
    wire D_isStore  = (FD_instr[6:2]==5'b01000); 
    wire D_isSYSTEM = (FD_instr[6:2]==5'b11100);
 
@@ -121,7 +126,7 @@ module Processor (
    wire D_isLUI    = FD_instr[6:4] == 3'b111; 
    wire D_isAUIPC  = FD_instr[6:4] == 3'b101; 
    wire D_isBranch = {FD_instr[6], FD_instr[4], FD_instr[2]} == 3'b100; 
-   wire D_isLoad   = !|FD_instr[6:2];
+
    
    wire D_isJALorJALR  = (FD_instr[2] & FD_instr[6]); 
    wire D_isLUIorAUIPC = (FD_instr[4] & FD_instr[6]); 
@@ -140,6 +145,52 @@ module Processor (
    wire [31:0] D_Jimm = {{12{FD_instr[31]}}, 
                          FD_instr[19:12],FD_instr[20],FD_instr[30:21],1'b0};
 
+
+
+   // ******* Branch prediction
+
+   localparam BP_HISTO_BITS=9;
+   localparam BP_ADDR_BITS=12;
+
+   localparam BHT_INDEX_BITS=BP_ADDR_BITS;
+   localparam BHT_SIZE=1<<BHT_INDEX_BITS;
+
+   // global history
+   reg [BP_HISTO_BITS-1:0] branch_history;
+   
+   // branch history table (2 bits per entry)
+   reg [1:0] BHT[BHT_SIZE-1:0]; 
+
+   // gets the index in the branch prediction table
+   // from the PC
+   function [BHT_INDEX_BITS-1:0] BHT_index;
+      input [31:0] PC;
+   /* verilator lint_off WIDTH */
+      BHT_index = PC[BP_ADDR_BITS+1:2] ^ 
+                  (branch_history << (BP_ADDR_BITS - BP_HISTO_BITS));
+   /* verilator lint_on WIDTH */      
+   endfunction
+   
+   // BTFNT (Backwards taken forwards not taken)
+   // I[31]=Bimm sgn (pred bkwd branch taken)   
+   // wire D_predictBranch = FD_instr[31];
+   wire D_predictBranch = BHT[BHT_index(FD_PC)][1]; // dynamic
+	
+   wire D_JumpOrBranchNow = !FD_nop && (
+	  D_isJAL || D_isJALR || (D_isBranch && D_predictBranch) 
+        );
+
+   // Return address stack
+   
+   reg [31:0] RAS_0;
+   reg [31:0] RAS_1;
+   reg [31:0] RAS_2;
+   reg [31:0] RAS_3;   
+   
+   wire [31:0] D_JumpOrBranchAddr = 
+                D_isJALR ? RAS_0 : 
+	        (FD_PC + (D_isJAL ? D_Jimm : D_Bimm));
+   
    reg [31:0] RegisterBank [0:31];
    always @(posedge clk) begin
 
@@ -198,16 +249,34 @@ module Processor (
 			          FD_instr[30:20]
 		    };
 
+      // Used in case of misprediction: 
+      //    PC+Bimm if branch forward, PC+4 if branch backward
+      DE_PCplus4orBimm <= FD_PC + (D_predictBranch ? 4 : D_Bimm);
+      
       // DE_PCplus4orUimm = 
       //    ((isLUI ? 0 : FD_PC)) + ((isJAL | isJALR) ? 4 : Uimm)
       // (knowing that isLUI | isAUIPC | isJAL | isJALR)
       DE_PCplus4orUimm <= ({32{FD_instr[6:5]!=2'b01}} & FD_PC) + 
                           (D_isJALorJALR ? 4 : D_Uimm);
-
-
-      DE_PCplusBorJimm <= FD_PC + (D_isJAL ? D_Jimm : D_Bimm);
       
       DE_isJALorJALRorLUIorAUIPC <= FD_instr[2];
+      DE_predictBranch <= D_predictBranch;
+      DE_predictRA <= RAS_0;
+      DE_BHTindex  <= BHT_index(FD_PC);
+      
+      if(!D_stall && !FD_nop && !D_flush) begin
+	 if(D_isJAL && D_rdId==1) begin
+	    RAS_3 <= RAS_2;
+	    RAS_2 <= RAS_1;
+	    RAS_1 <= RAS_0;
+	    RAS_0 <= FD_PC + 4;
+	 end 
+	 if(D_isJALR && D_rdId==0 && (D_rs1Id == 1 || D_rs1Id==5)) begin
+	    RAS_0 <= RAS_1;
+	    RAS_1 <= RAS_2;
+	    RAS_2 <= RAS_3;
+	 end
+      end
    end
 
 /******************************************************************************/
@@ -239,9 +308,13 @@ module Processor (
    reg DE_wbEnable; // !isBranch && !isStore && rdId != 0
 
    reg DE_isJALorJALRorLUIorAUIPC;
-
-   reg [31:0] DE_PCplus4orUimm;
    reg [31:0] DE_PCplusBorJimm;
+   reg [31:0] DE_PCplus4orBimm;   
+   reg [31:0] DE_PCplus4orUimm;
+
+   reg DE_predictBranch;
+   reg [31:0] DE_predictRA;
+   reg [BHT_INDEX_BITS-1:0] DE_BHTindex;   
    
 /******************************************************************************/
 /******************************************************************************/
@@ -323,20 +396,36 @@ module Processor (
         (DE_funct3_is[6] &  E_LTU) | // BLTU
         (DE_funct3_is[7] & !E_LTU) ; // BGEU
 
+   wire [31:0] E_JALRaddr = {E_aluPlus[31:1],1'b0};
+   
    wire E_JumpOrBranch = (
-			   DE_isJAL || DE_isJALR || 
-			  (DE_isBranch && E_takeBranch)
-			 );
+	   (DE_isJALR    && (DE_predictRA != E_JALRaddr)   ) || 
+           (DE_isBranch  && (E_takeBranch^DE_predictBranch))
+   );
 
-   wire [31:0] E_JumpOrBranchAddr = 
-	       DE_isJALR ? {E_aluPlus[31:1],1'b0} : DE_PCplusBorJimm;
-    
+   wire [31:0] E_JumpOrBranchAddr = DE_isBranch ? DE_PCplus4orBimm : E_JALRaddr;
+   
    wire [31:0] E_result =
 	       DE_isJALorJALRorLUIorAUIPC ? DE_PCplus4orUimm : E_aluOut; 
 
    wire [31:0] E_addr = E_rs1 + DE_IorSimm;
    
    /**************************************************************/
+
+   function [1:0] incdec_sat;
+      input [1:0] prev;
+      input dir;
+      incdec_sat = 
+ 	   {dir, prev} == 3'b000 ? 2'b00 :
+           {dir, prev} == 3'b001 ? 2'b00 :
+	   {dir, prev} == 3'b010 ? 2'b01 :
+	   {dir, prev} == 3'b011 ? 2'b10 :		
+	   {dir, prev} == 3'b100 ? 2'b01 :
+	   {dir, prev} == 3'b101 ? 2'b10 :
+	   {dir, prev} == 3'b110 ? 2'b11 :
+	                           2'b11 ;
+   endfunction;
+
    
    always @(posedge clk) begin
       EM_nop      <= DE_nop;
@@ -355,6 +444,12 @@ module Processor (
       EM_wbEnable <= DE_wbEnable && (DE_rdId != 0);
       EM_JumpOrBranchNow  <= E_JumpOrBranch;
       EM_JumpOrBranchAddr <= E_JumpOrBranchAddr;
+
+      if(DE_isBranch) begin
+	 branch_history <= {E_takeBranch,branch_history[BP_HISTO_BITS-1:1]};
+	 BHT[DE_BHTindex] <= incdec_sat(BHT[DE_BHTindex], E_takeBranch);
+      end
+      
    end
 
    assign halt = resetn & DE_isEBREAK;
@@ -501,8 +596,8 @@ module Processor (
    // simpler test (to be used if critical path is here)
    // -> keeping this one (seems it has no influence on CPI,
    //   and results in slightly better timings)
-//   wire  rs1Hazard = (D_rs1Id == DE_rdId);
-//   wire  rs2Hazard = (D_rs2Id == DE_rdId);
+   // wire  rs1Hazard = (D_rs1Id == DE_rdId);
+   // wire  rs2Hazard = (D_rs2Id == DE_rdId);
    
    // we are not obliged to compare all bits ! 
    // wire rs1Hazard = (D_rs1Id[3:0] == DE_rdId[3:0]);

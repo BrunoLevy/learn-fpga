@@ -1,9 +1,8 @@
 /**
- * pipeline6.v
- * Let us see how to morph our multi-cycle CPU into a pipelined CPU !
- * Step X: Simplify for higher maxfreq and smaller area
- *   - register forwarding
- *   TODO: reintegrate branch prediction and return address stack
+ * pipelineX_brpred.v
+ * maxfreq optimized
+ * register forwarding
+ * static branch prediction, 1-cycle JAL with PC bypass
  */
  
 `default_nettype none
@@ -145,10 +144,11 @@ module Processor (
    wire [31:0] D_Jimm = {{12{FD_instr[31]}}, 
                          FD_instr[19:12],FD_instr[20],FD_instr[30:21],1'b0};
 
-
+   wire D_predictBranch = FD_instr[31];
+   
    wire D_JumpOrBranchNow = !FD_nop && (
 	  D_isJAL || 
-         (D_isBranch && FD_instr[31]) // I[31]=Bimm sgn (pred bkwd branch taken)
+         (D_isBranch && D_predictBranch)
         );
    
    wire [31:0] D_JumpOrBranchAddr = FD_PC + (D_isJAL ? D_Jimm : D_Bimm);
@@ -213,7 +213,7 @@ module Processor (
 
       // Used in case of misprediction: 
       //    PC+Bimm if branch forward, PC+4 if branch backward
-      DE_PCplus4orBimm <= FD_PC + (FD_instr[31] ? 4 : D_Bimm);
+      DE_PCplus4orBimm <= FD_PC + (D_predictBranch ? 4 : D_Bimm);
       
       // DE_PCplus4orUimm = 
       //    ((isLUI ? 0 : FD_PC)) + ((isJAL | isJALR) ? 4 : Uimm)
@@ -224,7 +224,7 @@ module Processor (
       
       DE_isJALorJALRorLUIorAUIPC <= FD_instr[2];
 
-      DE_predictBranch <= FD_instr[31]; // Bimm sign (pred=bkwd branch taken)
+      DE_predictBranch <= D_predictBranch; 
    end
 
 /******************************************************************************/
