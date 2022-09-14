@@ -121,7 +121,7 @@ module Processor (
    wire D_isLUI    = FD_instr[6:4] == 3'b111; 
    wire D_isAUIPC  = FD_instr[6:4] == 3'b101; 
    wire D_isBranch = {FD_instr[6], FD_instr[4], FD_instr[2]} == 3'b100; 
-   wire D_isLoad   = !|FD_instr[6:2];
+   wire D_isLoad   = !(|FD_instr[6:2]);
    
    wire D_isJALorJALR  = (FD_instr[2] & FD_instr[6]); 
    wire D_isLUIorAUIPC = (FD_instr[4] & FD_instr[6]); 

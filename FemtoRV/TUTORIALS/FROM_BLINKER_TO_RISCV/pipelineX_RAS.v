@@ -149,20 +149,28 @@ module Processor (
    // BTFNT (Backwards taken forwards not taken)
    // I[31]=Bimm sgn (pred bkwd branch taken)   
    wire D_predictBranch = FD_instr[31];
-   
+
+   /*
    wire D_JumpOrBranchNow = !FD_nop && (
 	  D_isJAL || D_isJALR || (D_isBranch && D_predictBranch) 
         );
-
+   */
+   // JAL:    11011
+   // JALR:   11001
+   // Branch: 11000
+   // The three start by 110, and it is the only ones
+   wire D_JumpOrBranchNow = !FD_nop && 
+         FD_instr[6:4] == 3'b110 && (FD_instr[2] | D_predictBranch);
+   
    // Return address stack
    
    reg [31:0] RAS_0;
    reg [31:0] RAS_1;
    reg [31:0] RAS_2;
    reg [31:0] RAS_3;   
-   
+
    wire [31:0] D_JumpOrBranchAddr = 
-                D_isJALR ? RAS_0 : 
+                /* D_isJALR */ FD_instr[3:2] == 2'b01 ? RAS_0 : 
 	        (FD_PC + (D_isJAL ? D_Jimm : D_Bimm));
    
    reg [31:0] RegisterBank [0:31];

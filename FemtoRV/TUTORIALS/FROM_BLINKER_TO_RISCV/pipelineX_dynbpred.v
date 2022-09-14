@@ -71,13 +71,15 @@ module Processor (
 	       D_JumpOrBranchNow  ? D_JumpOrBranchAddr  :
 	       EM_JumpOrBranchNow ? EM_JumpOrBranchAddr :
 	                            PC;
-   
+
+   wire [31:0] F_PCplus4 = F_PC + 4;
+
    always @(posedge clk) begin
 
       if(!F_stall) begin
 	 FD_instr <= PROGROM[F_PC[15:2]]; 
 	 FD_PC    <= F_PC;
-	 PC       <= F_PC+4;
+	 PC       <= F_PCplus4;
       end
 
       FD_nop <= D_flush | !resetn;
@@ -174,11 +176,30 @@ module Processor (
    // BTFNT (Backwards taken forwards not taken)
    // I[31]=Bimm sgn (pred bkwd branch taken)   
    // wire D_predictBranch = FD_instr[31];
-   wire D_predictBranch = BHT[BHT_index(FD_PC)][1]; // dynamic
-	
+   // wire D_predictBranch = BHT[BHT_index(FD_PC)][1]; // dynamic
+
+   // registered version, that "sees" one cycle in advanec by
+   // using PC from the "F" stage (looses 0.038 CPIs but gains
+   // maxfreq)
+   reg D_predictBranch;
+   always @(posedge clk) begin
+      D_predictBranch <= BHT[BHT_index(PC)][1];
+   end
+
+   /*
    wire D_JumpOrBranchNow = !FD_nop && (
 	  D_isJAL || D_isJALR || (D_isBranch && D_predictBranch) 
         );
+   */
+
+
+
+   // JAL:    11011
+   // JALR:   11001
+   // Branch: 11000
+   // The three start by 110, and it is the only ones
+   
+   wire D_JumpOrBranchNow = !FD_nop && FD_instr[6:4] == 3'b110 && (FD_instr[2] | D_predictBranch);
 
    // Return address stack
    
@@ -188,7 +209,7 @@ module Processor (
    reg [31:0] RAS_3;   
    
    wire [31:0] D_JumpOrBranchAddr = 
-                D_isJALR ? RAS_0 : 
+                /* D_isJALR */ FD_instr[3:2] == 2'b01 ? RAS_0 : 
 	        (FD_PC + (D_isJAL ? D_Jimm : D_Bimm));
    
    reg [31:0] RegisterBank [0:31];

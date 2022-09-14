@@ -364,11 +364,13 @@ for (i = 0; i < MULTITHREAD; i++)
                   (default_num_contexts * results[0].iterations)
                       / time_in_secs(total_time)); 
 #else
+    /*
     ee_printf("Total time (secs): %d\n", time_in_secs(total_time));
     if (time_in_secs(total_time) > 0)
         ee_printf("Iterations/Sec   : %d\n",
                   default_num_contexts * results[0].iterations
                       / time_in_secs(total_time));
+    */
 #endif
 
 
@@ -378,13 +380,16 @@ for (i = 0; i < MULTITHREAD; i++)
     {
         ee_printf(
             "ERROR! Must execute for at least 10 secs for a valid result!\n");
-        // total_errors++; HERE
+        // total_errors++; 
     }
-    
+
+    /*
     ee_printf("Iterations       : %lu\n",
               (long unsigned)default_num_contexts * results[0].iterations);
     ee_printf("Compiler version : %s\n", COMPILER_VERSION);
     ee_printf("Compiler flags   : %s\n", COMPILER_FLAGS);
+    */
+    
 #if (MULTITHREAD > 1)
     ee_printf("Parallel %s : %d\n", PARALLEL_METHOD, default_num_contexts);
 #endif

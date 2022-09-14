@@ -10,13 +10,6 @@
 #include "perf.h"
 #include "io.h"
 
-// Uncomment to deactivate all "graphic" output and get more accurate
-// statistics: the putchar() function in putchar.S sends the character
-// then waits for the UART to be not busy. The number of iterations of
-// the waiting loop can vary *A LOT* depending of the ratio between CPU
-// frequency and UART baud rate.
-#define NO_GRAPHIC
-
 /*******************************************************************/
 
 typedef int BOOL;
@@ -45,19 +38,20 @@ static inline float min(float x, float y) { return x<y?x:y; }
 // Size of the screen
 // Replace with your own variables or values
 
-#ifdef NO_GRAPHIC
-#define graphics_width  20
-#define graphics_height 10
-#else
-#define graphics_width  120
-#define graphics_height 60
-#endif
+// Benchmark
+// - graphics deactivated (else UART waiting loop gives
+//   different results according to CPU freq / UART baud rate
+//   ratio).
+// - smaller image size (for faster run in simulation)
+
+static int graphics_width  = 120;
+static int graphics_height = 60;
+
+static int bench_run=0;
 
 // Two pixels per character using UTF8 character set
 // (comment-out if terminal does not support it)
 #define graphics_double_lines
-
-#ifndef NO_GRAPHIC
 
 // Replace with your own stuff to initialize graphics
 static inline void graphics_init() {
@@ -76,7 +70,6 @@ static inline void graphics_terminate() {
 
 }
 
-
 // Replace with your own code.
 void graphics_set_pixel(int x, int y, float r, float g, float b) {
    r = max(0.0f, min(1.0f, r));
@@ -85,6 +78,10 @@ void graphics_set_pixel(int x, int y, float r, float g, float b) {
    uint8_t R = (uint8_t)(255.0f * r);
    uint8_t G = (uint8_t)(255.0f * g);
    uint8_t B = (uint8_t)(255.0f * b);
+   // graphics output deactivated for bench run
+   if(bench_run) {
+       return;
+   }
 #ifdef graphics_double_lines
    static uint8_t prev_R=0;
    static uint8_t prev_G=0;
@@ -116,23 +113,6 @@ void graphics_set_pixel(int x, int y, float r, float g, float b) {
 #endif   
 }
 
-#else
-
-static inline void graphics_init() {
-}
-
-static inline void graphics_terminate() {
-}
-
-void graphics_set_pixel(int x, int y, float r, float g, float b) {
-}
-    
-#endif
-
-// Begins statistics collection for current frame.
-// Leave emtpy if not needed.
-static inline stats_begin_frame() {
-}
 
 // Begins statistics collection for current pixel
 // Leave emtpy if not needed.
@@ -162,17 +142,36 @@ static void printk(uint64_t kx) {
     printf("%d",fracpart);
 }
 
+static uint64_t instret_start;
+static uint64_t cycles_start;
+
+// Begins statistics collection for current frame.
+// Leave emtpy if not needed.
+static inline stats_begin_frame() {
+    instret_start = rdinstret();
+    cycles_start  = rdcycle();
+}
+
 // Ends statistics collection for current frame
 // and displays result.
 // Leave emtpy if not needed.
 static inline stats_end_frame() {
-   uint64_t instret = rdinstret();
-   uint64_t cycles = rdcycle();
+   graphics_terminate();
+   uint64_t instret = rdinstret() - instret_start;
+   uint64_t cycles = rdcycle()    - cycles_start ;
    uint64_t kCPI       = cycles*1000/instret;
    uint64_t pixels     = graphics_width * graphics_height;
    uint64_t kRAYSTONES = (pixels*1000000000)/cycles;
-   printf("CPI      ="); printk(kCPI); printf("\n");
-   printf("RAYSTONES="); printk(kRAYSTONES); printf("\n");
+   printf(
+       "%dx%d      %s     ",
+       graphics_width,graphics_height,
+       bench_run ?
+           "no gfx output (measurement is accurate)" :
+           "gfx output (measurement is NOT accurate)"
+   );
+   printf("CPI="); printk(kCPI); printf("     ");
+   printf("RAYSTONES="); printk(kRAYSTONES);
+   printf("\n");
 }
 
 // Normally you will not need to modify anything beyond that point.
@@ -443,7 +442,6 @@ static inline void render_pixel(
 
 void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
    stats_begin_frame();
-   graphics_init();
 #ifdef graphics_double_lines  
    for (int j = 0; j<graphics_height; j+=2) { 
       for (int i = 0; i<graphics_width; i++) {
@@ -458,7 +456,6 @@ void render(Sphere* spheres, int nb_spheres, Light* lights, int nb_lights) {
       }
    }
 #endif
-   graphics_terminate();
    stats_end_frame();
 }
 
@@ -494,8 +491,22 @@ void init_scene() {
 
 int main() {
     init_scene();
-    IO_OUT(IO_LEDS,5);   
+
+    graphics_init();
+    IO_OUT(IO_LEDS,5);
+    bench_run = 1;
+    graphics_width  = 40;
+    graphics_height = 20;
+    printf("Running without graphic output (for accurate measurement)...\n");
+    render(spheres, nb_spheres, lights, nb_lights);
+    IO_OUT(IO_LEDS,10);
+    
+    bench_run = 0;
+    graphics_width = 120;
+    graphics_height = 60;
     render(spheres, nb_spheres, lights, nb_lights);
     IO_OUT(IO_LEDS,15);
+    graphics_terminate();
+    
     return 0;
 }
