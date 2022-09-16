@@ -127,6 +127,12 @@ static inline void tty_graphics_scan(int width, int height, tty_graphics_pixelfu
     }
 }
 
+/**
+ * brief Converts a floating point value to a byte.
+ * \param[in] the floating point value in [0,1]
+ * \return the byte, in [0,255]
+ * \details the input value is clamped to [0,1]
+ */ 
 static inline uint8_t tty_graphics_ftoi(float f) {
     f = (f < 0.0f) ? 0.0f : f;
     f = (f > 1.0f) ? 1.0f : f;
