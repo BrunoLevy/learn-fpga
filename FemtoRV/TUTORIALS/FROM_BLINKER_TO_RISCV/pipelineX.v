@@ -1,10 +1,21 @@
 /**
- * pipelineX_brpred.v
- * maxfreq optimized
- * register forwarding
- * static branch prediction, 1-cycle JAL with PC bypass
- * return address stack
+ * pipelineX_generic.v
+ * Configurable 5-stages pipelined RV32I
+ * Bruno Levy, Sept 2022
  */
+
+`define CONFIG_PC_PREDICT // enables D -> F path (needed by options above)
+`define CONFIG_RAS        // return address stack
+`define CONFIG_GSHARE     // gshare branch prediction (or BTFNT if not set)
+//`define CONFIG_REGISTERED_D_PREDICT_BRANCH // registers branch predict signal
+                                           // (may gain a bit of fmax, but not 
+                                           // always...)
+
+`define CONFIG_DEBUG              // debug mode, copies instr in all stages
+`define CONFIG_DEBUG_STEP_BY_STEP // press key for next instr (verilator only)
+
+//`define CONFIG_INITIALIZE // initialize register file and BHT table
+                            // (required by Icarus/iverilog and by some synth tools)
 
 `default_nettype none
 `include "clockworks.v"
@@ -21,6 +32,10 @@ module Processor (
     output        IO_mem_wr     // IO write flag
 );
 
+`ifdef BENCH
+`include "riscv_disassembly.v"
+`endif
+   
 /******************************************************************************/
 
  /* 
@@ -40,6 +55,12 @@ module Processor (
 
 /******************************************************************************/
 
+`ifdef CONFIG_INITIALIZE
+   // Iteration variable for the "initial" blocks
+   integer i;
+`endif
+
+   // CSRs (cycle and retired instructions counters)
    reg [63:0] cycle;   
    reg [63:0] instret;
 
@@ -47,6 +68,7 @@ module Processor (
       cycle <= !resetn ? 0 : cycle + 1;
    end
 
+   // Pipeline control 
    wire D_flush;
    wire E_flush;
    
@@ -59,7 +81,7 @@ module Processor (
 
                       /***  F: Instruction fetch ***/   
 
-   reg  [31:0] 	  PC;
+   reg  [31:0] PC;
 
    reg [31:0] PROGROM[0:16383]; // 16384 4-bytes words  
                                 // 64 Kb of program ROM 
@@ -67,17 +89,24 @@ module Processor (
       $readmemh("PROGROM.hex",PROGROM);
    end
 
+`ifdef CONFIG_PC_PREDICT
    wire [31:0] F_PC = 
-	       D_JumpOrBranchNow  ? D_JumpOrBranchAddr  :
-	       EM_JumpOrBranchNow ? EM_JumpOrBranchAddr :
-	                            PC;
-   
+	       D_predictPC  ? D_PCprediction  :
+	       EM_correctPC ? EM_PCcorrection :
+	                      PC;
+`else
+   wire [31:0] F_PC = EM_correctPC ? EM_PCcorrection :
+	              PC;
+`endif   
+
+   wire [31:0] F_PCplus4 = F_PC + 4;
+
    always @(posedge clk) begin
 
       if(!F_stall) begin
 	 FD_instr <= PROGROM[F_PC[15:2]]; 
 	 FD_PC    <= F_PC;
-	 PC       <= F_PC+4;
+	 PC       <= F_PCplus4;
       end
 
       FD_nop <= D_flush | !resetn;
@@ -145,23 +174,70 @@ module Processor (
    wire [31:0] D_Jimm = {{12{FD_instr[31]}}, 
                          FD_instr[19:12],FD_instr[20],FD_instr[30:21],1'b0};
 
+`ifdef CONFIG_PC_PREDICT
+ `ifdef CONFIG_GSHARE
+   localparam BP_HISTO_BITS=9;
+   localparam BP_ADDR_BITS=12;
+   
+   localparam BHT_INDEX_BITS=BP_ADDR_BITS;
+   localparam BHT_SIZE=1<<BHT_INDEX_BITS;
 
-   // BTFNT (Backwards taken forwards not taken)
+   // global history
+   reg [BP_HISTO_BITS-1:0] branch_history;
+   
+   // branch history table (2 bits per entry)
+   reg [1:0] BHT[BHT_SIZE-1:0]; 
+
+`ifdef CONFIG_INITIALIZE   
+   initial begin
+      branch_history = 0; 
+      for(i=0; i<BHT_SIZE; i++) begin
+	 BHT[i] = 2'b01; // all entries of BHT initialized as "weakly taken"
+      end
+   end
+`endif   
+   
+   // gets the index in the branch prediction table
+   // from the PC
+   function [BHT_INDEX_BITS-1:0] BHT_index;
+      input [31:0] PC;
+   /* verilator lint_off WIDTH */
+      BHT_index = PC[BP_ADDR_BITS+1:2] ^ 
+                  (branch_history << (BP_ADDR_BITS - BP_HISTO_BITS));
+   /* verilator lint_on WIDTH */      
+   endfunction
+   
+  `ifdef CONFIG_REGISTERED_D_PREDICT_BRANCH
+     // registered version, that "sees" one cycle in advanec by
+     // using PC from the "F" stage (looses 0.038 CPIs but gains
+     // maxfreq)
+     reg D_predictBranch;
+     always @(posedge clk) begin
+        D_predictBranch <= BHT[BHT_index(PC)][1];
+     end
+  `else
+     wire D_predictBranch = BHT[BHT_index(FD_PC)][1];
+  `endif 
+   
+ `else 
+   // No GSHARE branch predictor,
+   // use BTFNT (Backwards taken forwards not taken)
    // I[31]=Bimm sgn (pred bkwd branch taken)   
    wire D_predictBranch = FD_instr[31];
+ `endif 
 
-   /*
-   wire D_JumpOrBranchNow = !FD_nop && (
-	  D_isJAL || D_isJALR || (D_isBranch && D_predictBranch) 
-        );
-   */
+ `ifdef CONFIG_RAS
+   // code below is equivalent (in this context) to:
+   // wire D_predictPC = !FD_nop && (
+   //   D_isJAL || D_isJALR || (D_isBranch && D_predictBranch) 
+   // );
    // JAL:    11011
    // JALR:   11001
    // Branch: 11000
    // The three start by 110, and it is the only ones
-   wire D_JumpOrBranchNow = !FD_nop && 
-         FD_instr[6:4] == 3'b110 && (FD_instr[2] | D_predictBranch);
-   
+   wire D_predictPC = !FD_nop &&
+	 (FD_instr[6:4] == 3'b110) && (FD_instr[2] | D_predictBranch);
+
    // Return address stack
    
    reg [31:0] RAS_0;
@@ -169,11 +245,26 @@ module Processor (
    reg [31:0] RAS_2;
    reg [31:0] RAS_3;   
 
-   wire [31:0] D_JumpOrBranchAddr = 
+   wire [31:0] D_PCprediction = 
                 /* D_isJALR */ FD_instr[3:2] == 2'b01 ? RAS_0 : 
 	        (FD_PC + (D_isJAL ? D_Jimm : D_Bimm));
    
+ `else // !`ifdef CONFIG_RAS
+     wire D_predictPC = !FD_nop && (D_isJAL || (D_isBranch && D_predictBranch));
+     wire [31:0] D_PCprediction = (FD_PC + (D_isJAL ? D_Jimm : D_Bimm));
+ `endif
+`endif // `CONFIG_PC_PREDICT
+   
    reg [31:0] RegisterBank [0:31];
+
+`ifdef CONFIG_INITIALIZE   
+   initial begin
+      for(i=0; i<32; i++) begin
+	 RegisterBank[i] = 0;
+      end
+   end
+`endif
+   
    always @(posedge clk) begin
 
       DE_rdId  <= D_rdId;
@@ -231,20 +322,16 @@ module Processor (
 			          FD_instr[30:20]
 		    };
 
+`ifdef CONFIG_PC_PREDICT      
       // Used in case of misprediction: 
-      //    PC+Bimm if branch forward, PC+4 if branch backward
+      //    PC+Bimm if predict not taken, PC+4 if predict taken
       DE_PCplus4orBimm <= FD_PC + (D_predictBranch ? 4 : D_Bimm);
-      
-      // DE_PCplus4orUimm = 
-      //    ((isLUI ? 0 : FD_PC)) + ((isJAL | isJALR) ? 4 : Uimm)
-      // (knowing that isLUI | isAUIPC | isJAL | isJALR)
-      DE_PCplus4orUimm <= ({32{FD_instr[6:5]!=2'b01}} & FD_PC) + 
-                          (D_isJALorJALR ? 4 : D_Uimm);
-      
-      DE_isJALorJALRorLUIorAUIPC <= FD_instr[2];
       DE_predictBranch <= D_predictBranch;
+ `ifdef CONFIG_GSHARE      
+      DE_BHTindex  <= BHT_index(FD_PC);
+ `endif
+ `ifdef CONFIG_RAS
       DE_predictRA <= RAS_0;
-
       if(!D_stall && !FD_nop && !D_flush) begin
 	 if(D_isJAL && D_rdId==1) begin
 	    RAS_3 <= RAS_2;
@@ -257,7 +344,20 @@ module Processor (
 	    RAS_1 <= RAS_2;
 	    RAS_2 <= RAS_3;
 	 end
-      end
+      end 
+ `endif
+`else
+      DE_PCplusBorJimm <= FD_PC + (D_isJAL ? D_Jimm : D_Bimm);
+`endif      
+
+      // Code below is equivalent to:
+      // DE_PCplus4orUimm = 
+      //    ((isLUI ? 0 : FD_PC)) + ((isJAL | isJALR) ? 4 : Uimm)
+      // (knowing that isLUI | isAUIPC | isJAL | isJALR)
+      DE_PCplus4orUimm <= ({32{FD_instr[6:5]!=2'b01}} & FD_PC) + 
+                          (D_isJALorJALR ? 4 : D_Uimm);
+
+      DE_isJALorJALRorLUIorAUIPC <= FD_instr[2];
    end
 
 /******************************************************************************/
@@ -289,12 +389,21 @@ module Processor (
    reg DE_wbEnable; // !isBranch && !isStore && rdId != 0
 
    reg DE_isJALorJALRorLUIorAUIPC;
-   reg [31:0] DE_PCplusBorJimm;
-   reg [31:0] DE_PCplus4orBimm;   
-   reg [31:0] DE_PCplus4orUimm;
-
+   
+`ifdef CONFIG_PC_PREDICT         
+   reg [31:0] DE_PCplus4orBimm;
    reg DE_predictBranch;
+ `ifdef CONFIG_RAS   
    reg [31:0] DE_predictRA;
+ `endif
+ `ifdef CONFIG_GSHARE
+   reg [BHT_INDEX_BITS-1:0] DE_BHTindex;
+ `endif
+`else   
+   reg [31:0] DE_PCplusBorJimm;
+`endif
+
+   reg [31:0] DE_PCplus4orUimm;   
    
 /******************************************************************************/
 /******************************************************************************/
@@ -377,13 +486,26 @@ module Processor (
         (DE_funct3_is[7] & !E_LTU) ; // BGEU
 
    wire [31:0] E_JALRaddr = {E_aluPlus[31:1],1'b0};
-   
-   wire E_JumpOrBranch = (
+
+`ifdef CONFIG_PC_PREDICT
+ `ifdef CONFIG_RAS
+     wire E_correctPC = (
 	   (DE_isJALR    && (DE_predictRA != E_JALRaddr)   ) || 
            (DE_isBranch  && (E_takeBranch^DE_predictBranch))
-   );
-
-   wire [31:0] E_JumpOrBranchAddr = DE_isBranch ? DE_PCplus4orBimm : E_JALRaddr;
+     );
+ `else
+     wire E_correctPC = DE_isJALR || 
+	(DE_isBranch  && (E_takeBranch^DE_predictBranch));
+ `endif
+   wire [31:0] E_PCcorrection = DE_isBranch ? DE_PCplus4orBimm : E_JALRaddr;
+`else
+   wire E_correctPC = (
+			   DE_isJAL || DE_isJALR || 
+			  (DE_isBranch && E_takeBranch)
+			 );
+   wire [31:0] E_PCcorrection = 
+	       DE_isJALR ? E_JALRaddr : DE_PCplusBorJimm;
+`endif
    
    wire [31:0] E_result =
 	       DE_isJALorJALRorLUIorAUIPC ? DE_PCplus4orUimm : E_aluOut; 
@@ -391,6 +513,24 @@ module Processor (
    wire [31:0] E_addr = E_rs1 + DE_IorSimm;
    
    /**************************************************************/
+
+`ifdef CONFIG_PC_PREDICT
+ `ifdef CONFIG_GSHARE
+   function [1:0] incdec_sat;
+      input [1:0] prev;
+      input dir;
+      incdec_sat = 
+ 	   {dir, prev} == 3'b000 ? 2'b00 :
+           {dir, prev} == 3'b001 ? 2'b00 :
+	   {dir, prev} == 3'b010 ? 2'b01 :
+	   {dir, prev} == 3'b011 ? 2'b10 :		
+	   {dir, prev} == 3'b100 ? 2'b01 :
+	   {dir, prev} == 3'b101 ? 2'b10 :
+	   {dir, prev} == 3'b110 ? 2'b11 :
+	                           2'b11 ;
+   endfunction
+ `endif
+`endif
    
    always @(posedge clk) begin
       EM_nop      <= DE_nop;
@@ -407,8 +547,18 @@ module Processor (
       EM_isStore  <= DE_isStore;
       EM_isCSRRS  <= DE_isCSRRS;
       EM_wbEnable <= DE_wbEnable && (DE_rdId != 0);
-      EM_JumpOrBranchNow  <= E_JumpOrBranch;
-      EM_JumpOrBranchAddr <= E_JumpOrBranchAddr;
+      EM_correctPC  <= E_correctPC;
+      EM_PCcorrection <= E_PCcorrection;
+
+`ifdef CONFIG_PC_PREDICT
+ `ifdef CONFIG_GSHARE
+      if(DE_isBranch) begin
+	 branch_history <= {E_takeBranch,branch_history[BP_HISTO_BITS-1:1]};
+	 BHT[DE_BHTindex] <= incdec_sat(BHT[DE_BHTindex], E_takeBranch);
+      end
+ `endif
+`endif
+      
    end
 
    assign halt = resetn & DE_isEBREAK;
@@ -429,8 +579,8 @@ module Processor (
    reg        EM_isLoad;
    reg        EM_isCSRRS;
    reg 	      EM_wbEnable;
-   reg        EM_JumpOrBranchNow;
-   reg [31:0] EM_JumpOrBranchAddr;
+   reg        EM_correctPC;
+   reg [31:0] EM_PCcorrection;
    
 /******************************************************************************/
 /******************************************************************************/
@@ -573,10 +723,10 @@ module Processor (
    assign F_stall = dataHazard | halt;
    assign D_stall = dataHazard | halt;
 
-   // Here we need to use E_JumpOrBranch (the registered version
-   // DE_JumpOrBranch is not ready on time).
-   assign D_flush = E_JumpOrBranch;
-   assign E_flush = E_JumpOrBranch | dataHazard;
+   // Here we need to use E_correctPC (the registered version
+   // DE_correctPC is not ready on time).
+   assign D_flush = E_correctPC;
+   assign E_flush = E_correctPC | dataHazard;
 
 /******************************************************************************/
 
@@ -584,7 +734,167 @@ module Processor (
    always @(posedge clk) begin
       if(halt) $finish();
    end
+
+   reg [31:0] DE_instr; reg [31:0] DE_PC;
+   reg [31:0] EM_instr; reg [31:0] EM_PC;
+   reg [31:0] MW_instr; reg [31:0] MW_PC;
+
+   localparam NOP = 32'b0000000_00000_00000_000_00000_0110011;
+   
+   always @(posedge clk) begin
+      if(!D_stall) begin
+	 DE_instr <= FD_nop ? NOP : FD_instr;
+	 DE_PC    <= FD_PC;
+      end
+      if(E_flush) begin
+	 DE_instr <= NOP;
+      end
+      EM_instr <= DE_instr;
+      EM_PC    <= DE_PC; 
+      MW_instr <= EM_instr;
+      MW_PC    <= EM_PC;
+   end
+
+`ifdef CONFIG_DEBUG
+   always @(posedge clk) begin
+      if(resetn & !halt) begin
+
+         $write("     ");
+	 $write("[W] PC=%h ", MW_PC);
+	 $write("     ");
+	 riscv_disasm(MW_instr,MW_PC);
+	 if(wbEnable) $write("    x%0d <- 0x%0h",riscv_disasm_rdId(MW_instr),wbData);
+	 $write("\n");
+
+         $write("     ");
+	 $write("[M] PC=%h ", EM_PC);
+	 $write("     ");	 
+	 riscv_disasm(EM_instr,EM_PC);
+	 $write("\n");
+
+         $write("( %c) ",E_flush ? "f":" ");	 
+	 $write("[E] PC=%h ", DE_PC);
+	 $write("     ");	 
+	 riscv_disasm(DE_instr,DE_PC);
+	 if(DE_instr != NOP) begin
+	    $write("  rs1=0x%h  rs2=0x%h  ",E_rs1, E_rs2);
+`ifdef CONFIG_PC_PREDICT			     
+	    if(riscv_disasm_isBranch(DE_instr)) begin
+	       $write(" taken:%0d  %s",
+		       E_takeBranch, 
+		      (E_takeBranch == DE_predictBranch) ? "predict hit" : "predict miss"
+               );
+	    end
+`endif			     
+	 end
+	 $write("\n");
+
+         $write("(%c%c) ",D_stall ? "s":" ",D_flush ? "f":" ");	 	 	 
+	 $write("[D] PC=%h ", FD_PC);
+	 $write("[%s%s] ",
+		dataHazard && rs1Hazard?"*":" ", 
+		dataHazard && rs2Hazard?"*":" ");	 
+	 riscv_disasm(FD_nop ? NOP : FD_instr,FD_PC);
+`ifdef CONFIG_PC_PREDICT	 
+	 if(riscv_disasm_isBranch(FD_instr)) begin
+	    $write(" predict taken:%0d",D_predictBranch); 
+	 end
+`endif	 
+	 $write("\n");
+
+         $write("(%c ) ",F_stall ? "s":" ");	 	 
+	 $write("[F] PC=%h ", F_PC);
+`ifdef CONFIG_PC_PREDICT	 	 
+	 if(D_predictPC) $write(" PC <- [D] 0x%0h (prediction)",D_PCprediction);
+`endif	 
+	 if(EM_correctPC) $write(" PC <- [E] 0x%0h (correction)",EM_PCcorrection);
+	 $write("\n");
+	 
+	 $display("");
+      end
+   end   
+
+`ifdef CONFIG_DEBUG_STEP_BY_STEP
+   reg [31:0] z;
+   always @(posedge clk) begin
+      if(resetn & !halt) begin
+	 z <= $c32("getchar()");
+      end
+   end
 `endif
+   
+`endif // `CONFIG_DEBUG
+
+   /*************** statistics *************/
+   
+   integer nbBranch = 0;
+   integer nbBranchHit = 0;
+   integer nbJAL  = 0;
+   integer nbJALR = 0;
+   integer nbJALRhit = 0;
+   integer nbLoad = 0;
+   integer nbStore = 0;
+   integer nbLoadHazard = 0;
+   
+   always @(posedge clk) begin
+      if(resetn & !D_stall) begin
+	 if(riscv_disasm_isBranch(DE_instr)) begin
+	    nbBranch <= nbBranch + 1;
+`ifdef CONFIG_PC_PREDICT	    
+	    if(E_takeBranch == DE_predictBranch) begin
+	       nbBranchHit <= nbBranchHit + 1;
+	    end
+`endif	    
+	 end
+	 if(riscv_disasm_isJAL(DE_instr)) begin
+	    nbJAL <= nbJAL + 1;
+	 end
+	 if(riscv_disasm_isJALR(DE_instr)) begin
+	    nbJALR <= nbJALR + 1;
+`ifdef CONFIG_RAS	    
+	    if(DE_predictRA == E_JALRaddr) begin
+	       nbJALRhit <= nbJALRhit + 1;
+	    end
+`endif	    
+	 end
+      end
+	 
+      if(riscv_disasm_isLoad(MW_instr)) begin
+	 nbLoad <= nbLoad + 1;
+      end
+      if(riscv_disasm_isStore(MW_instr)) begin
+	 nbStore <= nbStore + 1;
+      end
+
+      if(dataHazard) begin
+	 nbLoadHazard <= nbLoadHazard + 1;
+      end
+   end
+
+   /* verilator lint_off WIDTH */
+   always @(posedge clk) begin
+      if(halt) begin
+	 $display("Simulated processor's report");
+	 $display("----------------------------");
+	 $display("Branch hit = %3.3f\%%",
+		   nbBranchHit*100.0/nbBranch	 );
+	 $display("JALR   hit = %3.3f\%%",
+		   nbJALRhit*100.0/nbJALR	 );
+	 $display("Load hzrds = %3.3f\%%", nbLoadHazard*100.0/nbLoad);
+	 $display("CPI        = %3.3f",(cycle*1.0)/(instret*1.0));
+	 $display("Instr. mix = (Branch:%3.3f\%% JAL:%3.3f\%% JALR:%3.3f\%% Load:%3.3f\%% Store:%3.3f\%%)",
+		  nbBranch*100.0/instret,
+		     nbJAL*100.0/instret, 
+		    nbJALR*100.0/instret,
+		    nbLoad*100.0/instret,		  		  
+		   nbStore*100.0/instret
+	 );
+	 $finish();
+      end
+   end
+   /* verilator lint_on WIDTH */
+   
+`endif // `BENCH
 
 /******************************************************************************/
    
@@ -651,8 +961,12 @@ module SOC (
 `ifdef BENCH
    always @(posedge clk) begin
       if(uart_valid) begin
+`ifdef CONFIG_DEBUG
+	 $display("UART: %c", IO_mem_wdata[7:0]);
+`else	 
 	 $write("%c", IO_mem_wdata[7:0] );
 	 $fflush(32'h8000_0001);
+`endif	 
       end
    end
 `endif   
