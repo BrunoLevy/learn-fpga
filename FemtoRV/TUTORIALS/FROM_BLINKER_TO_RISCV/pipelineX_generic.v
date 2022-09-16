@@ -856,16 +856,17 @@ module Processor (
 	    end
 `endif	    
 	 end
-	 if(riscv_disasm_isLoad(MW_instr)) begin
-	    nbLoad <= nbLoad + 1;
-	 end
-	 if(riscv_disasm_isStore(MW_instr)) begin
-	    nbStore <= nbStore + 1;
-	 end
+      end
+	 
+      if(riscv_disasm_isLoad(MW_instr)) begin
+	 nbLoad <= nbLoad + 1;
+      end
+      if(riscv_disasm_isStore(MW_instr)) begin
+	 nbStore <= nbStore + 1;
+      end
 
-	 if(dataHazard) begin
-	    nbLoadHazard <= nbLoadHazard + 1;
-	 end
+      if(dataHazard) begin
+	 nbLoadHazard <= nbLoadHazard + 1;
       end
    end
 
