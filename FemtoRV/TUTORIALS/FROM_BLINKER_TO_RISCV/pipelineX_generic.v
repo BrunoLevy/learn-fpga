@@ -6,12 +6,12 @@
 `define CONFIG_PC_PREDICT // enables D -> F path (needed by options above)
 `define CONFIG_RAS        // return address stack
 `define CONFIG_GSHARE     // gshare branch prediction (or BTFNT if not set)
-`define CONFIG_REGISTERED_D_PREDICT_BRANCH // registers branch predict signal
+//`define CONFIG_REGISTERED_D_PREDICT_BRANCH // registers branch predict signal
                                            // (may gain a bit of fmax, but not 
                                            // always...)
 
-`define CONFIG_DEBUG              // debug mode, copies instr in all stages
-`define CONFIG_DEBUG_STEP_BY_STEP // press key for next instr (verilator only)
+//`define CONFIG_DEBUG              // debug mode, copies instr in all stages
+//`define CONFIG_DEBUG_STEP_BY_STEP // press key for next instr (verilator only)
 
 //`define CONFIG_INITIALIZE // initialize register file and BHT table
                             // (required by Icarus/iverilog and by some synth tools)
@@ -31,7 +31,7 @@ module Processor (
     output        IO_mem_wr     // IO write flag
 );
 
-`ifdef CONFIG_DEBUG   
+`ifdef BENCH
 `include "riscv_disassembly.v"
 `endif
    
@@ -734,7 +734,6 @@ module Processor (
       if(halt) $finish();
    end
 
-`ifdef CONFIG_DEBUG
    reg [31:0] DE_instr; reg [31:0] DE_PC;
    reg [31:0] EM_instr; reg [31:0] EM_PC;
    reg [31:0] MW_instr; reg [31:0] MW_PC;
@@ -755,7 +754,7 @@ module Processor (
       MW_PC    <= EM_PC;
    end
 
-
+`ifdef CONFIG_DEBUG
    always @(posedge clk) begin
       if(resetn & !halt) begin
 
@@ -823,8 +822,77 @@ module Processor (
    end
 `endif
    
-`endif   
-`endif
+`endif // `CONFIG_DEBUG
+
+   /*************** statistics *************/
+   
+   integer nbBranch = 0;
+   integer nbBranchHit = 0;
+   integer nbJAL  = 0;
+   integer nbJALR = 0;
+   integer nbJALRhit = 0;
+   integer nbLoad = 0;
+   integer nbStore = 0;
+   integer nbLoadHazard = 0;
+   
+   always @(posedge clk) begin
+      if(resetn & !D_stall) begin
+	 if(riscv_disasm_isBranch(DE_instr)) begin
+	    nbBranch <= nbBranch + 1;
+`ifdef CONFIG_PC_PREDICT	    
+	    if(E_takeBranch == DE_predictBranch) begin
+	       nbBranchHit <= nbBranchHit + 1;
+	    end
+`endif	    
+	 end
+	 if(riscv_disasm_isJAL(DE_instr)) begin
+	    nbJAL <= nbJAL + 1;
+	 end
+	 if(riscv_disasm_isJALR(DE_instr)) begin
+	    nbJALR <= nbJALR + 1;
+`ifdef CONFIG_RAS	    
+	    if(DE_predictRA == E_JALRaddr) begin
+	       nbJALRhit <= nbJALRhit + 1;
+	    end
+`endif	    
+	 end
+	 if(riscv_disasm_isLoad(MW_instr)) begin
+	    nbLoad <= nbLoad + 1;
+	 end
+	 if(riscv_disasm_isStore(MW_instr)) begin
+	    nbStore <= nbStore + 1;
+	 end
+
+	 if(dataHazard) begin
+	    nbLoadHazard <= nbLoadHazard + 1;
+	 end
+      end
+   end
+
+   /* verilator lint_off WIDTH */
+   always @(posedge clk) begin
+      if(halt) begin
+	 $display("Simulated processor's report");
+	 $display("----------------------------");
+	 $display("Branch hit = %3.3f\%%",
+		   nbBranchHit*100.0/nbBranch	 );
+	 $display("JALR   hit = %3.3f\%%",
+		   nbJALRhit*100.0/nbJALR	 );
+	 $display("Load hzrds = %3.3f\%%", nbLoadHazard*100.0/nbLoad);
+	 $display("CPI        = %3.3f",(cycle*1.0)/(instret*1.0));
+	 $display("Instr. mix = (Branch:%3.3f\%% JAL:%3.3f\%% JALR:%3.3f\%% Load:%3.3f\%% Store:%3.3f\%%)",
+		  nbBranch*100.0/instret,
+		     nbJAL*100.0/instret, 
+		    nbJALR*100.0/instret,
+		    nbLoad*100.0/instret,		  		  
+		   nbStore*100.0/instret
+	 );
+	 $finish();
+      end
+   end
+   /* verilator lint_on WIDTH */
+   
+`endif // `BENCH
 
 /******************************************************************************/
    
