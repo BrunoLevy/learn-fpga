@@ -11,7 +11,7 @@
                                            // (may gain a bit of fmax, but not 
                                            // always...)
 
-`define CONFIG_DEBUG        // debug mode, displays execution
+//`define CONFIG_DEBUG      // debug mode, displays execution
                             // See "debugger" section in source 
                             // to define breakpoints
 
@@ -278,6 +278,8 @@ module Processor (
       DE_funct7    <= FD_instr[30];
       DE_csrId     <= {FD_instr[27],FD_instr[21]};
 
+      DE_isRV32M   <= FD_instr[25];
+
       DE_nop <= 1'b0;
       
       if(!D_stall) begin
@@ -388,6 +390,8 @@ module Processor (
    reg DE_isCSRRS;
    reg DE_isEBREAK;
 
+   reg DE_isRV32M;
+   
    reg DE_wbEnable; // !isBranch && !isStore && rdId != 0
 
    reg DE_isJALorJALRorLUIorAUIPC;
@@ -466,7 +470,7 @@ module Processor (
 
    wire [31:0] E_leftshift = flip32(E_shifter);
 
-   wire [31:0] E_aluOut = 
+   wire [31:0] E_aluOut_base = 
 	(DE_funct3_is[0] ? (E_minus ? E_aluMinus[31:0] : E_aluPlus) : 32'b0) |
 	(DE_funct3_is[1] ? E_leftshift                              : 32'b0) |
 	(DE_funct3_is[2] ? {31'b0, E_LT }                           : 32'b0) |
@@ -476,7 +480,23 @@ module Processor (
 	(DE_funct3_is[6] ? E_aluIn1 | E_aluIn2                      : 32'b0) |
 	(DE_funct3_is[7] ? E_aluIn1 & E_aluIn2                      : 32'b0) ;
    
+   /********** MUL/DIV **************/
+   
+   wire E_isMULH   = DE_funct3_is[1];
+   wire E_isMULHSU = DE_funct3_is[2];
+   
+   wire E_sign1 = E_rs1[31] &  E_isMULH;
+   wire E_sign2 = E_rs2[31] & (E_isMULH | E_isMULHSU);
 
+   wire signed [32:0] E_signed1 = {E_sign1, E_rs1};
+   wire signed [32:0] E_signed2 = {E_sign2, E_rs2};
+   wire signed [63:0] E_multiply = E_signed1 * E_signed2;
+
+   wire [31:0] E_aluOut_mul =  DE_funct3_is[0] ? E_multiply[31:0] : E_multiply[63:32];
+
+   wire [31:0] E_aluOut = (DE_isALUreg & DE_isRV32M) ? E_aluOut_mul : E_aluOut_base;
+   
+   
    /*********** Branch, JAL, JALR ***********************************/
 
    wire E_takeBranch = 
@@ -824,9 +844,9 @@ module Processor (
    
 `ifdef verilator
 
-   // wire breakpoint = 1'b0; // no breakpoint
+   wire breakpoint = 1'b0; // no breakpoint
    // wire breakpoint = (EM_addr == 32'h400004); // break on LEDs output
-   wire breakpoint = (EM_addr == 32'h400008); // break on character output
+   // wire breakpoint = (EM_addr == 32'h400008); // break on character output
    // wire breakpoint = (DE_PC   == 32'h000000); // break on address reached
    reg step = 1'b1;
    reg [31:0] dbg_cmd = 0;

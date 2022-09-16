@@ -77,7 +77,8 @@ int main() {
 	       }
 	       --iter;
 	    }
-	    int color = (iter+frame)%21;
+	    // int color = (iter+frame)%21;
+	    int color = (iter+frame)&15;
 	    printf(color == last_color ? "  " : colormap[color]);
 	    last_color = color;
 	    Cr += dx;

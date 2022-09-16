@@ -1722,6 +1722,7 @@ For an introduction on dynamic branch prediction, I recommend the following link
 - [link1](https://danluu.com/branch-prediction/)
 - [link2](https://people.engr.ncsu.edu/efg/521/f02/common/lectures/notes/lec16.pdf)
 - [Onur Mutlu's ETH Zurich lectures](https://www.youtube.com/watch?v=hl4eiN8ZMJg) (thank you Luke Wren).
+- [ALF](https://team.inria.fr/alf/members/andre-seznec/branch-prediction-research/)
 
 Let us see what it means in practice for our core. The idea is to store the latest outcome
 of each branch (that is, taken or not taken). Clearly it is not possible to do that for all
