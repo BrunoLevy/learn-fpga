@@ -1,15 +1,21 @@
 /**
  * pipelineX_generic.v
- * Configurable PC prediction
+ * Configurable 5-stages pipelined RV32I
  */
 
 `define CONFIG_PC_PREDICT // enables D -> F path (needed by options above)
 `define CONFIG_RAS        // return address stack
 `define CONFIG_GSHARE     // gshare branch prediction (or BTFNT if not set)
-//`define CONFIG_REGISTERED_D_PREDICT_BRANCH // registers branch prediction signal
+`define CONFIG_REGISTERED_D_PREDICT_BRANCH // registers branch predict signal
                                            // (may gain a bit of fmax, but not 
                                            // always...)
- 
+
+`define CONFIG_DEBUG              // debug mode, copies instr in all stages
+`define CONFIG_DEBUG_STEP_BY_STEP // press key for next instr (verilator only)
+
+//`define CONFIG_INITIALIZE // initialize register file and BHT table
+                            // (required by Icarus/iverilog and by some synth tools)
+
 `default_nettype none
 `include "clockworks.v"
 `include "emitter_uart.v"
@@ -25,6 +31,10 @@ module Processor (
     output        IO_mem_wr     // IO write flag
 );
 
+`ifdef CONFIG_DEBUG   
+`include "riscv_disassembly.v"
+`endif
+   
 /******************************************************************************/
 
  /* 
@@ -43,6 +53,11 @@ module Processor (
  */
 
 /******************************************************************************/
+
+`ifdef CONFIG_INITIALIZE
+   // Iteration variable for the "initial" blocks
+   integer i;
+`endif
 
    // CSRs (cycle and retired instructions counters)
    reg [63:0] cycle;   
@@ -172,6 +187,15 @@ module Processor (
    // branch history table (2 bits per entry)
    reg [1:0] BHT[BHT_SIZE-1:0]; 
 
+`ifdef CONFIG_INITIALIZE   
+   initial begin
+      branch_history = 0; 
+      for(i=0; i<BHT_SIZE; i++) begin
+	 BHT[i] = 2'b01; // all entries of BHT initialized as "weakly taken"
+      end
+   end
+`endif   
+   
    // gets the index in the branch prediction table
    // from the PC
    function [BHT_INDEX_BITS-1:0] BHT_index;
@@ -231,6 +255,15 @@ module Processor (
 `endif // `CONFIG_PC_PREDICT
    
    reg [31:0] RegisterBank [0:31];
+
+`ifdef CONFIG_INITIALIZE   
+   initial begin
+      for(i=0; i<32; i++) begin
+	 RegisterBank[i] = 0;
+      end
+   end
+`endif
+   
    always @(posedge clk) begin
 
       DE_rdId  <= D_rdId;
@@ -494,7 +527,7 @@ module Processor (
 	   {dir, prev} == 3'b101 ? 2'b10 :
 	   {dir, prev} == 3'b110 ? 2'b11 :
 	                           2'b11 ;
-   endfunction;
+   endfunction
  `endif
 `endif
    
@@ -700,6 +733,97 @@ module Processor (
    always @(posedge clk) begin
       if(halt) $finish();
    end
+
+`ifdef CONFIG_DEBUG
+   reg [31:0] DE_instr; reg [31:0] DE_PC;
+   reg [31:0] EM_instr; reg [31:0] EM_PC;
+   reg [31:0] MW_instr; reg [31:0] MW_PC;
+
+   localparam NOP = 32'b0000000_00000_00000_000_00000_0110011;
+   
+   always @(posedge clk) begin
+      if(!D_stall) begin
+	 DE_instr <= FD_nop ? NOP : FD_instr;
+	 DE_PC    <= FD_PC;
+      end
+      if(E_flush) begin
+	 DE_instr <= NOP;
+      end
+      EM_instr <= DE_instr;
+      EM_PC    <= DE_PC; 
+      MW_instr <= EM_instr;
+      MW_PC    <= EM_PC;
+   end
+
+
+   always @(posedge clk) begin
+      if(resetn & !halt) begin
+
+         $write("     ");
+	 $write("[W] PC=%h ", MW_PC);
+	 $write("     ");
+	 riscv_disasm(MW_instr,MW_PC);
+	 if(wbEnable) $write("    x%0d <- 0x%0h",riscv_disasm_rdId(MW_instr),wbData);
+	 $write("\n");
+
+         $write("     ");
+	 $write("[M] PC=%h ", EM_PC);
+	 $write("     ");	 
+	 riscv_disasm(EM_instr,EM_PC);
+	 $write("\n");
+
+         $write("( %c) ",E_flush ? "f":" ");	 
+	 $write("[E] PC=%h ", DE_PC);
+	 $write("     ");	 
+	 riscv_disasm(DE_instr,DE_PC);
+	 if(DE_instr != NOP) begin
+	    $write("  rs1=0x%h  rs2=0x%h  ",E_rs1, E_rs2);
+`ifdef CONFIG_PC_PREDICT			     
+	    if(riscv_disasm_isBranch(DE_instr)) begin
+	       $write(" taken:%0d  %s",
+		       E_takeBranch, 
+		      (E_takeBranch == DE_predictBranch) ? "predict hit" : "predict miss"
+               );
+	    end
+`endif			     
+	 end
+	 $write("\n");
+
+         $write("(%c%c) ",D_stall ? "s":" ",D_flush ? "f":" ");	 	 	 
+	 $write("[D] PC=%h ", FD_PC);
+	 $write("[%s%s] ",
+		dataHazard && rs1Hazard?"*":" ", 
+		dataHazard && rs2Hazard?"*":" ");	 
+	 riscv_disasm(FD_nop ? NOP : FD_instr,FD_PC);
+`ifdef CONFIG_PC_PREDICT	 
+	 if(riscv_disasm_isBranch(FD_instr)) begin
+	    $write(" predict taken:%0d",D_predictBranch); 
+	 end
+`endif	 
+	 $write("\n");
+
+         $write("(%c ) ",F_stall ? "s":" ");	 	 
+	 $write("[F] PC=%h ", F_PC);
+`ifdef CONFIG_PC_PREDICT	 	 
+	 if(D_predictPC) $write(" PC <- [D] 0x%0h (prediction)",D_PCprediction);
+`endif	 
+	 if(EM_correctPC) $write(" PC <- [E] 0x%0h (correction)",EM_PCcorrection);
+	 $write("\n");
+	 
+	 $display("");
+      end
+   end   
+
+`ifdef CONFIG_DEBUG_STEP_BY_STEP
+   reg [31:0] z;
+   always @(posedge clk) begin
+      if(resetn & !halt) begin
+	 z <= $c32("getchar()");
+      end
+   end
+`endif
+   
+`endif   
 `endif
 
 /******************************************************************************/
@@ -767,8 +891,12 @@ module SOC (
 `ifdef BENCH
    always @(posedge clk) begin
       if(uart_valid) begin
+`ifdef CONFIG_DEBUG
+	 $display("UART: %c", IO_mem_wdata[7:0]);
+`else	 
 	 $write("%c", IO_mem_wdata[7:0] );
 	 $fflush(32'h8000_0001);
+`endif	 
       end
    end
 `endif   

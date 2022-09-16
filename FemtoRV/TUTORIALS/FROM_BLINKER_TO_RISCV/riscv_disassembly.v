@@ -2,7 +2,20 @@
  * A simple disassembler for RiscV written in VERILOG.
  * See table page 104 of RiscV instruction manual.
  * Bruno Levy, August 2022
+ * usage:
+ * module XXX( ... );
+ *   ...
+ *   ...
+ *   `include "riscv_disassembly.v" // yes, *inside* module definition.
+ *   always @(posedge clk) begin
+ *      riscv_disasm(instr, PC);
+ *      $write("\n");
+ *   end
+ * endmodule
  */
+
+
+/* Functions to decode immediates */
 
 function signed [31:0] riscv_disasm_Iimm;
   input [31:0] instr;
@@ -38,6 +51,10 @@ function [31:0] riscv_disasm_Jimm;
   };
 endfunction
 
+
+/* 
+ * disassembler (see comment at the beginning of this file)
+ */ 
 task riscv_disasm;
    input [31:0] instr;
    input [31:0] PC;   
@@ -154,4 +171,28 @@ task riscv_disasm;
       endcase
    end
 endtask
+
+
+/* Instruction recognizers for the 10 RV32I instructions */
+function riscv_disasm_isALUreg; input [31:0] I; riscv_disasm_isALUreg=(I[6:0]==7'b0110011); endfunction
+function riscv_disasm_isALUimm; input [31:0] I; riscv_disasm_isALUimm=(I[6:0]==7'b0010011); endfunction
+function riscv_disasm_isBranch; input [31:0] I; riscv_disasm_isBranch=(I[6:0]==7'b1100011); endfunction
+function riscv_disasm_isJALR;   input [31:0] I; riscv_disasm_isJALR  =(I[6:0]==7'b1100111); endfunction
+function riscv_disasm_isJAL;    input [31:0] I; riscv_disasm_isJAL   =(I[6:0]==7'b1101111); endfunction
+function riscv_disasm_isAUIPC;  input [31:0] I; riscv_disasm_isAUIPC =(I[6:0]==7'b0010111); endfunction
+function riscv_disasm_isLUI;    input [31:0] I; riscv_disasm_isLUI   =(I[6:0]==7'b0110111); endfunction
+function riscv_disasm_isLoad;   input [31:0] I; riscv_disasm_isLoad  =(I[6:0]==7'b0000011); endfunction
+function riscv_disasm_isStore;  input [31:0] I; riscv_disasm_isStore =(I[6:0]==7'b0100011); endfunction
+function riscv_disasm_isSYSTEM; input [31:0] I; riscv_disasm_isSYSTEM=(I[6:0]==7'b1110011); endfunction
+
+/* Utility functions: register indices */
+function [4:0] riscv_disasm_rs1Id; input [31:0] I; riscv_disasm_rs1Id = I[19:15];      endfunction
+function [4:0] riscv_disasm_rs2Id; input [31:0] I; riscv_disasm_rs2Id = I[24:20];      endfunction
+function [4:0] riscv_disasm_shamt; input [31:0] I; riscv_disasm_shamt = I[24:20];      endfunction   
+function [4:0] riscv_disasm_rdId;  input [31:0] I; riscv_disasm_rdId  = I[11:7];       endfunction
+function [1:0] riscv_disasm_csrId; input [31:0] I; riscv_disasm_csrId = {I[27],I[21]}; endfunction
+
+/* Utility functions: funct3 and funct7 */
+function [2:0] riscv_disasm_funct3; input [31:0] I; riscv_disasm_funct3 = I[14:12]; endfunction
+function [6:0] riscv_disasm_funct7; input [31:0] I; riscv_disasm_funct7 = I[31:25]; endfunction      
 
