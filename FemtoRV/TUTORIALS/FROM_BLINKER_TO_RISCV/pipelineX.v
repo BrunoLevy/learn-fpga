@@ -11,11 +11,13 @@
                                            // (may gain a bit of fmax, but not 
                                            // always...)
 
-`define CONFIG_DEBUG              // debug mode, copies instr in all stages
-`define CONFIG_DEBUG_STEP_BY_STEP // press key for next instr (verilator only)
+`define CONFIG_DEBUG        // debug mode, displays execution
+                            // See "debugger" section in source 
+                            // to define breakpoints
 
 //`define CONFIG_INITIALIZE // initialize register file and BHT table
-                            // (required by Icarus/iverilog and by some synth tools)
+                            // (required by Icarus/iverilog 
+                            // and by some synth tools)
 
 `default_nettype none
 `include "clockworks.v"
@@ -805,20 +807,53 @@ module Processor (
          $write("(%c ) ",F_stall ? "s":" ");	 	 
 	 $write("[F] PC=%h ", F_PC);
 `ifdef CONFIG_PC_PREDICT	 	 
-	 if(D_predictPC) $write(" PC <- [D] 0x%0h (prediction)",D_PCprediction);
+	 if(D_predictPC) begin
+	    $write(" PC <- [D] 0x%0h (prediction)",D_PCprediction);
+	 end
 `endif	 
-	 if(EM_correctPC) $write(" PC <- [E] 0x%0h (correction)",EM_PCcorrection);
+	 if(EM_correctPC) begin
+	    $write(" PC <- [E] 0x%0h (correction)",EM_PCcorrection);
+	 end
 	 $write("\n");
 	 
 	 $display("");
       end
    end   
 
-`ifdef CONFIG_DEBUG_STEP_BY_STEP
-   reg [31:0] z;
+/* "debugger" */
+   
+`ifdef verilator
+
+   wire breakpoint = 1'b0; // no breakpoint
+   // wire breakpoint = (EM_addr == 32'h400004); // break on LEDs output
+   // wire breakpoint = (EM_addr == 32'h400008); // break on character output
+   // wire breakpoint = (DE_PC   == 32'h000000); // break on address reached
+   reg step = 1'b1;
+   reg [31:0] inputchar = 0;
+
+   initial begin
+      $display("");
+      $display("\"Debugger\" commands:");
+      $display("--------------------");      
+      $display("c       : continue");
+      $display("<return>: step");
+      $display("see \"debugger\" section in source for breakpoints");
+      $display("");
+   end
+   
    always @(posedge clk) begin
       if(resetn & !halt) begin
-	 z <= $c32("getchar()");
+	 if(step) begin
+	    $write("DBG>");
+	    inputchar <= $c32("getchar()");
+	    $write("\n");
+	 end
+	 if(inputchar == "c") begin
+	    step <= 1'b0;
+	 end
+	 if(breakpoint) begin
+	    step <= 1'b1;
+	 end
       end
    end
 `endif
