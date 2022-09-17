@@ -1,6 +1,6 @@
 /**
- * pipelineX_generic.v
- * Configurable 5-stages pipelined RV32I
+ * pipelineY_generic.v
+ * Configurable 5-stages pipelined RV32IM
  * Bruno Levy, Sept 2022
  */
 
@@ -70,12 +70,17 @@ module Processor (
       cycle <= !resetn ? 0 : cycle + 1;
    end
 
-   // Pipeline control 
+   // Pipeline control
+
+   wire F_stall;
+
+   wire D_stall;   
    wire D_flush;
+
+   wire E_stall;
    wire E_flush;
    
-   wire F_stall;
-   wire D_stall;
+   wire M_flush;
 
    wire halt; // Halt execution (on ebreak)
    
@@ -480,7 +485,7 @@ module Processor (
 	(DE_funct3_is[6] ? E_aluIn1 | E_aluIn2                      : 32'b0) |
 	(DE_funct3_is[7] ? E_aluIn1 & E_aluIn2                      : 32'b0) ;
    
-   /********** MUL/DIV **************/
+   /********** MUL **************/
    
    wire E_isMULH   = DE_funct3_is[1];
    wire E_isMULHSU = DE_funct3_is[2];
@@ -492,10 +497,52 @@ module Processor (
    wire signed [32:0] E_signed2 = {E_sign2, E_rs2};
    wire signed [63:0] E_multiply = E_signed1 * E_signed2;
 
-   wire [31:0] E_aluOut_mul =  DE_funct3_is[0] ? E_multiply[31:0] : E_multiply[63:32];
+   /********** DIV *************/
 
-   wire [31:0] E_aluOut = (DE_isALUreg & DE_isRV32M) ? E_aluOut_mul : E_aluOut_base;
+   reg [31:0] EE_dividend;
+   reg [62:0] EE_divisor;
+   reg [31:0] EE_quotient;
+   reg [31:0] EE_quotient_msk;
+
+   wire E_divstep_do = (EE_divisor <= {31'b0, EE_dividend});
+
+   wire [31:0] E_dividendN     = E_divstep_do ? EE_dividend - EE_divisor[31:0] : EE_dividend;
+   wire [31:0] E_quotientN     = E_divstep_do ? EE_quotient | EE_quotient_msk  : EE_quotient;
+
+   reg  EE_div_sign;
    
+   wire E_isDivide  = DE_isALUreg & DE_isRV32M & DE_instr[14]; 
+   wire E_divBusy   = |EE_quotient_msk; 
+   
+   always @(posedge clk) begin
+      if (E_isDivide & !E_divBusy) begin
+	 EE_dividend <=   ~DE_instr[12] & E_rs1[31] ? -E_rs1 : E_rs1;
+	 EE_divisor  <= {(~DE_instr[12] & E_rs2[31] ? -E_rs2 : E_rs2), 31'b0};
+	 EE_quotient <= 0;
+	 EE_quotient_msk <= 1 << 31;
+	 EE_div_sign <= ~DE_instr[12] & (DE_instr[13] ? E_rs1[31] : 
+                         (E_rs1[31] != E_rs2[31]) & |E_rs2)       ;
+      end else begin
+	 EE_dividend     <= E_dividendN;
+	 EE_divisor      <= EE_divisor >> 1;
+	 EE_quotient     <= E_quotientN;
+	 EE_quotient_msk <= EE_quotient_msk >> 1;
+      end
+   end
+      
+   reg  [31:0] EE_divResult;
+   always @(posedge clk) EE_divResult <= DE_instr[13] ? E_dividendN : E_quotientN;
+
+
+   wire [31:0] E_aluOut_muldiv =
+     (  DE_funct3_is[0]   ?  E_multiply[31: 0] : 32'b0) | // 0:MUL
+     ( |DE_funct3_is[3:1] ?  E_multiply[63:32] : 32'b0) | // 1:MULH, 2:MULHSU, 3:MULHU
+     (  DE_instr[14]      ?  EE_div_sign ? -EE_divResult : EE_divResult : 32'b0) ; 
+                                                 // 4:DIV, 5:DIVU, 6:REM, 7:REMU
+   
+   wire [31:0] E_aluOut = (DE_isALUreg & DE_isRV32M) ? E_aluOut_muldiv : E_aluOut_base;
+
+   wire divide = E_divBusy | E_isDivide;
    
    /*********** Branch, JAL, JALR ***********************************/
 
@@ -555,32 +602,41 @@ module Processor (
 `endif
    
    always @(posedge clk) begin
-      EM_nop      <= DE_nop;
-      EM_rdId     <= DE_rdId;
-      EM_rs1Id    <= DE_rs1Id;
-      EM_rs2Id    <= DE_rs2Id;
-      EM_funct3   <= DE_funct3;
-      EM_csrId_is <= 4'b0001 << DE_csrId;
-      EM_rs2      <= E_rs2;
-      EM_Eresult  <= E_result;
-      EM_addr     <= E_addr;
-      EM_Mdata    <= DATARAM[E_addr[15:2]];
-      EM_isLoad   <= DE_isLoad;
-      EM_isStore  <= DE_isStore;
-      EM_isCSRRS  <= DE_isCSRRS;
-      EM_wbEnable <= DE_wbEnable && (DE_rdId != 0);
-      EM_correctPC  <= E_correctPC;
-      EM_PCcorrection <= E_PCcorrection;
+      if(!E_stall) begin
+	 EM_nop      <= DE_nop;
+	 EM_rdId     <= DE_rdId;
+	 EM_rs1Id    <= DE_rs1Id;
+	 EM_rs2Id    <= DE_rs2Id;
+	 EM_funct3   <= DE_funct3;
+	 EM_csrId_is <= 4'b0001 << DE_csrId;
+	 EM_rs2      <= E_rs2;
+	 EM_Eresult  <= E_result;
+	 EM_addr     <= E_addr;
+	 EM_Mdata    <= DATARAM[E_addr[15:2]];
+	 EM_isLoad   <= DE_isLoad;
+	 EM_isStore  <= DE_isStore;
+	 EM_isCSRRS  <= DE_isCSRRS;
+	 EM_wbEnable <= DE_wbEnable && (DE_rdId != 0);
+	 EM_correctPC  <= E_correctPC;
+	 EM_PCcorrection <= E_PCcorrection;
 
 `ifdef CONFIG_PC_PREDICT
  `ifdef CONFIG_GSHARE
-      if(DE_isBranch) begin
-	 branch_history <= {E_takeBranch,branch_history[BP_HISTO_BITS-1:1]};
-	 BHT[DE_BHTindex] <= incdec_sat(BHT[DE_BHTindex], E_takeBranch);
-      end
+	 if(DE_isBranch) begin
+	    branch_history <= {E_takeBranch,branch_history[BP_HISTO_BITS-1:1]};
+	    BHT[DE_BHTindex] <= incdec_sat(BHT[DE_BHTindex], E_takeBranch);
+	 end
  `endif
 `endif
-      
+      end 
+      if(M_flush) begin
+	 EM_nop       <= 1'b1;
+	 EM_isLoad    <= 1'b0;
+	 EM_isStore   <= 1'b0;
+	 EM_isCSRRS   <= 1'b0;
+	 EM_wbEnable  <= 1'b0;
+	 EM_correctPC <= 1'b0;
+      end
    end
 
    assign halt = resetn & DE_isEBREAK;
@@ -742,13 +798,15 @@ module Processor (
    // like Samsoniuk's DarkRiscV). Reduces critical path.
    // wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS);
    
-   assign F_stall = dataHazard | halt;
-   assign D_stall = dataHazard | halt;
+   assign F_stall = divide | dataHazard | halt;
+   assign D_stall = divide | dataHazard | halt;
+   assign E_stall = divide;
 
    // Here we need to use E_correctPC (the registered version
    // DE_correctPC is not ready on time).
    assign D_flush = E_correctPC;
    assign E_flush = E_correctPC | dataHazard;
+   assign M_flush = divide;
 
 /******************************************************************************/
 
@@ -771,13 +829,19 @@ module Processor (
       if(E_flush) begin
 	 DE_instr <= NOP;
       end
-      EM_instr <= DE_instr;
-      EM_PC    <= DE_PC; 
+      if(!E_stall) begin
+	 EM_instr <= DE_instr;
+	 EM_PC    <= DE_PC;
+      end
+      if(M_flush) begin
+	 EM_instr <= NOP;
+      end
       MW_instr <= EM_instr;
       MW_PC    <= EM_PC;
    end
 
 `ifdef CONFIG_DEBUG
+
    always @(posedge clk) begin
       if(resetn & !halt) begin
 
@@ -788,15 +852,22 @@ module Processor (
 	 if(wbEnable) $write("    x%0d <- 0x%0h",riscv_disasm_rdId(MW_instr),wbData);
 	 $write("\n");
 
-         $write("     ");
+         $write("( %c) ",M_flush?"f":" ");
 	 $write("[M] PC=%h ", EM_PC);
 	 $write("     ");	 
 	 riscv_disasm(EM_instr,EM_PC);
 	 $write("\n");
 
-         $write("( %c) ",E_flush ? "f":" ");	 
+         $write("(%c%c) ", E_stall ? "s" : " ", E_flush ? "f":" ");	 
 	 $write("[E] PC=%h ", DE_PC);
-	 $write("     ");	 
+
+	 // Register forwarding 
+	 if(DE_nop) $write("[  ] ");
+	 else $write("[%s%s] ", 
+		     riscv_disasm_readsRs1(DE_instr) ? (E_M_fwd_rs1 ? "M" : E_W_fwd_rs1 ? "W" : " ") : " ", 
+		     riscv_disasm_readsRs2(DE_instr) ? (E_M_fwd_rs2 ? "M" : E_W_fwd_rs2 ? "W" : " ") : " "
+	 );
+	 
 	 riscv_disasm(DE_instr,DE_PC);
 	 if(DE_instr != NOP) begin
 	    $write("  rs1=0x%h  rs2=0x%h  ",E_rs1, E_rs2);
@@ -844,10 +915,11 @@ module Processor (
    
 `ifdef verilator
 
-   wire breakpoint = 1'b0; // no breakpoint
+   // wire breakpoint = 1'b0; // no breakpoint
    // wire breakpoint = (EM_addr == 32'h400004); // break on LEDs output
    // wire breakpoint = (EM_addr == 32'h400008); // break on character output
    // wire breakpoint = (DE_PC   == 32'h000000); // break on address reached
+   wire breakpoint = DE_isRV32M && DE_isALUreg;
    reg step = 1'b1;
    reg [31:0] dbg_cmd = 0;
 

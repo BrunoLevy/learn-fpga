@@ -209,3 +209,14 @@ function [1:0] riscv_disasm_csrId; input [31:0] I; riscv_disasm_csrId = {I[27],I
 function [2:0] riscv_disasm_funct3; input [31:0] I; riscv_disasm_funct3 = I[14:12]; endfunction
 function [6:0] riscv_disasm_funct7; input [31:0] I; riscv_disasm_funct7 = I[31:25]; endfunction      
 
+function riscv_disasm_readsRs1;
+   input [31:0] I;
+   riscv_disasm_readsRs1 = !(riscv_disasm_isJAL(I) || riscv_disasm_isAUIPC(I) || riscv_disasm_isLUI(I));
+endfunction
+
+function riscv_disasm_readsRs2;
+   input [31:0] I;
+   riscv_disasm_readsRs2 = riscv_disasm_isALUreg(I) || riscv_disasm_isBranch(I) || riscv_disasm_isStore(I);
+endfunction
+
+   
