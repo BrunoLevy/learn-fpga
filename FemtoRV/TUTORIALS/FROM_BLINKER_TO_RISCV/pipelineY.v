@@ -11,7 +11,7 @@
 
 `define CONFIG_RV32M      // RV32M instruction set (MUL,DIV,REM)
 
-`define CONFIG_DEBUG      // debug mode, displays execution
+//`define CONFIG_DEBUG      // debug mode, displays execution
                             // See "debugger" section in source 
                             // to define breakpoints
 
@@ -358,7 +358,7 @@ module Processor (
 	 DE_isCSRRS  <= 1'b0;
 	 DE_isEBREAK <= 1'b0;
 	 DE_wbEnable <= 1'b0;
-`ifdef RV32M	 
+`ifdef CONFIG_RV32M	 
 	 DE_isRV32M  <= 1'b0;
 	 DE_isDivide <= 1'b0;
 `endif	 
