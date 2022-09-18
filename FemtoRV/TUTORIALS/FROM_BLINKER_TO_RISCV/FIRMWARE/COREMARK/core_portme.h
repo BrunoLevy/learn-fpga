@@ -19,7 +19,7 @@ limitations under the License.
 Original Author: Shay Gal-on
 */
 
-#define ITERATIONS 150
+#define ITERATIONS 300
 #define BUILD "testbench"
 #define ARCH "petituyau"
 
