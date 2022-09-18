@@ -508,7 +508,7 @@ module Processor (
    reg  EE_div_sign;
    reg 	EE_divBusy = 1'b0;
    reg 	EE_divFinished = 1'b0;
-   
+
    always @(posedge clk) begin
       if (DE_isDivide & !EE_divBusy & !dataHazard & !EE_divFinished) begin
 	 EE_dividend <=   ~DE_funct3[0] & E_rs1[31] ? -E_rs1 : E_rs1;
@@ -524,25 +524,27 @@ module Processor (
 	 EE_divisor      <= EE_divisor >> 1;
 	 EE_quotient     <= E_quotientN;
 	 EE_quotient_msk <= EE_quotient_msk >> 1;
-	 EE_divFinished  <= EE_quotient_msk[0];
-	 if(EE_quotient_msk[0]) begin
+	 EE_divBusy      <= EE_divBusy && !EE_quotient_msk[0];
+	 if(EE_divBusy && EE_quotient_msk[0]) begin
+	    EE_divFinished <= 1'b1;
 	    EE_divBusy <= 1'b0;
 	 end
       end 
-
       if(EE_divFinished) EE_divFinished <= 1'b0;
-      
-   end
-      
-   reg  [31:0] EE_divResult;
-   always @(posedge clk) EE_divResult <= DE_funct3[1] ? E_dividendN : E_quotientN;
+   end 
 
-
+   wire [1:0] E_divsel = {EE_div_sign,DE_funct3[1]};
+   wire [31:0] E_divResult = 
+	       E_divsel == 2'b00 ?  EE_quotient  : 
+	       E_divsel == 2'b01 ?  EE_dividend  : 
+	       E_divsel == 2'b10 ? -EE_quotient  : 
+	                           -EE_dividend  ;
+   
    wire [31:0] E_aluOut_muldiv =
      (  DE_funct3_is[0]   ?  E_multiply[31: 0] : 32'b0) | // 0:MUL
      ( |DE_funct3_is[3:1] ?  E_multiply[63:32] : 32'b0) | // 1:MULH, 2:MULHSU, 3:MULHU
-     (  DE_funct3[2]      ?  EE_div_sign ? -EE_divResult : EE_divResult : 32'b0) ; 
-                                                 // 4:DIV, 5:DIVU, 6:REM, 7:REMU
+     (  DE_isDivide       ?  E_divResult       : 32'b0) ;
+
    
    wire [31:0] E_aluOut = (DE_isALUreg & DE_isRV32M) ? E_aluOut_muldiv : E_aluOut_base;
 
