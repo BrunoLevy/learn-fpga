@@ -805,8 +805,14 @@ module Processor (
    // wire rs2Hazard = (D_rs2Id[3:0] == DE_rdId[3:0]);
    
    // Add bubble only if next instr uses result of latency-2 instr
-   wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS) && 
-   	             (rs1Hazard || rs2Hazard); 
+   // Or load right after store (problem only if same address, 
+   // we could also test but D does not know address yet)
+   //  (we need load after store test because mem read access is done
+   //   in E, which is not the case in the non-optimized version)
+   wire dataHazard = !FD_nop && (
+	                ((DE_isLoad || DE_isCSRRS) && (rs1Hazard || rs2Hazard)) ||
+                        D_isLoad && DE_isStore 				 
+                     ) ; 
 
    // (other option: always add bubble after latency-2 instr 
    // like Samsoniuk's DarkRiscV). Reduces critical path.
