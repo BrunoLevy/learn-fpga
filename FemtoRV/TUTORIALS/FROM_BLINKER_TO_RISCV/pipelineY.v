@@ -7,8 +7,9 @@
 `define CONFIG_PC_PREDICT // enables D -> F path (needed by options above)
 `define CONFIG_RAS        // return address stack
 `define CONFIG_GSHARE     // gshare branch prediction (or BTFNT if not set)
+`define CONFIG_RV32M      // RV32M instruction set (MUL,DIV,REM)
 
-//`define CONFIG_DEBUG      // debug mode, displays execution
+`define CONFIG_DEBUG      // debug mode, displays execution
                             // See "debugger" section in source 
                             // to define breakpoints
 
@@ -273,8 +274,10 @@ module Processor (
 	 DE_funct7    <= FD_instr[30];
 	 DE_csrId     <= {FD_instr[27],FD_instr[21]};
 
+`ifdef CONFIG_RV32M	 
 	 DE_isRV32M   <= D_isALUreg & FD_instr[25];
 	 DE_isDivide  <= D_isALUreg & FD_instr[25] & FD_instr[14]; 
+`endif
 	 
 	 DE_nop <= 1'b0;
 
@@ -353,8 +356,10 @@ module Processor (
 	 DE_isCSRRS  <= 1'b0;
 	 DE_isEBREAK <= 1'b0;
 	 DE_wbEnable <= 1'b0;
+`ifdef RV32M	 
 	 DE_isRV32M  <= 1'b0;
 	 DE_isDivide <= 1'b0;
+`endif	 
 	 DE_isJALorJALRorLUIorAUIPC <= 1'b0;
       end
       
@@ -390,8 +395,10 @@ module Processor (
    reg DE_isCSRRS;
    reg DE_isEBREAK;
 
+`ifdef CONFIG_RV32M   
    reg DE_isRV32M;
    reg DE_isDivide;
+`endif
    
    reg DE_wbEnable; // !isBranch && !isStore && rdId != 0
 
@@ -480,6 +487,8 @@ module Processor (
 	(DE_funct3_is[5] ? E_shifter                                : 32'b0) |
 	(DE_funct3_is[6] ? E_aluIn1 | E_aluIn2                      : 32'b0) |
 	(DE_funct3_is[7] ? E_aluIn1 & E_aluIn2                      : 32'b0) ;
+
+`ifdef CONFIG_RV32M
    
    /********** MUL **************/
    
@@ -496,7 +505,7 @@ module Processor (
    /********** DIV *************/
    // Heavily inspired by Claire Wolf's PicoRV. 
    // Some ideas by Matthias Koch.
-    
+
    reg [31:0] EE_dividend;
    reg [62:0] EE_divisor;
    reg [31:0] EE_quotient;
@@ -544,6 +553,13 @@ module Processor (
    wire [31:0] E_aluOut = DE_isRV32M ? E_aluOut_muldiv : E_aluOut_base;
 
    wire aluBusy = EE_divBusy | (DE_isDivide & !EE_divFinished);
+
+`else 
+
+   wire [31:0] E_aluOut = E_aluOut_base;
+   wire aluBusy = 1'b0;
+
+`endif
    
    /*********** Branch, JAL, JALR ***********************************/
 
@@ -886,8 +902,10 @@ module Processor (
                );
 	    end
 `endif			     
-	 end 
+	 end // if (DE_instr != NOP)
+`ifdef CONFIG_RV32M	 
 	 if(aluBusy) $write(" %b",EE_quotient_msk);
+`endif	 
 	 $write("\n");
 
          $write("(%c%c) ",D_stall ? "s":" ",D_flush ? "f":" ");	 	 	 
@@ -925,9 +943,9 @@ module Processor (
 
    // wire breakpoint = 1'b0; // no breakpoint
    // wire breakpoint = (EM_addr == 32'h400004); // break on LEDs output
-   // wire breakpoint = (EM_addr == 32'h400008); // break on character output
+   wire breakpoint = (EM_addr == 32'h400008); // break on character output
    // wire breakpoint = (DE_PC   == 32'h000000); // break on address reached
-   wire breakpoint = DE_isRV32M && DE_isALUreg;
+   // wire breakpoint = DE_isRV32M && DE_isALUreg;
    reg step = 1'b1;
    reg [31:0] dbg_cmd = 0;
 
