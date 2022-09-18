@@ -1,12 +1,14 @@
 /**
  * pipelineY_generic.v
+ * femtorv32-tordboyau
  * Configurable 5-stages pipelined RV32IM
  * Bruno Levy, Sept 2022
  */
 
-`define CONFIG_PC_PREDICT // enables D -> F path (needed by options above)
+`define CONFIG_PC_PREDICT // enables D -> F path (needed by RAS and GSHARE)
 `define CONFIG_RAS        // return address stack
 `define CONFIG_GSHARE     // gshare branch prediction (or BTFNT if not set)
+
 `define CONFIG_RV32M      // RV32M instruction set (MUL,DIV,REM)
 
 `define CONFIG_DEBUG      // debug mode, displays execution
