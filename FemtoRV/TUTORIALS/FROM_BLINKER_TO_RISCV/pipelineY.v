@@ -71,7 +71,9 @@ module Processor (
    end
 
    // Pipeline control
-
+   // Note: E_stall and M_flush are only used if RV32M is configured
+   // (multicycle ALU).
+   
    wire F_stall;
 
    wire D_stall;   
@@ -514,8 +516,12 @@ module Processor (
    reg [31:0] EE_quotient_msk;
 
    wire E_divstep_do = (EE_divisor <= {31'b0, EE_dividend});
-   wire [31:0] E_dividendN = E_divstep_do ? EE_dividend - EE_divisor[31:0] : EE_dividend;
-   wire [31:0] E_quotientN = E_divstep_do ? EE_quotient | EE_quotient_msk  : EE_quotient;
+   
+   wire [31:0] E_dividendN = 
+	       E_divstep_do ? EE_dividend - EE_divisor[31:0] : EE_dividend;
+   
+   wire [31:0] E_quotientN = 
+	       E_divstep_do ? EE_quotient | EE_quotient_msk  : EE_quotient;
 
    reg  EE_div_sign;
    reg 	EE_divBusy     = 1'b0;
@@ -546,11 +552,11 @@ module Processor (
    
    wire [31:0] E_aluOut_muldiv =
      (  DE_funct3_is[0]    ? E_multiply[31: 0] : 32'b0) | // 0:MUL
-     ( |DE_funct3_is[3:1]  ? E_multiply[63:32] : 32'b0) | // 1:MULH, 2:MULHSU, 3:MULHU
-     (  E_divsel == 3'b100 ?  EE_quotient      : 32'b0) |
-     (  E_divsel == 3'b101 ? -EE_quotient      : 32'b0) |	       
-     (  E_divsel == 3'b110 ?  EE_dividend      : 32'b0) |
-     (  E_divsel == 3'b111 ? -EE_dividend      : 32'b0) ;
+     ( |DE_funct3_is[3:1]  ? E_multiply[63:32] : 32'b0) | // 1:MH, 2:MHSU, 3:MHU
+     (  E_divsel == 3'b100 ?  EE_quotient      : 32'b0) | // DIV
+     (  E_divsel == 3'b101 ? -EE_quotient      : 32'b0) | // DIV (negative)
+     (  E_divsel == 3'b110 ?  EE_dividend      : 32'b0) | // REM
+     (  E_divsel == 3'b111 ? -EE_dividend      : 32'b0) ; // REM (negative)
    
    wire [31:0] E_aluOut = DE_isRV32M ? E_aluOut_muldiv : E_aluOut_base;
 
@@ -755,7 +761,6 @@ module Processor (
       $readmemh("DATARAM.hex",DATARAM);
    end
 
-   //HERE   
    always @(posedge clk) begin
       MW_nop       <= EM_nop;
       MW_rdId      <= EM_rdId;
@@ -810,20 +815,22 @@ module Processor (
    // wire rs1Hazard = (D_rs1Id[3:0] == DE_rdId[3:0]);
    // wire rs2Hazard = (D_rs2Id[3:0] == DE_rdId[3:0]);
    
-   // Add bubble only if next instr uses result of latency-2 instr
+   // Add bubble if next instr uses result of latency-2 instr
    // Or load right after store (problem only if same address, 
    // we could also test but D does not know address yet)
-   //  (we need load after store test because mem read access is done
-   //   in E, which is not the case in the non-optimized version)
+   //  (we need here load after store test because mem read access is done
+   //   in E. It was not the case in the non-optimized version)
    wire dataHazard = !FD_nop && (
-	                ((DE_isLoad || DE_isCSRRS) && (rs1Hazard || rs2Hazard)) ||
-                        D_isLoad && DE_isStore 				 
-                     ) ; 
+        ((DE_isLoad || DE_isCSRRS) && (rs1Hazard || rs2Hazard)) || 
+        ( D_isLoad && DE_isStore)
+   ); 
 
    // (other option: always add bubble after latency-2 instr 
-   // like Samsoniuk's DarkRiscV). Reduces critical path.
-   // wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS);
-   
+   // like Samsoniuk's DarkRiscV). Increases CPI and may reduce critical path.
+   // wire dataHazard = !FD_nop &&  (  
+   //   (DE_isLoad || DE_isCSRRS) || (D_isLoad && DE_isStore) 
+   // );
+
    assign F_stall = aluBusy | dataHazard | halt;
    assign D_stall = aluBusy | dataHazard | halt;
    assign E_stall = aluBusy;
@@ -834,6 +841,9 @@ module Processor (
    assign E_flush = E_correctPC | dataHazard;
    assign M_flush = aluBusy;
 
+   // Note: E_stall and M_flush are only used with the
+   // multi-cycle ALU (RV32M)
+   
 /******************************************************************************/
 
 `ifdef BENCH
@@ -875,7 +885,10 @@ module Processor (
 	 $write("[W] PC=%h ", MW_PC);
 	 $write("     ");
 	 riscv_disasm(MW_instr,MW_PC);
-	 if(wbEnable) $write("    x%0d <- 0x%0h (%0d)",riscv_disasm_rdId(MW_instr),wbData,wbData);
+	 if(wbEnable) $write(
+            "    x%0d <- 0x%0h (%0d)",
+	    riscv_disasm_rdId(MW_instr),wbData,wbData
+         );
 	 $write("\n");
 
          $write("( %c) ",M_flush?"f":" ");
@@ -890,8 +903,10 @@ module Processor (
 	 // Register forwarding 
 	 if(DE_nop) $write("[  ] ");
 	 else $write("[%s%s] ", 
-		     riscv_disasm_readsRs1(DE_instr) ? (E_M_fwd_rs1 ? "M" : E_W_fwd_rs1 ? "W" : " ") : " ", 
-		     riscv_disasm_readsRs2(DE_instr) ? (E_M_fwd_rs2 ? "M" : E_W_fwd_rs2 ? "W" : " ") : " "
+	         riscv_disasm_readsRs1(DE_instr) ? 
+		     (E_M_fwd_rs1 ? "M" : E_W_fwd_rs1 ? "W" : " ") : " ", 
+		 riscv_disasm_readsRs2(DE_instr) ? 
+		     (E_M_fwd_rs2 ? "M" : E_W_fwd_rs2 ? "W" : " ") : " "
 	 );
 	 riscv_disasm(DE_instr,DE_PC);
 	 if(DE_instr != NOP) begin
@@ -900,7 +915,8 @@ module Processor (
 	    if(riscv_disasm_isBranch(DE_instr)) begin
 	       $write(" taken:%0d  %s",
 		       E_takeBranch, 
-		      (E_takeBranch == DE_predictBranch) ? "predict hit" : "predict miss"
+		      (E_takeBranch == DE_predictBranch) ? 
+		             "predict hit" : "predict miss"
                );
 	    end
 `endif			     
@@ -910,7 +926,7 @@ module Processor (
 `endif	 
 	 $write("\n");
 
-         $write("(%c%c) ",D_stall ? "s":" ",D_flush ? "f":" ");	 	 	 
+         $write("(%c%c) ",D_stall ? "s":" ",D_flush ? "f":" ");	 
 	 $write("[D] PC=%h ", FD_PC);
 	 $write("[%s%s] ",
 		dataHazard && rs1Hazard?"*":" ", 
