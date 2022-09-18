@@ -7,9 +7,6 @@
 `define CONFIG_PC_PREDICT // enables D -> F path (needed by options above)
 `define CONFIG_RAS        // return address stack
 `define CONFIG_GSHARE     // gshare branch prediction (or BTFNT if not set)
-//`define CONFIG_REGISTERED_D_PREDICT_BRANCH // registers branch predict signal
-                                           // (may gain a bit of fmax, but not 
-                                           // always...)
 
 //`define CONFIG_DEBUG      // debug mode, displays execution
                             // See "debugger" section in source 
@@ -213,18 +210,8 @@ module Processor (
                   (branch_history << (BP_ADDR_BITS - BP_HISTO_BITS));
    /* verilator lint_on WIDTH */      
    endfunction
-   
-  `ifdef CONFIG_REGISTERED_D_PREDICT_BRANCH
-     // registered version, that "sees" one cycle in advanec by
-     // using PC from the "F" stage (looses 0.038 CPIs but gains
-     // maxfreq)
-     reg D_predictBranch;
-     always @(posedge clk) begin
-        D_predictBranch <= BHT[BHT_index(PC)][1];
-     end
-  `else
-     wire D_predictBranch = BHT[BHT_index(FD_PC)][1];
-  `endif 
+
+   wire D_predictBranch = BHT[BHT_index(FD_PC)][1];
    
  `else 
    // No GSHARE branch predictor,
@@ -287,7 +274,8 @@ module Processor (
 	 DE_csrId     <= {FD_instr[27],FD_instr[21]};
 
 	 DE_isRV32M   <= FD_instr[25];
-
+	 DE_isDivide  <= D_isALUreg & FD_instr[25] & FD_instr[14]; 
+	 
 	 DE_nop <= 1'b0;
 
 	 
@@ -366,6 +354,7 @@ module Processor (
 	 DE_isEBREAK <= 1'b0;
 	 DE_wbEnable <= 1'b0;
 	 DE_isRV32M  <= 1'b0;
+	 DE_isDivide <= 1'b0;
 	 DE_isJALorJALRorLUIorAUIPC <= 1'b0;
       end
       
@@ -402,6 +391,7 @@ module Processor (
    reg DE_isEBREAK;
 
    reg DE_isRV32M;
+   reg DE_isDivide;
    
    reg DE_wbEnable; // !isBranch && !isStore && rdId != 0
 
@@ -516,27 +506,28 @@ module Processor (
    wire [31:0] E_quotientN     = E_divstep_do ? EE_quotient | EE_quotient_msk  : EE_quotient;
 
    reg  EE_div_sign;
-   
-   wire E_isDivide  = DE_isALUreg & DE_isRV32M & DE_instr[14]; 
-   wire E_divBusy   = |EE_quotient_msk; 
-
+   reg 	EE_divBusy = 1'b0;
    reg 	EE_divFinished = 1'b0;
    
    always @(posedge clk) begin
-      if (E_isDivide & !E_divBusy & !dataHazard & !EE_divFinished) begin
-	 EE_dividend <=   ~DE_instr[12] & E_rs1[31] ? -E_rs1 : E_rs1;
-	 EE_divisor  <= {(~DE_instr[12] & E_rs2[31] ? -E_rs2 : E_rs2), 31'b0};
+      if (DE_isDivide & !EE_divBusy & !dataHazard & !EE_divFinished) begin
+	 EE_dividend <=   ~DE_funct3[0] & E_rs1[31] ? -E_rs1 : E_rs1;
+	 EE_divisor  <= {(~DE_funct3[0] & E_rs2[31] ? -E_rs2 : E_rs2), 31'b0};
 	 EE_quotient <= 0;
 	 EE_quotient_msk <= 1 << 31;
-	 EE_div_sign <= ~DE_instr[12] & (DE_instr[13] ? E_rs1[31] : 
+	 EE_div_sign <= ~DE_funct3[0] & (DE_funct3[1] ? E_rs1[31] : 
                          (E_rs1[31] != E_rs2[31]) & |E_rs2)       ;
 	 EE_divFinished <= 1'b0;
+	 EE_divBusy     <= 1'b1;
       end else begin
 	 EE_dividend     <= E_dividendN;
 	 EE_divisor      <= EE_divisor >> 1;
 	 EE_quotient     <= E_quotientN;
 	 EE_quotient_msk <= EE_quotient_msk >> 1;
 	 EE_divFinished  <= EE_quotient_msk[0];
+	 if(EE_quotient_msk[0]) begin
+	    EE_divBusy <= 1'b0;
+	 end
       end 
 
       if(EE_divFinished) EE_divFinished <= 1'b0;
@@ -544,18 +535,18 @@ module Processor (
    end
       
    reg  [31:0] EE_divResult;
-   always @(posedge clk) EE_divResult <= DE_instr[13] ? E_dividendN : E_quotientN;
+   always @(posedge clk) EE_divResult <= DE_funct3[1] ? E_dividendN : E_quotientN;
 
 
    wire [31:0] E_aluOut_muldiv =
      (  DE_funct3_is[0]   ?  E_multiply[31: 0] : 32'b0) | // 0:MUL
      ( |DE_funct3_is[3:1] ?  E_multiply[63:32] : 32'b0) | // 1:MULH, 2:MULHSU, 3:MULHU
-     (  DE_instr[14]      ?  EE_div_sign ? -EE_divResult : EE_divResult : 32'b0) ; 
+     (  DE_funct3[2]      ?  EE_div_sign ? -EE_divResult : EE_divResult : 32'b0) ; 
                                                  // 4:DIV, 5:DIVU, 6:REM, 7:REMU
    
    wire [31:0] E_aluOut = (DE_isALUreg & DE_isRV32M) ? E_aluOut_muldiv : E_aluOut_base;
 
-   wire aluBusy = E_divBusy | (E_isDivide & !EE_divFinished);
+   wire aluBusy = EE_divBusy | (DE_isDivide & !EE_divFinished);
    
    /*********** Branch, JAL, JALR ***********************************/
 

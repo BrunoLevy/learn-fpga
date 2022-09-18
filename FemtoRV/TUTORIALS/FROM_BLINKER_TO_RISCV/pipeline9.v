@@ -8,7 +8,7 @@
 `include "clockworks.v"
 `include "emitter_uart.v"
 
-`define VERBOSE // uncomment to log pipeline for all executed instructions
+//`define VERBOSE // uncomment to log pipeline for all executed instructions
 //`define LOG_RAS // uncomment to log return address stack operations
 
 /******************************************************************************/
