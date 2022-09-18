@@ -486,12 +486,12 @@ module Processor (
    wire E_isMULH   = DE_funct3_is[1];
    wire E_isMULHSU = DE_funct3_is[2];
    
-   wire E_sign1 = E_rs1[31] &  E_isMULH;
-   wire E_sign2 = E_rs2[31] & (E_isMULH | E_isMULHSU);
+   wire E_mul_sign1 = E_rs1[31] &  E_isMULH;
+   wire E_mul_sign2 = E_rs2[31] & (E_isMULH | E_isMULHSU);
 
-   wire signed [32:0] E_signed1 = {E_sign1, E_rs1};
-   wire signed [32:0] E_signed2 = {E_sign2, E_rs2};
-   wire signed [63:0] E_multiply = E_signed1 * E_signed2;
+   wire signed [32:0] E_mul_signed1 = {E_mul_sign1, E_rs1};
+   wire signed [32:0] E_mul_signed2 = {E_mul_sign2, E_rs2};
+   wire signed [63:0] E_multiply = E_mul_signed1 * E_mul_signed2;
 
    /********** DIV *************/
 
@@ -510,27 +510,24 @@ module Processor (
    reg 	EE_divFinished = 1'b0;
 
    always @(posedge clk) begin
-      if (DE_isDivide & !EE_divBusy & !dataHazard & !EE_divFinished) begin
+      if (!EE_divBusy) begin
+	 if(DE_isDivide & !dataHazard & !EE_divFinished) begin
+	    EE_quotient_msk <= 1 << 31;
+	    EE_divBusy     <= 1'b1;	    
+	 end
 	 EE_dividend <=   ~DE_funct3[0] & E_rs1[31] ? -E_rs1 : E_rs1;
 	 EE_divisor  <= {(~DE_funct3[0] & E_rs2[31] ? -E_rs2 : E_rs2), 31'b0};
 	 EE_quotient <= 0;
-	 EE_quotient_msk <= 1 << 31;
 	 EE_div_sign <= ~DE_funct3[0] & (DE_funct3[1] ? E_rs1[31] : 
                          (E_rs1[31] != E_rs2[31]) & |E_rs2)       ;
-	 EE_divFinished <= 1'b0;
-	 EE_divBusy     <= 1'b1;
       end else begin
 	 EE_dividend     <= E_dividendN;
 	 EE_divisor      <= EE_divisor >> 1;
 	 EE_quotient     <= E_quotientN;
 	 EE_quotient_msk <= EE_quotient_msk >> 1;
-	 EE_divBusy      <= EE_divBusy && !EE_quotient_msk[0];
-	 if(EE_divBusy && EE_quotient_msk[0]) begin
-	    EE_divFinished <= 1'b1;
-	    EE_divBusy <= 1'b0;
-	 end
+	 EE_divBusy <= EE_divBusy & !EE_quotient_msk[0];
       end 
-      if(EE_divFinished) EE_divFinished <= 1'b0;
+      EE_divFinished <= EE_quotient_msk[0];
    end 
 
    wire [1:0] E_divsel = {EE_div_sign,DE_funct3[1]};
