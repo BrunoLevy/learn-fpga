@@ -7,7 +7,7 @@
 `define CONFIG_PC_PREDICT // enables D -> F path (needed by options above)
 `define CONFIG_RAS        // return address stack
 `define CONFIG_GSHARE     // gshare branch prediction (or BTFNT if not set)
-//`define CONFIG_REGISTERED_D_PREDICT_BRANCH // registers branch predict signal
+`define CONFIG_REGISTERED_D_PREDICT_BRANCH // registers branch predict signal
                                            // (may gain a bit of fmax, but not 
                                            // always...)
 
@@ -635,7 +635,7 @@ module Processor (
       if(M_wmask[0]) DATARAM[M_word_addr][ 7:0 ] <= M_STORE_data[ 7:0 ];
       if(M_wmask[1]) DATARAM[M_word_addr][15:8 ] <= M_STORE_data[15:8 ];
       if(M_wmask[2]) DATARAM[M_word_addr][23:16] <= M_STORE_data[23:16];
-      if(M_wmask[3]) DATARAM[M_word_addr][31:24] <= M_STORE_data[31:24]; 
+      if(M_wmask[3]) DATARAM[M_word_addr][31:24] <= M_STORE_data[31:24];
    end
 
    wire M_sext = !EM_funct3[2];		     
@@ -772,6 +772,10 @@ module Processor (
 	 $write("[M] PC=%h ", EM_PC);
 	 $write("     ");	 
 	 riscv_disasm(EM_instr,EM_PC);
+
+	 if(|M_wmask) begin
+	    $write(" DATARAM[%h00] <= %h", M_word_addr, M_STORE_data);
+	 end
 	 $write("\n");
 
          $write("( %c) ",E_flush ? "f":" ");	 
@@ -824,9 +828,9 @@ module Processor (
    
 `ifdef verilator
 
-   // wire breakpoint = 1'b0; // no breakpoint
+   wire breakpoint = 1'b0; // no breakpoint
    // wire breakpoint = (EM_addr == 32'h400004); // break on LEDs output
-   wire breakpoint = (EM_addr == 32'h400008); // break on character output
+   // wire breakpoint = (EM_addr == 32'h400008); // break on character output
    // wire breakpoint = (DE_PC   == 32'h000000); // break on address reached
    reg step = 1'b1;
    reg [31:0] dbg_cmd = 0;

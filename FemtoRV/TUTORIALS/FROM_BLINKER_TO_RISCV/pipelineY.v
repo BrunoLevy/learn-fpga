@@ -274,20 +274,23 @@ module Processor (
    
    always @(posedge clk) begin
 
-      DE_rdId  <= D_rdId;
-      DE_rs1Id <= D_rs1Id;
-      DE_rs2Id <= D_rs2Id;
-
-      DE_funct3    <= FD_instr[14:12];
-      DE_funct3_is <= 8'b00000001 << FD_instr[14:12];
-      DE_funct7    <= FD_instr[30];
-      DE_csrId     <= {FD_instr[27],FD_instr[21]};
-
-      DE_isRV32M   <= FD_instr[25];
-
-      DE_nop <= 1'b0;
       
       if(!D_stall) begin
+	 
+	 DE_rdId  <= D_rdId;
+	 DE_rs1Id <= D_rs1Id;
+	 DE_rs2Id <= D_rs2Id;
+	 
+	 DE_funct3    <= FD_instr[14:12];
+	 DE_funct3_is <= 8'b00000001 << FD_instr[14:12];
+	 DE_funct7    <= FD_instr[30];
+	 DE_csrId     <= {FD_instr[27],FD_instr[21]};
+
+	 DE_isRV32M   <= FD_instr[25];
+
+	 DE_nop <= 1'b0;
+
+	 
 	 DE_isALUreg <= D_isALUreg;
 	 DE_isALUimm <= D_isALUimm;
 	 DE_isBranch <= D_isBranch;
@@ -303,6 +306,49 @@ module Processor (
 	 // wbEnable = !isBranch & !isStore
 	 // Note: EM_wbEnable = DE_wbEnable && (rdId != 0)
 	 DE_wbEnable <= (FD_instr[5:2]  != 4'b1000);
+
+	 DE_IorSimm <= {
+			{21{FD_instr[31]}}, 
+			D_isStore ? {FD_instr[30:25],FD_instr[11:7]} : 
+			             FD_instr[30:20]
+			};
+
+`ifdef CONFIG_PC_PREDICT      
+	 // Used in case of misprediction: 
+	 //    PC+Bimm if predict not taken, PC+4 if predict taken
+	 DE_PCplus4orBimm <= FD_PC + (D_predictBranch ? 4 : D_Bimm);
+	 DE_predictBranch <= D_predictBranch;
+ `ifdef CONFIG_GSHARE      
+	 DE_BHTindex  <= BHT_index(FD_PC);
+ `endif
+ `ifdef CONFIG_RAS
+	 DE_predictRA <= RAS_0;
+	 if(!FD_nop && !D_flush) begin
+	    if(D_isJAL && D_rdId==1) begin
+	       RAS_3 <= RAS_2;
+	       RAS_2 <= RAS_1;
+	       RAS_1 <= RAS_0;
+	       RAS_0 <= FD_PC + 4;
+	    end 
+	    if(D_isJALR && D_rdId==0 && (D_rs1Id == 1 || D_rs1Id==5)) begin
+	       RAS_0 <= RAS_1;
+	       RAS_1 <= RAS_2;
+	       RAS_2 <= RAS_3;
+	    end
+	 end 
+ `endif
+`else
+	 DE_PCplusBorJimm <= FD_PC + (D_isJAL ? D_Jimm : D_Bimm);
+`endif      
+
+	 // Code below is equivalent to:
+	 // DE_PCplus4orUimm = 
+	 //    ((isLUI ? 0 : FD_PC)) + ((isJAL | isJALR) ? 4 : Uimm)
+	 // (knowing that isLUI | isAUIPC | isJAL | isJALR)
+	 DE_PCplus4orUimm <= ({32{FD_instr[6:5]!=2'b01}} & FD_PC) + 
+                             (D_isJALorJALR ? 4 : D_Uimm);
+
+	 DE_isJALorJALRorLUIorAUIPC <= FD_instr[2];
       end
       
       if(E_flush | FD_nop) begin
@@ -319,54 +365,14 @@ module Processor (
 	 DE_isCSRRS  <= 1'b0;
 	 DE_isEBREAK <= 1'b0;
 	 DE_wbEnable <= 1'b0;
+	 DE_isRV32M  <= 1'b0;
+	 DE_isJALorJALRorLUIorAUIPC <= 1'b0;
       end
       
       if(wbEnable) begin
 	 RegisterBank[wbRdId] <= wbData;
       end
 
-      DE_IorSimm <= {
-		     {21{FD_instr[31]}}, 
-		     D_isStore ? {FD_instr[30:25],FD_instr[11:7]} : 
-			          FD_instr[30:20]
-		    };
-
-`ifdef CONFIG_PC_PREDICT      
-      // Used in case of misprediction: 
-      //    PC+Bimm if predict not taken, PC+4 if predict taken
-      DE_PCplus4orBimm <= FD_PC + (D_predictBranch ? 4 : D_Bimm);
-      DE_predictBranch <= D_predictBranch;
- `ifdef CONFIG_GSHARE      
-      DE_BHTindex  <= BHT_index(FD_PC);
- `endif
- `ifdef CONFIG_RAS
-      DE_predictRA <= RAS_0;
-      if(!D_stall && !FD_nop && !D_flush) begin
-	 if(D_isJAL && D_rdId==1) begin
-	    RAS_3 <= RAS_2;
-	    RAS_2 <= RAS_1;
-	    RAS_1 <= RAS_0;
-	    RAS_0 <= FD_PC + 4;
-	 end 
-	 if(D_isJALR && D_rdId==0 && (D_rs1Id == 1 || D_rs1Id==5)) begin
-	    RAS_0 <= RAS_1;
-	    RAS_1 <= RAS_2;
-	    RAS_2 <= RAS_3;
-	 end
-      end 
- `endif
-`else
-      DE_PCplusBorJimm <= FD_PC + (D_isJAL ? D_Jimm : D_Bimm);
-`endif      
-
-      // Code below is equivalent to:
-      // DE_PCplus4orUimm = 
-      //    ((isLUI ? 0 : FD_PC)) + ((isJAL | isJALR) ? 4 : Uimm)
-      // (knowing that isLUI | isAUIPC | isJAL | isJALR)
-      DE_PCplus4orUimm <= ({32{FD_instr[6:5]!=2'b01}} & FD_PC) + 
-                          (D_isJALorJALR ? 4 : D_Uimm);
-
-      DE_isJALorJALRorLUIorAUIPC <= FD_instr[2];
    end
 
 /******************************************************************************/
@@ -513,21 +519,28 @@ module Processor (
    
    wire E_isDivide  = DE_isALUreg & DE_isRV32M & DE_instr[14]; 
    wire E_divBusy   = |EE_quotient_msk; 
+
+   reg 	EE_divFinished = 1'b0;
    
    always @(posedge clk) begin
-      if (E_isDivide & !E_divBusy) begin
+      if (E_isDivide & !E_divBusy & !dataHazard & !EE_divFinished) begin
 	 EE_dividend <=   ~DE_instr[12] & E_rs1[31] ? -E_rs1 : E_rs1;
 	 EE_divisor  <= {(~DE_instr[12] & E_rs2[31] ? -E_rs2 : E_rs2), 31'b0};
 	 EE_quotient <= 0;
 	 EE_quotient_msk <= 1 << 31;
 	 EE_div_sign <= ~DE_instr[12] & (DE_instr[13] ? E_rs1[31] : 
                          (E_rs1[31] != E_rs2[31]) & |E_rs2)       ;
+	 EE_divFinished <= 1'b0;
       end else begin
 	 EE_dividend     <= E_dividendN;
 	 EE_divisor      <= EE_divisor >> 1;
 	 EE_quotient     <= E_quotientN;
 	 EE_quotient_msk <= EE_quotient_msk >> 1;
-      end
+	 EE_divFinished  <= EE_quotient_msk[0];
+      end 
+
+      if(EE_divFinished) EE_divFinished <= 1'b0;
+      
    end
       
    reg  [31:0] EE_divResult;
@@ -542,7 +555,7 @@ module Processor (
    
    wire [31:0] E_aluOut = (DE_isALUreg & DE_isRV32M) ? E_aluOut_muldiv : E_aluOut_base;
 
-   wire divide = E_divBusy | E_isDivide;
+   wire aluBusy = E_divBusy | (E_isDivide & !EE_divFinished);
    
    /*********** Branch, JAL, JALR ***********************************/
 
@@ -735,7 +748,8 @@ module Processor (
    initial begin
       $readmemh("DATARAM.hex",DATARAM);
    end
-   
+
+   //HERE   
    always @(posedge clk) begin
       MW_nop       <= EM_nop;
       MW_rdId      <= EM_rdId;
@@ -798,15 +812,15 @@ module Processor (
    // like Samsoniuk's DarkRiscV). Reduces critical path.
    // wire dataHazard = !FD_nop && (DE_isLoad || DE_isCSRRS);
    
-   assign F_stall = divide | dataHazard | halt;
-   assign D_stall = divide | dataHazard | halt;
-   assign E_stall = divide;
+   assign F_stall = aluBusy | dataHazard | halt;
+   assign D_stall = aluBusy | dataHazard | halt;
+   assign E_stall = aluBusy;
 
    // Here we need to use E_correctPC (the registered version
    // DE_correctPC is not ready on time).
    assign D_flush = E_correctPC;
    assign E_flush = E_correctPC | dataHazard;
-   assign M_flush = divide;
+   assign M_flush = aluBusy;
 
 /******************************************************************************/
 
@@ -849,7 +863,7 @@ module Processor (
 	 $write("[W] PC=%h ", MW_PC);
 	 $write("     ");
 	 riscv_disasm(MW_instr,MW_PC);
-	 if(wbEnable) $write("    x%0d <- 0x%0h",riscv_disasm_rdId(MW_instr),wbData);
+	 if(wbEnable) $write("    x%0d <- 0x%0h (%0d)",riscv_disasm_rdId(MW_instr),wbData,wbData);
 	 $write("\n");
 
          $write("( %c) ",M_flush?"f":" ");
@@ -867,10 +881,9 @@ module Processor (
 		     riscv_disasm_readsRs1(DE_instr) ? (E_M_fwd_rs1 ? "M" : E_W_fwd_rs1 ? "W" : " ") : " ", 
 		     riscv_disasm_readsRs2(DE_instr) ? (E_M_fwd_rs2 ? "M" : E_W_fwd_rs2 ? "W" : " ") : " "
 	 );
-	 
 	 riscv_disasm(DE_instr,DE_PC);
 	 if(DE_instr != NOP) begin
-	    $write("  rs1=0x%h  rs2=0x%h  ",E_rs1, E_rs2);
+	    $write("  rs1=0x%h (%0d) rs2=0x%h (%0d) ",E_rs1,E_rs1,E_rs2,E_rs2);
 `ifdef CONFIG_PC_PREDICT			     
 	    if(riscv_disasm_isBranch(DE_instr)) begin
 	       $write(" taken:%0d  %s",
@@ -879,7 +892,8 @@ module Processor (
                );
 	    end
 `endif			     
-	 end
+	 end 
+	 if(aluBusy) $write(" %b",EE_quotient_msk);
 	 $write("\n");
 
          $write("(%c%c) ",D_stall ? "s":" ",D_flush ? "f":" ");	 	 	 
