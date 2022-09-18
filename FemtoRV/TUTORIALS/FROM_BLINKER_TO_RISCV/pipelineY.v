@@ -494,19 +494,20 @@ module Processor (
    wire signed [63:0] E_multiply = E_mul_signed1 * E_mul_signed2;
 
    /********** DIV *************/
-
+   // Heavily inspired by Claire Wolf's PicoRV. 
+   // Some ideas by Matthias Koch.
+    
    reg [31:0] EE_dividend;
    reg [62:0] EE_divisor;
    reg [31:0] EE_quotient;
    reg [31:0] EE_quotient_msk;
 
    wire E_divstep_do = (EE_divisor <= {31'b0, EE_dividend});
-
-   wire [31:0] E_dividendN     = E_divstep_do ? EE_dividend - EE_divisor[31:0] : EE_dividend;
-   wire [31:0] E_quotientN     = E_divstep_do ? EE_quotient | EE_quotient_msk  : EE_quotient;
+   wire [31:0] E_dividendN = E_divstep_do ? EE_dividend - EE_divisor[31:0] : EE_dividend;
+   wire [31:0] E_quotientN = E_divstep_do ? EE_quotient | EE_quotient_msk  : EE_quotient;
 
    reg  EE_div_sign;
-   reg 	EE_divBusy = 1'b0;
+   reg 	EE_divBusy     = 1'b0;
    reg 	EE_divFinished = 1'b0;
 
    always @(posedge clk) begin
