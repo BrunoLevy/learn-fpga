@@ -82,11 +82,8 @@ void graphics_set_pixel(int x, int y, float r, float g, float b) {
    if(bench_run) {
        if(y & 1) {
 	  if(x == graphics_width-1) {
-	     printf("*");
+	     printf("%d",y/2);
 	  }
-//	  if(y == graphics_height-1) {
-//	     printf("\n");
-//	  }
        }
        return;
    }
