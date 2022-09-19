@@ -197,6 +197,7 @@ function riscv_disasm_isLUI;    input [31:0] I; riscv_disasm_isLUI   =(I[6:0]==7
 function riscv_disasm_isLoad;   input [31:0] I; riscv_disasm_isLoad  =(I[6:0]==7'b0000011); endfunction
 function riscv_disasm_isStore;  input [31:0] I; riscv_disasm_isStore =(I[6:0]==7'b0100011); endfunction
 function riscv_disasm_isSYSTEM; input [31:0] I; riscv_disasm_isSYSTEM=(I[6:0]==7'b1110011); endfunction
+function riscv_disasm_isRV32M;  input [31:0] I; riscv_disasm_isRV32M=riscv_disasm_isALUreg(I) && FD_instr[25]; endfunction
 
 /* Utility functions: register indices */
 function [4:0] riscv_disasm_rs1Id; input [31:0] I; riscv_disasm_rs1Id = I[19:15];      endfunction

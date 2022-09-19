@@ -119,6 +119,7 @@ exit_Z:
 	
         j mandelstart
 
+.section .data
 colormap:
 .ascii " .,:;ox%#@"
 

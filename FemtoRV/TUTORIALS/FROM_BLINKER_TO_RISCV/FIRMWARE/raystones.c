@@ -80,6 +80,14 @@ void graphics_set_pixel(int x, int y, float r, float g, float b) {
    uint8_t B = (uint8_t)(255.0f * b);
    // graphics output deactivated for bench run
    if(bench_run) {
+       if(y & 1) {
+	  if(x == graphics_width-1) {
+	     printf("*");
+	  }
+//	  if(y == graphics_height-1) {
+//	     printf("\n");
+//	  }
+       }
        return;
    }
 #ifdef graphics_double_lines
@@ -163,7 +171,7 @@ static inline stats_end_frame() {
    uint64_t pixels     = graphics_width * graphics_height;
    uint64_t kRAYSTONES = (pixels*1000000000)/cycles;
    printf(
-       "%dx%d      %s     ",
+       "\n%dx%d      %s     ",
        graphics_width,graphics_height,
        bench_run ?
            "no gfx output (measurement is accurate)" :

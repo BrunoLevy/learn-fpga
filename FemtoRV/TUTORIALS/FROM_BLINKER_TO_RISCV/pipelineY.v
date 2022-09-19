@@ -279,8 +279,9 @@ module Processor (
 	 DE_csrId     <= {FD_instr[27],FD_instr[21]};
 
 `ifdef CONFIG_RV32M	 
-	 DE_isRV32M   <= D_isALUreg & FD_instr[25];
-	 DE_isDivide  <= D_isALUreg & FD_instr[25] & FD_instr[14]; 
+	 DE_isRV32M <= D_isALUreg & FD_instr[25];
+	 DE_isMUL   <= D_isALUreg & FD_instr[25] & !FD_instr[14];
+	 DE_isDIV   <= D_isALUreg & FD_instr[25] &  FD_instr[14];
 `endif
 	 
 	 DE_nop <= 1'b0;
@@ -361,8 +362,10 @@ module Processor (
 	 DE_isEBREAK <= 1'b0;
 	 DE_wbEnable <= 1'b0;
 `ifdef CONFIG_RV32M	 
-	 DE_isRV32M  <= 1'b0;
-	 DE_isDivide <= 1'b0;
+	 DE_isRV32M <= 1'b0;
+	 DE_isMUL   <= 1'b0;	 
+	 DE_isDIV   <= 1'b0;
+
 `endif	 
 	 DE_isJALorJALRorLUIorAUIPC <= 1'b0;
       end
@@ -401,7 +404,8 @@ module Processor (
 
 `ifdef CONFIG_RV32M   
    reg DE_isRV32M;
-   reg DE_isDivide;
+   reg DE_isMUL;   
+   reg DE_isDIV;
 `endif
    
    reg DE_wbEnable; // !isBranch && !isStore && rdId != 0
@@ -515,21 +519,15 @@ module Processor (
    reg [31:0] EE_quotient;
    reg [31:0] EE_quotient_msk;
 
-   wire E_divstep_do = (EE_divisor <= {31'b0, EE_dividend});
-   
-   wire [31:0] E_dividendN = 
-	       E_divstep_do ? EE_dividend - EE_divisor[31:0] : EE_dividend;
-   
-   wire [31:0] E_quotientN = 
-	       E_divstep_do ? EE_quotient | EE_quotient_msk  : EE_quotient;
-
    reg  EE_div_sign;
    reg 	EE_divBusy     = 1'b0;
    reg 	EE_divFinished = 1'b0;
 
+   wire E_divstep_do = (EE_divisor <= {31'b0, EE_dividend});
+   
    always @(posedge clk) begin
       if (!EE_divBusy) begin
-	 if(DE_isDivide & !dataHazard & !EE_divFinished) begin
+	 if(DE_isDIV & !dataHazard & !EE_divFinished) begin
 	    EE_quotient_msk <= 1 << 31;
 	    EE_divBusy     <= 1'b1;	    
 	 end
@@ -539,16 +537,16 @@ module Processor (
 	 EE_div_sign <= ~DE_funct3[0] & (DE_funct3[1] ? E_rs1[31] : 
                          (E_rs1[31] != E_rs2[31]) & |E_rs2)       ;
       end else begin
-	 EE_dividend     <= E_dividendN;
-	 EE_divisor      <= EE_divisor >> 1;
-	 EE_quotient     <= E_quotientN;
+	 EE_dividend <= E_divstep_do ? EE_dividend-EE_divisor[31:0]:EE_dividend;
+	 EE_divisor  <= EE_divisor >> 1;
+	 EE_quotient <= E_divstep_do ? EE_quotient|EE_quotient_msk :EE_quotient;
 	 EE_quotient_msk <= EE_quotient_msk >> 1;
 	 EE_divBusy <= EE_divBusy & !EE_quotient_msk[0];
       end 
       EE_divFinished <= EE_quotient_msk[0];
    end 
 
-   wire [2:0] E_divsel = {DE_isDivide,DE_funct3[1],EE_div_sign};
+   wire [2:0] E_divsel = {DE_isDIV,DE_funct3[1],EE_div_sign};
    
    wire [31:0] E_aluOut_muldiv =
      (  DE_funct3_is[0]    ? E_multiply[31: 0] : 32'b0) | // 0:MUL
@@ -560,7 +558,7 @@ module Processor (
    
    wire [31:0] E_aluOut = DE_isRV32M ? E_aluOut_muldiv : E_aluOut_base;
 
-   wire aluBusy = EE_divBusy | (DE_isDivide & !EE_divFinished);
+   wire aluBusy = EE_divBusy | (DE_isDIV & !EE_divFinished);
 
 `else 
 
@@ -637,7 +635,7 @@ module Processor (
 	 EM_rs2      <= E_rs2;
 	 EM_Eresult  <= E_result;
 	 EM_addr     <= E_addr;
-	 EM_Mdata    <= DATARAM[E_addr[15:2]];
+	 EM_Mdata    <= DATARAM[E_addr[15:2]]; 
 	 EM_isLoad   <= DE_isLoad;
 	 EM_isStore  <= DE_isStore;
 	 EM_isCSRRS  <= DE_isCSRRS;
@@ -920,8 +918,9 @@ module Processor (
                );
 	    end
 `endif			     
-	 end // if (DE_instr != NOP)
-`ifdef CONFIG_RV32M	 
+	 end 
+`ifdef CONFIG_RV32M
+	 if(DE_isRV32M) $write(" %d%d ",EE_divBusy, EE_divFinished);
 	 if(aluBusy) $write(" %b",EE_quotient_msk);
 `endif	 
 	 $write("\n");
@@ -964,6 +963,8 @@ module Processor (
    wire breakpoint = (EM_addr == 32'h400008); // break on character output
    // wire breakpoint = (DE_PC   == 32'h000000); // break on address reached
    // wire breakpoint = DE_isRV32M && DE_isALUreg;
+   // wire breakpoint = DE_isDIV;
+   
    reg step = 1'b1;
    reg [31:0] dbg_cmd = 0;
 
@@ -1006,6 +1007,9 @@ module Processor (
    integer nbLoad = 0;
    integer nbStore = 0;
    integer nbLoadHazard = 0;
+   integer nbRV32M = 0;
+   integer nbMUL = 0;
+   integer nbDIV = 0;
    
    always @(posedge clk) begin
       if(resetn & !D_stall) begin
@@ -1036,7 +1040,13 @@ module Processor (
       if(riscv_disasm_isStore(MW_instr)) begin
 	 nbStore <= nbStore + 1;
       end
-
+      if(riscv_disasm_isRV32M(MW_instr)) begin
+	 if(MW_instr[14]) begin
+	    nbDIV <= nbDIV + 1;
+	 end else begin
+	    nbMUL <= nbMUL + 1;
+	 end
+      end
       if(dataHazard) begin
 	 nbLoadHazard <= nbLoadHazard + 1;
       end
@@ -1053,13 +1063,17 @@ module Processor (
 		   nbJALRhit*100.0/nbJALR	 );
 	 $display("Load hzrds = %3.3f\%%", nbLoadHazard*100.0/nbLoad);
 	 $display("CPI        = %3.3f",(cycle*1.0)/(instret*1.0));
-	 $display("Instr. mix = (Branch:%3.3f\%% JAL:%3.3f\%% JALR:%3.3f\%% Load:%3.3f\%% Store:%3.3f\%%)",
-		  nbBranch*100.0/instret,
-		     nbJAL*100.0/instret, 
-		    nbJALR*100.0/instret,
-		    nbLoad*100.0/instret,		  		  
-		   nbStore*100.0/instret
-	 );
+	 $write("Instr. mix = (");
+	 $write("Branch:%3.3f\%% ",    nbBranch*100.0/instret);
+	 $write("JAL:%3.3f\%% ",       nbJAL*100.0/instret);
+	 $write("JALR:%3.3f\%% ",      nbJALR*100.0/instret);
+	 $write("Load:%3.3f\%% ",      nbLoad*100.0/instret);
+	 $write("Store:%3.3f\%% ",     nbStore*100.0/instret);
+`ifdef CONFIG_RV32I	 
+	 $write("MUL(HSU):%3.3f\%% ", nbMUL*100.0/instret);	 
+	 $write("DIV/REM:%3.3f\%% ",   nbDIV*100.0/instret);
+`endif	 
+	 $write(")\n");
 	 $finish();
       end
    end
