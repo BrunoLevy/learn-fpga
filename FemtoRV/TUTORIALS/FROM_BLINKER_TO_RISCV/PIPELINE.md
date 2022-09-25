@@ -1904,7 +1904,121 @@ history.
 
 ## Step 9: return address stack
 
-_WIP_
+There is a reasonably way of gaining more performance by optimizing the `JALR`
+instruction, used to implement function calls. The idea is to have in the
+processor a small stack (the Return Address Stack, or RAS for short), typically
+of depth 4. Each time a function call is detected, the address of the function is pushed to the top
+of the stack. When the function returns (using `JALR`), the address is ready
+on the top of the stack (and is popped). The RAS is simply declared as 4 32-bit
+registers, as follows:
+
+```verilog
+/* D */
+   reg [31:0] RAS_0;
+   reg [31:0] RAS_1;
+   reg [31:0] RAS_2;
+   reg [31:0] RAS_3;
+```
+
+The two signals `D_JumpOrBranchNow` and `D_JumpOrBranchAddress`
+are renamed as `D_predictPC` and `D_PCprediction` (clearer
+I think). 
+
+```verilog
+/* D */
+
+   wire D_predictPC = !FD_nop && (
+      D_isJAL || D_isJALR || (D_isBranch && D_predictBranch) 
+   );
+   wire [31:0] D_PCprediction = 
+                D_isJALR ? RAS_0 : 
+	        (FD_PC + (D_isJAL ? D_Jimm : D_Bimm));
+```
+
+The predicted return address is passed to `E`, so that
+`E` will be able to compare it with the actual return address:
+
+```verilog
+/* D */
+always @(posedge clk) begin
+   ...
+   DE_predictRA <= RAS_0;
+end
+```
+
+Now, in execute, we need to do two different things. First, determine
+whether PC prediction was correct, and if not assert `E_correctPC`
+and send `E_PCcorrection` to `F` (they were called before
+`E_jumpOrBranch` and `E_jumpOrBranchAddress`): 
+
+```verilog
+/* E */
+  wire [31:0] E_JALRaddr = {E_aluPlus[31:1],1'b0};
+  wire E_correctPC = (
+     (DE_isJALR    && (DE_predictRA != E_JALRaddr)   ) || 
+     (DE_isBranch  && (E_takeBranch^DE_predictBranch))
+  );
+  wire [31:0] E_PCcorrection = DE_isBranch ? DE_PCplus4orBimm : E_JALRaddr;
+```
+
+We need also to update the RAS, as follows:
+
+```verilog
+/* E */
+ always @(posedge clk) begin
+    ...
+    if(!FD_nop && !D_flush) begin
+       if(D_isJAL && (D_rdId==1 || D_rdId==5)) begin
+          RAS_3 <= RAS_2;
+          RAS_2 <= RAS_1;
+          RAS_1 <= RAS_0;
+          RAS_0 <= FD_PC + 4;
+        end 
+        if(D_isJALR && D_rdId==0 && (D_rs1Id == 1 || D_rs1Id==5)) begin
+           RAS_0 <= RAS_1;
+           RAS_1 <= RAS_2;
+           RAS_2 <= RAS_3;
+        end
+    end
+    ...
+  end    
+```
+
+We suppose that `JAL x1,addr` or `JAL x5,addr`
+implements a function call and `JALR x0,x1,imm` or `JALR x0,x5,imm`
+returns from a function. Why `x5` ? In fact, both `x1` and `x5` can
+be used as link registers, it is explained in table 2.1, P. 17 or the
+RISCV specification. 
+
+The new version is implemented in [pipeline9.v](pipeline9.v). This new
+version can be configured to enable / disable different features:
+
+| flag                | description                                          |
+|---------------------|------------------------------------------------------|
+| `CONFIG_PC_PREDICT` | enables the `D` -> `F` path                          |
+| `CONFIG_RAS`        | return address stack (needs `CONFIG_PC_PREDICT`)     |
+| `CONFIG_GSHARE`     | gshare branch prediction (needs `CONFIG_PC_PREDICT`) |
+| `CONFIG_INITIALIZE` | if set, registers are initialized to 0               |
+|                     | (it is required by some synthesis tools)             |
+
+Now we can test the impact of our return address stack:
+
+|  prediction strategy     | raystones| CPI   | dhrystones(DMIPS/MHz) |  CPI  |
+|--------------------------|----------|-------|-----------------------|-------|
+| gshare                   |  7.185   | 1.121 | 1.562                 | 1.116 |
+| gshare+RAS               |  7.374   | 1.092 | 1.606                 | 1.086 |
+
+
+![](verilog_riscv_debugger.png)
+
+In addition, this version has a built-in "debugger" that works with Verilator (only).
+It can be enabled by setting `CONFIG_DEBUG`. It lets you run the core clock by
+clock and inspect the different stages. It also displays register forwarding and
+pipeline control signals. 
+
+## Step 10: RV32M
+
+
 
 ## Step X: optimizing for fmax
 
