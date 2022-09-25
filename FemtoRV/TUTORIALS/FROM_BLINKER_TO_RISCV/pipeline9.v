@@ -841,8 +841,6 @@ module Processor (
    // wire breakpoint = (EM_addr == 32'h400004); // break on LEDs output
    wire breakpoint = (EM_addr == 32'h400008); // break on character output
    // wire breakpoint = (DE_PC   == 32'h000000); // break on address reached
-   // wire breakpoint = DE_isRV32M && DE_isALUreg;
-   // wire breakpoint = DE_isDIV;
    
    reg step = 1'b1;
    reg [31:0] dbg_cmd = 0;

@@ -1988,7 +1988,7 @@ We suppose that `JAL x1,addr` or `JAL x5,addr`
 implements a function call and `JALR x0,x1,imm` or `JALR x0,x5,imm`
 returns from a function. Why `x5` ? In fact, both `x1` and `x5` can
 be used as link registers, it is explained in table 2.1, P. 17 or the
-RISCV specification. 
+RISCV specification (thank you Bruce Hoult).
 
 The new version is implemented in [pipeline9.v](pipeline9.v). This new
 version can be configured to enable / disable different features:
@@ -2009,16 +2009,53 @@ Now we can test the impact of our return address stack:
 | gshare+RAS               |  7.374   | 1.092 | 1.606                 | 1.086 |
 
 
+## A debugger written in VERILOG
+
 ![](verilog_riscv_debugger.png)
 
-In addition, this version has a built-in "debugger" that works with Verilator (only).
+In addition, this version has a built-in "debugger" written in VERILOG,
+that works with Verilator (only).
 It can be enabled by setting `CONFIG_DEBUG`. It lets you run the core clock by
 clock and inspect the different stages. It also displays register forwarding and
-pipeline control signals. 
+pipeline control signals.
+
+The debugger has only two commands:
+- press `<return>` to advance to the next clock
+- `g` advances to the next breakpoint
+
+Breakpoints can be declared in the VERILOG source, by asserting the `breakpoint` signal,
+see line 840 in [pipeline9.v](pipeline9.v).
+
+For instance, one can break whenever
+an instruction at a given address is executed:
+
+```verilog
+  wire breakpoint = (DE_PC   == 32'h000000); // break on address reached
+```
+
+or when data at a given address is read or written:
+
+```verilog
+   wire breakpoint = (EM_addr == 32'h......);
+```
+
+Break on LEDs output:
+```verilog
+   wire breakpoint = (EM_addr == 32'h400004);
+```
+
+Break on character output:
+```verilog
+   wire breakpoint = (EM_addr == 32'h400008);
+```
+
+In the next step, we will implement RV32M, with a multi-cycle ALU
+that needs (slightly) more complicated pipeline control, so it will
+be good to have that ! 
 
 ## Step 10: RV32M
 
-
+_WIP_
 
 ## Step X: optimizing for fmax
 
