@@ -9,9 +9,9 @@
 `define CONFIG_RAS        // return address stack
 `define CONFIG_GSHARE     // gshare branch prediction (or BTFNT if not set)
 
-//`define CONFIG_RV32M      // RV32M instruction set (MUL,DIV,REM)
+`define CONFIG_RV32M      // RV32M instruction set (MUL,DIV,REM)
 
-//`define CONFIG_DEBUG      // debug mode, displays execution
+`define CONFIG_DEBUG      // debug mode, displays execution
                             // See "debugger" section in source 
                             // to define breakpoints
 
@@ -960,10 +960,10 @@ module Processor (
 
    // wire breakpoint = 1'b0; // no breakpoint
    // wire breakpoint = (EM_addr == 32'h400004); // break on LEDs output
-   wire breakpoint = (EM_addr == 32'h400008); // break on character output
+   // wire breakpoint = (EM_addr == 32'h400008); // break on character output
    // wire breakpoint = (DE_PC   == 32'h000000); // break on address reached
    // wire breakpoint = DE_isRV32M && DE_isALUreg;
-   // wire breakpoint = DE_isDIV;
+   wire breakpoint = DE_isDIV;
    
    reg step = 1'b1;
    reg [31:0] dbg_cmd = 0;

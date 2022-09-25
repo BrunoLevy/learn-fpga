@@ -2055,7 +2055,160 @@ be good to have that !
 
 ## Step 10: RV32M
 
-_WIP_
+We attained 7.374 raystones using pipelining, register fowarding, branch
+prediction and return address stack. Let us see now if we can make our processor
+faster by supporting more instructions, that is, integer multiplication, division
+and remainder. These instructions are part of the `RV32M` extension. Once our core
+will support them, we will just have to recompile our code targeting this architecture,
+then the compiler will generate a `MUL` instruction instead of calling `__mulsi3` from
+gcc library. So we have 8 new instructions to support:
+
+| instruction       | description        | comment                  | funct3 |
+|-------------------|--------------------|--------------------------|--------|
+| MUL rd,rs1,rs2    | rd <- rs1 * rs2    | signed, 32 lsbs          | 000    |
+| MULH rd,rs1,rs2   | rd <- rs1 * rs2    | signed, 32 msbs          | 001    |
+| MULHSU rd,rs1,rs2 | rd <- rs1 * rs2    | signed*unsigned, 32 msbs | 010    |
+| MULHU rd,rs1,rs2  |                    | unsigned, 32 msbs        | 011    |
+| DIV rd,rs1,rs2    | rd <- rs1 / rs2    | signed version           | 100    |
+| DIVU rd,rs1,rs2   | rd <- rs1 / rs2    | unsigned                 | 101    |
+| REM rd,rs1,rs2    | rd <- rs1 % rs2    | signed                   | 110    |
+| REMU rd,rs1,rs2   | rd <- rs1 % rs2    | unsigned                 | 111    |
+
+There is multiplication, division and remainder. They exist in signed and unsigned versions.
+For multiplication, 32 bits times 32 bits gives 64 bits, so there are two instructions
+(`MUL` to get the lsbs and `MULH` to get the msbs). There are three variants of `MULH`,
+signed x signed, signed x unsigned and unsigned x unsigned.
+
+First thing we need to do is decoding these new instructions. They are all encoded
+with `opcode` = `7'b0110011`, that is `ALUreg`. The difference is `funct7` that
+is `0000001` for all RV32M instructions. Then the instruction is encoded by `funct3`,
+as expected (we have 8 new instructions and 8 possible values of `funct3`, good !).
+Note that `funct3[2]` says whether it is a multiplication or a division/remainder.
+
+Now that we know how to decode the RV32M instructions, we need to create circuitry
+to compute multiplications, divisions and remainder.
+
+For multiplication, most FPGAs have builtin blocs (called DSPs for "Digital Signal Processing" because that's what they are good at)
+that can compute them in 1 cycle, just using `A <= B * C;` in VERILOG (provided you passed the right flags to yosys), and it is good,
+because without them we would need to compute the product bit-by-bit, this would cost us 32 cycles per multiplication, and we would not
+gain much as compared to software multiplication (`__mulsi`) with good branch prediction. So we will compute a 33 bits times 33 bits
+product. Why 33 bits ? Matthias Koch had the idea of adding a sign bit, depending on the operation and the sign of the operands:
+
+```verilog
+   /* E */
+   wire E_isMULH   = DE_funct3_is[1];
+   wire E_isMULHSU = DE_funct3_is[2];
+   
+   wire E_mul_sign1 = E_rs1[31] &  E_isMULH;
+   wire E_mul_sign2 = E_rs2[31] & (E_isMULH | E_isMULHSU);
+
+   wire signed [32:0] E_mul_signed1 = {E_mul_sign1, E_rs1};
+   wire signed [32:0] E_mul_signed2 = {E_mul_sign2, E_rs2};
+   wire signed [63:0] E_multiply = E_mul_signed1 * E_mul_signed2;
+```
+
+For division and remainder, we have no choice, we need to create multi-cycle circuitry for them. We are using the classical algorithm,
+that takes 33 cycles for a division. Our implementation is highly inspired by Claire Wolf's picorv and includes some ideas by Matthias
+Koch:
+
+```verilog
+
+   /* E */
+   reg [31:0] EE_dividend;
+   reg [62:0] EE_divisor;
+   reg [31:0] EE_quotient;
+   reg [31:0] EE_quotient_msk;
+
+   reg  EE_div_sign;
+   reg 	EE_divBusy     = 1'b0;
+   reg 	EE_divFinished = 1'b0;
+
+   wire E_divstep_do = (EE_divisor <= {31'b0, EE_dividend});
+   
+   always @(posedge clk) begin
+      if (!EE_divBusy) begin
+	 if(DE_isDIV & !dataHazard & !EE_divFinished) begin
+	    EE_quotient_msk <= 1 << 31;
+	    EE_divBusy     <= 1'b1;	    
+	 end
+	 EE_dividend <=   ~DE_funct3[0] & E_rs1[31] ? -E_rs1 : E_rs1;
+	 EE_divisor  <= {(~DE_funct3[0] & E_rs2[31] ? -E_rs2 : E_rs2), 31'b0};
+	 EE_quotient <= 0;
+	 EE_div_sign <= ~DE_funct3[0] & (DE_funct3[1] ? E_rs1[31] : 
+                         (E_rs1[31] != E_rs2[31]) & |E_rs2)       ;
+      end else begin
+	 EE_dividend <= E_divstep_do ? EE_dividend-EE_divisor[31:0]:EE_dividend;
+	 EE_divisor  <= EE_divisor >> 1;
+	 EE_quotient <= E_divstep_do ? EE_quotient|EE_quotient_msk :EE_quotient;
+	 EE_quotient_msk <= EE_quotient_msk >> 1;
+	 EE_divBusy <= EE_divBusy & !EE_quotient_msk[0];
+      end 
+      EE_divFinished <= EE_quotient_msk[0];
+   end 
+```
+
+Note that for division, the execute stage stores some state in registers. To make
+the difference with wires, this registers are prefixed with `EE`.
+
+The different instructions are multiplexed as follows to form the output of the ALU.
+In addition, the `aluBusy` signal indicates whether a division is currently running.
+
+```verilator
+   wire [2:0] E_divsel = {DE_isDIV,DE_funct3[1],EE_div_sign};
+   
+   wire [31:0] E_aluOut_muldiv =
+     (  DE_funct3_is[0]    ? E_multiply[31: 0] : 32'b0) | // 0:MUL
+     ( |DE_funct3_is[3:1]  ? E_multiply[63:32] : 32'b0) | // 1:MH, 2:MHSU, 3:MHU
+     (  E_divsel == 3'b100 ?  EE_quotient      : 32'b0) | // DIV
+     (  E_divsel == 3'b101 ? -EE_quotient      : 32'b0) | // DIV (negative)
+     (  E_divsel == 3'b110 ?  EE_dividend      : 32'b0) | // REM
+     (  E_divsel == 3'b111 ? -EE_dividend      : 32'b0) ; // REM (negative)
+   
+   wire [31:0] E_aluOut = DE_isRV32M ? E_aluOut_muldiv : E_aluOut_base;
+
+   wire aluBusy = EE_divBusy | (DE_isDIV & !EE_divFinished);
+```
+
+Whenever a division is running, the instruction needs to remain in `E`
+(`E` is stalled). It means `F` and `D` need to be also stalled, and `M` needs
+to be flushed. We create the new pipeline control signals (`E_stall` and `M_flush`),
+and connect all the pipeline control signals as follows:
+
+```verilator
+   assign F_stall = aluBusy | dataHazard | halt;
+   assign D_stall = aluBusy | dataHazard | halt;
+   assign E_stall = aluBusy;
+   
+   assign D_flush = E_correctPC;
+   assign E_flush = E_correctPC | dataHazard;
+   assign M_flush = aluBusy;
+```
+
+The new version is in [pipeline10.v](pipeline10.v). You will first need
+to reconfigure the system to target RV32IM (instead of RV32I):
+
+```
+  $ cd learn-fpga/FemtoRV
+  $ make ICEBREAKER.firmware_config
+  $ cd TUTORIALS/FROM_BLINKER_TO_RISCV/FIRMWARE
+  $ make clean raystones.pipeline.hex
+```
+
+Then run it:
+```
+  $ cd ..
+  $ ./run_verilator.sh pipeline10.v
+```
+
+The new core has a score of 18.215 RAYSTONES. Even if a FPU would be better
+for raytracing, hardware integer multiplication in 1 cycle significantly
+improves it.
+
+To see the processor in action, uncomment the line with `CONFIG_DEBUG`
+and run it with verilator. Press `g` to reach the next breakpoint (set
+to `DIV` instructions), then press `<return>` to run cycle by cycle.
+The displayed division mask shows progress. 
+
 
 ## Step X: optimizing for fmax
 
