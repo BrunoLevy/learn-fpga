@@ -1348,7 +1348,7 @@ the data written to the register file by `W` can be read by `D` *in the same cyc
 do we stall until the instruction leaves `W` ?
 
 In fact, our design supposes that the register file is accessed with a latency of 1 cycle, which
-is the case if the register file is mapped to DRAM. This implies that the data written in the
+is the case if the register file is mapped to BRAM. This implies that the data written in the
 register file by `W` is available 1 cycle later, so we need to test the instruction in `W` for
 data hazard.
 
