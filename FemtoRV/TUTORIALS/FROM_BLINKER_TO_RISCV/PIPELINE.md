@@ -1904,7 +1904,7 @@ history.
 
 ## Step 9: return address stack
 
-There is a reasonably way of gaining more performance by optimizing the `JALR`
+There is a reasonably easy way of gaining more performance by optimizing the `JALR`
 instruction, used to implement function calls. The idea is to have in the
 processor a small stack (the Return Address Stack, or RAS for short), typically
 of depth 4. Each time a function call is detected, the address of the function is pushed to the top
