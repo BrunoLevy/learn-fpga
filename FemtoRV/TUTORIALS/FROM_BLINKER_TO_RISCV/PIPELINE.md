@@ -2068,7 +2068,7 @@ gcc library. So we have 8 new instructions to support:
 | MUL rd,rs1,rs2    | rd <- rs1 * rs2    | signed, 32 lsbs          | 000    |
 | MULH rd,rs1,rs2   | rd <- rs1 * rs2    | signed, 32 msbs          | 001    |
 | MULHSU rd,rs1,rs2 | rd <- rs1 * rs2    | signed*unsigned, 32 msbs | 010    |
-| MULHU rd,rs1,rs2  |                    | unsigned, 32 msbs        | 011    |
+| MULHU rd,rs1,rs2  | rd <- rs1 * rs2    | unsigned, 32 msbs        | 011    |
 | DIV rd,rs1,rs2    | rd <- rs1 / rs2    | signed version           | 100    |
 | DIVU rd,rs1,rs2   | rd <- rs1 / rs2    | unsigned                 | 101    |
 | REM rd,rs1,rs2    | rd <- rs1 % rs2    | signed                   | 110    |
