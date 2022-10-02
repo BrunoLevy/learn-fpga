@@ -15,7 +15,7 @@
                             // See "debugger" section in source 
                             // to define breakpoints
 
-//`define CONFIG_INITIALIZE // initialize register file and BHT table
+`define CONFIG_INITIALIZE // initialize register file and BHT table
                             // (required by Icarus/iverilog 
                             // and by some synth tools)
 

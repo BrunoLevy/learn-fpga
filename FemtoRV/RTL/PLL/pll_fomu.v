@@ -195,6 +195,42 @@
       defparam pll.DIVQ = 3'b010;
       defparam pll.FILTER_RANGE = 3'b001;
      end
+     150: begin
+      defparam pll.DIVR = 4'b0001;
+      defparam pll.DIVF = 7'b0011000;
+      defparam pll.DIVQ = 3'b010;
+      defparam pll.FILTER_RANGE = 3'b010;
+     end
+     160: begin
+      defparam pll.DIVR = 4'b0010;
+      defparam pll.DIVF = 7'b0100111;
+      defparam pll.DIVQ = 3'b010;
+      defparam pll.FILTER_RANGE = 3'b001;
+     end
+     170: begin
+      defparam pll.DIVR = 4'b0011;
+      defparam pll.DIVF = 7'b0111000;
+      defparam pll.DIVQ = 3'b010;
+      defparam pll.FILTER_RANGE = 3'b001;
+     end
+     180: begin
+      defparam pll.DIVR = 4'b0000;
+      defparam pll.DIVF = 7'b0001110;
+      defparam pll.DIVQ = 3'b010;
+      defparam pll.FILTER_RANGE = 3'b100;
+     end
+     190: begin
+      defparam pll.DIVR = 4'b0011;
+      defparam pll.DIVF = 7'b0111110;
+      defparam pll.DIVQ = 3'b010;
+      defparam pll.FILTER_RANGE = 3'b001;
+     end
+     200: begin
+      defparam pll.DIVR = 4'b0010;
+      defparam pll.DIVF = 7'b0110001;
+      defparam pll.DIVQ = 3'b010;
+      defparam pll.FILTER_RANGE = 3'b001;
+     end
      default: UNKNOWN_FREQUENCY unknown_frequency();
      endcase
   endgenerate   

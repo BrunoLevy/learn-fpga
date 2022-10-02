@@ -85,8 +85,15 @@ module FemtoRV32(
    wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
    wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
    wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
-   wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
+   // wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
    wire isSYSTEM  =  (instr[6:2] == 5'b11100); // rd <- cycles
+
+   wire isJAL    = instr[3]; 
+   //wire isJALR   = {instr[6], instr[3], instr[2]} == 3'b101; 
+   //wire isLUI    = instr[6:4] == 3'b111; 
+   //wire isAUIPC  = instr[6:4] == 3'b101; 
+   //wire isBranch = {instr[6], instr[4], instr[2]} == 3'b100; 
+
 
    wire isALU = isALUimm | isALUreg;
 
@@ -96,6 +103,8 @@ module FemtoRV32(
 
    reg [31:0] rs1;
    reg [31:0] rs2;
+   
+   (* no_rw_check *)
    reg [31:0] registerFile [31:0];
 
    always @(posedge clk) begin

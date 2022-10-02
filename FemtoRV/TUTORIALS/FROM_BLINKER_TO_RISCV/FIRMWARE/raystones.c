@@ -86,7 +86,7 @@ void graphics_set_pixel(int x, int y, float r, float g, float b) {
 	  }
        }
        return;
-   }
+   } 
 #ifdef graphics_double_lines
    static uint8_t prev_R=0;
    static uint8_t prev_G=0;

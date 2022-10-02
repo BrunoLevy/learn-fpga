@@ -2284,3 +2284,8 @@ _WIP_
 
 ### Careful optimizations in `D`
 _WIP_
+
+## References
+
+- [course at upenn](https://acg.cis.upenn.edu/milom/cse372-Spring06/labs/lab4.html)
+- [slides](https://acg.cis.upenn.edu/milom/cis501-Fall05/lectures/06_pipeline.pdf)

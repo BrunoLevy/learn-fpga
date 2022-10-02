@@ -252,7 +252,8 @@ module femtosoc(
    );
 
 `else // Synthethizing BRAM
-   
+
+   (* no_rw_check *)
    reg [31:0] RAM[0:(`NRV_RAM/4)-1];
    reg [31:0] ram_rdata;
 

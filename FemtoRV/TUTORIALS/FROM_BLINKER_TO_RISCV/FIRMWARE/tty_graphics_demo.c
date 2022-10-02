@@ -1,6 +1,11 @@
 #include "tty_graphics.h"
 #include <math.h>
 
+#ifdef __linux__
+#include <stdlib.h>
+#include <unistd.h>
+#endif
+
 // Size of the screen
 // Replace with your own variables or values
 #define graphics_width  80
@@ -25,6 +30,9 @@ int main() {
         ++frame;
         tty_graphics_reset_colors();
         printf("frame = %d\n",frame);
+#ifdef __linux__       
+        usleep(40000);
+#endif       
     }
     return 0;
 }

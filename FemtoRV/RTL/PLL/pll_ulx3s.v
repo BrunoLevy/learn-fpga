@@ -214,6 +214,42 @@
       defparam pll_i.CLKOP_CPHASE=1;
       defparam pll_i.CLKFB_DIV=28;
      end
+     150: begin
+      defparam pll_i.CLKI_DIV=1;
+      defparam pll_i.CLKOP_DIV=4;
+      defparam pll_i.CLKOP_CPHASE=2;
+      defparam pll_i.CLKFB_DIV=6;
+     end
+     160: begin
+      defparam pll_i.CLKI_DIV=5;
+      defparam pll_i.CLKOP_DIV=4;
+      defparam pll_i.CLKOP_CPHASE=2;
+      defparam pll_i.CLKFB_DIV=32;
+     end
+     170: begin
+      defparam pll_i.CLKI_DIV=5;
+      defparam pll_i.CLKOP_DIV=4;
+      defparam pll_i.CLKOP_CPHASE=1;
+      defparam pll_i.CLKFB_DIV=34;
+     end
+     180: begin
+      defparam pll_i.CLKI_DIV=5;
+      defparam pll_i.CLKOP_DIV=3;
+      defparam pll_i.CLKOP_CPHASE=1;
+      defparam pll_i.CLKFB_DIV=36;
+     end
+     190: begin
+      defparam pll_i.CLKI_DIV=5;
+      defparam pll_i.CLKOP_DIV=3;
+      defparam pll_i.CLKOP_CPHASE=1;
+      defparam pll_i.CLKFB_DIV=38;
+     end
+     200: begin
+      defparam pll_i.CLKI_DIV=1;
+      defparam pll_i.CLKOP_DIV=3;
+      defparam pll_i.CLKOP_CPHASE=1;
+      defparam pll_i.CLKFB_DIV=8;
+     end
      default: UNKNOWN_FREQUENCY unknown_frequency();
      endcase
    endgenerate
