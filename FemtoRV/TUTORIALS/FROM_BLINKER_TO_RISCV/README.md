@@ -23,7 +23,8 @@ it is not as fun).
 - in the end, the obtained processor is not the most efficient, but it is not a toy:
   it can execute any program. To anwser the question you may ask, yes, it
   [runs DOOM](https://github.com/BrunoLevy/learn-fpga/tree/master/LiteX/software/Doom)!
-  (with the help of LiteX that has a nice SDRAM controller, because Doom needs some RAM);
+  (but not on an IceStick, you will need a larger FPGA). It works with the help of LiteX that 
+  has a nice SDRAM controller, because Doom needs some RAM;
 - the tutorial is both about hardware and software: you will learn how to compile programs
   in assembly and in C for your core;
 - I try to make all example programs fun and interesting while reasonably short. The bundled

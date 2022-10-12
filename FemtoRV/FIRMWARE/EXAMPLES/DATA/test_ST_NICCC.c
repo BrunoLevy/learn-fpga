@@ -74,7 +74,7 @@ int read_frame() {
 	   (frame_flags & INDEXED_BIT) ? 'I' : '_'
     );
    
-    if(frame_flag & CLEAR_BIT) {
+    if(frame_flags & CLEAR_BIT) {
 	/*
 	 * clear the screen now:
 	 * GL_clear();
@@ -171,7 +171,7 @@ int read_frame() {
 
 
 int main() {
-    stream = fopen("scene1.bin","rb");
+    stream = fopen("scene1.dat","rb");
     while(read_frame()) {
     }
 }

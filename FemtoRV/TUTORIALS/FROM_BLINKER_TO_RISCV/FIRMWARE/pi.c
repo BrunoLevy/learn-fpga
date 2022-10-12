@@ -180,6 +180,6 @@ void main() {
     printf("\npi = 3.");
     for(int n=1; ;n+=9) {
        printf("%d",digits(n));
-//       if(n > 36) break;
+       if(n > 36) break;
     }
 }

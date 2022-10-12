@@ -206,7 +206,9 @@ int read_frame() {
 int main() {
     GL_init(GL_MODE_OLED);
     GL_clear();
-
+    MAX7219_tty_init();
+    printf("3.2.1.GO!! ");
+    
     wireframe = 0;
 
     for(;;) {

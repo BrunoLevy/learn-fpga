@@ -1,7 +1,8 @@
 /**
- * pipelineY_generic.v
+ * pipelineZ.v
  * femtorv32-tordboyau
  * Configurable 5-stages pipelined RV32IM
+ * testing some small optimizations from pipelineY
  * Bruno Levy, Sept 2022
  */
 
@@ -172,7 +173,7 @@ module Processor (
    
    wire D_readsRs1 = !(D_isJAL || D_isLUIorAUIPC);
    
-   wire D_readsRs2 = (FD_instr[5] && (FD_instr[3:2] == 2'b00));
+   wire D_readsRs2 = {FD_instr[5],FD_instr[3:2]} == 3'b100; //  (FD_instr[5] && (FD_instr[3:2] == 2'b00));
                   // <=> D_isALUreg || D_isBranch || D_isStore || D_isSYSTEM
       
    wire [31:0] D_Uimm = { FD_instr[31],FD_instr[30:12], {12{1'b0}}};
@@ -272,6 +273,14 @@ module Processor (
 	 DE_rdId  <= D_rdId;
 	 DE_rs1Id <= D_rs1Id;
 	 DE_rs2Id <= D_rs2Id;
+
+	 // Pipelined register Id comparison for
+	 // register forwarding.
+	 DE_rs1Id_eq_EM_rdId <= (D_rs1Id == DE_rdId);
+	 DE_rs1Id_eq_MW_rdId <= (D_rs1Id == EM_rdId);
+	 DE_rs2Id_eq_EM_rdId <= (D_rs2Id == DE_rdId);
+	 DE_rs2Id_eq_MW_rdId <= (D_rs2Id == EM_rdId);
+
 	 
 	 DE_funct3    <= FD_instr[14:12];
 	 DE_funct3_is <= 8'b00000001 << FD_instr[14:12];
@@ -402,6 +411,11 @@ module Processor (
    reg DE_isCSRRS;
    reg DE_isEBREAK;
 
+   reg DE_rs1Id_eq_EM_rdId;
+   reg DE_rs1Id_eq_MW_rdId;
+   reg DE_rs2Id_eq_EM_rdId;
+   reg DE_rs2Id_eq_MW_rdId;
+   
 `ifdef CONFIG_RV32M   
    reg DE_isRV32M;
    reg DE_isMUL;   
@@ -433,12 +447,13 @@ module Processor (
 
    /*********** Registrer forwarding ************************************/
 
-   wire E_M_fwd_rs1 = EM_wbEnable && (EM_rdId == DE_rs1Id);
-   wire E_W_fwd_rs1 = MW_wbEnable && (MW_rdId == DE_rs1Id);
+   wire E_M_fwd_rs1 = EM_wbEnable && DE_rs1Id_eq_EM_rdId;
+   wire E_W_fwd_rs1 = MW_wbEnable && DE_rs1Id_eq_MW_rdId;
 
-   wire E_M_fwd_rs2 = EM_wbEnable && (EM_rdId == DE_rs2Id);
-   wire E_W_fwd_rs2 = MW_wbEnable && (MW_rdId == DE_rs2Id);
+   wire E_M_fwd_rs2 = EM_wbEnable && DE_rs2Id_eq_EM_rdId;
+   wire E_W_fwd_rs2 = MW_wbEnable && DE_rs2Id_eq_MW_rdId;
 
+   
    wire [31:0] E_rs1 = E_M_fwd_rs1 ? EM_Eresult             :
 	               E_W_fwd_rs1 ? wbData                 :
 	                             RegisterBank[DE_rs1Id] ; 
@@ -467,6 +482,7 @@ module Processor (
    wire        E_LTU = E_aluMinus[32];
    wire        E_EQ  = (E_aluIn1 == E_aluIn2);  // (E_aluMinus[31:0] == 0);
 
+   /*
    // Flip a 32 bit word. Used by the shifter (a single shifter for
    // left and right shifts, saves silicium !)
    function [31:0] flip32;
@@ -477,14 +493,10 @@ module Processor (
 		x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
    endfunction
 
-   wire [31:0] E_shifter_in = DE_funct3_is[1] ? flip32(E_aluIn1) : E_aluIn1;
-   
    /* verilator lint_off WIDTH */
-   wire [31:0] E_shifter = 
-       $signed({E_arith_shift & E_aluIn1[31], E_shifter_in}) >>> E_aluIn2[4:0];
+   wire [31:0] E_rightshift = $signed({E_arith_shift & E_aluIn1[31], E_aluIn1}) >>> E_aluIn2[4:0];
    /* verilator lint_on WIDTH */
-
-   wire [31:0] E_leftshift = flip32(E_shifter);
+   wire [31:0] E_leftshift  = E_aluIn1 << E_aluIn2[4:0];
 
    wire [31:0] E_aluOut_base = 
 	(DE_funct3_is[0] ? (E_minus ? E_aluMinus[31:0] : E_aluPlus) : 32'b0) |
@@ -492,7 +504,7 @@ module Processor (
 	(DE_funct3_is[2] ? {31'b0, E_LT }                           : 32'b0) |
 	(DE_funct3_is[3] ? {31'b0, E_LTU}                           : 32'b0) |
 	(DE_funct3_is[4] ? E_aluIn1 ^ E_aluIn2                      : 32'b0) |
-	(DE_funct3_is[5] ? E_shifter                                : 32'b0) |
+	(DE_funct3_is[5] ? E_rightshift                             : 32'b0) |
 	(DE_funct3_is[6] ? E_aluIn1 | E_aluIn2                      : 32'b0) |
 	(DE_funct3_is[7] ? E_aluIn1 & E_aluIn2                      : 32'b0) ;
 

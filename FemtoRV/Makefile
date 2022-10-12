@@ -30,9 +30,9 @@ clean:
 TERMS=/dev/ttyUSB1 /dev/ttyUSB0 
 
 # Uncomment one of the following lines (pick your favorite term emulator)
-terminal: terminal_miniterm
+#terminal: terminal_miniterm
 #terminal: terminal_screen
-#terminal: terminal_picocom
+terminal: terminal_picocom
 
 # make terminal, rule for miniterm
 # exit: <ctrl> ]     package: sudo apt-get install python3-serial

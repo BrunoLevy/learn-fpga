@@ -7,8 +7,8 @@ int main() {
    for(;;) {
       int c = getchar();
       if(c != 10 && c !=13) {
-	 // putchar(c);
-	 printf("char=%d\n", (int)c);
+	 putchar(c);
+	 // printf("char=%d\n", (int)c);
       } else {
 	 putchar('\n');
 	 putchar(']');

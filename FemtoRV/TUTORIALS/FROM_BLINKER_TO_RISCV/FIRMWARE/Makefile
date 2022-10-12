@@ -1,6 +1,6 @@
 include ../../../FIRMWARE/makefile.inc
 RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) 
-RVCFLAGS=-I. -O6 -fno-pic -march=$(ARCH) -mabi=$(ABI) -fno-stack-protector -w -Wl,--no-relax
+RVCFLAGS=-I. -O2 -fno-pic -march=$(ARCH) -mabi=$(ABI) -fno-stack-protector -w -Wl,--no-relax
 
 RAM_SIZE=6144
 
