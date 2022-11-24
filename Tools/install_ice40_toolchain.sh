@@ -1,4 +1,4 @@
-# Compiles and installs yosys/nextpnr for ICE40-based FPGAs
+# Compiles and installs yosys/nextpnr for ICE40-based FPGAs on Ubuntu
 # You will need to run it as root (sudo ./install_ice40_toolchain.sh)
 # Bruno Levy, Nov. 2022
 
