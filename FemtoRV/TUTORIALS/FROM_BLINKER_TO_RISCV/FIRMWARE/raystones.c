@@ -56,6 +56,7 @@ static int bench_run=0;
 // Replace with your own stuff to initialize graphics
 static inline void graphics_init() {
     printf("\033[48;5;16m"   // set background color black
+	   "\033[38;5;15m"   // set foreground color white	   
 	   "\033[H"          // home
            "\033[2J");       // clear screen
 }
@@ -505,7 +506,7 @@ int main() {
     printf("Running without graphic output (for accurate measurement)...\n");
     render(spheres, nb_spheres, lights, nb_lights);
     IO_OUT(IO_LEDS,10);
-    
+
     bench_run = 0;
     graphics_width = 120;
     graphics_height = 60;

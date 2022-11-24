@@ -5,7 +5,7 @@ CHIPDB_DIR=/usr/share/nextpnr/xilinx-chipdb
 PART=xc7a35tcsg324-1
 VERILOGS=$1
 BOARD_FREQ=100
-CPU_FREQ=60
+CPU_FREQ=100
 
 set -ex
 yosys -DARTY -DBOARD_FREQ=$BOARD_FREQ -DCPU_FREQ=$CPU_FREQ -p "scratchpad -set xilinx_dsp.multonly 1" -p "synth_xilinx -nowidelut -flatten -abc9 -arch xc7 -top SOC; write_json ${PROJECT_NAME}.json" ${VERILOGS}

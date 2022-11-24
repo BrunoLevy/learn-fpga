@@ -10,7 +10,7 @@
 `define CONFIG_RAS        // return address stack
 `define CONFIG_GSHARE     // gshare branch prediction (or BTFNT if not set)
 
-//`define CONFIG_RV32M      // RV32M instruction set (MUL,DIV,REM)
+`define CONFIG_RV32M      // RV32M instruction set (MUL,DIV,REM)
 
 //`define CONFIG_DEBUG      // debug mode, displays execution
                             // See "debugger" section in source 
@@ -482,17 +482,6 @@ module Processor (
    wire        E_LTU = E_aluMinus[32];
    wire        E_EQ  = (E_aluIn1 == E_aluIn2);  // (E_aluMinus[31:0] == 0);
 
-   /*
-   // Flip a 32 bit word. Used by the shifter (a single shifter for
-   // left and right shifts, saves silicium !)
-   function [31:0] flip32;
-      input [31:0] x;
-      flip32 = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7], 
-		x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15], 
-		x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
-		x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
-   endfunction
-
    /* verilator lint_off WIDTH */
    wire [31:0] E_rightshift = $signed({E_arith_shift & E_aluIn1[31], E_aluIn1}) >>> E_aluIn2[4:0];
    /* verilator lint_on WIDTH */
@@ -832,14 +821,14 @@ module Processor (
    //   in E. It was not the case in the non-optimized version)
    wire dataHazard = !FD_nop && (
         ((DE_isLoad || DE_isCSRRS) && (rs1Hazard || rs2Hazard)) || 
-        ( D_isLoad && DE_isStore)
+        ( D_isLoad && DE_isStore) // TODO: more subtle for load-store, add bypass if same addr
    ); 
 
    // (other option: always add bubble after latency-2 instr 
    // like Samsoniuk's DarkRiscV). Increases CPI and may reduce critical path.
-   // wire dataHazard = !FD_nop &&  (  
-   //   (DE_isLoad || DE_isCSRRS) || (D_isLoad && DE_isStore) 
-   // );
+   //wire dataHazard = !FD_nop &&  (  
+   //   (DE_isLoad || DE_isCSRRS) || (D_isLoad && DE_isStore)  
+   //);
 
    assign F_stall = aluBusy | dataHazard | halt;
    assign D_stall = aluBusy | dataHazard | halt;
