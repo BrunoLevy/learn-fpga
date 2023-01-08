@@ -46,13 +46,14 @@ module SOC (
       SRAI(x3,x3,5);
       SRLI(x1,x3,26);
       EBREAK();
-      
+
+      /*      
       for(myPC=0; myPC<13; myPC = myPC + 1) begin
          $write("PC=%d ",myPC);
          riscv_disasm(MEM[myPC],myPC);
          $write("\n");
       end
-      
+      */
    end
 
    // See the table P. 105 in RISC-V manual
@@ -158,6 +159,11 @@ module SOC (
 	   FETCH_INSTR: begin
 	      instr <= MEM[PC[31:2]];
 	      state <= FETCH_REGS;
+`ifdef BENCH
+         $write("PC=%d ",PC);
+         riscv_disasm(MEM[PC[31:2]],PC);
+         $write("\n");
+`endif              
 	   end
 	   FETCH_REGS: begin
 	      rs1 <= RegisterBank[rs1Id];
