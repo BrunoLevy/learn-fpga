@@ -93,14 +93,12 @@ module SOC (
    wire [31:0] writeBackData; // data to be written to rd
    wire        writeBackEn;   // asserted if data should be written to rd
 
-`ifdef BENCH   
-   integer     i;
+   integer i;
    initial begin
       for(i=0; i<32; ++i) begin
 	 RegisterBank[i] = 0;
       end
    end
-`endif   
 
    // The ALU
    wire [31:0] aluIn1 = rs1;
