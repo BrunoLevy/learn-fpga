@@ -8,11 +8,11 @@
 `include "clockworks.v"
 
 module SOC (
-    input  CLK,        // system clock 
-    input  RESET,      // reset button
-    output [4:0] LEDS, // system LEDs
-    input  RXD,        // UART receive
-    output TXD         // UART transmit
+    input  wire CLK,        // system clock 
+    input  wire RESET,      // reset button
+    output wire [4:0] LEDS, // system LEDs
+    input  wire RXD,        // UART receive
+    output wire TXD         // UART transmit
 );
 
    wire clk;    // internal clock
@@ -47,7 +47,7 @@ module SOC (
       SRLI(x1,x3,26);
       EBREAK();
       
-      for(myPC=0; myPC<13; myPC++) begin
+      for(myPC=0; myPC<13; myPC = myPC + 1) begin
          $write("PC=%d ",myPC);
          riscv_disasm(MEM[myPC],myPC);
          $write("\n");
