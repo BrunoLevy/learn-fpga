@@ -229,8 +229,8 @@ uint32_t sharp_read() {
 
 int main() {
    ir_init();
-   femtosoc_tty_init();
-   GL_set_font(&Font8x16);
+//   femtosoc_tty_init();
+//   GL_set_font(&Font8x16);
    printf("%s IR remote\n",ir_protocol_name);
    for(;;) {
      uint32_t cmdaddr = ir_read();

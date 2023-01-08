@@ -6,7 +6,7 @@ It works with the following boards:
 - IceStick
 - IceBreaker
 - ULX3S
-- _to be added_ ARTY
+- ARTY
 
 If you do not have a board, you can run everything in simulation (but
 it is not as fun).

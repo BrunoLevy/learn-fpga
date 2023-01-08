@@ -12,7 +12,7 @@
 
 `define CONFIG_RV32M      // RV32M instruction set (MUL,DIV,REM)
 
-//`define CONFIG_DEBUG      // debug mode, displays execution
+`define CONFIG_DEBUG      // debug mode, displays execution
                             // See "debugger" section in source 
                             // to define breakpoints
 
