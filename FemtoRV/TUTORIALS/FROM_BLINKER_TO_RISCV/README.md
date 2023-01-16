@@ -1317,8 +1317,8 @@ the IceStick).  The 33 bits subtract is written as follows:
 if you want to know what `A-B` does in Verilog, it corresponds
 to `A+~B+1` (negate all the bits of B before adding, and add 1), it
 is how two's complement subtraction works. For instance, take
-`4'b0000 - 4`b0001`, the result is `-1`, encoded as `4`b1111`. It is
-computed as follows by the formula: `4'b0000 + ~4'b0001 + 1` = `4'b0000 + 4`b1110 + 1`
+`4'b0000 - 4'b0001`, the result is `-1`, encoded as `4'b1111`. It is
+computed as follows by the formula: `4'b0000 + ~4'b0001 + 1` = `4'b0000 + 4'b1110 + 1`
 = `4'b1111`. So we will keep the following expression (we could have kept the
 simpler form above, but it is interesting to be aware of what happens under the
 scene):
