@@ -1608,7 +1608,7 @@ things to remember:
 On a CISC processor, there are often special functions for calling
 functions (`CALL`) and for returning from a function (`RET`), and registers
 are often specialized (function return address, stack pointer, function
-parameters). This makes programmer's life easier because there i s less
+parameters). This makes programmer's life easier because there is less
 to remember. There is no reason not doing the same for a RISC processor !
 Let us pretend that the register are different and give them different names
 (or aliases). These names are listed
@@ -1661,7 +1661,7 @@ Besides these names, there are also _pseudo-instructions_ for common tasks, such
  | `BNEZ(rd1,offset)`    | equivalent to `BNE(rd1,x0,offset)`   |
  | `BGT(rd1,rd2,offset)` | equivalent to `BLT(rd2,rd1,offset)`  | 
 
-If the constant in in the [-2048,2047] range, `LI` is implemented using `ADDI(rd,x0,imm)`, else
+If the constant in the [-2048,2047] range, `LI` is implemented using `ADDI(rd,x0,imm)`, else
 it uses a combination of `LUI` and `ADDI` (if you want to know how it works, see this [stackoverflow answer](https://stackoverflow.com/questions/50742420/risc-v-build-32-bit-constants-with-lui-and-addi), there are tricky details about sign expansion).
 
 Using ABI register names and pseudo-instructions, our program becomes as follows:
