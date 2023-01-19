@@ -1730,8 +1730,8 @@ instructions that load half-words and bytes exist in two versions:
 - `LB`,`LH` that load a byte,halfword in the LSBs of `rd` then do sign extensin:
 
 For instance, imagine a sign byte with the value `-1`, that is `8'b11111111`,
-loading it in a 32-bit register with `LBU` will result in `32b0000000000000000000000011111111`,
-whereas loading it with `LB` will result in `32b11111111111111111111111111111111`, that is,
+loading it in a 32-bit register with `LBU` will result in `32'b0000000000000000000000011111111`,
+whereas loading it with `LB` will result in `32'b11111111111111111111111111111111`, that is,
 the 32-bits version of `-1`. 
 
 So we got a "two-dimensional" array of cases (whether we load a byte, halfword, word, and
