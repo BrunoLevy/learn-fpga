@@ -95,7 +95,7 @@ module SOC (
 
    integer i;
    initial begin
-      for(i=0; i<32; ++i) begin
+      for(i=0; i<32; i=i+1) begin
 	 RegisterBank[i] = 0;
       end
    end

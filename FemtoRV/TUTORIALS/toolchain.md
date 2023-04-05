@@ -1,6 +1,18 @@
 Installing open-source tools for FPGA development
 =================================================
 
+Latest news (April 2023): pre-built toolchain for
+Ice40 and ECP5-based FPGAs can be downloaded
+from [here](https://github.com/YosysHQ/oss-cad-suite-build/releases)
+(Windows/Mac/Linux).
+
+Just download the package, and
+set the path using `source ~/where/you/unpacked/it/oss-cad-suite/environment`
+everytime you want to use it (thanks @mecrisp for pointing at that).
+
+What follows is for folks who want to compile the tools on their own,
+or if you have something else than an Ice40 or ECP5 (for instance, an ARTY).
+
 _Note: the following instructions are for Linux (I'm using Ubuntu).
 Windows users can run the tutorial using WSL. It requires some
 adaptation, as explained [here](WSL.md)._
