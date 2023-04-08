@@ -1,19 +1,18 @@
-YOSYS_ICESUGAR_OPT=-DICE_SUGAR -q -p "synth_ice40 -relut -top $(PROJECTNAME) -json $(PROJECTNAME).json"
+YOSYS_ICESUGAR_OPT=-DICE_SUGAR -q -p "synth_ice40 -abc9 -device u -dsp -top $(PROJECTNAME) -json $(PROJECTNAME).json"
 NEXTPNR_ICESUGAR_OPT=--force --json $(PROJECTNAME).json --pcf BOARDS/icesugar.pcf --asc $(PROJECTNAME).asc \
-                       --freq 12 --up5k --package sg48
+                       --freq 12 --up5k --package sg48 --opt-timing
 
 #######################################################################################################################
 
 ICESUGAR: ICESUGAR.firmware_config ICESUGAR.synth ICESUGAR.prog
 
-ICESUGAR.synth: FIRMWARE/firmware.hex 
-	TOOLS/make_config.sh -DICE_SUGAR
+ICESUGAR.synth:
 	yosys $(YOSYS_ICESUGAR_OPT) $(VERILOGS)
 	nextpnr-ice40 $(NEXTPNR_ICESUGAR_OPT)
 	icetime -p BOARDS/icesugar.pcf -P sg48 -r $(PROJECTNAME).timings -d up5k -t $(PROJECTNAME).asc
 	icepack -s $(PROJECTNAME).asc $(PROJECTNAME).bin
 
-ICESUGAR.show: FIRMWARE/firmware.hex 
+ICESUGAR.show:
 	yosys $(YOSYS_ICESUGAR_OPT) $(VERILOGS)
 	nextpnr-ice40 $(NEXTPNR_ICESUGAR_OPT) --gui
 

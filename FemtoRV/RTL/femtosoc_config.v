@@ -16,6 +16,10 @@
 `include "CONFIGS/icebreaker_config.v"
 `endif
 
+`ifdef ICE_SUGAR
+`include "CONFIGS/icesugar_config.v"
+`endif
+
 `ifdef ECP5_EVN
 `include "CONFIGS/ecp5evn_config.v"
 `endif
@@ -80,6 +84,7 @@
 
 `ifdef ICE_SUGAR
  `define ICE40
+ `define PASSTHROUGH_PLL
 `endif
 
 `ifdef ICE_SUGAR_NANO
