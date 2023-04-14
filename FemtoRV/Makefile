@@ -3,6 +3,7 @@ PROJECTNAME=femtosoc
 VERILOGS=RTL/$(PROJECTNAME).v
 
 include BOARDS/bench.mk
+include BOARDS/ice4pi.mk
 include BOARDS/icestick.mk
 include BOARDS/icestick_mecrisp_quintus.mk
 include BOARDS/icebreaker.mk
