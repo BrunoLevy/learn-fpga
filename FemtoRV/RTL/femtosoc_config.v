@@ -24,6 +24,10 @@
 `include "CONFIGS/arty_config.v"
 `endif
 
+`ifdef CMODA7
+`include "CONFIGS/cmod_a7_config.v"
+`endif
+
 `ifdef BENCH_VERILATOR
 `include "CONFIGS/bench_config.v"
 `endif
