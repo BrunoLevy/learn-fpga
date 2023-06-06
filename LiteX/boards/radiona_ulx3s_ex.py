@@ -15,8 +15,8 @@ from migen import *
 
 from litex.build.generic_platform import *
 from litex.build.lattice import LatticePlatform
-from litex_boards.platforms import ulx3s as ulx3s_platform
-from litex_boards.targets   import ulx3s
+from litex_boards.platforms import radiona_ulx3s as ulx3s_platform
+from litex_boards.targets   import radiona_ulx3s as ulx3s
 
 #--------------------------------------------------------------------------------------------------------
 
