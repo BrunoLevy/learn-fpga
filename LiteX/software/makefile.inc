@@ -11,7 +11,6 @@ LITEX_PLATFORM?=radiona_ulx3s
 
 BUILD_DIR?=$(LEARN_FPGA_DIR)/LiteX/build/$(LITEX_PLATFORM)
 
-
 include $(BUILD_DIR)/software/include/generated/variables.mak
 include $(SOC_DIRECTORY)/software/common.mak
 
@@ -20,6 +19,14 @@ BIOS_SRC_DIR=$(LITEX_DIR)/litex/litex/soc/software/bios
 # replace LiteX-provided libcompiler_rt (that misses
 # some functions, e.g. floating-point) with libgcc (that has everything)
 LIBS:=$(LIBS:libcompiler_rt=libgcc)
+
+# add libbase, that has memspeed and memtest
+LIBS += -lbase 
+
+# Remove the 2p0_ 2p0 string from riscV instr set
+# definition from LDFLAGS, else it does not find the
+# right libgcc 
+LDFLAGS:=`echo $(LDFLAGS) | sed -E 's|2p0(_)?||'`
 
 # Include path 
 CFLAGS:=$(CFLAGS) -I../Libs  -I$(BIOS_SRC_DIR)
