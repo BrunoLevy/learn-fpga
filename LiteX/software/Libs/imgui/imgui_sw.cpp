@@ -8,6 +8,8 @@ extern "C" {
 #include "lite_fb.h"
 }
 
+#include <stdlib.h>
+
 #ifdef min
 #undef min
 #endif
@@ -15,6 +17,12 @@ extern "C" {
 #ifdef max
 #undef max
 #endif
+
+void operator delete(void* p);
+void operator delete(void* p) {
+    free(p);
+}
+
 
 #include "imgui_sw.h"
 #include "imgui.h"
