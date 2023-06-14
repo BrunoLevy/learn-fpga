@@ -37,7 +37,7 @@ $ wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.
 $ chmod +x litex_setup.py
 $ ./litex_setup.py --init --install --user 
 $ pip3 install meson ninja
-$ ./litex_setup.py --gcc=riscv
+$ sudo ./litex_setup.py --gcc=riscv
 ```
 
 Synthesize

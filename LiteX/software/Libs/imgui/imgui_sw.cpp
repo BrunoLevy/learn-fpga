@@ -4,11 +4,20 @@
 //   license: you are granted a perpetual, irrevocable license to copy, modify,
 //   publish, and distribute this file as you see fit.
 
-#include "imgui_sw.h"
-#include "imgui.h"
 extern "C" {
 #include "lite_fb.h"
 }
+
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif
+
+#include "imgui_sw.h"
+#include "imgui.h"
 
 #include <math.h>
 #include <stdio.h>

@@ -72,7 +72,7 @@ int main(int i, char **c)
 	printf(" BIOS built on "__DATE__" "__TIME__"\n");
 #endif
 	printf("\n");
-	printf(" Migen git sha1: "MIGEN_GIT_SHA1"\n");
+//	printf(" Migen git sha1: "MIGEN_GIT_SHA1"\n");
 	printf(" LiteX git sha1: "LITEX_GIT_SHA1"\n");
 	printf("\n");
 	printf("--=============== \e[1mSoC\e[0m ==================--\n");

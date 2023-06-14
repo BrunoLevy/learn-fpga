@@ -94,15 +94,15 @@ uint16_t cmap[16];
  * Current frame's vertices coordinates (if frame is indexed),
  *  mapped to OLED display dimensions (divide by 2 from file).
  */
-uint8_t  X[255];
-uint8_t  Y[255];
+uint8_t  X[256];
+uint8_t  Y[256];
 
 /*
  * Current polygon vertices, as expected
  * by GL_fill_poly():
  * xi = poly[2*i], yi = poly[2*i+1]
  */
-int      poly[30];
+int      poly[40];
 
 int wireframe = 0;
 
@@ -146,10 +146,10 @@ int read_frame() {
     }
 
     if(wireframe) {
-	GL_clear();
+        // GL_clear();
     } else {
 	if(frame_flags & CLEAR_BIT) {
-	    // GL_clear(); // Commented out, too much flickering,
+	     //  GL_clear(); // Commented out, too much flickering,
 	                   // cannot VSync on the OLED display.
 	}
     }
@@ -202,21 +202,30 @@ int read_frame() {
     return 1; 
 }
 
+void print_frame(int frame) {
+    GL_tty_goto_xy(0,0);
+    printf("%d",frame);
+}
 
 int main() {
+    int frame;
     GL_init(GL_MODE_OLED);
     GL_clear();
     MAX7219_tty_init();
     printf("3.2.1.GO!! ");
+
+    GL_tty_init(GL_MODE_OLED);
     
     wireframe = 0;
-
     for(;;) {
+        frame=0;
         spi_reset();
 	GL_polygon_mode(wireframe ? GL_POLY_LINES: GL_POLY_FILL);	
 	while(read_frame()) {
-	    // delay(50); // If GL_clear() is uncommented, uncomment as well
-	                  // to reduce flickering.
+            print_frame(frame);
+            ++frame;
+	    // delay(10); // If GL_clear() is uncommented, uncomment as well
+	    //            // to reduce flickering.
 	}
 	wireframe = !wireframe;
     }

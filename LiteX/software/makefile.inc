@@ -96,7 +96,7 @@ clean:
 	$(RM) *.d *.o *.a *.elf *.list .*~ *~
 
 terminal:
-	lxterm --kernel boot.bin /dev/ttyUSB0; reset
+	litex_term --kernel boot.bin /dev/ttyUSB0; reset
 	
 .PHONY: all everything clean load
 

@@ -23,7 +23,7 @@ boot.elf: $(OBJECTS) libliteos.a
 		-N -o $@ \
 		$(OBJECTS) \
 		$(PACKAGES:%=-L$(BUILD_DIR)/software/%) \
-		$(LIBS:lib%=-l%) -L. -lliteos
+		$(LIBS:lib%=-l%) -L. -lliteos 
 	chmod -x $@
 
 # Made crt0.o dependent on one of the generated files to make sure it

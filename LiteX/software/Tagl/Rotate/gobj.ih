@@ -130,6 +130,14 @@ inline void MVector::Scale(double s)
   Scale(s,s,s);
 }
 
+inline MVector& MVector::operator<<(VectorF& V)
+{
+  x = (int)(V.x * M_MUL);
+  y = (int)(V.y * M_MUL);
+  z = (int)(V.z * M_MUL);
+  return *this;
+}
+
 /*
 inline istream& operator >> (istream& input,  MVector& V)
 {
@@ -141,13 +149,6 @@ inline istream& operator >> (istream& input,  MVector& V)
   return input;
 }
 
-inline MVector& MVector::operator<<(VectorF& V)
-{
-  x = (int)(V.x * M_MUL);
-  y = (int)(V.y * M_MUL);
-  z = (int)(V.z * M_MUL);
-  return *this;
-}
 
 inline ostream& operator << (ostream& output, MVector& V)
 {

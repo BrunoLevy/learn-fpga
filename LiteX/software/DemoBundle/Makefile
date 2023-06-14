@@ -3,7 +3,7 @@
 #   (for instance, LiteX/build/radiona_ulx3s)
 #   Alternatively you can edit this file and change LITEX_DIR and
 #   LITEX_PLATFORM below.
-# 2) lxterm /dev/ttyUSBnnn --kernel demo.bin
+# 2) litex_term /dev/ttyUSBnnn --kernel demo.bin
 # 3) litex> reboot
 
 include ../makefile.inc
