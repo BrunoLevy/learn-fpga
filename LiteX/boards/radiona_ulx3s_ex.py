@@ -22,23 +22,6 @@ from litex.gen import *
 
 #--------------------------------------------------------------------------------------------------------
 
-# Add wifi_en pin to ULX3S platform (to activate / deactivate ESP32)
-# Quick-and-dirty hack: replace Platform constructor and add the missing pin
-# --> Not needed anymore, it is there (called "wifi_gpio0")
-#
-#def new_platform_init(self, device="LFE5U-45F", revision="2.0", toolchain="trellis", **kwargs):
-#        assert device in ["LFE5U-12F", "LFE5U-25F", "LFE5U-45F", "LFE5U-85F"]
-#        assert revision in ["1.7", "2.0"]
-#        _io = ulx3s_platform._io_common + \
-#              {"1.7": ulx3s_platform._io_1_7, "2.0": ulx3s_platform._io_2_0}[revision] + \
-#              [("wifi_en", 0, Pins("F1"), IOStandard("LVCMOS33"), Misc("PULLMODE=UP"), Misc("DRIVE=4"))]
-#        LatticePlatform.__init__(self, device + "-6BG381C", _io, toolchain=toolchain, **kwargs)
-#    
-#ulx3s_platform.Platform.__init__ = new_platform_init
-
-
-#--------------------------------------------------------------------------------------------------------
-
 from litex.build.lattice.trellis import trellis_args, trellis_argdict
 from litex.soc.cores.clock import *
 from litex.soc.integration.soc_core import *
@@ -84,8 +67,7 @@ class BaseSoC(radiona_ulx3s.BaseSoC):
     def add_ESP32(self):
        self.esp32 = ESP32(self.platform)
        self.submodules.esp32 = self.esp32
-       if hasattr(self,'spisdcard_tristate'):
-           self.comb += self.spisdcard_tristate.eq(self.esp32._enable.storage)    
+       self.comb += self.get_module('spisdcard').tristate.eq(self.esp32._enable.storage)    
             
 # Build -------------------------------------------------------------------------------------------------
 
@@ -122,14 +104,15 @@ def main():
         with_spi_flash         = args.with_spi_flash,
         **soc_core_argdict(args))
 
-    soc.add_spi_sdcard(with_tristate=True)
-#   soc.add_spi_sdcard()
+#   soc.add_spi_sdcard(with_tristate=True) # For ESP32 control (commented out for now, see below)
+    soc.add_spi_sdcard()
     if args.with_oled:
         soc.add_oled()
 
     # add my own modules
-    soc.add_blitter() # provides fast memory fill
-    soc.add_ESP32()   # esp32 on/off + spisdcard tristate control (access SDCard with ftp through wifi !)
+    soc.add_blitter()   # provides fast memory fill
+    # soc.add_ESP32()   # esp32 on/off + spisdcard tristate control (access SDCard with ftp through wifi !)
+                        # commented-out for now (there were changes in LiteX that I need to adapt to)
     
     builder = Builder(soc, **builder_argdict(args))
     builder_kargs = trellis_argdict(args) if args.toolchain == "trellis" else {}

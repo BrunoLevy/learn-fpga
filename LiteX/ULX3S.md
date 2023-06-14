@@ -16,7 +16,8 @@ improvements as compared to the original LiteX design (see
 [boards/radiona_ulx3s_ex.py](boards/radiona_ulx3s_ex.py)), that is:
 - circuitry to switch ESP32 on and off, and route the SDCard to the
   ESP32 or the FPGA. It makes it possible to upload files to the
-  SDCard through Wifi while still using the FPGA.
+  SDCard through Wifi while still using the FPGA. (NOTE: DEACTIVATED
+  FOR NOW, NEEDS TO BE ADAPTED TO NEW LITEX)
 - fixed a video timing problem 
 - added a crude Blitter to accelerate some graphic functions (clear, fillrect, fillpoly)
 
