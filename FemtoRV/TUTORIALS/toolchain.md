@@ -195,6 +195,19 @@ ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0660", GROUP="plugdev",
 ```
 _(no additional tool to install, `iceprog` is included in `icestorm` that we installed in step 3)_
 
+OrangeCrab (ECP5)
+-----------------
+Create in `/etc/udev/rules.d` a file `99-orangecrab.rules` with the following content:
+```
+ATTRS{idVendor}=="1209", ATTRS{idProduct}=="5af0", MODE="0666", GROUP="plugdev", TAG+="uaccess"
+ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", MODE="0666", GROUP="dialout" 
+ATTRS{idVendor}=="1209", ATTRS{idProduct}=="5bf2", MODE="0666", GROUP="dialout"
+
+```
+
+OrangeCrab works in DFU mode, needs dfu-util (like FOMU below). Note: when you program the OrangeCrab,
+keep its button pushed when plugging it in to enter DFU mode.
+
 FOMU
 ----
 FOMU includes a Ice40up5k FPGA (Ice40 family) but requires different USB rules and tools:
@@ -205,12 +218,12 @@ with the following content:
 SUBSYSTEM=="usb", ATTRS{idVendor}=="1209", ATTRS{idProduct}=="5bf0", MODE="0664", GROUP="plugdev"
 ```
 
-Install dfu-util:
+Install dfu-util (FOMU/OrangeCrab):
 ```
 $ sudo apt-get install dfu-util  
 ```
 
-Plug the FOMU and test it:
+Plug the FOMU or the OrangeCrab (with its button pushed) and test it:
 ```
 $ dfu-util -l
 ```

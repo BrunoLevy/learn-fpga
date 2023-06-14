@@ -8,6 +8,7 @@ V?=$(VERBOSE)
 LITEX_DIR?=/home/blevy/Programming/LiteX
 LEARN_FPGA_DIR?=/home/blevy/Programming/learn-fpga
 LITEX_PLATFORM?=radiona_ulx3s
+#LITEX_PLATFORM?=gsd_orangecrab
 
 BUILD_DIR?=$(LEARN_FPGA_DIR)/LiteX/build/$(LITEX_PLATFORM)
 
