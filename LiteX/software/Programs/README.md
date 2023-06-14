@@ -8,7 +8,7 @@ Compile the programs:
 ```
 $ make
 ```
-Then copy all `.elf` files to the SDCard. Connect to the SoC (`lxterm
+Then copy all `.elf` files to the SDCard. Connect to the SoC (`litex_term
 /dev/ttyUSBnnn`), and verify that the programs are there:
 ```
 liteOS> catalog

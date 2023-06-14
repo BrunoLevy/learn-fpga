@@ -20,7 +20,8 @@ improvements as compared to the original LiteX design (see
   FOR NOW, NEEDS TO BE ADAPTED TO NEW LITEX)
 - fixed a video timing problem 
 - added a crude Blitter to accelerate some graphic functions (clear, fillrect, fillpoly)
-
+- NOTE: you may need to do a [simple modification](https://github.com/enjoy-digital/litex/issues/1712) in
+  one of LiteX's files to be able to access the SDCard.
 
 To generate the bitstream for the ULX3S, you will first need to:
 
@@ -51,7 +52,7 @@ FemtoRV directly from its github repository, great !). It will also
 compile the BIOS, synthesize the gateware and send it to the
 device. If everything went well, you will see the colorful 'knight
 driver' blinky of victory on the LEDs. Now you can connect to the SoC
-with `lxterm /dev/ttyUSB0`. 
+with `litex_term /dev/ttyUSB0`. 
 
 Now let us see how to write some [software for our SoC](software/README.md).
 

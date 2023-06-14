@@ -16,6 +16,15 @@
 
 /*******************************************************************/
 
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif
+
+
 typedef int BOOL;
 
 static inline float max(float x, float y) { return x>y?x:y; }
