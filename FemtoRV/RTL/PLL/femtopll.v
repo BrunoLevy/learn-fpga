@@ -38,6 +38,8 @@ endmodule
   `include "pll_fomu.v"
  `elsif ARTY
   `include "pll_arty.v"
+ `elsif CMODA7
+  `include "pll_cmod_a7.v"
  `endif
 `endif
 
