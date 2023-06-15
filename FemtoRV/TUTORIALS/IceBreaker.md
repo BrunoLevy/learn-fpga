@@ -62,7 +62,7 @@ are listed below:
 | `NRV_RUN_FROM_SPI_FLASH` | Do not initialize BRAM with firmware (firmware will be read from SPI flash)          |
 
 The default value (25 MHz) corresponds to what is validated by Yosys/NextPNR. If you want you can try overclocking
-a bit, up to 20 - 25 MHz (but you may experience stability problems then).
+a bit, up to 30 - 35 MHz (but you may experience stability problems then).
 Note that frequency can only take some predefined values, listed in `RTL/PLL/frequencies.txt`. You can add your own
 value there if need be, but then you will need to use `RTL/PLL/gen_pll.sh` to re-generate the board-specific Verilog
 for the PLL.
