@@ -1089,7 +1089,7 @@ to `x1`) and stops:
       end
 ```
 
-**Try this** run [test9.v](test9.v) in simulation and on device. Try modifying the program,
+**Try this** run [step9.v](step9.v) in simulation and on device. Try modifying the program,
 create a "knight driver" blinky with an outer loop and two inner loops (one left to right and
 one right to left). 
 
