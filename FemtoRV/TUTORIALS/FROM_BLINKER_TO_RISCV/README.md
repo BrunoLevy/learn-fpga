@@ -1317,8 +1317,8 @@ the IceStick).  The 33 bits subtract is written as follows:
 if you want to know what `A-B` does in Verilog, it corresponds
 to `A+~B+1` (negate all the bits of B before adding, and add 1), it
 is how two's complement subtraction works. For instance, take
-`4'b0000 - 4`b0001`, the result is `-1`, encoded as `4`b1111`. It is
-computed as follows by the formula: `4'b0000 + ~4'b0001 + 1` = `4'b0000 + 4`b1110 + 1`
+`4'b0000 - 4'b0001`, the result is `-1`, encoded as `4'b1111`. It is
+computed as follows by the formula: `4'b0000 + ~4'b0001 + 1` = `4'b0000 + 4'b1110 + 1`
 = `4'b1111`. So we will keep the following expression (we could have kept the
 simpler form above, but it is interesting to be aware of what happens under the
 scene):
@@ -1608,7 +1608,7 @@ things to remember:
 On a CISC processor, there are often special functions for calling
 functions (`CALL`) and for returning from a function (`RET`), and registers
 are often specialized (function return address, stack pointer, function
-parameters). This makes programmer's life easier because there i s less
+parameters). This makes programmer's life easier because there is less
 to remember. There is no reason not doing the same for a RISC processor !
 Let us pretend that the register are different and give them different names
 (or aliases). These names are listed
@@ -1661,7 +1661,7 @@ Besides these names, there are also _pseudo-instructions_ for common tasks, such
  | `BNEZ(rd1,offset)`    | equivalent to `BNE(rd1,x0,offset)`   |
  | `BGT(rd1,rd2,offset)` | equivalent to `BLT(rd2,rd1,offset)`  | 
 
-If the constant in in the [-2048,2047] range, `LI` is implemented using `ADDI(rd,x0,imm)`, else
+If the constant in the [-2048,2047] range, `LI` is implemented using `ADDI(rd,x0,imm)`, else
 it uses a combination of `LUI` and `ADDI` (if you want to know how it works, see this [stackoverflow answer](https://stackoverflow.com/questions/50742420/risc-v-build-32-bit-constants-with-lui-and-addi), there are tricky details about sign expansion).
 
 Using ABI register names and pseudo-instructions, our program becomes as follows:
@@ -1730,8 +1730,8 @@ instructions that load half-words and bytes exist in two versions:
 - `LB`,`LH` that load a byte,halfword in the LSBs of `rd` then do sign extensin:
 
 For instance, imagine a sign byte with the value `-1`, that is `8'b11111111`,
-loading it in a 32-bit register with `LBU` will result in `32b0000000000000000000000011111111`,
-whereas loading it with `LB` will result in `32b11111111111111111111111111111111`, that is,
+loading it in a 32-bit register with `LBU` will result in `32'b0000000000000000000000011111111`,
+whereas loading it with `LB` will result in `32'b11111111111111111111111111111111`, that is,
 the 32-bits version of `-1`. 
 
 So we got a "two-dimensional" array of cases (whether we load a byte, halfword, word, and
