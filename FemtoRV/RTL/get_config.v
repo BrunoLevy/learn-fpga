@@ -45,6 +45,9 @@ initial begin
 `ifdef ICE_BREAKER
    $write(" -DICE_BREAKER=1");   
 `endif
+`ifdef ICE_SUGAR_NANO
+   $write(" -DICE_SUGAR_NANO=1");
+`endif
    $write("\n");
    
 end 
