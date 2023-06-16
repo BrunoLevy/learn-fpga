@@ -38,6 +38,10 @@ it is not as fun).
   instead (will add instructions for that in the future). 
 - [Episode II](PIPELINE.md) is a WIP on pipelining, that I'm currently trying to understand (and writing
   a tutorial about something is a good way of making sure you understand it !).
+- This tutorial is in VERILOG. It is currently being ported into other HDLs
+    - [Amaranth/nMigen version](https://github.com/bl0x/learn-fpga-amaranth) by @bl0x
+    - TODO: Silice version
+    - TODO: SpinalHDL version
 
 ## Introduction and references on processor design
 
