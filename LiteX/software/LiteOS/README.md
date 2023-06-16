@@ -31,7 +31,7 @@ slot of your FPGA board.
 Step 3: run
 -----------
 Reboot the board. The LiteX BIOS automatically finds `boot.bin` on the
-SDCard and loads it. Connect to it using `lxterm /dev/ttyUSBnnn` where
+SDCard and loads it. Connect to it using `litex_term /dev/ttyUSBnnn` where
 `nnn` depends on the circumstances (it is 0 in most cases). If everything
 went well, you will see the LiteOS prompt.
 

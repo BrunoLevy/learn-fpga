@@ -31,10 +31,13 @@ it from this repository when selected as the SoC's processor).
 
 From Blinky to RISC-V
 ---------------------
-In [this tutorial](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/TUTORIALS/FROM_BLINKER_TO_RISCV/README.md),
+In [Episode I](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/TUTORIALS/FROM_BLINKER_TO_RISCV/README.md),
 you will learn to build your own RISC-V processor, step by step,
 starting from the simplest design (that blinks a LED), to a fully
 functional RISC-V core that can compute and display graphics.
+
+In [Episode II](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/TUTORIALS/FROM_BLINKER_TO_RISCV/PIPELINE.md),
+you will learn how to design a pipelined processor.
 
 Basic: more basic things I wrote during May 2020 - June 2020  
 ------------------------------------------------------------

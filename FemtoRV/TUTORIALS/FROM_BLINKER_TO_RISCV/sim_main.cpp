@@ -10,7 +10,7 @@ int main(int argc, char** argv, char** env) {
    CData prev_LEDS;
    Elf32Info elf;
    int elf_status;
-   void* simulated_RAM = (void*)top.SOC__DOT__RAM__DOT__MEM;
+   // void* simulated_RAM = (void*)top.SOC__DOT__RAM__DOT__MEM;
 
    // Call eval() so that readmemh()/initial bocks are executed
    // before anything else.
@@ -19,6 +19,7 @@ int main(int argc, char** argv, char** env) {
    // If ELF is specified on command line, load it into
    // simulated RAM. It will overwrite the RAM that was
    // previously initialized with readmemh().
+   /*
    if(argc > 1) {
        elf_status = elf32_load_at(argv[1],&elf,simulated_RAM);
        if(elf_status != ELF32_OK) {
@@ -39,6 +40,7 @@ int main(int argc, char** argv, char** env) {
 	   exit(-1);
        }
    }
+   */
 
    // Main simulation loop.
    while(!Verilated::gotFinish()) {

@@ -163,7 +163,7 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 #  user executable)
 
 %.hex: %.baremetal.elf $(FIRMWARE_DIR)/TOOLS/firmware_words 
-	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram $(RAM_SIZE) -max_addr 65535 -hex $@
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram $(RAM_SIZE) -max_addr 65535 -out $@
 	cp $@ $(FIRMWARE_DIR)/firmware.hex
 	echo $@ > $(FIRMWARE_DIR)/firmware.txt
 

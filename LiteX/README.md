@@ -37,7 +37,7 @@ $ wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.
 $ chmod +x litex_setup.py
 $ ./litex_setup.py --init --install --user 
 $ pip3 install meson ninja
-$ ./litex_setup.py --gcc=riscv
+$ sudo ./litex_setup.py --gcc=riscv
 ```
 
 Synthesize
@@ -46,6 +46,7 @@ Synthesize
 Instructions to synthesize are different, depending on the board you have.
 
 - [ULX3S](ULX3S.md)
+- [OrangeCrab](orange_crab.md)
 - [Other boards](litex-boards.md)
 
 Connect to the SoC
@@ -57,7 +58,7 @@ of `/dev/ttyUSBnnn`), use `$dmesg` right after plugging it (or try
 different values). Supposing it is `ttyUSB0`, do:
 
 ```
-  $lxterm /dev/ttyUSB0
+  $litex_term /dev/ttyUSB0
 ```
 
 Then press `<enter>`. You will see the `litex>` prompt.

@@ -247,7 +247,7 @@ module PetitBateau(
       // D' = denominator (rs2) normalized between [0.5,1] (set exp to 126)
       fpmi_gen(FPMI_FRCP_PROLOG); // D<-A; E<-B; A<-(-D'); B<-32/17; C<-48/17
       fpmi_gen_fma(0);            // X <- A*B+C (= -D'*32/17 + 48/17)
-      for(iter=0; iter<3; iter++) begin
+      for(iter=0; iter<3; iter=iter+1) begin
 	 if(PRECISE_DIV) begin
 	    // X <- X + X*(1-D'*X)
 	    // (slower more precise iter, but not IEEE754 compliant yet...)
@@ -309,7 +309,7 @@ module PetitBateau(
       `FPMPROG_BEGIN(FPMPROG_SQRT);
       // D<-rs1; E,A,B<-(doom_magic - (A >> 1)); C<-3/2
       fpmi_gen(FPMI_FRSQRT_PROLOG);
-      for(iter=0; iter<2; iter++) begin
+      for(iter=0; iter<2; iter=iter+1) begin
 	 // X <- X * (3/2 - (0.5*rs1*X*X))      	 
 	 fpmi_gen(FPMI_LOAD_XY_MUL);  // X <- A*B; Y <- C
 	 fpmi_gen(FPMI_MV_A_X);       // A <- X

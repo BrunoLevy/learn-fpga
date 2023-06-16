@@ -209,7 +209,7 @@ void fb_fillrect(
 #define BOTTOM 4
 #define TOP    8
 
-#define code(x,y) ((x) < fb_clip_x1) | (((x) > fb_clip_x2)<<1) | (((y) < fb_clip_y1)<<2) | (((y) > fb_clip_y2)<<3) 
+#define code(X,Y) ((X) < fb_clip_x1) | (((X) > fb_clip_x2)<<1) | (((Y) < fb_clip_y1)<<2) | (((Y) > fb_clip_y2)<<3) 
 
 void fb_line(int x1, int y1, int x2, int y2, uint32_t RGB) {
    

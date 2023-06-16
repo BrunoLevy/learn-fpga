@@ -79,14 +79,14 @@ module FemtoRV32(
    // Base RISC-V (RV32I) has only 10 different instructions !
    wire isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
    wire isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
-   wire isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
    wire isStore   =  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
    wire isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
-   wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
-   wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
-   wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
-   wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
    wire isSYSTEM  =  (instr[6:2] == 5'b11100); // rd <- cycles
+   wire isJAL     =  instr[3]; // (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
+   wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
+   wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
+   wire isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
+   wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
 
    wire isALU = isALUimm | isALUreg;
 
@@ -96,6 +96,8 @@ module FemtoRV32(
 
    reg [31:0] rs1;
    reg [31:0] rs2;
+   
+   (* no_rw_check *)
    reg [31:0] registerFile [31:0];
 
    always @(posedge clk) begin

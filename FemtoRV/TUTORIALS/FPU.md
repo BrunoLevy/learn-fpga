@@ -213,7 +213,7 @@ The truncated 32-bit result can be extracted from X:
   product = {X_sign, X_exp[7:0], X_frac[46:24]}
 ```
 This implements the most trivial round-to-zero rounding mode. Other
-rouding modes need more work (we just consider round-to-zero for now).
+rounding modes need more work (we just consider round-to-zero for now).
 
 As can be seen, except the special cases (underflow, overflow, zero, 
 NaNs, infinities), floating point product is a simple operation, 
@@ -222,7 +222,7 @@ especially if you have a DSP that computes `A_frac * B_frac`.
 Sum
 ---
 
-Sum is much mode complicated than product. In our FPU, sum is
+Sum is much more complicated than product. In our FPU, sum is
 implemented with the double-precision register `X`. We will see
 later that is it useful to to so, for the FMA operations. We
 are going to use a second double-precision register `Y`, to store

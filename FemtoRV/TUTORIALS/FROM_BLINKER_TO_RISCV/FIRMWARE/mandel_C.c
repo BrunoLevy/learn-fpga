@@ -6,6 +6,8 @@
 
 #ifdef __linux__
 #include <unistd.h>
+#else
+#include "io.h"
 #endif
 
 #define W 46
@@ -54,6 +56,7 @@ const char* colormap[21] = {
 int main() {
    int frame=0;
    for(;;) {
+      IO_OUT(IO_LEDS,frame);
       int last_color = -1;
       printf("\033[H");
       int Ci = ymin;
@@ -86,7 +89,8 @@ int main() {
       ++frame;
 #ifdef __linux__       
         usleep(100000);
-#endif       
+#endif
+//      if(frame>4) break;
    }
    
 }

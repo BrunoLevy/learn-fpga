@@ -47,7 +47,7 @@ module SOC (
       // add x2, x1, x0
       //                    rs2   rs1  add  rd   ALUREG
       MEM[5] = 32'b0000000_00000_00001_000_00010_0110011;
-      // add x2, x1, x0
+      // add x3, x1, x2
       //                    rs2   rs1  add  rd   ALUREG
       MEM[6] = 32'b0000000_00010_00001_000_00011_0110011;
       // srli x3, x3, 3

@@ -21,7 +21,15 @@
  */    
  
 `include "../../RTL/PLL/femtopll.v"
- 
+
+`ifdef ECP5_EVN
+`define NEGATIVE_RESET
+`endif
+
+`ifdef ARTY
+`define NEGATIVE_RESET
+`endif
+
 module Clockworks 
 (
    input  CLK, // clock pin of the board
@@ -99,7 +107,7 @@ module Clockworks
 	 assign resetn = &reset_cnt;
 
 `ifdef NEGATIVE_RESET
-	 always @(posedge CLK,negedge RESET) begin
+	 always @(posedge clk,negedge RESET) begin
 	    if(!RESET) begin
 	       reset_cnt <= 0;
 	    end else begin
@@ -107,7 +115,7 @@ module Clockworks
 	    end
 	 end
 `else   
-	 always @(posedge CLK,posedge RESET) begin
+	 always @(posedge clk,posedge RESET) begin
 	    if(RESET) begin
 	       reset_cnt <= 0;
 	    end else begin

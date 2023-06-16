@@ -1,19 +1,17 @@
 include ../../../FIRMWARE/makefile.inc
 RVASFLAGS=-march=$(ARCH) -mabi=$(ABI) 
-RVCFLAGS=-Os -fno-pic -march=$(ARCH) -mabi=$(ABI) -fno-stack-protector -w -Wl,--no-relax 
+RVCFLAGS=-I. -O2 -fno-pic -march=$(ARCH) -mabi=$(ABI) -fno-stack-protector -w -Wl,--no-relax
 
-RAMSIZE=6144
+RAM_SIZE=6144
 
-LIBOBJECTS=putchar.o wait.o print.o memcpy.o errno.o
+LIBOBJECTS=putchar.o wait.o print.o memcpy.o errno.o perf.o
 
 %.bram.elf: %.o start.o $(LIBOBJECTS) $(RV_BINARIES)
 	$(RVLD) -T bram.ld -m elf32lriscv -nostdlib -norelax $< $(LIBOBJECTS) $(RVTOOLCHAIN_GCC_LIB_DIR)/libgcc.a -o $@
 
 
-
-
 %.hex: %.elf $(FIRMWARE_DIR)/TOOLS/firmware_words 
-	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram $(RAM_SIZE) -max_addr 65535 -hex $@
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram $(RAM_SIZE) -max_addr $(RAM_SIZE) -out $@
 	cp $@ ../firmware.hex
 	mkdir -p ../obj_dir
 	cp $@ ../obj_dir/firmware.hex
@@ -58,3 +56,25 @@ LIBOBJECTS=putchar.o wait.o print.o memcpy.o errno.o
 
 %.spiflash2.list: %.spiflash2.elf
 	$(RVOBJDUMP) -Mnumeric -D $< > $@
+
+# DUAL MEMORY (64 kb program ROM, 64 kb data RAM)
+
+%.pipeline.elf: %.o start_pipeline.o $(LIBOBJECTS) $(RV_BINARIES)
+	$(RVLD) -T pipeline.ld -m elf32lriscv -nostdlib -norelax $< $(LIBOBJECTS) -L$(RVTOOLCHAIN_LIB_DIR) -lm $(RVTOOLCHAIN_GCC_LIB_DIR)/libgcc.a  -o $@
+	$(RVOBJDUMP) -Mnumeric -D $@ > $@.list
+
+%.PROGROM.hex: %.pipeline.elf $(FIRMWARE_DIR)/TOOLS/firmware_words 
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram 0x20000 -max_addr 0x20000 -out $@ -from_addr 0 -to_addr 0xFFFF
+	cp $@ ../PROGROM.hex
+	mkdir -p ../obj_dir
+	cp $@ ../obj_dir/PROGROM.hex
+
+%.DATARAM.hex: %.pipeline.elf $(FIRMWARE_DIR)/TOOLS/firmware_words 
+	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -ram 0x20000 -max_addr 0x20000 -out $@ -from_addr 0x10000 -to_addr 0x1FFFF
+	cp $@ ../DATARAM.hex
+	mkdir -p ../obj_dir
+	cp $@ ../obj_dir/DATARAM.hex
+
+%.pipeline.hex: %.PROGROM.hex %.DATARAM.hex
+	echo $@ > ../firmware.txt
+

@@ -22,5 +22,6 @@ putstring:
 	addi sp,sp,4 # restore sp
 	ret
 
+.section .data
 hello:
 	.asciz "Hello, world !\n"

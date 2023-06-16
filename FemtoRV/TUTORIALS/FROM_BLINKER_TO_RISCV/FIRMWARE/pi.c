@@ -19,7 +19,7 @@
     #include <stdlib.h>
     #include <stdio.h>
     #include <math.h>
-    #include "errno_fix.h"
+//    #include "errno_fix.h"
 
 
 //#define RV32_FASTCODE __attribute((section(".fastcode")))
@@ -180,5 +180,6 @@ void main() {
     printf("\npi = 3.");
     for(int n=1; ;n+=9) {
        printf("%d",digits(n));
+       if(n > 36) break;
     }
 }

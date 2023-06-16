@@ -529,7 +529,7 @@ LUT golfing experiments, trying to reduce LUT count.
 %.rawhex: %.elf $(RV_BINARIES)
 	$(RVOBJCOPY) -O verilog $< $@
 	
-#Rule to convert a raw hex file into an executable (flat binary file), loadable by femtos exec function
+# (DEPRECATED) Rule to convert a raw hex file into an executable (flat binary file), loadable by femtos exec function
 %.bin: %.rawhex $(FIRMWARE_DIR)/TOOLS/firmware_words
 	$(FIRMWARE_DIR)/TOOLS/firmware_words $< -verilog $(FIRMWARE_DIR)/../RTL/femtosoc_config.v -bin $@ -bin_start_addr 0x10000
 

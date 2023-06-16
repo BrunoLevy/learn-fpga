@@ -6,10 +6,38 @@ It works with the following boards:
 - IceStick
 - IceBreaker
 - ULX3S
-- _to be added_ ARTY
+- ARTY
 
 If you do not have a board, you can run everything in simulation (but
 it is not as fun).
+
+## About this tutorial
+
+- it is a progressive introduction, changing only one thing at a time. It
+  is a curated version of my logbook when I learnt these notions (2020-2022). I also tryed
+  to keep track of all the dead ends I explored and traps that caught me, they
+  are often indicated as side remarks and notes;
+- I try to keep hardware requirement as minimal as possible. With the tiniest FPGA
+  (IceStick Ice40HX1K) you can do the first episode of the tutorial and transform it
+  into a fully functional RV32I microcontroller that can execute compiled C code.
+- in the end, the obtained processor is not the most efficient, but it is not a toy:
+  it can execute any program. To anwser the question you may ask, yes, it
+  [runs DOOM](https://github.com/BrunoLevy/learn-fpga/tree/master/LiteX/software/Doom)!
+  (but not on an IceStick, you will need a larger FPGA). It works with the help of LiteX that 
+  has a nice SDRAM controller, because Doom needs some RAM;
+- the tutorial is both about hardware and software: you will learn how to compile programs
+  in assembly and in C for your core;
+- I try to make all example programs fun and interesting while reasonably short. The bundled
+  demo programs include:
+    - mandelbrot set in assembly and in C
+    - rotozoom graphic effect
+    - drawing filled polygons
+    - raytracing
+  These graphic program are all displayed in text mode on the terminal, using ANSI escape
+  sequences (yes, this makes BIG pixels). For more fun, it is also possible to use a small OLED display
+  instead (will add instructions for that in the future). 
+- [Episode II](PIPELINE.md) is a WIP on pipelining, that I'm currently trying to understand (and writing
+  a tutorial about something is a good way of making sure you understand it !).
 
 ## Introduction and references on processor design
 
@@ -1061,7 +1089,7 @@ to `x1`) and stops:
       end
 ```
 
-**Try this** run [test9.v](test9.v) in simulation and on device. Try modifying the program,
+**Try this** run [step9.v](step9.v) in simulation and on device. Try modifying the program,
 create a "knight driver" blinky with an outer loop and two inner loops (one left to right and
 one right to left). 
 
@@ -1289,8 +1317,8 @@ the IceStick).  The 33 bits subtract is written as follows:
 if you want to know what `A-B` does in Verilog, it corresponds
 to `A+~B+1` (negate all the bits of B before adding, and add 1), it
 is how two's complement subtraction works. For instance, take
-`4'b0000 - 4`b0001`, the result is `-1`, encoded as `4`b1111`. It is
-computed as follows by the formula: `4'b0000 + ~4'b0001 + 1` = `4'b0000 + 4`b1110 + 1`
+`4'b0000 - 4'b0001`, the result is `-1`, encoded as `4'b1111`. It is
+computed as follows by the formula: `4'b0000 + ~4'b0001 + 1` = `4'b0000 + 4'b1110 + 1`
 = `4'b1111`. So we will keep the following expression (we could have kept the
 simpler form above, but it is interesting to be aware of what happens under the
 scene):
@@ -1580,7 +1608,7 @@ things to remember:
 On a CISC processor, there are often special functions for calling
 functions (`CALL`) and for returning from a function (`RET`), and registers
 are often specialized (function return address, stack pointer, function
-parameters). This makes programmer's life easier because there i s less
+parameters). This makes programmer's life easier because there is less
 to remember. There is no reason not doing the same for a RISC processor !
 Let us pretend that the register are different and give them different names
 (or aliases). These names are listed
@@ -1604,7 +1632,7 @@ on the stack and pop them before returning.
 For all the other registers, you cannot expect them to be preserved through
 function calls.
 
-The gloval pointer `gp` can be used as a "shortcut" to reach memory areas that are
+The global pointer `gp` can be used as a "shortcut" to reach memory areas that are
 far away in 1 instruction. We will see that later (once we have `Load` and `Store`).
 
 In our VERILOG assembler [riscv_assembly.v](riscv_assembly.v), we just need to declare
@@ -1633,7 +1661,7 @@ Besides these names, there are also _pseudo-instructions_ for common tasks, such
  | `BNEZ(rd1,offset)`    | equivalent to `BNE(rd1,x0,offset)`   |
  | `BGT(rd1,rd2,offset)` | equivalent to `BLT(rd2,rd1,offset)`  | 
 
-If the constant in in the [-2048,2047] range, `LI` is implemented using `ADDI(rd,x0,imm)`, else
+If the constant in the [-2048,2047] range, `LI` is implemented using `ADDI(rd,x0,imm)`, else
 it uses a combination of `LUI` and `ADDI` (if you want to know how it works, see this [stackoverflow answer](https://stackoverflow.com/questions/50742420/risc-v-build-32-bit-constants-with-lui-and-addi), there are tricky details about sign expansion).
 
 Using ABI register names and pseudo-instructions, our program becomes as follows:
@@ -1702,8 +1730,8 @@ instructions that load half-words and bytes exist in two versions:
 - `LB`,`LH` that load a byte,halfword in the LSBs of `rd` then do sign extensin:
 
 For instance, imagine a sign byte with the value `-1`, that is `8'b11111111`,
-loading it in a 32-bit register with `LBU` will result in `32b0000000000000000000000011111111`,
-whereas loading it with `LB` will result in `32b11111111111111111111111111111111`, that is,
+loading it in a 32-bit register with `LBU` will result in `32'b0000000000000000000000011111111`,
+whereas loading it with `LB` will result in `32'b11111111111111111111111111111111`, that is,
 the 32-bits version of `-1`. 
 
 So we got a "two-dimensional" array of cases (whether we load a byte, halfword, word, and
@@ -3516,6 +3544,10 @@ At this point, not only our device runs code compiled using standard tools (gcc)
 existing code, independently developped (the mathematical routines in `libgcc`). It is quite exciting
 to run existing binary code on a processor that you create on your own !
 
+## Next tutorial
+
+[Pipelining](PIPELINE.md)
+
 ## Files for all the steps
 
 - [step 1](step1.v): Blinker, too fast, can't see anything
@@ -3545,5 +3577,5 @@ to run existing binary code on a processor that you create on your own !
 
 _WIP_
 
-- step 24: More devices (LED matrix, OLED screen...)
+- step 25: More devices (LED matrix, OLED screen...)
 
