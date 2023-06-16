@@ -13,6 +13,7 @@ Quick links:
 - [FOMU tutorial](TUTORIALS/FOMU.md)
 - [ARTY tutorial](TUTORIALS/arty.md)
 - [LiteX tutorial](https://github.com/BrunoLevy/learn-fpga/tree/master/LiteX)
+- [Ice4Pi tutorial](TUTORIALS/Ice4Pi.md)
 - [Adding a new board](TUTORIALS/newboard.md)
 - [More documentation...](TUTORIALS/README.md)
 

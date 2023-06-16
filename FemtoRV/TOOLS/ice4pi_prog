@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Usage:
+# ice4pi_prog fpga-bitstream.bin <firmware.bin>
+
+# Example1:
+# ice4pi_prog rot.bin
+
+
+# Example2:
+# ice4pi_prog femtosoc.bin hello.spiflash.bin
+
+
+#assert CRESET
+
+echo 24 > /sys/class/gpio/export || true
+echo out > /sys/class/gpio/gpio24/direction
+echo 1 >/sys/class/gpio/gpio24/value
+
+echo 0 >/sys/class/gpio/gpio24/value
+
+tr '\0' '\377' < /dev/zero | dd bs=1M count=4 of=image iflag=fullblock
+dd if=${1} conv=notrunc of=image
+if [[ $# -eq 2 ]] ; then
+    dd if=${2} bs=128K seek=1 conv=notrunc of=image
+    flashrom -p linux_spi:dev=/dev/spidev0.0,spispeed=20000 -w image
+fi
+
+#release CRESET
+
+echo 1 >/sys/class/gpio/gpio24/value

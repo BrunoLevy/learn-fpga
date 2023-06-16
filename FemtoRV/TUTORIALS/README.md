@@ -3,6 +3,7 @@ FemtoRV32 Tutorials
 
 - [IceSTICK tutorial](IceStick.md)
 - [IceBreaker tutorial](IceBreaker.md)
+- [Ice4Pi tutorial](Ice4Pi.md)
 - [ULX3S tutorial](ULX3S.md)
 - [ECP5 evaluation board tutorial](ECP5_EVN.md) _(WIP)_
 - [FOMU tutorial](FOMU.md) _(WIP)
