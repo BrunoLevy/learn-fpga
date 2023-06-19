@@ -53,14 +53,15 @@ Follow the README from [prjxray](https://github.com/SymbiFlow/prjxray).
 ```
 $ git clone https://github.com/SymbiFlow/prjxray.git
 $ cd prjxray
+$ export PRJXRAY=`pwd`
 $ git submodule update --init --recursive
 $ make build
-$ sudo make install
+$ sudo python3 $PRJXRAY/setup.py install
+$ sudo python3 $PRJXRAY/third_party/fasm/setup.py install
 $ ./download-latest-db.sh
 $ sudo mkdir -p /usr/share/nextpnr/
 $ sudo cp -r database /usr/share/nextpnr/prjxray-db
 $ sudo apt-get install python3 python3-pip python3-yaml
-# NOT NEEDED ? $ sudo -H pip3 install -r requirements.txt # Rem: Arch Linux and Fedora uses *need* to read the README before.
 ```
 
 Step 3: nextpnr-xilinx
@@ -89,6 +90,9 @@ $ build/bbasm --l xilinx/xc7a35t.bba xilinx/xc7a35t.bin
 $ sudo mkdir -p /usr/share/nextpnr/xilinx-chipdb
 $ sudo cp xilinx/xc7a35t.bin /usr/share/nextpnr/xilinx-chipdb/
 ```
+
+Now set `$PRJXRAY` and `$LEARN_FPGA` in your `.bashrc` and make sure `$PRJXRAY/utils/` is in the `PATH`
+(so that `fasm2frames.py` is found).
 
 Here we go ! Now time to
 - install openFPGALoader (at the end of [the general toolchain tutorial](toolchain.md))
