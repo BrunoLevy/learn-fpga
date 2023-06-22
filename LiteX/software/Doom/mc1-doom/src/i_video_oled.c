@@ -64,6 +64,7 @@ static inline void oled_data_uint16_raw(uint16_t RGB) {
 
 
 void I_FinishUpdate (void) {
+#ifdef CSR_OLED_SPI_BASE    
     const unsigned char* src = (const unsigned char*)screens[0];
     // Resolution / 4, a centered 80x50 window
     oled_write_window(8,7,87,56);
@@ -79,6 +80,7 @@ void I_FinishUpdate (void) {
         line_ptr += 4*320;
     }
     oled_spi_cs_write(OLED_SPI_CS_HIGH);
+#endif
     
     /*
     float scaleX = (float)SCREENWIDTH / OLED_WIDTH;
