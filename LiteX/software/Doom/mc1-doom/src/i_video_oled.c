@@ -26,8 +26,6 @@ static inline uint32_t color_to_argb8888 (
 }
 
 
-
-
 void I_InitGraphics (void) {
    // Only initialize once.
    static int initialized = 0;

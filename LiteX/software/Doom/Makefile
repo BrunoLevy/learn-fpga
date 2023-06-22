@@ -3,7 +3,7 @@ include ../makefile.inc
 # specific options
 CFLAGS:=$(CFLAGS) -Wno-strict-prototypes -Wno-missing-prototypes -Wno-old-style-definition
 
-all: doom.elf
+all: doom.elf doom_oled.elf
 
 DOOM_OBJECTS= \
 am_map.o \
@@ -23,7 +23,6 @@ i_net_dummy.o \
 info.o \
 i_sound_dummy.o \
 i_system.o \
-i_video_oled.o \
 m_argv.o \
 m_bbox.o \
 m_cheat.o \
@@ -71,13 +70,22 @@ z_zone.o
 
 
 
-doom.elf: $(DOOM_OBJECTS) libliteos.a crt0.o sbrk.o exit.o
-	$(CC) ./crt0.o $(DOOM_OBJECTS) sbrk.o $(LDFLAGS) \
+doom.elf: $(DOOM_OBJECTS) i_video_fb.o libliteos.a crt0.o sbrk.o exit.o
+	$(CC) ./crt0.o $(DOOM_OBJECTS) i_video_fb.o sbrk.o $(LDFLAGS) \
 		-T linker.ld \
 		-N -o $@ \
 		$(PACKAGES:%=-L$(BUILD_DIR)/software/%) \
 		-L. -lliteos $(LIBS:lib%=-l%) -lbase 
 	chmod -x $@
+
+doom_oled.elf: $(DOOM_OBJECTS) i_video_oled.o  libliteos.a crt0.o sbrk.o exit.o
+	$(CC) ./crt0.o $(DOOM_OBJECTS) i_video_oled.o  sbrk.o $(LDFLAGS) \
+		-T linker.ld \
+		-N -o $@ \
+		$(PACKAGES:%=-L$(BUILD_DIR)/software/%) \
+		-L. -lliteos $(LIBS:lib%=-l%) -lbase 
+	chmod -x $@
+
 
 %.o: mc1-doom/src/%.c
 	$(compile)

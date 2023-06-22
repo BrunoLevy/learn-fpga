@@ -15,6 +15,8 @@ $ make
 - Then copy `doom.elf` to the SDCard.
 - Download [`DOOM1.WAD`](https://doomwiki.org/wiki/DOOM1.WAD) and copy it to the SDCard.
 
+Connect a screen to the HDMI connector of the ULX3S
+
 Connect to the SoC (`lxterm
 /dev/ttyUSBnnn`), and start the program:
 ```
@@ -28,11 +30,17 @@ handle user input are not there yet).
 
 
 SSD1331 OLED
----------------
+------------
 
-Runs on SSD1331 oled display, rendering at 320x200 and nearest neighbor downscale to 96x64.
+The Makefile also compiles `doom_oled.elf`, that you can use if you
+have an SSD1331 installed on your ULX3S (note: make sure you synthesized
+with support of the SSD1331).
 
-Lower render resolutions cause errors and crashes, this needs to be investigated and fixed, maybe some modded source ports have fixes.
+It runs on SSD1331 oled display, rendering at 320x200 and nearest
+neighbor downscale to 96x64.
+
+Lower render resolutions cause errors and crashes, this needs to be
+investigated and fixed, maybe some modded source ports have fixes.
 
 
 How it works
