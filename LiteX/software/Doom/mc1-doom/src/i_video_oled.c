@@ -15,16 +15,7 @@
 #include "m_argv.h"
 #include "v_video.h"
 
-static uint32_t s_palette[256] __attribute((section(".fastdata")));
-
-static inline uint32_t color_to_argb8888 (
-   unsigned int r,
-   unsigned int g,
-   unsigned int b
-) {
-   return 0xff000000u | (b << 16) | (g << 8) | r;
-}
-
+static uint16_t s_palette[256] __attribute((section(".fastdata")));
 
 void I_InitGraphics (void) {
    // Only initialize once.
@@ -44,37 +35,40 @@ void I_ShutdownGraphics (void) {
 }
 
 void I_WaitVBL (int count) {
-   
 }
 
 void I_StartFrame (void) {
-
 }
 
 void I_StartTic (void) {
 }
 
 void I_UpdateNoBlit (void) {
-
 }
 
 void I_FinishUpdate (void) {
-
     const unsigned char* src = (const unsigned char*)screens[0];
+    oled_write_window(8,7,87,56);
+    const unsigned char* line_ptr = src;
+    for(int y=0; y<200; y+=4) {
+        for(int x=0; x<320; x+=4) {
+            uint16_t pixelvalue = s_palette[line_ptr[x]];
+            oled_data_uint16(pixelvalue);
+        }
+        line_ptr += 4*320;
+    }
+    /*
     float scaleX = (float)SCREENWIDTH / OLED_WIDTH;
     float scaleY = (float)SCREENHEIGHT / OLED_HEIGHT;
     for (uint8_t y = 0; y < OLED_HEIGHT; ++y) {
         int iy = (int)(y * scaleY);
         for(uint8_t x = 0; x < OLED_WIDTH; ++x){
-                int ix = (int)(x * scaleX);
-                uint32_t pixelvalue = s_palette[src[iy*SCREENWIDTH+ix]]; // nearest neighbor
-                uint8_t pixel_a = (pixelvalue >> 24) & 0xFF;
-                uint8_t pixel_b = (pixelvalue >> 16) & 0xFF;
-                uint8_t pixel_g = (pixelvalue >> 8) & 0xFF;
-                uint8_t pixel_r = (pixelvalue) & 0xFF;
-                oled_setpixel_RGB(x, y, pixel_r, pixel_g, pixel_b);
+            int ix = (int)(x * scaleX);
+            uint16_t pixelvalue = s_palette[src[iy*SCREENWIDTH+ix]];
+            oled_setpixel_uint16(x, y, pixelvalue);
         }
     }
+    */
 }
 
 void I_ReadScreen (byte* scr) {
@@ -83,9 +77,9 @@ void I_ReadScreen (byte* scr) {
 
 void I_SetPalette (byte* palette) {
     for (int i = 0; i < 256; ++i) {
-        unsigned int r = (unsigned int)gammatable[usegamma][*palette++];
-        unsigned int g = (unsigned int)gammatable[usegamma][*palette++];
-        unsigned int b = (unsigned int)gammatable[usegamma][*palette++];
-        s_palette[i] = color_to_argb8888 (r, g, b);
+        uint16_t r = (uint16_t)gammatable[usegamma][*palette++];
+        uint16_t g = (uint16_t)gammatable[usegamma][*palette++];
+        uint16_t b = (uint16_t)gammatable[usegamma][*palette++];
+        s_palette[i] = oled_RGB_to_uint16(r,g,b);
     }
 }
