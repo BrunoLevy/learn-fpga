@@ -20,6 +20,7 @@ i_system.c
 i_video_dummy.c
 i_video_mc1.c
 i_video_ncurses.c
+i_video_oled.c
 i_video_sdl2.c
 m_argv.c
 m_bbox.c

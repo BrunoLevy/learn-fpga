@@ -23,7 +23,7 @@ i_net_dummy.o \
 info.o \
 i_sound_dummy.o \
 i_system.o \
-i_video_fb.o \
+i_video_oled.o \
 m_argv.o \
 m_bbox.o \
 m_cheat.o \
