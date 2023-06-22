@@ -76,7 +76,7 @@ doom.elf: $(DOOM_OBJECTS) libliteos.a crt0.o sbrk.o exit.o
 		-T linker.ld \
 		-N -o $@ \
 		$(PACKAGES:%=-L$(BUILD_DIR)/software/%) \
-		-L. -lliteos $(LIBS:lib%=-l%) -lbase exit.o
+		-L. -lliteos $(LIBS:lib%=-l%) -lbase 
 	chmod -x $@
 
 %.o: mc1-doom/src/%.c
