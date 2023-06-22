@@ -46,17 +46,40 @@ void I_StartTic (void) {
 void I_UpdateNoBlit (void) {
 }
 
+
+// Same as in lite_oled, but does not change CS and CMD/DAT
+static inline void oled_byte_raw(uint8_t b) {
+#ifdef CSR_OLED_SPI_BASE
+   oled_spi_mosi_write(b);
+   oled_spi_control_write(8*OLED_SPI_LENGTH | OLED_SPI_START);
+   while(oled_spi_status_read() != OLED_SPI_DONE);
+#endif
+}
+
+// Same as in lite_oled, but does not change CS and CMD/DAT
+static inline void oled_data_uint16_raw(uint16_t RGB) {
+   oled_byte_raw((uint8_t)(RGB>>8));
+   oled_byte_raw((uint8_t)(RGB));
+}
+
+
 void I_FinishUpdate (void) {
     const unsigned char* src = (const unsigned char*)screens[0];
+    // Resolution / 4, a centered 80x50 window
     oled_write_window(8,7,87,56);
     const unsigned char* line_ptr = src;
+
+    oled_ctl_out_write(OLED_SPI_DAT); 
+    oled_spi_cs_write(OLED_SPI_CS_LOW);
     for(int y=0; y<200; y+=4) {
         for(int x=0; x<320; x+=4) {
             uint16_t pixelvalue = s_palette[line_ptr[x]];
-            oled_data_uint16(pixelvalue);
+            oled_data_uint16_raw(pixelvalue);
         }
         line_ptr += 4*320;
     }
+    oled_spi_cs_write(OLED_SPI_CS_HIGH);
+    
     /*
     float scaleX = (float)SCREENWIDTH / OLED_WIDTH;
     float scaleY = (float)SCREENHEIGHT / OLED_HEIGHT;
