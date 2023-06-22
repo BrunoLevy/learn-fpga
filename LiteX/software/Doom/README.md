@@ -30,7 +30,8 @@ handle user input are not there yet).
 SSD1331 OLED
 ---------------
 
-Runs on SSD1331 oled display, rendering at 320x200 and nearest neighbor downscale to 96x64
+Runs on SSD1331 oled display, rendering at 320x200 and nearest neighbor downscale to 96x64.
+
 Lower render resolutions cause errors and crashes, this needs to be investigated and fixed, maybe some modded source ports have fixes.
 
 
