@@ -95,10 +95,11 @@ void I_FinishUpdate (void) {
     for(int y=0; y<OLED_HEIGHT; y++) {
         for(int x=0; x<OLED_WIDTH; x++) {
 
-            uint16_t pixelvalue = s_palette[line_ptr[(int)nearest_x_lut[x]+(int)nearest_y_lut[y]*SCREENWIDTH]]; //I had issues with incrementing the pointer, so I just use the index
+            uint16_t pixelvalue = s_palette[line_ptr[(int)nearest_x_lut[x]]];
             oled_data_uint16_raw(pixelvalue);
 
         }
+        line_ptr = src + nearest_y_lut[y]*SCREENWIDTH;
     }
 
     oled_spi_cs_write(OLED_SPI_CS_HIGH);
