@@ -17,16 +17,34 @@
 
 static uint16_t s_palette[256] __attribute((section(".fastdata")));
 
+static uint16_t nearest_x_lut[96] __attribute((section(".fastdata")));
+static uint8_t nearest_y_lut[64] __attribute((section(".fastdata")));
+
 void I_InitGraphics (void) {
-   // Only initialize once.
-   static int initialized = 0;
-   if (initialized!=0)
-     return;
-   initialized = 1;
-   screens[0] = (unsigned char*)malloc (SCREENWIDTH * SCREENHEIGHT);
+    // Only initialize once.
+    static int initialized = 0;
+    if (initialized!=0)
+        return;
+    initialized = 1;
+    
+    screens[0] = (unsigned char*)malloc (SCREENWIDTH * SCREENHEIGHT);
     if (screens[0] == NULL)
         I_Error ("Couldn't allocate screen memory");
-   oled_init();
+
+    float scaleX = (float)SCREENWIDTH / OLED_WIDTH;
+    float scaleY = (float)SCREENHEIGHT / OLED_HEIGHT;
+
+    for (uint8_t y = 0; y < OLED_HEIGHT; ++y) {
+        uint8_t iy = (uint8_t)(y * scaleY);
+        nearest_y_lut[y] = iy;
+    }
+
+    for(uint16_t x = 0; x < OLED_WIDTH; ++x){
+        uint16_t ix = (uint16_t)(x * scaleX);
+        nearest_x_lut[x] = ix;
+    }
+
+    oled_init();
 }
 
 void I_ShutdownGraphics (void) {
@@ -66,19 +84,23 @@ static inline void oled_data_uint16_raw(uint16_t RGB) {
 void I_FinishUpdate (void) {
 #ifdef CSR_OLED_SPI_BASE    
     const unsigned char* src = (const unsigned char*)screens[0];
-    // Resolution / 4, a centered 80x50 window
-    oled_write_window(8,7,87,56);
+
+    oled_write_window(0,0,95,63);
+
     const unsigned char* line_ptr = src;
 
     oled_ctl_out_write(OLED_SPI_DAT); 
     oled_spi_cs_write(OLED_SPI_CS_LOW);
-    for(int y=0; y<200; y+=4) {
-        for(int x=0; x<320; x+=4) {
-            uint16_t pixelvalue = s_palette[line_ptr[x]];
+
+    for(int y=0; y<OLED_HEIGHT; y++) {
+        for(int x=0; x<OLED_WIDTH; x++) {
+
+            uint16_t pixelvalue = s_palette[line_ptr[(int)nearest_x_lut[x]+(int)nearest_y_lut[y]*SCREENWIDTH]]; //I had issues with incrementing the pointer, so I just use the index
             oled_data_uint16_raw(pixelvalue);
+
         }
-        line_ptr += 4*320;
     }
+
     oled_spi_cs_write(OLED_SPI_CS_HIGH);
 #endif
     
