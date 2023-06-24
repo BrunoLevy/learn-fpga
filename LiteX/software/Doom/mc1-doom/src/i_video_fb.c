@@ -1,7 +1,7 @@
-// Emacs style mode select   -*- C++ -*-
 //-----------------------------------------------------------------------------
 //
 //      DOOM graphics renderer for LiteX framebuffer
+//           (not part of mc1-doom)
 //
 //-----------------------------------------------------------------------------
 
@@ -76,20 +76,6 @@ void I_FinishUpdate (void) {
     */
 
 
-/*   
-    const unsigned char* src = (const unsigned char*)screens[0];
-    uint32_t* dst = fb_base + (FB_WIDTH-SCREENWIDTH)/2 +
-                              (FB_HEIGHT-SCREENHEIGHT)*FB_WIDTH/2;
-    
-    for (int y = 0; y < SCREENHEIGHT; ++y) {
-        for (int x = 0; x < SCREENWIDTH; ++x) {
-	   dst[x] = s_palette[src[x]];
-	}
-        src += SCREENWIDTH;
-        dst += FB_WIDTH;
-    }
-*/
-   
     const unsigned char* row_src = (const unsigned char*)screens[0];
     const unsigned char* row_src_end = row_src + SCREENWIDTH;
    
