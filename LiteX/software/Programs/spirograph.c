@@ -22,7 +22,7 @@ int sintab[64] = {
 
 int main(void) {
     fb_init();
-    int frame;
+    int frame = 0;
     int comp = 0;
    
     for(;;) {
