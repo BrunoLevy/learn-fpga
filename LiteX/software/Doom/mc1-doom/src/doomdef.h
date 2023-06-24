@@ -86,8 +86,6 @@ typedef enum
 //
 #define BASE_WIDTH              320
 #define BASE_HEIGHT             200
-// I didn't get it to work with any lower resolution,
-// kept trowing errors so I used nearest neighbor scaling
 
 // Actual rendering resolution.
 // TODO(m): We can't set this too high, or Doom will crash.

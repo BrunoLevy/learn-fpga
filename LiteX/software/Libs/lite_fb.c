@@ -218,13 +218,15 @@ void fb_line(int x1, int y1, int x2, int y2, uint32_t RGB) {
     int code2 = code(x2,y2);
     int codeout;
     /* Bresenham */
-    int x,y,dx,dy,sx,sy;
+    int dx,dy,sx,sy;
     /* Pixel pointer */
     uint8_t* pix_ptr;
     int sx_ptr;
     int sy_ptr;
     
     for(;;) {
+        int x,y;
+        
 	/* Both points inside. */
 	if(code1 == 0 && code2 == 0) {
 	    break;
@@ -248,7 +250,7 @@ void fb_line(int x1, int y1, int x2, int y2, uint32_t RGB) {
 	}  else if (codeout & RIGHT) { 
 	    y = y1 + (y2 - y1) * (fb_clip_x2 - x1) / (x2 - x1); 
 	    x = fb_clip_x2; 
-	} else if (codeout & LEFT) { 
+	} else /* if (codeout & LEFT) */ { 
 	    y = y1 + (y2 - y1) * (fb_clip_x1 - x1) / (x2 - x1); 
 	    x = fb_clip_x1; 
 	} 
