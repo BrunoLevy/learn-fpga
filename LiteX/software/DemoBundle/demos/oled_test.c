@@ -6,7 +6,7 @@
 #include <libbase/console.h>
 
 static void oled_test(int nb_args, char** args) {
-   uint32_t frame;
+   uint32_t frame=0;
    puts("Press any key to exit");
    oled_init();
    oled_write_window(0,0,OLED_WIDTH-1,OLED_HEIGHT-1);

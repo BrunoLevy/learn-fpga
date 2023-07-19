@@ -2210,7 +2210,7 @@ to `DIV` instructions), then press `<return>` to run cycle by cycle.
 The displayed division mask shows progress. 
 
 
-## Step X: optimizing for fmax
+## Step 10: optimizing for fmax
 
 So we have seen that we have gained something regarding CPI, but were do
 we stand for fmax (and also LUTs and FFs) ? Here are the values for
@@ -2228,7 +2228,7 @@ the ULX3S:
 - the "sequential pipeline" validates at 80 MHz. Then we see the
   benefit of having simple stages
 - Fmax quickly drops when pipeline control logic is added (pipeline4)
-- ... but it gets higher with pipeline5 and pipeline5_vis that use
+- ... but it gets higher with pipeline5 and pipeline5_bis that use
   a combinatorial register file (emulated or real) where a written
   value can be read in the same cycle (hence pipeline control logic
   is simpler)
@@ -2237,9 +2237,11 @@ the ULX3S:
 But we made no effort optimizing Fmax, our goal up to now was mainly to
 reduce CPI. Let us see what we can do now.
 
+There are several things that we can do:
+
 ### Read `DATARAM` in `E` stage, sign-extend and align in `M`
 
-_WIP_ 
+Splitting memory operations over multiple stages reduces the critical path.
 
 ### `wbEn` register pipeline
 
@@ -2280,10 +2282,80 @@ do the `!isStore(I) & !isBranch(I)` test, then the execute test will test that
 `rdId` is not 0.
 
 ### `D` decodes, and remove `instr` and `PC` from subsequent stages
-_WIP_
+
+We propagate `instr` from stage to stage, and decode it each time we
+need. It is suboptimal, it is better to recognize the different
+instructions in `D`, and propagate `is_xxxx` flags that recognize
+each instruction.
 
 ### Careful optimizations in `D`
-_WIP_
+
+The choice for the bit pattern encoding of the 10 main instruction classes
+is not arbitrary, it was designed with efficiency in mind. The most obvious
+thing is the last two bits, that are always `00`, that one does not need
+to test, but there is also some more subtle structure:
+
+For instance,
+`JAL` is the only instruction that has its bit 3 set, so `D` does not need
+to test the other bits. It is interesting, because it simplifies the PC
+prediction logic. 
+
+### Pipelined register Id comparator for register forwarding
+
+The two three-way-muxes at the beginning of `E` are driven by comparisons between
+the source regster ids (`rs1Id` and `rs2Id`) and the destination register
+Id `rdId`) in (`DE`,`EM`) and (`DE`,`MW`). The result of these two tests can be
+computed one cycle in advance in `D` and stored in 4 flipflops
+`DE_rs1Id_eq_EM_rdId`, `DE_rs1Id_eq_MW_rdId`, `DE_rs2Id_eq_EM_rdId` and
+`DE_rs2Id_eq_MW_rdId`.
+
+The "final product", called `TordBoyau`,
+is available in [this project](https://github.com/BrunoLevy/TordBoyau). On an ARTY
+using Vivado, it validates at 100-125 MHz (and can be successfully overclocked up
+to 140 MHz).
+- With the RV32I configuration, the raytracing test achieves 7.375 raystones
+  (and 1.092 CPI, gshare + RAS works very well !).
+- With the RV32IM configuration, it reaches 18.215 raystones. 
+
+## Epilogue
+
+Hope you enjoyed this series. There are many other topics to study, and I will prepare
+(on day) tutorials on the following topics (as soon as I understand them !)
+
+- **optimizations**: there are several things we can do to make our processor even faster.
+  First thing is `STORE`->`LOAD` register forwarding, to make `memcpy()` run at 1 cycle
+  per word. Second thing is with the `RV32IM` version of `TordBoyau` that validates around
+  80 MHz (whereas it can be safely overclocked up to 140 MHz), so there are probably some
+  false paths that need to be elimitated.
+
+- **cache**: for now, our pipelined processor has a `PROGROM` and a `DATARAM`. We should plug
+ on them a cache interface, connected to an SDRam controller, that fetched and stores data
+ to the SDRAM as need be. I plan to develop that in the LiteX system, that has super complete
+ functionalities (SDRam controller, frame buffer etc...). Then we will be able to run DOOM
+ on our pipelined processor (DOOM already runs with the core that we built in Episode I because
+ LiteX folks already interfaced it to their cache controller).
+
+- **interrupts**: the RISC-V ISA has several chapters. There is a "priviledged ISA", with
+ special registers and instructions to control interrupts and traps. However, the official
+ documentation of the ISA is very difficult to read (I think), because it lists every
+ possibility. I project to write a small description of the bare minimum needed to run
+ for instance Linux-noMMU.
+
+- **MMU**: talking about MMU, it is already an interesting topic. @ultraembedded told me it
+ is super simple to add.
+
+- **Out-of-order**: at the end of this episode, thanks to the combined effect of
+  gshare branch prediction and the return address stack, we achieved 1.092 CPIs,
+  which is very near the "speed of light" (1 CPI). In fact, it is possible to design
+  "faster than light" processor, with several execution units, that pick instructions
+  and execute them out of order (OoO), executing **several instructions per cycle**.
+  There are several cores that do that, such as NaxRiscV by @dolu1990 and
+  BiRiscV by @ultraembedded. The micro-architecture is completely different, still
+  a set of pipelines, but organized as a tree, with a "central authority" that
+  routes instructions (Tomasulo algorithm). Would be great to have a generic
+  design, where one could create his own tree of pipelines, and have code to
+  automatically generate the "central authority". A framework like LiteX could
+  be used for that.
 
 ## References
 
