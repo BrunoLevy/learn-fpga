@@ -2320,7 +2320,7 @@ to 140 MHz).
 ## Epilogue
 
 Hope you enjoyed this series. There are many other topics to study, and I will prepare
-(on day) tutorials on the following topics (as soon as I understand them !)
+(one day) tutorials on the following topics (as soon as I understand them !)
 
 - **optimizations**: there are several things we can do to make our processor even faster.
   First thing is `STORE`->`LOAD` register forwarding, to make `memcpy()` run at 1 cycle
