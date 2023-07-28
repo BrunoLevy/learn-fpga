@@ -2359,5 +2359,6 @@ Hope you enjoyed this series. There are many other topics to study, and I will p
 
 ## References
 
+- [Intel, AMD and VIA microarchitecture](https://www.agner.org/optimize/microarchitecture.pdf)
 - [course at upenn](https://acg.cis.upenn.edu/milom/cse372-Spring06/labs/lab4.html)
 - [slides](https://acg.cis.upenn.edu/milom/cis501-Fall05/lectures/06_pipeline.pdf)
