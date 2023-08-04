@@ -2362,3 +2362,8 @@ Hope you enjoyed this series. There are many other topics to study, and I will p
 - [Intel, AMD and VIA microarchitecture](https://www.agner.org/optimize/microarchitecture.pdf)
 - [course at upenn](https://acg.cis.upenn.edu/milom/cse372-Spring06/labs/lab4.html)
 - [slides](https://acg.cis.upenn.edu/milom/cis501-Fall05/lectures/06_pipeline.pdf)
+
+## References on Out-of-Order (recommended by Charles Papon)
+- [Henry thesis](https://www.stuffedcow.net/files/henry-thesis-phd.pdf)
+- [Boom](https://docs.boom-core.org/en/latest/index.html)
+- [Mashimo](https://www.rsg.ci.i.u-tokyo.ac.jp/members/shioya/pdfs/Mashimo-FPT'19.pdf)
