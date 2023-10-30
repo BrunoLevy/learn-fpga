@@ -1,8 +1,13 @@
+// donut.c by Andy Sloane (@a1k0n)
+// https://gist.github.com/a1k0n/8ea6516b4946ab36348fb61703dc3194
+
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+
+#define WITH_RV32M
 
 #define debug(...)
 //#define debug printf
@@ -120,13 +125,17 @@ void main() {
           }
           // todo: shift and add version of this
 
+	   
           /*
             if (d < dmin) dmin = d;
             if (d > dmax) dmax = d;
+	   */
+
+#ifdef WITH_RV32M	   
             px += d*vxi14 >> 14;
             py += d*vyi14 >> 14;
             pz += d*vzi14 >> 14;
-          */
+#else
           {
             // 11x1.14 fixed point 3x parallel multiply
             // only 16 bit registers needed; starts from highest bit to lowest
@@ -149,7 +158,7 @@ void main() {
             py += dy >> 4;
             pz += dz >> 4;
           }
-
+#endif
           niters++;
         }
       }
