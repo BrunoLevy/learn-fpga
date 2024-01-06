@@ -20,16 +20,26 @@
 #ifdef __linux__
 #include <stdlib.h>
 #include <unistd.h>
+#else
+#include "io.h"
 #endif
 
-
+// when compiling for SPI flash, uncomment to fit some routines in fast BRAM
+// (but it does not change much, the bottleneck is ANSI RGB encoding and uart.
 //#define RV32_FASTCODE __attribute((section(".fastcode")))
 #define RV32_FASTCODE
 
+// when compiling for SPI flash, uncomment to enable wireframe mode (but it is ugly
+// and it will not fit in BRAM !)
+// #define WITH_WIREFRAME 
+
+#ifdef WITH_WIREFRAME
 int wireframe = 0;
+#endif
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
+
 
 /**********************************************************************************/
 /* Graphics routines                                                              */
@@ -46,12 +56,10 @@ static inline uint8_t map_y(uint8_t y) {
     return y >> 2;
 }
 
-
 void GL_clear() {
     printf("\033[48;5;16m"   // set background color black
            "\033[2J");       // clear screen
 }
-
 
 /* 
  * Set background color using 6x6x6 colorcube codes
@@ -69,6 +77,7 @@ static inline void GL_setpixel(int x, int y) {
    printf("\033[%d;%dH ",y,x); // Goto_XY(x1,y) and print space
 }
 
+#ifdef WITH_WIREFRAME
 void GL_line(int x1, int y1, int x2, int y2) RV32_FASTCODE;
 void GL_line(int x1, int y1, int x2, int y2) {
     int x,y,dx,dy,sy,tmp;
@@ -83,7 +92,7 @@ void GL_line(int x1, int y1, int x2, int y2) {
        y1 = tmp;
     }
    
-    /* Bresenham line drawing. */
+    // Bresenham line drawing.
     dy = y2 - y1;
     sy = 1;
     if(dy < 0) {
@@ -127,6 +136,7 @@ void GL_line(int x1, int y1, int x2, int y2) {
 	}
     }
 }
+#endif
 
 void GL_fillpoly(int nb_pts, int* points) RV32_FASTCODE;
 void GL_fillpoly(int nb_pts, int* points) {
@@ -163,12 +173,14 @@ void GL_fillpoly(int nb_pts, int* points) {
 	int x2 = points[2*i2];
 	int y2 = points[2*i2+1];
 
+#ifdef WITH_WIREFRAME
         if(wireframe) {
 	   if((clockwise > 0) ^ (y2 > y1)) {
 	      GL_line(x1,y1,x2,y2);
 	   }
 	    continue;
 	}
+#endif
        
 	char* x_buffer = ((clockwise > 0) ^ (y2 > y1)) ? x_left : x_right;
 	int dx = x2 - x1;
@@ -208,7 +220,10 @@ void GL_fillpoly(int nb_pts, int* points) {
 	}
     }
 
-    if(!wireframe) {
+#ifdef WITH_WIREFRAME    
+    if(!wireframe) 
+#endif    
+    {
 	for(int y = miny; y <= maxy; ++y) {
 	    int x1 = x_left[y];
 	    int x2 = x_right[y];
@@ -431,18 +446,35 @@ int read_frame() {
 
 int main() {
     // printf("\x1B[?25l"); // hide cursor
-    wireframe = 0;
+
+#ifndef __linux__   
+    IO_OUT(IO_LEDS,15);
+#endif
+    printf("starting\n");
+
+#ifdef WITH_WIREFRAME    
+     wireframe = 0;
+#endif     
+    int frame = 0;
     GL_clear();
     for(;;) {
         spi_reset();
+        frame = 0;
 	while(read_frame()) {
+#ifdef WITH_WIREFRAME    
 	   if(wireframe) {
 	      GL_clear();
 	   }
+#endif
 #ifdef __linux__       
         usleep(20000);
-#endif       
+#else
+        IO_OUT(IO_LEDS,frame);
+#endif	   
+        ++frame;
 	}
+#ifdef WITH_WIREFRAME    
         wireframe = !wireframe;
+#endif        
     }
 }

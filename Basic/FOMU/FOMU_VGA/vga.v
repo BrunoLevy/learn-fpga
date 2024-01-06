@@ -28,8 +28,8 @@ module vga (
    wire   pixel_clk;
 
 // Choose your video mode here:
-`define VGA_MODE_640x480
-//`define VGA_MODE_1024x768
+//`define VGA_MODE_640x480
+`define VGA_MODE_1024x768
 //`define VGA_MODE_1280x1024
 
 `ifdef VGA_MODE_640x480

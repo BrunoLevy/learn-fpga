@@ -87,8 +87,8 @@ exit_Z:
 
         li a0,13
 	call putchar
-        li a0,10
-	call putchar
+#        li a0,10
+# 	 call putchar
 
 	add s1,s1,1
 	add s3,s3,dy

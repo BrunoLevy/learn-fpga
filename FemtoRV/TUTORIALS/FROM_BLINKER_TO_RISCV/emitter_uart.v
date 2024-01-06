@@ -1,7 +1,7 @@
 module corescore_emitter_uart
   #(
     parameter clk_freq_hz = 0,
-    parameter baud_rate = 57600)
+    parameter baud_rate = 1000000)
   (
    input wire 	    i_clk,
    input wire 	    i_rst,

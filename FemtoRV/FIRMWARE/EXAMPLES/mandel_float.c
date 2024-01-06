@@ -32,6 +32,7 @@ void mandel() {
    for(int Y=0; Y<H; ++Y) {
       float Cr = xmin;
       for(int X=0; X<W; ++X) {
+	 printf("%d %d\n",X,Y);
 	 float Zr = Cr;
 	 float Zi = Ci;
 	 int iter = 15;
@@ -54,6 +55,7 @@ void mandel() {
 }
 
 int main() {
+   printf("Mandel float");
    for(;;) {
       GL_init(GL_MODE_CHOOSE);
       GL_tty_init(FGA_mode);   
