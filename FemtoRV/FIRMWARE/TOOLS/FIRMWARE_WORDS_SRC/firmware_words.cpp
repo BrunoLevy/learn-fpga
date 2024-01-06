@@ -442,9 +442,16 @@ int main(int argc, char** argv) {
 	      << (RAM_SIZE/4)
 	      << " words )"
 	      << std::endl;
-    std::cout << "Occupancy: " << (max_addr*100) / RAM_SIZE
-	      << "%" << std::endl;
 
+    int occupancy = (max_addr*100) / RAM_SIZE;
+    
+    std::cout << "Occupancy: " << occupancy << "%" << std::endl;
+
+    if(occupancy > 95) {
+        std::cerr << " ********** WARNING ************ "
+                  << "RAM is almost full, program may crash if stack overflows"
+                  << std::endl;
+    }
    
     if(MAX_ADDR != 0) {
 	std::cout << "testing MAX_ADDR limit: " << MAX_ADDR << std::endl;
