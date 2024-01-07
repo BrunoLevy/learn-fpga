@@ -36,8 +36,9 @@ it is not as fun).
   These graphic program are all displayed in text mode on the terminal, using ANSI escape
   sequences (yes, this makes BIG pixels). For more fun, it is also possible to use a small OLED display
   instead (will add instructions for that in the future). 
-- [Episode II](PIPELINE.md) is a WIP on pipelining, that I'm currently trying to understand (and writing
-  a tutorial about something is a good way of making sure you understand it !).
+- [Episode II](PIPELINE.md) is on pipelining, you will learn there how to transform the basic processor
+  obtained at the end of this tutorial into a more efficient pipelined processor with branch prediction.
+- [Episode III)(INTERRUPTS.md) is a WIP on interrupts and the priviledged RISC-V ISA.
 - This tutorial is in VERILOG. It is currently being ported into other HDLs
     - [Amaranth/nMigen version](https://github.com/bl0x/learn-fpga-amaranth) by @bl0x
     - TODO: Silice version

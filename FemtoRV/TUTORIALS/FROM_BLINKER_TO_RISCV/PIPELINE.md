@@ -1,4 +1,4 @@
-# From Blinker to RISC-V episode II
+# From Blinker to RISC-V episode II - Pipelining
 
 In the [previous episode](README.md), we learnt how to create a fully functional
 RISC-V processor on a FPGA. Our processor is not the most efficient,
