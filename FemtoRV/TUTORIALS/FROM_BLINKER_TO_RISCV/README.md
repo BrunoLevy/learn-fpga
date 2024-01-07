@@ -2778,6 +2778,13 @@ extracts the parts that are interesting for us and writes them in ASCII hexadeci
 _Note_ you can invoke `make xxxx.bram.hex` directly, it will invoke the assembler, linker and
 elf conversion utility for you automatically.
 
+_Note_ on the IceStick, we only have `6kB` of RAM, so only tiny programs will fit. If the compiled
+program is larger than `6kB` then you will get an error. A more problematic case is a program that
+nearly fills the whole BRAM, then we have nearly no space for the stack, and the stack will overwrite
+the rest, putting the CPU in an invalid state, probably frozen. This situation is difficult to understand /
+to debug when you encounter it, so `firmware_words` displays a big warning message whenever the generated
+code fills more than 95% of the BRAM.
+
 Now you can run the example in simulation and on the device:
 ```
   $ cd ..
@@ -3119,10 +3126,93 @@ has 24 bits only, we can save significant resources there:
    wire [ADDR_WIDTH-1:0] loadstore_addr = rs1 + (isStore ? Simm : Iimm);
 ```
 
+The up to date verilog file is avalaible in [step22.v](step22.v). Let us now check
+that we are able to access the SPI flash from our processor, with the following
+[program](FIRMWARE/read_spiflash.c):
+```C
+#include "io.h"
+#define SPI_FLASH_BASE ((char*)(1 << 23))
+int main()  {
+   for(int i=0; i<16; ++i) {
+      IO_OUT(IO_LEDS,i);
+      int lo = (int)SPI_FLASH_BASE[2*i  ];
+      int hi = (int)SPI_FLASH_BASE[2*i+1];
+      print_hex_digits((hi << 8) | lo,4); // print four hexadecimal digits
+      printf(" ");
+   }
+   printf("\n");
+}
+```
+
+The SPI flash is mapped in memory space, using addresses with bits 23 or 24 set (the
+first address, that we call `SPI_FLASH_BASE`, is `1 << 23`). Then we access all individual
+bytes, and display them by grouping them into 16-bit words (for each word, the first byte
+in memory is the least significant one, because RISC-V follows the little-endian convention).
+We have a `print_hex_digits()` function in [FIRMWARE/print.c](FIRMWARE/print.c) that does the job
+(the second argument is the number of hex characters we want to print for each number).
+
+Now compile the program, synthesize the design and send it to the device as follows:
+
+```
+ $ cd FIRMWARE
+ $ make read_spiflash.bram.hex
+ $ cd ..
+ $ BOARDS/run_icestick.sh step22.v
+ $ ./terminal.sh
+```
+
+... and you see nothing. While is this so ? The program finished before you started the terminal,
+so we were not able to see anything, but you can reset the processor, pushing the invisible reset
+button (mentioned in [step 2](README.md#step-2-slower-blinky)). Each time you push the
+"button", it will display on the terminal the first 16 words stored in the SPI flash.
+On a IceStick, you will see something like:
+```
+00FF FF00 AA7E 7E99 0051 0501 0092 6220 4B01 0072 8290 0000 0011 0101 0000 0000 
+```
+
+Do you have an idea where these values come from ? Remember why there is this SPI flash chip on your FPGA
+board: it is where your design is stored. When the FPGA starts, it loads its design from the SPI flash. The
+design corresponds to the file `SOC.bin`, that is generated at the end of the `yosys/nextpnr/icepack` pipeline:
+- `yosys` transforms your verilog into a "circuit", also called a "netlist"
+- then `nextpnr` maps the gates  of this circuit to the logical elements of the FPGA,
+- and finally `icepack` converts the result into a "binary stream" directly understood by the FPGA.
+
+Let us examine the 16 first words of the binary stream:
+
+```
+  $ od -x -N 32 SOC.bin
+```
+
+Then you'll see something like:
+```
+0000000 00ff ff00 aa7e 7e99 0051 0501 0092 6220
+0000020 4b01 0072 8290 0000 0011 0101 0000 0000
+0000040
+```
+
+and this corresponds to what we have just seen on the terminal, read from the SPI flash chip. 
+So our CPU can read its own FPGA representation from the SPI flash, like a biologist sequencing his
+hown DNA ! While it has a nice and intriguing recursion flavor, it is probably of very little practical
+use, but let us take a deeper look at it: the `SOC.bin` file is not very large:
+
+```
+$ ls -al SOC.bin
+-rw-rw-r-- 1 blevy blevy 32220 Jan  7 07:31 SOC.bin
+```
+
+It weights only `32Kb` or so, and our SPI flash chip has capacity for `2Mb` or so, so there is plenty of room for us !
+The only thing we need to take care of is not overwriting the FPGA configuration (in other words, always start further
+away then the size of `SOC.bin`). So we will use a `1Mb` offset for storing our data (you will say we are wasting a lot
+of space between `32Kb` and `1Mb` but we shall use that space for something else in subsequent steps of this tutorial).
+
+**Try this** Create a text file `hello.txt`, send it to the FPGA at the `1Mb` offset using `iceprog -o 1M hello.txt`, write
+a program that displays the stored file. To know where to stop, you may need either to decide for a termination character
+or to precode the length of the file.
+
 ![](ST_NICCC_tty.png)
 
-OK, so now we are ready to test the new storage that we have. Up to date
-verilog file is avalaible in [step22.v](step22.v). What we will do is displaying
+OK, so now we are ready to use the new storage that we have for more interesting things.
+What we will do is displaying
 an animation on the terminal. The animation is a demo from the 90's, that streams
 polygon data to a software polygon renderer. Polygon data is a 640 kB binary file,
 available from `learn_fpga/FemtoRV/FIRMWARE/EXAMPLES/DATA/scene1.dat` (see other
