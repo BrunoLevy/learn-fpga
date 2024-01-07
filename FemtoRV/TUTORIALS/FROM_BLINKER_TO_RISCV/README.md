@@ -3144,7 +3144,7 @@ int main()  {
 }
 ```
 
-The SPI flash is mapped in memory space, using addresses with bits 23 or 24 set (the
+The SPI flash is mapped in memory space, using addresses with bit 23 set (the
 first address, that we call `SPI_FLASH_BASE`, is `1 << 23`). Then we access all individual
 bytes, and display them by grouping them into 16-bit words (for each word, the first byte
 in memory is the least significant one, because RISC-V follows the little-endian convention).
@@ -3200,14 +3200,27 @@ $ ls -al SOC.bin
 -rw-rw-r-- 1 blevy blevy 32220 Jan  7 07:31 SOC.bin
 ```
 
-It weights only `32Kb` or so, and our SPI flash chip has capacity for `2Mb` or so, so there is plenty of room for us !
+It weights only `32KB` or so, and our SPI flash chip has capacity for `4MB`, so there is plenty of room for us !
 The only thing we need to take care of is not overwriting the FPGA configuration (in other words, always start further
-away then the size of `SOC.bin`). So we will use a `1Mb` offset for storing our data (you will say we are wasting a lot
-of space between `32Kb` and `1Mb` but we shall use that space for something else in subsequent steps of this tutorial).
+away then the size of `SOC.bin`). So we will use a `1MB` offset for storing our data (you will say we are wasting a lot
+of space between `32KB` and `1MB` but we shall use that space for something else in subsequent steps of this tutorial).
 
-**Try this** Create a text file `hello.txt`, send it to the FPGA at the `1Mb` offset using `iceprog -o 1M hello.txt`, write
+**Try this** Create a text file `hello.txt`, send it to the FPGA at the `1MB` offset (see below how to do that), write
 a program that displays the stored file. To know where to stop, you may need either to decide for a termination character
 or to precode the length of the file.
+
+For ICE40 boards (IceStick, IceBreaker, ...), use:
+```
+ $ iceprog -o 1M hello.txt
+```
+
+For ECP5 boards (ULX3S), use:
+```
+ $ cp hello.txt hello.img
+ $ ujprog -j flash -f 1048576 hello.img
+```
+(using latest version of `ujprog` compiled from [https://github.com/kost/fujprog](https://github.com/kost/fujprog)).
+
 
 ![](ST_NICCC_tty.png)
 
