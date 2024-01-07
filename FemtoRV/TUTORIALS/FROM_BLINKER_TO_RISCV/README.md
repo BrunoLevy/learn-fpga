@@ -2960,7 +2960,11 @@ module MappedSPIFlash(
 
 Now the idea is to modify our SOC in such a way that some addresses correspond to the SPI flash.
 First we need to decide how it will be projected into the memory space of our processor. The
-idea is to use bit 23 of memory addresses to select the SPI Flash. 
+idea is to use bit 23 of memory addresses to select the SPI Flash. Bit 22 is for IO (LEDs, UART). In
+addition, for IO, we need to check that bit 23 is zero. And if both bits 23 and 22 are zero, then we
+are in BRAM. So our memory space is decomposed into four "quadrants" depending on bits 23 and 22, and
+we use three of them.
+
 Then we have the different
 signals to discriminate the different zones of our memory:
 ```verilog
