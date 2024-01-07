@@ -2779,12 +2779,6 @@ extracts the parts that are interesting for us and writes them in ASCII hexadeci
 _Note_ you can invoke `make xxxx.bram.hex` directly, it will invoke the assembler, linker and
 elf conversion utility for you automatically.
 
-_Note_ on the IceStick, we only have `6kB` of RAM, so only tiny programs will fit. If the compiled
-program is larger than `6kB` then you will get an error. A more problematic case is a program that
-nearly fills the whole BRAM, then we have nearly no space for the stack, and the stack will overwrite
-the rest, putting the CPU in an invalid state, probably frozen. This situation is difficult to understand /
-to debug when you encounter it, so `firmware_words` displays a big warning message whenever the generated
-code fills more than 95% of the BRAM.
 
 Now you can run the example in simulation and on the device:
 ```
@@ -2903,6 +2897,13 @@ using `./run_verilator.sh step20.v FIRMWARE/mandel_C.bram.elf` or `./obj_dir/FIR
 Now you can see that your processor is not just a toy, it is a real
 RISC-V processor on which you can run programs produced by standard
 tools !
+
+_Note_ on the IceStick, we only have `6kB` of RAM, so only tiny programs will fit. If the compiled
+program is larger than `6kB` then you will get an error. A more problematic case is a program that
+nearly fills the whole BRAM, then we have nearly no space for the stack, and the stack will overwrite
+the rest, putting the CPU in an invalid state, probably frozen. This situation is difficult to understand /
+to debug when you encounter it, so `firmware_words` displays a big warning message whenever the generated
+code fills more than 95% of the BRAM.
 
 ## Step 22: Storing data: can I have more than 6 kB of memory ?
 
