@@ -82,11 +82,11 @@ List of questions:
 - the specification mentions "memory-mapped CSRs", are they supposed to be both in the
   processor and projected to memory space ? (or any combination of both options ?). I
   think that it is compliant with the norm as soon as the `CSRRx` instruction works
-  (either in-silicon with in-core regs or implemented in a trap handler). So in most
-  cases, the minimal in-silicon kernel has `mepc`, `mtvec`, `mstatus` and `mcause`,
+  (either with in-core regs or implemented in a trap handler). So in most
+  cases, the minimal in-core kernel has `mepc`, `mtvec`, `mstatus` and `mcause`,
   and triggers an exception as soon as other CSRs are accessed. Then `mtime` and
   `mtimecmp` can be either implemented in another piece of hw (that fires the
-  `interrupt_requet` wire) or directly implemented in-silicon. I wonder what is the
+  `interrupt_requet` wire) or directly implemented in-core. I wonder what is the
   gain of the first option (external `mtime`, `mtimecmp`), does it make the CPU
   simpler ? I am unsure, because in the end the weight of CPU plus interrupt controller
   will be more or less the same (maybe the address decoder for the CSRs can be simpler,
@@ -97,7 +97,11 @@ List of questions:
   memory-mapped CSRs, especially in a multicore context where each core can access
   other core's CSRs, but is is still **very unclear** to me). In particular, which
   one is relevant for us ? Do we need to implement one of them or can we do
-  something simpler ? 
+  something simpler ? I think that PLIC and (A)CLINT are for multi-core systems
+  (how a core can access another core's CSR, that are memory-mapped). So I think
+  that if one of these is relevant for us, it is probably CLIC. But I also think
+  that we probably need none of these, if we implement `mtime` / `mtimecmp` 
+  in-core (unless FreeRTOS supposes they are memory-mapped).
   - [PLIC](https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc)
   - [(A)CLINT](https://github.com/riscv/riscv-aclint/blob/main/riscv-aclint.adoc)
   - [CLIC](https://github.com/riscv/riscv-fast-interrupt/blob/master/clic.adoc)
