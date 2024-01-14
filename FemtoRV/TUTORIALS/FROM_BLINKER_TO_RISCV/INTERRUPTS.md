@@ -14,7 +14,7 @@ Goals:
   material)
 
 
-I think that @Mecrisp's `gracilis`  (extended with the memory-mapped register plus the interrupt source) has everything needed. 
+I think that @Mecrisp's `individua`  (extended with the memory-mapped register plus the interrupt source) has everything needed. 
 
 - The first thing to do is of course to get the thing running. How to
   add a mapped register is explained
@@ -182,9 +182,50 @@ It is done in the `EXECUTE` state. `mepc` is selected by the `PC_next` mux when 
 Question: in the Risc-V norm, `mstatus` has a `mip` bit (machine interrupt pending). Is it
 different or is it the same thing as our `interrupt_sticky` ? 
 
+What I think we need for FreeRTOS
+=================================
+
+- We probably need the 'A' instructions (so we can start from FemtoRV-individua)
+- We probably need the `ECALL` instruction and the associated bits in `mcause`
+- We need `mtime`,`mtimeh` (we can reuse `mcycles`, `mcyclesh`)
+- We need `mtimecmp`,`mtimehcmp` and the associated bits in `mcause`
+- We probably need an external interrupt source for the UART (we can use the existing `interrupt_request`)
+- We may need the `mscratch` CSR
+- We probably need `mtval` (machine bad address or instruction)
+
+What I think we need for Linux-noMMU
+====================================
+
+Let us take a look at @cnlohr's miniRV32. It has:
+- `mstatus`, `mscratch`, `mtvec`, `mie`, `mip`, `mepc`, `mtval`, `mcause` 
+- `cycle[l,h]`, `timer[l,h]`, `timermatch[l,h]`  (Q: can't we use cycle as timer ? Q: is timer written ?)
+- `extraflags`: privilege (2 bits), WFI (1 bit), Load/Store reservation LSBs (what's that ?)
+
+Remarks, questions:
+- It seems we only need the 'm' CSR bank, cool.
+- @cnlohr's code is short and easy to read. 
+- what is load/store reservation ?
+- take a closer look at extraflags
+- mini-rv32ima.c contains the "SOC"
+- what is the minimum required amount of RAM ?
+
+What is the bare minimal amount of hw to be able to run Linux-noMMU ?
+=====================================================================
+
+@MrBossman's [kisc-v](https://github.com/Mr-Bossman/KISC-V) has an interesting super minimalistic implementation,
+that emulates the priviledged ISA in trap handlers. It has a trap mechanism that exchanges PC with a pointer stored
+at a given address whenever an unknown instruction is encountered.
+
+But there are several things I need to understand:
+- how does it make the difference between traps and interrupts ?
+- how does it masks interrupts ?
+- how does it handle pending interrupts ?
+
 Links:
 ======
 - @cnlohr's [minirv32](https://github.com/cnlohr/mini-rv32ima)
+
+- Stack Overflow questions referenced in minirv32 [here](https://stackoverflow.com/questions/61913210/risc-v-interrupt-handling-flow/61916199#61916199)
 
 - Linux-capable @ultraembedded's simulator [exact-step](https://github.com/ultraembedded/exactstep/blob/master/cpu-rv32/rv32.cpp)
 
