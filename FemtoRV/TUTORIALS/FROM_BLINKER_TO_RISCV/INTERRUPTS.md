@@ -3,6 +3,7 @@
 This is WIP, for now just a scratchpad with notes.
 
 Goals:
+======
 
 - create a step-by-step gentle introduction, morphing the processor
   obtained at the end of Episode I into something that can run FreeRTOS
@@ -66,6 +67,7 @@ could be something like (first draft):
   particular about simulation / verilator etc...)
 
 List of questions:
+==================
 
 - what is the minimal list of CSRs and instructions needed to run  FreeRTOS ? First guess:
   - mepc: saved PC
@@ -106,10 +108,88 @@ List of questions:
   - [(A)CLINT](https://github.com/riscv/riscv-aclint/blob/main/riscv-aclint.adoc)
   - [CLIC](https://github.com/riscv/riscv-fast-interrupt/blob/master/clic.adoc)
 
-Links:
+Interrupts, Exception, Traps
+============================
 
+Definitions
+-----------
+
+- Exception: unusual condition of run-time associated with an instruction
+- Trap: synchronous transfer to a trap handler caused by exceptional condition
+- Interrupt: external event that occurs asynchronously
+(if I understand well, a trap is what you return from using Xret. An exception is
+ what triggers a trap from the current instruction, and an interrupt is what triggers
+ a trap asynchronously, from the timer, or from a special wire).
+
+
+Interrupts in existing FemtoRV cores
+------------------------------------
+
+Matthias has developed three FemtoRVs with interrupt support:
+- intermissum (RV32-IM)
+- gracilis    (RV32-IMC)
+- individua   (RV32-IMAC)
+
+The interrupt logic is common to the three of them. They
+have an additional wire `interrupt_request` that triggers an interrupt
+
+They implement the following CSRs:
+- `mepc`: saved program counter
+- `mtvec`: address of the interrupt handler
+- `mstatus` bit x: interrupt enable
+- `mcause` bit x: interrupt cause (and lock: already in interrupt handler)
+- there is also an `interrupt_request_sticky` flipflop
+
+Besides writing/reading the new CSRs (easy), we need to make three modifications in
+our core:
+- 1 how the `interrupt_request` discusses with the rest of the chip 
+- 2 how (and when) do we jump to a trap handler
+- 3 how do we return from a trap handler (that is, what `mret` does)
+
+**1: how `interrupt_request` discusses with `interrupt_sticky`:**
+
+`interrupt_request` only talks to `interrupt_sticky`, and the rest of the chip only sees `interrupt_sticky`.
+- if `interrupt_request` goes high, `interrupt_sticky` goes high
+- if `interrupt_sticky` is high, it stays high until the interrupt has been processed (that is, until we go through
+  the `execute` state that does what should be done with the interrupt).
+
+**2: how (and when) do we jump to a trap handler ?**
+
+we just need to do three things:
+- jump to the trap handler, that is, set `PC` to `mtvec`
+- save return address, that is, set `mepc` to `PC+4` (or `PC+2` if it is a RV32C instruction)
+- indicate that we are in a trap handler, by setting bit 31 of `mcause` (indicates that we are in an interrupt)
+
+It is done in the `EXECUTE` stage under three conditions:
+- there is an interrupt pending (`interrupt_request_sticky` is asserted) and
+- interrupts are enabled (`MIE`, that is `mstatus`[3] is set) and
+- we are not in an interrupt handler already (`mcause`[31]) is not asserted
+
+**3: how do we return from a trap handler ?**
+- reset `mcause[31]` to 0
+- jump to the return address in `mepc`
+
+It is done in the `EXECUTE` state. `mepc` is selected by the `PC_next` mux when the current instruction is `mret`
+
+**Another view of what happens when an interrupt is triggered**
+- 1 `interrupt_request` is asserted by the external interrupt source
+- 2 `interrupt_sticky` goes high (and remains high until we are in `EXECUTE`
+- 3 `EXECUTE` sets `mcause[31]`, saves the return address to `mepc` and jumps to the trap handler.
+     `interrupt_sticky` goes low
+- 4 the instructions in the trap handler are executed until current instruction is `mret`
+- 5 `EXECUTE` processes `mret` (resets `mcause[31]` and jumps to `mepc`)
+
+Question: in the Risc-V norm, `mstatus` has a `mip` bit (machine interrupt pending). Is it
+different or is it the same thing as our `interrupt_sticky` ? 
+
+Links:
+======
 - @cnlohr's [minirv32](https://github.com/cnlohr/mini-rv32ima)
 
-- Linux-capable @ultraembedded's [exact-step](https://github.com/ultraembedded/exactstep/blob/master/cpu-rv32/rv32.cpp)
+- Linux-capable @ultraembedded's simulator [exact-step](https://github.com/ultraembedded/exactstep/blob/master/cpu-rv32/rv32.cpp)
 
 - @regymm [quasi-soc](https://github.com/regymm/quasiSoC)
+
+- @MrBossman [kisc-v](https://github.com/Mr-Bossman/KISC-V)
+
+- @splinedrive [Kian risc-V](https://github.com/splinedrive/kianRiscV)
