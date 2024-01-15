@@ -218,8 +218,16 @@ at a given address whenever an unknown instruction is encountered.
 
 But there are several things I need to understand:
 - how does it make the difference between traps and interrupts ?
+   - all regs are copied at fixed address by trap handler
+   - trap handler changes the stack pointer to `_sstack` (system stack ?)
+   - trap handler calls `entry`
+   - trap handler restores regs
+   - trap handler jumps to address `back`, that has instruction with opcode `1` (unsupported, so it swaps PC and saved PC)
+   - `cause` is deduced from `intc` array at fixed address. Where is `intc` written ? In HDL ? Yes, it seems that it is
+     memory-mapped registers in the interrupt controller.
 - how does it masks interrupts ?
 - how does it handle pending interrupts ?
+- what happens if an interrupts occurs when in trap handler ? is it noted as pending ?
 
 Links:
 ======
