@@ -229,6 +229,45 @@ But there are several things I need to understand:
 - how does it handle pending interrupts ?
 - what happens if an interrupts occurs when in trap handler ? is it noted as pending ?
 
+Draft for the new tutorial
+==========================
+
+The first concept to introduce is sw implementation of new instructions through
+trap handler, because we are going to reuse it for memory-mapped CSRs accessed
+through SYSTEM instructions.
+
+- 1. Intro, basic notions (traps, interrupts, exceptions)
+- 2. Implementing instructions in software
+    - the bare minimum: `mtvec`, `mepc`, `mret` (maybe hardwired `mtvec`)
+    - software implementation of RV32M
+    - software implementation of RV32F (in RV32I and in RV32M: nested traps)
+    - mixed software/hardware implementation of RV32F (all variants of FMA and
+      comparisons in hardware, and the rest (FDIV,FSQRT...) in software).
+- 3. Interrupts
+    - now we need `mcause` so that the trap handler can discriminate
+    - external interruts source, a `interrupt_request` wire
+    - a timer interrupt, basic PLIC implementation, CSRs projected in memory
+      space, and access to the CSRs in trap handler
+- 4. Run FreeRTOS (maybe in a separate tutorial)
+    - The memory environment: FreeRTOS memory mapping, memory-mapped CSRs
+    - The instructions to be supported, and CSR access in trap handlers
+
+- 5. Linux (maybe in a separate tutorial)
+    - The memory environment: Linux memory mapping, memory-mapped CSRs
+    - The instructions to be supported, and CSR access in trap handlers
+
+The smallest (NoMMU)-Linux-capable Core
+=======================================
+
+In HW: a non-standard trap-handler mechanism (Mr Bossman's kisc-v) that
+works as follows:
+- `mtvec` is a hardwired constant address
+- There is a memory-mapped `mepc` CSR
+- Each time an unrecognized instruction reaches `EXECUTE`, jump to `mepc` and
+  replace `mepc` with `PC+4`
+- There is also PLIC-like interrupt logic, with memory-mapped
+  `mip`, `mie`, `mstatus`, `mcause`
+
 Links:
 ======
 - @cnlohr's [minirv32](https://github.com/cnlohr/mini-rv32ima)
