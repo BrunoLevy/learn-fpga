@@ -270,6 +270,9 @@ works as follows:
 
 Links:
 ======
+
+- Daniel Magum's [detailed explanations on timers interrupts](https://danielmangum.com/posts/risc-v-bytes-timer-interrupts/)
+
 - @cnlohr's [minirv32](https://github.com/cnlohr/mini-rv32ima)
 
 - Stack Overflow questions referenced in minirv32 [here](https://stackoverflow.com/questions/61913210/risc-v-interrupt-handling-flow/61916199#61916199)
