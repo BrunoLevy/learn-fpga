@@ -14,7 +14,7 @@ it is not as fun).
 ## About this tutorial
 
 - it is a progressive introduction, changing only one thing at a time. It
-  is a curated version of my logbook when I learnt these notions (2020-2022). I also tryed
+  is a curated version of my logbook when I learnt these notions (2020-2022). I also tried
   to keep track of all the dead ends I explored and traps that caught me, they
   are often indicated as side remarks and notes;
 - I try to keep hardware requirement as minimal as possible. With the tiniest FPGA
