@@ -112,6 +112,57 @@ EOF
 endmodule  
 EOF
       ;;
+   "TANGNANO9K"|"TANGNANO20K")
+      cat << EOF
+
+ module femtoPLL  #(
+    parameter freq = 40
+ ) (
+    input wire pclk,
+    output wire clk
+ );
+   rPLL #(
+EOF
+	if [ $FPGA_KIND = "TANGNANO9K" ]; then
+		echo '      .DEVICE("GW1NR-9C"),'
+	else
+		echo '      .DEVICE("GW2AR-18C"),'
+	fi
+cat << EOF
+      .FCLKIN("27")
+ ) pll (
+      .CLKOUT(clk),
+      .RESET(1'b0),
+      .RESET_P(1'b0),
+      .CLKIN(pclk),
+      .CLKFB(1'b0),
+      .FBDSEL(6'b0),
+      .IDSEL(6'b0),
+      .ODSEL(6'b0),
+      .PSDA(4'b0),
+      .DUTYDA(4'b0),
+      .FDLY(4'b0)
+   );
+   generate
+     case(freq)
+EOF
+      for OUTPUTFREQ in `cat frequencies.txt`
+      do
+        echo "     $OUTPUTFREQ: begin"
+        gowin_pll -d GW1NR-LV9QN88PC6/I5 -i $INPUTFREQ -o $OUTPUTFREQ \
+	    | egrep "IDIV_SEL|FBDIV_SEL|ODIV_SEL" \
+	    | sed -e 's|[:()]| |g' \
+	    | awk '{printf("      defparam pll%s = %s;\n",$1,$2);}'
+        echo "     end"
+      done
+      cat <<EOF
+     default: UNKNOWN_FREQUENCY unknown_frequency();
+     endcase
+  endgenerate   
+
+endmodule  
+EOF
+      ;;
    *)
       echo FPGA_KIND needs to be one of ICE40,ECP5
       exit 1
