@@ -44,14 +44,17 @@ Links - Other FPGA resources
 - [TinyPrograms](https://github.com/BrunoLevy/TinyPrograms) Tiny yet interesting C programs to play with your softcore
 - [LiteX](https://github.com/enjoy-digital/litex) Framework in Amaranth (Python-based HDL) to build SOCs
 - [Silice](https://github.com/sylefeb/Silice) A new HDL by my friend Sylvain Lefebvre
+- [FuseSOC](https://github.com/olofk/fusesoc) and [Edalize](https://github.com/olofk/edalize), package manager and abstraction of FPGA tools
 - [PipelineC](https://github.com/JulianKemmerer/PipelineC) Transform a C program into a pipelined specialized core !
 - [ultraembedded](https://github.com/ultraembedded/) Amazing resources, [FatIOLib](https://github.com/ultraembedded/fat_io_lib),[ExactStep](https://github.com/ultraembedded/exactstep)...
-- [pivoRV](https://github.com/YosysHQ/picorv32) by Claire Wolf, my principal source of inspiration
+- [picoRV](https://github.com/YosysHQ/picorv32) by Claire Wolf, my principal source of inspiration
 - [VexRiscV](https://github.com/SpinalHDL/VexRiscv) and [NaxRiscV](https://github.com/SpinalHDL/NaxRiscv), performant and configurable pipelined and OoO cores, by Charles Papon, in SpinalHDL
+- [SERV](https://github.com/olofk/serv) the tiniest RiscV core, with a bit-serial ALU
 - [DarkRiscV](https://github.com/darklife/darkriscv) a simple pipelined core (written in one night according to the legend)
 - [kianRiscV](https://github.com/splinedrive/kianRiscV) a simple yet complete Linux-capable core + soc
 - [Will Green's project F](https://github.com/projf/projf-explore) tutorials with nice graphics effects
 - [fpga4fun](https://www.fpga4fun.com/) learned there how to create VGA graphics
+- [CoreScore](https://corescore.store/) how many cores can you fit on a FPGA ?
 
 Basic: more basic things I wrote during May 2020 - June 2020  
 ------------------------------------------------------------
