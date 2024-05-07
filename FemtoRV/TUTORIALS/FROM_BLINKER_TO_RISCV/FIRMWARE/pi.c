@@ -88,8 +88,9 @@ int is_prime(int n)
     if ((n % 2) == 0)
     return 0;
 
-    r = (int) (sqrt(n));
-    for (i = 3; i <= r; i += 2)
+    //r = (int) (sqrt(n));
+    //for (i = 3; i <= r; i += 2)
+    for (i = 3; i*i <= n; i += 2)
     if ((n % i) == 0)
         return 0;
     return 1;
