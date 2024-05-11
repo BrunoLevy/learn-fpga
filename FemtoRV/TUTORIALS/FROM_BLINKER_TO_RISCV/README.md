@@ -719,7 +719,7 @@ The register bank is implemented as follows:
 ```
 
 Let us take a closer look at what we need to to to execute an instruction.
-Condider for instance a stream of R-type instructions. For each instruction,
+Consider for instance a stream of R-type instructions. For each instruction,
 we need to do the following four things:
 
 - fetch the instruction: `instr <= MEM[PC]`

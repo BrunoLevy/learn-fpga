@@ -52,6 +52,7 @@ Links - Other FPGA resources
 - [SERV](https://github.com/olofk/serv) the tiniest RiscV core, with a bit-serial ALU
 - [DarkRiscV](https://github.com/darklife/darkriscv) a simple pipelined core (written in one night according to the legend)
 - [kianRiscV](https://github.com/splinedrive/kianRiscV) a simple yet complete Linux-capable core + soc
+- [TinySys](https://github.com/ecilasun/tinysys/wiki) not that tiny SOC and OS
 - [Will Green's project F](https://github.com/projf/projf-explore) tutorials with nice graphics effects
 - [fpga4fun](https://www.fpga4fun.com/) learned there how to create VGA graphics
 - [CoreScore](https://corescore.store/) how many cores can you fit on a FPGA ?
