@@ -1,0 +1,18 @@
+
+IO_LOC "clk" 4;
+CLOCK_LOC "clk" BUFG;
+
+// active high
+IO_LOC "RESET" 88;
+
+IO_LOC "LED[0]" 15;
+IO_LOC "LED[1]" 16;
+IO_LOC "LED[2]" 17;
+IO_LOC "LED[3]" 18;
+IO_LOC "LED[4]" 19;
+IO_LOC "LED[5]" 20;
+
+IO_LOC "TXD" 26;
+IO_PORT "TXD" PULL_MODE=UP;
+IO_LOC "RXD" 48;
+IO_PORT "RXD" PULL_MODE=UP;

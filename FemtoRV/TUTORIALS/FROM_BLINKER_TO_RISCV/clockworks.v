@@ -26,6 +26,10 @@
 `define NEGATIVE_RESET
 `endif
 
+`ifdef TANGNANO_9K
+`define NEGATIVE_RESET
+`endif
+
 `ifdef ARTY
 `define NEGATIVE_RESET
 `endif

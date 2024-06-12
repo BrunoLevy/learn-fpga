@@ -32,6 +32,14 @@
 `include "CONFIGS/cmod_a7_config.v"
 `endif
 
+`ifdef TANGNANO9K
+`include "CONFIGS/tangnano9k_config.v"
+`endif
+
+`ifdef TANGNANO20K
+`include "CONFIGS/tangnano20k_config.v"
+`endif
+
 `ifdef BENCH_VERILATOR
 `include "CONFIGS/bench_config.v"
 `endif
