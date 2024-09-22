@@ -45,6 +45,19 @@
  `define SPI_FLASH_CONFIGURED
 `endif
 
+`ifdef ICE_ZERO
+ `define SPI_FLASH_FAST_READ_DUAL_IO
+ `define SPI_FLASH_CONFIGURED
+`endif
+
+`ifdef ICE4PI
+ `undef  SPI_FLASH_FAST_READ_DUAL_IO
+ `undef  SPI_FLASH_CONFIGURED 
+ `define SPI_FLASH_FAST_READ_DUAL_IO
+ `define SPI_FLASH_DUMMY_CLOCKS 4 // Winbond w25q32 SPI chips on ice4pi uses 4 dummy clocks
+ `define SPI_FLASH_CONFIGURED
+`endif
+
 `ifdef ICE_BREAKER
  `define SPI_FLASH_FAST_READ_DUAL_IO
  `define SPI_FLASH_DUMMY_CLOCKS 4 // Winbond SPI chips on icebreaker uses 4 dummy clocks

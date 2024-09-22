@@ -103,7 +103,7 @@ int main(void)
 	* using the led matrix, or GL_tty_init() if you know you are 
 	* using the small OLED display.
 	*/
-        femtosoc_tty_init();
+        //femtosoc_tty_init();
 
         for(;;) {
 	   sieve();

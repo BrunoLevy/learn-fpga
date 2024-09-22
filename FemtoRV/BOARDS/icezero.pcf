@@ -1,0 +1,70 @@
+#tested with D5 remap, D5 is not available programmatically through RV code it is wired to the verilog error logic
+#had used ice4pi to get familiar with tools before trying to add trenz version of icezero
+#appear to be 3 onboard leds and seems 5 are expected
+#icezero has legended LEDS D2,D3,D4
+#as error is apparently signalled on D5 will probably alias physical D2 for D5 
+#NEGATIVE reset and correct to have RESET on 47
+
+#set_io clk_100m     49  -pullup yes
+set_io pclk 49
+
+#set_io p1_d[0]      141  -pullup yes
+#set_io p1_d[1]      139  -pullup yes
+#set_io p1_d[2]      138  -pullup yes
+#set_io p1_d[3]      137  -pullup yes
+#set_io p1_d[4]      136  -pullup yes
+#set_io p1_d[5]      135 -pullup yes
+#set_io p1_d[6]      134 -pullup yes
+#set_io p1_d[7]      130 -pullup yes
+#PMOD P1 at opposite end of pcb than with ice4pi, but 3v3 and gnd have same positions relative to 40pin header this way
+set_io oled_DIN      134     #p1d6  BLUE 
+set_io oled_CLK      136     #p1d4  YELLOW
+set_io oled_CS       138     #p1d2  ORANGE
+set_io oled_DC       141     #p1d0  GREEN
+set_io oled_RST      139     #p1d1  WHITE
+#PMOD P1 LED matrix pin out untested
+set_io ledmtx_DIN    130     #p1d7
+set_io ledmtx_CS     135     #p1d5
+set_io ledmtx_CLK    137     #p1d3
+
+
+#set_io led_te[0]     93  -pullup yes    #deduced was tbd[8] check
+#set_io led_te[1]     94  -pullup yes    #deduced was tbd[9] check
+#set_io ok_led       110  -pullup yes
+
+#map missing LEDS to p4, could be anywhere really, just need to allocate free pins
+#set_io p4_d[0]        1  -pullup yes
+#set_io p4_d[1]      144  -pullup yes
+
+#substituting D5 for D2 as apparently D5 used for error signalling
+#so right now verilog D2 and D1 can't be seen without adding LEDS + RESISTOR for each
+set_io D5 110 #following PCB legend D2,D3,D4 visible pretend that legend D2 is D5 so that errors can be indicated       
+set_io D4 94 
+set_io D3 93   
+set_io D2 1 
+set_io D1 144
+
+
+#set_io pi_uart_ro   112 -pullup yes
+#set_io pi_uart_wi   113 -pullup yes
+set_io RXD   113
+set_io TXD   112
+
+
+#set_io cfg_so       67  
+#set_io cfg_si       68  
+#set_io cfg_sck      70  
+#set_io cfg_ss       71
+set_io spi_cs_n 71
+set_io spi_miso 68
+set_io spi_mosi 67
+set_io spi_clk  70
+
+
+set_io RESET    47
+
+####NOT PRESENT ON PCB
+####set_io irda_TXD 105
+####set_io irda_RXD 106
+####set_io irda_SD  107
+

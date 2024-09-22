@@ -23,6 +23,7 @@ initial begin
 // the makefile also passes that to the assembler after
 // some text substitution, and the assembler needs "=1"
 
+
    $write("DEVICES=");
 `ifdef NRV_IO_FGA
    $write(" -DFGA=1");   
@@ -44,6 +45,9 @@ initial begin
 `endif
 `ifdef ICE_BREAKER
    $write(" -DICE_BREAKER=1");   
+`endif
+`ifdef ICE_ZERO
+   $write(" -DICE_ZERO=1");   
 `endif
 `ifdef ICE_SUGAR_NANO
    $write(" -DICE_SUGAR_NANO=1");

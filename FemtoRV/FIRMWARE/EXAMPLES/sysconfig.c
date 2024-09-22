@@ -36,7 +36,7 @@ int main() {
    
    for(;;) {
       show_config();
-      delay(3000);
+      delay(10000);
    }
    
    return 0;

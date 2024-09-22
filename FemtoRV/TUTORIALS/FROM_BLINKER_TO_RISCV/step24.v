@@ -265,7 +265,11 @@ module Processor (
    
    always @(posedge clk) begin
       if(!resetn) begin
+`ifdef ICE_ZERO
+	 PC    <= 32'h00830000; // jump to SPI FLASH + 128 + 64kB would collide with fpga init image if only 128K offset used
+`else
 	 PC    <= 32'h00820000; // jump to SPI FLASH + 128 kB
+`endif
 	 state <= WAIT_DATA;    // just wait for !mem_rbusy
       end else begin
 	 if(writeBackEn && rdId != 0) begin
@@ -395,7 +399,8 @@ module SOC (
 
    corescore_emitter_uart #(
       .clk_freq_hz(`CPU_FREQ*1000000),
-        .baud_rate(1000000)
+//        .baud_rate(1000000)
+        .baud_rate(115200)
    ) UART(
       .i_clk(clk),
       .i_rst(!resetn),
