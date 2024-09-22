@@ -9,6 +9,7 @@ FemtoRV32 Tutorials
 - [FOMU tutorial](FOMU.md) _(WIP)
 - [Oyster PMOD](OysterPMOD.md)
 - [Adding a new board](newboard.md)
+- [IceZero new board](IceZero.md) _(WIP not in main tree yet)
 - [Mecrisp-quintus on the IceStick (Forth)](https://github.com/BrunoLevy/learn-fpga/blob/master/FemtoRV/FIRMWARE/MECRISP_QUINTUS/README.md)
 
 FemtoRV32 Notes

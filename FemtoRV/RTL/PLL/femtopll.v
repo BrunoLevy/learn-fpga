@@ -24,6 +24,8 @@ endmodule
 `else
  `ifdef ICE_STICK 
   `include "pll_icestick.v"
+ `elsif ICE_ZERO 
+  `include "pll_icezero.v" 
  `elsif ICE_BREAKER 
   `include "pll_icebreaker.v" 
  `elsif ICE_FEATHER

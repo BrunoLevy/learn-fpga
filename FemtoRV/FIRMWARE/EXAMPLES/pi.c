@@ -175,10 +175,10 @@ int digits(int n) {
 
 
 int main() {
-  MAX7219_tty_init(); // Uncomment to display on led matrix.
-//  femtosoc_tty_init();
+  //MAX7219_tty_init(); // Uncomment to display on led matrix.
+ // femtosoc_tty_init();
 //  GL_set_font(&Font3x5);
-//  GL_set_font(&Font8x16);
+ // GL_set_font(&Font8x16);
     printf("pi = 3.");
     for(int n=1; ;n+=9) {
        printf("%d",digits(n));

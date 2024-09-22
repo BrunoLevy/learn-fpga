@@ -22,6 +22,10 @@
  
 `include "../../RTL/PLL/femtopll.v"
 
+`ifdef ICE_ZERO
+`define NEGATIVE_RESET
+`endif
+
 `ifdef ECP5_EVN
 `define NEGATIVE_RESET
 `endif

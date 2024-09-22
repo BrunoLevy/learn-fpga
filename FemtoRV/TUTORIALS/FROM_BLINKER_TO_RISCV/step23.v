@@ -19,12 +19,19 @@ module Memory (
 
    reg [31:0] MEM [0:1535]; // 1536 4-bytes words = 6 Kb of RAM in total
 
+`ifdef ICE_ZERO
+`include "riscv_assembly.v"
+   initial begin
+      LI(a0,32'h00830000); // jump to SPI FLASH + 192 kB
+      JALR(zero,a0,0);
+   end
+`else
 `include "riscv_assembly.v"
    initial begin
       LI(a0,32'h00820000); // jump to SPI FLASH + 128 kB
       JALR(zero,a0,0);
    end
-
+`endif
    wire [10:0] word_addr = mem_addr[12:2];
    
    always @(posedge clk) begin
@@ -400,7 +407,8 @@ module SOC (
 
    corescore_emitter_uart #(
       .clk_freq_hz(`CPU_FREQ*1000000),
-        .baud_rate(1000000)
+//        .baud_rate(1000000)
+        .baud_rate(115200)
    ) UART(
       .i_clk(clk),
       .i_rst(!resetn),

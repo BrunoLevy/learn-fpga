@@ -7,17 +7,27 @@
 #####################################################################
 # Base directory of the firmware
 
+#nfs mount for raspberry pi hosting trenz icezero fpga hardware
+
+
 FIRMWARE_DIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+RASPI_REMOTE_DIR=$(abspath $(FIRMWARE_DIR)../../../mnt/)
 
 include $(FIRMWARE_DIR)/config.mk
 DEVICES_ASM=$(subst -D,-defsym ,$(DEVICES))
 
 show_config:
+ifeq ($(BOARD),icezero)
+	@echo "RASPI_REMOTE_DIR=$(RASPI_REMOTE_DIR)/trenz"
+else ifeq ($(BOARD),ice4pi)
+	@echo "RASPI_REMOTE_DIR=$(RASPI_REMOTE_DIR)"
+endif
 	@echo "ARCH=$(ARCH)"
-	@echo "ABI=$(ABI)" 
-	@echo "OPTIMIZE=$(OPTIMIZE)" 
+	@echo "ABI=$(ABI)"
+	@echo "OPTIMIZE=$(OPTIMIZE)"
 	@echo "DEVICES=$(DEVICES)"
-	@echo "DEVICES_ASM=$(DEVICES_ASM)"	
+	@echo "DEVICES_ASM=$(DEVICES_ASM)"
 
 ################################################################################
 
@@ -83,10 +93,18 @@ RVGCC_LIB= $(RVTOOLCHAIN_LIB_DIR)/libc.a \
 # My utility that converts elf executables into a format understood by Verilog
 FIRMWARE_WORDS=$(FIRMWARE_DIR)/TOOLS/firmware_words
 
+#need to link icezero spiflash programs for 192k offset
+LINKADJUST=.ld
+
 ifeq ($(BOARD),icesugar_nano)
-    TOOLCHAIN_PROG_CMD=icesprog -o 0x20000 
+    TOOLCHAIN_PROG_CMD=icesprog -o 0x20000 $<
+else ifeq ($(BOARD),ice4pi)
+    TOOLCHAIN_PROG_CMD=cp $< $(RASPI_REMOTE_DIR)/
+else ifeq ($(BOARD),icezero)
+    TOOLCHAIN_PROG_CMD=cp $< $(RASPI_REMOTE_DIR)/trenz/
+    LINKADJUST=_icezero.ld
 else
-    TOOLCHAIN_PROG_CMD=iceprog -o 128k 
+    TOOLCHAIN_PROG_CMD=iceprog -o 128k $<
 endif
 
 ################################################################################
@@ -148,7 +166,7 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 
 # Sends the generated executable in flat binary form to SPI flash
 %.prog: %.spiflash.bin
-	$(TOOLCHAIN_PROG_CMD) $<
+	$(TOOLCHAIN_PROG_CMD)
 
 # Generate a disassembly (for inspection if need be)
 %.list: %.baremetal.elf

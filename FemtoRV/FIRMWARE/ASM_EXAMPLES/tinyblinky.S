@@ -8,6 +8,9 @@
 .ifdef ICE_STICK
 .section .fastcode
 .endif
+.ifdef ICE_ZERO
+.section .fastcode
+.endif
 
 main:   
   li x8, 0x400004                # LED register

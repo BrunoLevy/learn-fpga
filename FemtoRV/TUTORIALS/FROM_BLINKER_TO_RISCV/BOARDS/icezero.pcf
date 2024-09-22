@@ -1,0 +1,99 @@
+#had used ice4pi to get familiar with tools before trying to add trenz version of icezero
+#right now pmod P1 connection order will be wrong need to take mapping from Oyster PMOD
+#appear to be 3 onboard leds and seems 5 are expected
+#icezero has legended LEDS D2,D3,D4
+#as error is apparently signalled on D5 will alias physical D2 for D5 
+#if compile stops becaue of missing D1 and D2 will bring them out onto P4
+#assuming NEGATIVE reset and correct to have RESET on 47
+#will check before uploading to FPGA
+
+#set_io pclk 21
+#set_io clk_100m     49  -pullup yes
+set_io CLK 49 #-pullup yes
+
+
+#set_io oled_DIN  91
+#set_io oled_CLK  90
+#set_io oled_CS   88
+#set_io oled_DC   87
+#set_io oled_RST  78
+#set_io ledmtx_DIN  81
+#set_io ledmtx_CS   80
+#set_io ledmtx_CLK  79
+#set_io p1_d[0]      141  -pullup yes
+#set_io p1_d[1]      139  -pullup yes
+#set_io p1_d[2]      138  -pullup yes
+#set_io p1_d[3]      137  -pullup yes
+#set_io p1_d[4]      136  -pullup yes
+#set_io p1_d[5]      135 -pullup yes
+#set_io p1_d[6]      134 -pullup yes
+#set_io p1_d[7]      130 -pullup yes
+#assign at random to start with to get it to compile
+#P1 at opposite end of pcb than with ice4pi, but 3v3 and gnd have same possitions this way
+set_io oled_DIN     134
+set_io oled_CLK     136
+set_io oled_CS      138
+set_io oled_DC      141
+set_io oled_RST     139
+set_io ledmtx_DIN   130
+set_io ledmtx_CS    135
+set_io ledmtx_CLK   137
+
+
+#set_io D1 99
+#set_io D2 98
+#set_io D3 97
+####set_io D4 96
+####set_io D5 95
+#set_io led_te[0]       93  -pullup yes    #deduced was tbd[8] check
+#set_io led_te[1]       94  -pullup yes    #deduced was tbd[9] check
+#set_io ok_led       110 -pullup yes
+
+#set_io p4_d[0]       1  -pullup yes
+#set_io p4_d[1]      144  -pullup yes
+
+set_io LEDS[0] 1 
+set_io LEDS[1] 144
+
+set_io LEDS[2] 110  #-pullup yes #these leds will most probably be out of sequence, following PCB legend       
+set_io LEDS[3] 93  #-pullup yes #correct later
+set_io LEDS[4] 94 #-pullup yes
+
+
+#will be substituting D5 for D2 as apparently D5 used for error signalling
+#need to sort out where D2 is so can comment properly 
+
+#set_io TXD 8
+#set_io RXD 9
+#set_io pi_uart_ro   112 -pullup yes
+#set_io pi_uart_wi   113 -pullup yes
+##set_io RXD   112 #-pullup yes
+##set_io TXD   113 #-pullup yes
+set_io RXD   113 #-pullup yes
+set_io TXD   112 #-pullup yes
+
+
+#set_io spi_cs_n 71
+#set_io spi_miso 68
+#set_io spi_mosi 67
+#set_io spi_clk  70
+#set_io cfg_so       67  
+#set_io cfg_si       68  
+#set_io cfg_sck      70  
+#set_io cfg_ss       71
+set_io SPIFLASH_CS_N 71
+set_io SPIFLASH_MISO 68
+set_io SPIFLASH_MOSI 67
+set_io SPIFLASH_CLK  70
+
+set_io SPIFLASH_IO[0] 67
+set_io SPIFLASH_IO[1] 68
+
+
+set_io RESET    47
+
+####NOT PRESENT ON PCB
+####set_io irda_TXD 105
+####set_io irda_RXD 106
+####set_io irda_SD  107
+

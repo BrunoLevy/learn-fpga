@@ -8,6 +8,10 @@
 `include "CONFIGS/ulx3s_config.v"
 `endif
 
+`ifdef ICE_ZERO
+`include "CONFIGS/icezero_config.v"
+`endif
+
 `ifdef ICE_STICK
 `include "CONFIGS/icestick_config.v"
 `endif
@@ -47,6 +51,10 @@
  * (wire a push button and a pullup resistor to 
  * pin 47 or change in nanorv.pcf). 
  */
+`ifdef ICE_ZERO
+`define NRV_NEGATIVE_RESET 
+`endif
+
 `ifdef ICE_STICK
 //`define NRV_NEGATIVE_RESET 
 `endif
@@ -73,6 +81,11 @@
 
 // Toggle FPGA defines (ICE40, ECP5) in function of board defines (ICE_STICK, ECP5_EVN)
 // Board defines are set in Makefile.
+
+`ifdef ICE_ZERO
+ `define ICE40
+// `define PASSTHROUGH_PLL
+`endif
 
 `ifdef ICE_STICK
  `define ICE40
