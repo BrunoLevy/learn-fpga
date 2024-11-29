@@ -71,6 +71,15 @@
  `define SPI_FLASH_CONFIGURED
 `endif
 
+`ifdef PICO_ICE
+ /* Note- Quad IO usually requires the QE bit to be set on your flash.
+  * the PICO ICE has this set from the factory.
+  */
+ `define SPI_FLASH_FAST_READ_QUAD_IO
+ `define SPI_FLASH_CONFIGURED
+ `define SPI_FLASH_DUMMY_CLOCKS 6
+`endif
+
 `ifndef SPI_FLASH_DUMMY_CLOCKS
  `define SPI_FLASH_DUMMY_CLOCKS 8
 `endif

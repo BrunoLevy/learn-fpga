@@ -85,6 +85,8 @@ FIRMWARE_WORDS=$(FIRMWARE_DIR)/TOOLS/firmware_words
 
 ifeq ($(BOARD),icesugar_nano)
     TOOLCHAIN_PROG_CMD=icesprog -o 0x20000 
+else ifeq ($(BOARD), PICOICE)
+    TOOLCHAIN_PROG_CMD=dfu-util -a 0 -D
 else
     TOOLCHAIN_PROG_CMD=iceprog -o 128k 
 endif
