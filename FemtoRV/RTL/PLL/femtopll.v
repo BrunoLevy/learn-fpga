@@ -40,6 +40,8 @@ endmodule
   `include "pll_arty.v"
  `elsif CMODA7
   `include "pll_cmod_a7.v"
+ `elsif PICO_ICE
+  `include "pll_pico_ice.v"
  `endif
 `endif
 

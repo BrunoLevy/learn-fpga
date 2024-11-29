@@ -71,6 +71,15 @@
  `define SPI_FLASH_CONFIGURED
 `endif
 
+`ifdef PICO_ICE
+ /* Note- Quad IO usually requires the QE bit to be set on your flash.
+  * the PICO ICE has this set from the factory.
+  */
+ `define SPI_FLASH_FAST_READ_QUAD_IO
+ `define SPI_FLASH_CONFIGURED
+ `define SPI_FLASH_DUMMY_CLOCKS 6
+`endif
+
 `ifndef SPI_FLASH_DUMMY_CLOCKS
  `define SPI_FLASH_DUMMY_CLOCKS 8
 `endif
@@ -389,5 +398,113 @@ module MappedSPIFlash(
    end
 endmodule
 */
+
+`endif
+
+`ifdef SPI_FLASH_FAST_READ_QUAD_IO
+
+module MappedSPIFlash(
+    input wire 	       clk,          // system clock
+    input wire 	       rstrb,        // read strobe
+    input wire [19:0]  word_address, // address to be read
+
+
+    output wire [31:0] rdata, // data read
+    output wire        rbusy, // asserted if busy receiving data
+    output wire        CLK, // clock
+    output reg         CS_N, // chip select negated (active low)
+    inout wire [3:0]   IO // four bidirectional IO pins
+);
+   reg [31:0] shifter; // Used for sending and receiving data
+   reg [4:0] clock_cnt; // Count of clocks left before shifter is empty
+
+   localparam STATE_IDLE = 2'd0; // Waiting for rstrb
+   localparam STATE_INSTRUCTION = 2'd1; // Sending instruction
+   localparam STATE_ADDRESS = 2'd2; // Sending address and dummy clocks
+   localparam STATE_READ = 2'd3; // Reading data
+   reg [1:0] state; // State register
+
+   // Four data pins are used in bidirectional modes
+   reg IO_oe = 1'b1;
+   wire [3:0] IO_out = shifter[31:28];
+   wire [3:0] IO_in = IO;
+   // Set IO to high impedance when reading
+   assign IO = IO_oe ? IO_out : 4'bZZ;
+
+   initial CS_N = 1'b1;
+   initial state = STATE_IDLE;
+
+   assign CLK = !CS_N && !clk;
+   assign rbusy = !CS_N;
+
+   // since least significant bytes are read first, we need to swizzle...
+   assign rdata={shifter[7:0],shifter[15:8],shifter[23:16],shifter[31:24]};
+
+   // Splits the bits of an instruction across 4 wires.
+   // Similar to the DUAL_IO module, this lets us reuse the shifter
+   // between the instruction and the address/data
+   function [31:0] instruction;
+      input [7:0] x;
+      begin
+         instruction = {
+            1'bZ, 1'bZ, 1'bZ, x[7], 1'bZ, 1'bZ, 1'bZ, x[6],
+            1'bZ, 1'bZ, 1'bZ, x[5], 1'bZ, 1'bZ, 1'bZ, x[4],
+            1'bZ, 1'bZ, 1'bZ, x[3], 1'bZ, 1'bZ, 1'bZ, x[2],
+            1'bZ, 1'bZ, 1'bZ, x[1], 1'bZ, 1'bZ, 1'bZ, x[0]
+         };
+      end
+   endfunction
+
+
+   always @(posedge clk) begin
+      // State machine for sending instruction/addr and reading data
+      case (state)
+         STATE_IDLE: begin
+            if (rstrb) begin
+               CS_N <= 1'b0;
+               IO_oe <= 1'b1;
+               shifter <= instruction(8'hEB);
+               state <= STATE_INSTRUCTION;
+               clock_cnt <= 4'd7;
+            end
+         end
+         STATE_INSTRUCTION: begin
+            if (clock_cnt == 4'd0) begin
+               // Move to address state. We will send 24 bits in 6 clocks.
+               shifter <= {2'b00, word_address[19:0], 2'b00, 8'hFF};
+               state <= STATE_ADDRESS;
+               clock_cnt <= 4'd5 + `SPI_FLASH_DUMMY_CLOCKS;
+            end else begin
+               // Clock out instruction
+               shifter <= {shifter[27:0], 4'b1111};
+               clock_cnt <= clock_cnt - 4'd1;
+            end
+         end
+         STATE_ADDRESS: begin
+            if (clock_cnt == 4'd0) begin
+               // Move to read state
+               state <= STATE_READ;
+               clock_cnt <= 4'd7;
+               IO_oe <= 1'b0;
+            end else begin
+               // Clock out address followed by dummy clocks
+               shifter <= {shifter[27:0], 4'b1111};
+               clock_cnt <= clock_cnt - 4'd1;
+            end
+         end
+         STATE_READ: begin
+            if (clock_cnt == 4'd0) begin
+               // Set CS_N, return to idle state
+               CS_N <= 1'b1;
+               state <= STATE_IDLE;
+               shifter <= {shifter[27:0], IO_in};
+            end else begin
+               shifter <= {shifter[27:0], IO_in};
+               clock_cnt <= clock_cnt - 3'd1;
+            end
+         end
+      endcase
+   end
+endmodule
 
 `endif

@@ -32,6 +32,10 @@
 `include "CONFIGS/cmod_a7_config.v"
 `endif
 
+`ifdef PICO_ICE
+`include "CONFIGS/pico_ice_config.v"
+`endif
+
 `ifdef BENCH_VERILATOR
 `include "CONFIGS/bench_config.v"
 `endif

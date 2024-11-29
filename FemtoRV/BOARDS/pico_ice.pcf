@@ -1,0 +1,33 @@
+set_io pclk 35
+
+set_io D1 41 # LED R
+set_io D2 39 # LED G
+set_io D3 40 # LED B
+set_io D4 31 # LED EXT 0
+set_io D5 34 # LED EXT 1
+
+set_io TXD 25
+set_io RXD 27
+
+set_io spi_cs_n 16
+set_io spi_io[0] 14
+set_io spi_io[1] 17
+set_io spi_io[2] 12
+set_io spi_io[3] 13
+set_io spi_clk  15
+
+set_io oled_DIN  6
+set_io oled_CLK  9
+set_io oled_CS   11
+set_io oled_DC   4
+set_io oled_RST  21
+
+set_io ledmtx_DIN  20
+set_io ledmtx_CS   19
+set_io ledmtx_CLK  18
+
+set_io irda_TXD 46
+set_io irda_RXD 48
+set_io irda_SD  3
+
+set_io RESET    10

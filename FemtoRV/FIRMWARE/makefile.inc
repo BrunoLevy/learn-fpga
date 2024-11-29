@@ -25,12 +25,21 @@ uname := $(shell uname)
 uname_m := $(shell uname -m)
 
 ifeq ($(uname),Darwin)
-    $(info Configuring for Mac)
-    TOOLCHAIN_WEB=https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/download/v10.1.0-1.1
-    TOOLCHAIN_VER=xpack-riscv-none-embed-gcc-10.1.0-1.1
-    TOOLCHAIN_DL_SUFFIX=-darwin-x64
-    TOOLCHAIN_GCC_VER=10.1.0
-    RVTOOLCHAIN_BIN_PREFIX=riscv-none-embed
+    ifeq ($(uname_m), arm64)
+        $(info Configuring for Mac (arm64))
+        TOOLCHAIN_WEB=https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases/download/v11.3.0-1
+	TOOLCHAIN_VER=xpack-riscv-none-elf-gcc-11.3.0-1
+        TOOLCHAIN_DL_SUFFIX=-darwin-arm64
+        TOOLCHAIN_GCC_VER=11.3.0
+        RVTOOLCHAIN_BIN_PREFIX=riscv-none-elf
+    else
+        $(info Configuring for Mac (x86_64))
+        TOOLCHAIN_WEB=https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/download/v10.1.0-1.1
+        TOOLCHAIN_VER=xpack-riscv-none-embed-gcc-10.1.0-1.1
+        TOOLCHAIN_DL_SUFFIX=-darwin-x64
+        TOOLCHAIN_GCC_VER=10.1.0
+        RVTOOLCHAIN_BIN_PREFIX=riscv-none-embed
+    endif
 else
     ifeq ($(uname_m),aarch64)
         $(info Configuring for ARM64)
@@ -85,6 +94,8 @@ FIRMWARE_WORDS=$(FIRMWARE_DIR)/TOOLS/firmware_words
 
 ifeq ($(BOARD),icesugar_nano)
     TOOLCHAIN_PROG_CMD=icesprog -o 0x20000 
+else ifeq ($(BOARD), PICOICE)
+    TOOLCHAIN_PROG_CMD=dfu-util -a 0 -D
 else
     TOOLCHAIN_PROG_CMD=iceprog -o 128k 
 endif

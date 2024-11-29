@@ -60,7 +60,12 @@ module femtosoc(
    output ledmtx_DIN, ledmtx_CS, ledmtx_CLK,
 `endif
 `ifdef NRV_SPI_FLASH
-   inout spi_mosi, inout spi_miso, output spi_cs_n,
+`ifdef SPI_FLASH_FAST_READ_QUAD_IO
+   inout [3:0] spi_io,
+`else
+   inout spi_mosi, inout spi_miso,
+`endif
+   output spi_cs_n,
  `ifndef ULX3S	
    output spi_clk, // ULX3S has spi clk shared with ESP32, using USRMCLK (below)	
  `endif
@@ -204,6 +209,8 @@ module femtosoc(
       .CS_N(spi_cs_n),
 `ifdef SPI_FLASH_FAST_READ_DUAL_IO				   
       .IO({spi_miso,spi_mosi})
+`elsif SPI_FLASH_FAST_READ_QUAD_IO
+      .IO({spi_io[3],spi_io[2],spi_io[1],spi_io[0]})
 `else	
       .MISO(spi_miso),
       .MOSI(spi_mosi)
