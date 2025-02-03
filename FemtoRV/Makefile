@@ -16,6 +16,7 @@ include BOARDS/ecp5_evn.mk
 #include BOARDS/arty35_symbiflow.mk
 include BOARDS/arty35_yosys_nextpnr.mk
 include BOARDS/cmod_a7_yosys_nextpnr.mk
+include BOARDS/ice40hx8k_evb.mk
 
 
 .PHONY: all clean terminal testbench 

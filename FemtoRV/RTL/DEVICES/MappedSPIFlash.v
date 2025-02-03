@@ -45,6 +45,17 @@
  `define SPI_FLASH_CONFIGURED
 `endif
 
+/*
+ * TODO: dual and quad IO mode is supported, but the instruction format is different
+ * from e.g. Icestick.
+ * The fast read mode is compatible with the current implementation.
+ * Flash datasheet: https://www.alldatasheet.com/datasheet-pdf/pdf/443790/WINBOND/W25Q16BVSSIG.html
+ */
+`ifdef ICE40HX8K_EVB
+ `define SPI_FLASH_FAST_READ
+ `define SPI_FLASH_CONFIGURED
+`endif
+
 `ifdef ICE4PI
  `undef SPI_FLASH_FAST_READ_DUAL_IO
  `undef SPI_FLASH_CONFIGURED

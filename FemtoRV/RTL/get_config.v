@@ -48,6 +48,9 @@ initial begin
 `ifdef ICE_SUGAR_NANO
    $write(" -DICE_SUGAR_NANO=1");
 `endif
+`ifdef ICE40HX8K_EVB
+   $write(" -DICE40HX8K_EVB=1");
+`endif
    $write("\n");
    
 end 
