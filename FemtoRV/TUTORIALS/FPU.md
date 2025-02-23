@@ -656,3 +656,6 @@ References
 
 - [A FPU written in system verilog](https://github.com/taneroksuz/riscv-fpu)
 - [Berkeley SoftFloat and HardFloat](http://www.jhauser.us/arithmetic/)
+
+- [T9000 transputer FPU design](https://transputer.net/fbooks/t9000/t9kfpdsn.pdf)
+- [Transputer](https://thechipletter.substack.com/p/inmos-and-the-transputer-instruction)
