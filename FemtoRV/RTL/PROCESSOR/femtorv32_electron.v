@@ -15,6 +15,33 @@
 // Bruno Levy, Matthias Koch, 2020-2021
 /*******************************************************************/
 
+/*******************************************************************/
+// Custom vector extension
+//
+//  The two least significant bits of the instruction word controls
+//  the scalar/vector operation:
+//
+//    2'b00: vector <- vector,vector (extension)
+//    2'b01: vector <- vector,scalar (extension)
+//    2'b10: vector <- scalar,vector (extension)
+//    2'b11: scalar <- scalar,scalar (standard RV32I)
+//
+//  Vector registers are mapped onto the scalar register file:
+//
+//    V0 = [ X0, X1, X2, X3] (avoid! clobbers RA, SP, GP!)
+//    V1 = [ X4, X5, X6, X7] (clobbers TP)
+//    V2 = [ X8, X9,X10,X11] (clobbers FP)
+//    V3 = [X12,X13,X14,X15]
+//    V4 = [X16,X17,X18,X19]
+//    V5 = [X20,X21,X22,X23]
+//    V6 = [X24,X25,X26,X27]
+//    V7 = [X28,X29,X30,X31]
+//
+//  Furthermore the VSETVL instruction is added, using the same
+//  encoding and definition as in the V extension, except that the
+//  rs2 operand (vtype setting) is ignored.
+/*******************************************************************/
+
 // Firmware generation flags for this processor
 `define NRV_ARCH     "rv32im"
 `define NRV_ABI      "ilp32"
@@ -36,6 +63,10 @@ module FemtoRV32(
    parameter RESET_ADDR       = 32'h00000000;
    parameter ADDR_WIDTH       = 24;
 
+   // Vector configuration.
+   parameter VL_WIDTH         = 2;
+   localparam MAX_VL          = 1 << VL_WIDTH;
+
    /***************************************************************************/
    // Instruction decoding.
    /***************************************************************************/
@@ -45,7 +76,7 @@ module FemtoRV32(
    // https://content.riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
 
    // The destination register
-   wire [4:0] rdId = instr[11:7];
+   wire [4:0] rdId = isVectorOp ? {instr[11-VL_WIDTH:7], vecIdx} : instr[11:7];
 
    // The ALU function, decoded in 1-hot form (doing so reduces LUT count)
    // It is used as follows: funct3Is[val] <=> funct3 == val
@@ -73,6 +104,9 @@ module FemtoRV32(
    wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
    wire isSYSTEM  =  (instr[6:2] == 5'b11100); // rd <- CSR <- rs1/uimm5
 
+   // The vector extension adds VSETVL.
+   wire isVSETVL  =  (instr[6:2] == 5'b10101); // rd <- VL <- min(rs1, MAX_VL)
+
    wire isALU = isALUimm | isALUreg;
 
    /***************************************************************************/
@@ -84,9 +118,12 @@ module FemtoRV32(
    reg [31:0] registerFile [31:0];
 
    always @(posedge clk) begin
-     if (writeBack)
+     if (writeBack) begin
        if (rdId != 0)
          registerFile[rdId] <= writeBackData;
+       if (isVSETVL)
+         VL <= writeBackData[VL_WIDTH-1:0];
+     end
    end
 
    /***************************************************************************/
@@ -190,14 +227,13 @@ module FemtoRV32(
    reg [62:0] divisor;
    reg [31:0] quotient;
    reg [31:0] quotient_msk;
+   reg        div_sign;  // Registered since aluIn1/2 may change before the
+                         // division iterations are done (for vector division)
 
    wire divstep_do = divisor <= {31'b0, dividend};
 
    wire [31:0] dividendN     = divstep_do ? dividend - divisor[31:0] : dividend;
    wire [31:0] quotientN     = divstep_do ? quotient | quotient_msk  : quotient;
-
-   wire div_sign = ~instr[12] & (instr[13] ? aluIn1[31] : 
-                    (aluIn1[31] != aluIn2[31]) & |aluIn2);
 
    always @(posedge clk) begin
       if (isDivide & aluWr) begin
@@ -205,6 +241,8 @@ module FemtoRV32(
 	 divisor  <= {(~instr[12] & aluIn2[31] ? -aluIn2 : aluIn2), 31'b0};
 	 quotient <= 0;
 	 quotient_msk <= 1 << 31;
+	 div_sign <= ~instr[12] & (instr[13] ? aluIn1[31] :
+	             (aluIn1[31] != aluIn2[31]) & |aluIn2);
       end else begin
 	 dividend     <= dividendN;
 	 divisor      <= divisor >> 1;
@@ -235,6 +273,10 @@ module FemtoRV32(
    reg  [ADDR_WIDTH-1:0] PC; // The program counter.
    reg  [31:2] instr;        // Latched instruction. Note that bits 0 and 1 are
                              // ignored (not used in RV32I base instr set).
+
+   reg  src1IsVec;           // Source operand 1 is vector?
+   reg  src2IsVec;           // Source operand 2 is vector?
+   wire isVectorOp = src1IsVec | src2IsVec;
 
    wire [ADDR_WIDTH-1:0] PCplus4 = PC + 4;
 
@@ -267,6 +309,21 @@ module FemtoRV32(
    wire [31:0] CSR_read = sel_cyclesh ? cycles[63:32] : cycles[31:0];
 
    /***************************************************************************/
+   // Vector length register.
+   /***************************************************************************/
+
+   // The size of the VL register is log2(MAX_VL) bits. When VL == 0, it
+   // represents MAX_VL (we do not support zero-cycle vector operations).
+   reg [VL_WIDTH-1:0] VL;
+
+   // This implements the VSETVL logic: rd <- vl <- min(AVL, MAX_VL)
+   // Note: We produce one bit extra compared to the VL register in order to
+   // be able to represent MAX_VL in the VSETVL result.
+   wire [31:0] setvlOut;
+   assign setvlOut[31:VL_WIDTH+1] = 0;
+   assign setvlOut[VL_WIDTH:0] = rs1 < MAX_VL ? rs1[VL_WIDTH:0] : MAX_VL;
+
+   /***************************************************************************/
    // The value written back to the register file.
    /***************************************************************************/
 
@@ -276,7 +333,8 @@ module FemtoRV32(
       (isALU               ? aluOut    : 32'b0) |  // ALUreg, ALUimm
       (isAUIPC             ? PCplusImm : 32'b0) |  // AUIPC
       (isJALR   | isJAL    ? PCplus4   : 32'b0) |  // JAL, JALR
-      (isLoad              ? LOAD_data : 32'b0) ;  // Load
+      (isLoad              ? LOAD_data : 32'b0) |  // Load
+      (isVSETVL            ? setvlOut  : 32'b0) ;  // VSETVL
 
    /* verilator lint_on WIDTH */
 
@@ -378,10 +436,16 @@ module FemtoRV32(
                          jumpToPCplusImm  ? PCplusImm :
                          PCplus4;
 
+   // Vector state.
+   reg [VL_WIDTH-1:0] vecIdx;
+   wire [VL_WIDTH-1:0] vecIdx_new = vecIdx + 1;
+   wire vecElementsPending = isVectorOp & (vecIdx_new != VL);
+
    always @(posedge clk) begin
       if(!reset) begin
          state      <= WAIT_ALU_OR_MEM; // Just waiting for !mem_wbusy
          PC         <= RESET_ADDR[ADDR_WIDTH-1:0];
+         VL         <= 0;
       end else
 
       // See note [1] at the end of this file.
@@ -390,20 +454,48 @@ module FemtoRV32(
 
         state[WAIT_INSTR_bit]: begin
            if(!mem_rbusy) begin // may be high when executing from SPI flash
-              rs1 <= registerFile[mem_rdata[19:15]];
-              rs2 <= registerFile[mem_rdata[24:20]];
-              instr <= mem_rdata[31:2]; // Bits 0 and 1 are ignored (see
-              state <= EXECUTE;         // also the declaration of instr).
+              // Bits 0 and 1 of the instruction word indicate vector mode of the source operands.
+              src1IsVec <= !mem_rdata[0];
+              src2IsVec <= !mem_rdata[1];
+
+              // Latch source register contents.
+              rs1 <= mem_rdata[0] ? registerFile[mem_rdata[19:15]] :
+                                    registerFile[{mem_rdata[19-VL_WIDTH:15], {VL_WIDTH{1'b0}}}];
+              rs2 <= mem_rdata[1] ? registerFile[mem_rdata[24:20]]:
+                                    registerFile[{mem_rdata[24-VL_WIDTH:20], {VL_WIDTH{1'b0}}}];
+
+              // Restart vector element counter.
+              vecIdx <= 0;
+
+              // Latch instruction word.
+              instr <= mem_rdata[31:2]; // (see declaration of instr).
+              state <= EXECUTE;
            end
         end
 
         state[EXECUTE_bit]: begin
-           PC <= PC_new;
-           state <= needToWait ? WAIT_ALU_OR_MEM : FETCH_INSTR;
+           if (!vecElementsPending)
+              PC <= PC_new;
+
+           // Iterate over the source vector registers.
+           // TODO(m): We really want to do this when going to EXECUTE, so we do not want to do it
+           // when going to WAIT_ALU_OR_MEM. Instead of having this logic in each state, can we do
+           // it in a single place (wires instead of registers?)?
+           if (src1IsVec)
+              rs1 <= registerFile[{instr[19-VL_WIDTH:15], vecIdx_new}];
+           if (src2IsVec)
+              rs2 <= registerFile[{instr[24-VL_WIDTH:20], vecIdx_new}];
+           vecIdx <= vecIdx_new;
+
+           if (needToWait)
+              state <= WAIT_ALU_OR_MEM;
+           else
+              state <= vecElementsPending ? EXECUTE : FETCH_INSTR;
         end
 
         state[WAIT_ALU_OR_MEM_bit]: begin
-           if(!aluBusy & !mem_rbusy & !mem_wbusy) state <= FETCH_INSTR;
+           if(!aluBusy & !mem_rbusy & !mem_wbusy)
+              state <= vecElementsPending ? EXECUTE : FETCH_INSTR;
         end
 
         default: begin // FETCH_INSTR
