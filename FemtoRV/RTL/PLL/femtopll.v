@@ -40,6 +40,8 @@ endmodule
   `include "pll_arty.v"
  `elsif CMODA7
   `include "pll_cmod_a7.v"
+ `elsif TANGNANO_9K
+  `include "pll_tangnano9k.v"
  `endif
 `endif
 
