@@ -45,6 +45,21 @@
  `define SPI_FLASH_CONFIGURED
 `endif
 
+/*
+ * TODO: There are two generations of the board, and each has a different flash.
+ * The datasheets for the respective generations:
+ * https://www.alldatasheet.com/datasheet-pdf/pdf/443790/WINBOND/W25Q16BVSSIG.html
+ * https://www.alldatasheet.com/datasheet-pdf/pdf/675618/EON/EN25Q16B.html
+ * Dual and quad IO modes are supported by the flashes,
+ * but the instruction format is different from e.g. Icestick's flash.
+ * The fast read mode is compatible with the existing implementation (only the
+ * second generation was tested though).
+ */
+`ifdef ICE40HX8K_EVB
+ `define SPI_FLASH_FAST_READ
+ `define SPI_FLASH_CONFIGURED
+`endif
+
 `ifdef ICE4PI
  `undef SPI_FLASH_FAST_READ_DUAL_IO
  `undef SPI_FLASH_CONFIGURED

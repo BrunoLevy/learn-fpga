@@ -1,0 +1,22 @@
+set_io pclk J3
+
+set_io D1 M12
+set_io D2 E4
+set_io D3 B2
+set_io D4 F5
+set_io D5 R16
+
+# UART communication doesn't work when Olimexino 32U4 is used as a bridge
+# which forwards the communication to a PC
+# (https://www.olimex.com/wiki/ICE40HX1K-EVB#Get_started_under_Linux).
+# There might be a bug in Olimexino's firmware, as UART works with a UART-USB
+# converter.
+set_io TXD T16
+set_io RXD L11
+
+set_io spi_cs_n R12
+set_io spi_miso P11
+set_io spi_mosi P12
+set_io spi_clk  R11
+
+set_io RESET B1
