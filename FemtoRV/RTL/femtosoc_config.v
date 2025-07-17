@@ -32,6 +32,10 @@
 `include "CONFIGS/cmod_a7_config.v"
 `endif
 
+`ifdef ICE40HX8K_EVB
+`include "CONFIGS/ice40hx8k_evb_config.v"
+`endif
+
 `ifdef BENCH_VERILATOR
 `include "CONFIGS/bench_config.v"
 `endif
@@ -105,6 +109,10 @@
 
 `ifdef ULX3S
  `define ECP5 
+`endif
+
+`ifdef ICE40HX8K_EVB
+ `define ICE40
 `endif
 
 /******************************************************************************************************************/

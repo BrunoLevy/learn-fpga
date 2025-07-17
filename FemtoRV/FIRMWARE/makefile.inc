@@ -86,7 +86,15 @@ FIRMWARE_WORDS=$(FIRMWARE_DIR)/TOOLS/firmware_words
 ifeq ($(BOARD),icesugar_nano)
     TOOLCHAIN_PROG_CMD=icesprog -o 0x20000 
 else
-    TOOLCHAIN_PROG_CMD=iceprog -o 128k 
+    # iCE40HX8K-EVB needs a special programmer.
+    # The bitstream size is 136,448 bytes, and the flash block size is 64 kB.
+    # Therefore, the executable is placed at the next block-aligned address
+    # in the flash memory.
+    ifeq ($(BOARD),ice40hx8k_evb)
+        TOOLCHAIN_PROG_CMD=iceprogduino -o 0x30000
+    else
+        TOOLCHAIN_PROG_CMD=iceprog -o 128k
+    endif
 endif
 
 ################################################################################
