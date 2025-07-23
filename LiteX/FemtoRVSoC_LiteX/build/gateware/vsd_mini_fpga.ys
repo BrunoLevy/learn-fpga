@@ -1,0 +1,9 @@
+verilog_defaults -push
+verilog_defaults -add -defer
+read_verilog -I/home/skanda/picoEdgeSoC /home/skanda/picoEdgeSoC/femtorv32_quark.v
+read_verilog -I/home/skanda/picoEdgeSoC /home/skanda/picoEdgeSoC/build/gateware/vsd_mini_fpga.v
+verilog_defaults -pop
+attrmap -tocase keep -imap keep="true" keep=1 -imap keep="false" keep=0 -remove keep=0
+
+synth_ice40 -dsp -top vsd_mini_fpga
+write_json  vsd_mini_fpga.json

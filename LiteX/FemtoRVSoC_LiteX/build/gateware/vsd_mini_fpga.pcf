@@ -1,0 +1,6 @@
+set_io  clk12 20
+set_io  serial_tx 14
+set_io  serial_rx 15
+set_io  led_red 39
+set_io  led_green 40
+set_io  led_blue 41
