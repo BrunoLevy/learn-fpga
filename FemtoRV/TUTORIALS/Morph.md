@@ -49,3 +49,10 @@ FemtoRVMorph-Hg (QuickSilver)
    - other instructions in hw:
       - vector math
       - extensions implemented by Hazard3 (huge performance gain it seems)
+
+Bibliography
+============
+
+- [Arithmetic Processor Design for the T9000 Transputer](https://transputer.net/fbooks/t9000/t9kfpdsn.pdf)
+- [Zfinx spec](https://github.com/riscvarchive/riscv-zfinx/blob/main/zfinx-1.0.0-rc.pdf)
+- [Notes on Petitbateau RV32F FPU](FPU.md)

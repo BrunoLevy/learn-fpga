@@ -259,7 +259,10 @@ is a smart algorithm described
 [here](https://electronics.stackexchange.com/questions/196914/verilog-synthesize-high-speed-leading-zero-count)
 that I'm using in "PetitBateau". There is an alternative (Dean
 Gaudet's algorithm) described in "Hacker's Delight", Page 110 (I
-haven't tested it yet). Here is a short description of the algorithm
+haven't tested it yet). There may be similar things described
+[here](https://graphics.stanford.edu/~seander/bithacks.html).
+
+Here is a short description of the algorithm
 in the link above. The algorithm counts the number of leading
 zeroes (CLZ). It works recursively, as follows: CLZ can be defined
 recursively:
