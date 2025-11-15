@@ -10,6 +10,10 @@
  `define PASSTHROUGH_PLL
 `endif
 
+`ifdef TANGNANO9K
+ `define PASSTHROUGH_PLL
+`endif
+
 /**********************************************************************/
 
 `ifdef PASSTHROUGH_PLL
