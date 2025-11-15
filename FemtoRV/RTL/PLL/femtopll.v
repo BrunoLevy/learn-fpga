@@ -44,6 +44,8 @@ endmodule
   `include "pll_arty.v"
  `elsif CMODA7
   `include "pll_cmod_a7.v"
+ `elsif ICE40HX8K_EVB
+  `include "pll_ice40hx8k_evb.v"
  `endif
 `endif
 

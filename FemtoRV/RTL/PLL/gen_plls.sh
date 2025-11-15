@@ -16,3 +16,6 @@ echo Generating PLL for ULX3S
 
 echo Generating PLL for ECP5 evaluation board
 ./gen_pll.sh ECP5 12 > pll_ecp5_evn.v
+
+echo Generating PLL for ICE40HX8K-EVB
+./gen_pll.sh ICE40 100 > pll_ice40hx8k_evb.v
