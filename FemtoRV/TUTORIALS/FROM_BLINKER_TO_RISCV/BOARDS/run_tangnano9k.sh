@@ -1,0 +1,13 @@
+FPGA_ROOT=/usr/bin
+PROJECTNAME=SOC
+BOARD=tangnano9k
+BOARD_FREQ=27
+CPU_FREQ=27
+FPGA_FAMILY=GW1N-9C
+FPGA_DEVICE=GW1NR-LV9QN88PC6/I5
+VERILOGS=$1
+
+$FPGA_ROOT/yosys -q -DTANGNANO9K -DBOARD_FREQ=$BOARD_FREQ -DCPU_FREQ=$CPU_FREQ -p "synth_gowin -top $PROJECTNAME -json $PROJECTNAME.json" $VERILOGS  || exit
+$FPGA_ROOT/nextpnr-gowin --force --timing-allow-fail --json $PROJECTNAME.json --cst BOARDS/$BOARD.cst --write pnr_$PROJECTNAME.json --device $FPGA_DEVICE --family $FPGA_FAMILY || exit
+$FPGA_ROOT/gowin_pack -d $FPGA_FAMILY -o $PROJECTNAME.fs pnr_$PROJECTNAME.json || exit
+$FPGA_ROOT/openFPGALoader -b $BOARD $PROJECTNAME.fs
