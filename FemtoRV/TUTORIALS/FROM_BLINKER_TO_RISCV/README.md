@@ -2311,8 +2311,16 @@ To display what's sent to the UART, use:
 ```
   $ ./terminal.sh
 ```
-_Note_ edit `terminal.sh` and chose your favourite terminal emulator in there. You may also
-need to change `DEVICE=/dev/ttyUSB1` according to your local configuration.
+_Notes_ 
+- Edit `terminal.sh` and chose your favourite terminal emulator in there. You may also
+  need to change `DEVICE=/dev/ttyUSB1` according to your local configuration.
+- If garbage is displayed, try sending a break (under picocom: press `<ctrl><A>` `<crtl><\>`)
+- Default baud rate is `115200` (which is sufficient for basic tests and demos). Some demos 
+  (see later) do "graphics" by sending ANSI sequences to the tty. They are more fun if running 
+  smoothly. For that, you may try higher baud rate (try `1000000`). It needs to be 
+  changed both in `emitter_uart.v` and in `terminal.sh` (works with most FPGAs, except for GOWIN 
+  boards that have a BL702 instead of the classic FTDI chip which may explain.)
+
 
 ## Step 18: Computing the Mandelbrot set 
 
