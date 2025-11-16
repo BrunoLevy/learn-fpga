@@ -1,12 +1,16 @@
 GOWIN TANG NANO Tutorial
 ========================
 
-Install open-source FPGA development toolchain
-==============================================
-Before starting, you will need to install the open-source FPGA
-development toolchain (Yosys, NextPNR etc...), instructions to
-do so are given [here](toolchain.md).
+There exists packages for Linux distributions
+(nextpnr-gowin,nextpnr-gowin-chipdb,python3-apycula) but they
+are outdated, one needs to use the new nextpnr-himbaechel instead
+(thank you @YRabbit for telling me).
+
+Let's see how to install them from sources:
 
 ```
-$ apt-get install nextpnr-gowin nextpnr-gowin-chipdb nextpnr-gowin-qt python3-apycula openfpgaloader
+git clone --recurse-submodules https://github.com/YosysHQ/yosys.git
+cd yosys
+make
+sudo make install
 ```

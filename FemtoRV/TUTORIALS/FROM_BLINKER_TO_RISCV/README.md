@@ -3414,7 +3414,7 @@ it will show you the different sections that are present in the object file.
 |-------------|--------------------|
 | text        | executable code    |
 | bss, sbss   | uninitialized data |
-| data, sdata | read-only data     |
+| data, sdata | read-write data    |
 | rodata      | read-only data     |
 
 The section name (bss) for uninitialized data has an historic reason
