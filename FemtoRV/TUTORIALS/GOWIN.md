@@ -18,21 +18,20 @@ make
 sudo make install
 ```
 
-Step 2: NextPNR
+Step 2: Apycula
+===============
+```
+pip install apycula --break-system-packages
+```
+
+Step 3: NextPNR
 ===============
 
-Get the sources:
 ```
-$ git clone --recursive https://github.com/YosysHQ/nextpnr.git
-```
-
-NextPNR compilation and installation for Ice40 FPGAs
-----------------------------------------------------
-Compile and install it:
-```
-$ cd nextpnr
-$ cmake . -B build -DARCH=himbaechel -DHIMBAECHEL_UARCH=gowin -DCMAKE_INSTALL_PREFIX=/usr/local .
-$ cd build
-$ make -j 4
-$ sudo make install
+git clone --recursive https://github.com/YosysHQ/nextpnr.git
+cd nextpnr
+cmake . -B build -DARCH=himbaechel -DHIMBAECHEL_UARCH=gowin -DHIMBAECHEL_GOWIN_DEVICES=GW1N-9C -DCMAKE_INSTALL_PREFIX=/usr/local
+cd build
+make -j 4
+sudo make install
 ```
