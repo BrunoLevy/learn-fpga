@@ -22,11 +22,11 @@ module Processor (
 
 
    reg [31:0] PROGROM [0:16383];
-   reg [31:0] DATARAM [0:16383];   
+   reg [31:0] DATARAM [0:16383];
 
    initial begin
       $readmemh("PROGROM.hex",PROGROM);
-      $readmemh("DATARAM.hex",DATARAM);      
+      $readmemh("DATARAM.hex",DATARAM);
    end
 
    // Internal memory busses, used by Load and Store
@@ -39,7 +39,7 @@ module Processor (
    // bit 22 of memory address is set for IO page (and zero for RAM)
    wire isIO  = mem_addr[22];
    wire isRAM = !isIO;
-   
+
    wire [13:0] mem_word_addr = mem_addr[15:2];
 
    // RAM access
@@ -52,29 +52,29 @@ module Processor (
       if(dataram_wmask[2]) DATARAM[mem_word_addr][23:16] <= mem_wdata[23:16];
       if(dataram_wmask[3]) DATARAM[mem_word_addr][31:24] <= mem_wdata[31:24];
    end
-   
+
    assign mem_rdata = isRAM ? dataram_rdata : IO_mem_rdata;
    assign IO_mem_addr  = mem_addr;
    assign IO_mem_wdata = mem_wdata;
    assign IO_mem_wr    = isIO & mem_wmask[0];
-   
+
    reg [31:0] PC=0;  // program counter
    reg [31:0] instr; // current instruction (ignore two LSBs, always 11)
 
    // See the table P. 105 in RISC-V manual
-   
+
    // The 10 RISC-V instructions
-   wire isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2   
+   wire isALUreg  =  (instr[6:2] == 5'b01100); // rd <- rs1 OP rs2
    wire isALUimm  =  (instr[6:2] == 5'b00100); // rd <- rs1 OP Iimm
    wire isBranch  =  (instr[6:2] == 5'b11000); // if(rs1 OP rs2) PC<-PC+Bimm
    wire isJALR    =  (instr[6:2] == 5'b11001); // rd <- PC+4; PC<-rs1+Iimm
    wire isJAL     =  (instr[6:2] == 5'b11011); // rd <- PC+4; PC<-PC+Jimm
    wire isAUIPC   =  (instr[6:2] == 5'b00101); // rd <- PC + Uimm
-   wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm   
+   wire isLUI     =  (instr[6:2] == 5'b01101); // rd <- Uimm
    wire isLoad    =  (instr[6:2] == 5'b00000); // rd <- mem[rs1+Iimm]
    wire isStore   =  (instr[6:2] == 5'b01000); // mem[rs1+Simm] <- rs2
    wire isSYSTEM  =  (instr[6:2] == 5'b11100); // special
-   
+
    // The 5 immediate formats
    wire [31:0] Uimm={    instr[31],   instr[30:12], {12{1'b0}}};
    wire [31:0] Iimm={{21{instr[31]}}, instr[30:20]};
@@ -84,7 +84,7 @@ module Processor (
 
    // Destination registers
    wire [4:0] rdId  = instr[11:7];
-   
+
    // function codes
    wire [2:0] funct3 = instr[14:12];
    wire [6:0] funct7 = instr[31:25];
@@ -92,7 +92,7 @@ module Processor (
    // SYSTEM: EBREAK and CSRRS
    wire isEBREAK     = isSYSTEM & (funct3 == 3'b000);
    wire isCSRRS      = isSYSTEM & (funct3 == 3'b010);
-   
+
    // The registers bank
    reg [31:0] RegisterBank [0:31];
    reg [31:0] rs1; // value of source
@@ -100,14 +100,14 @@ module Processor (
    wire [31:0] writeBackData; // data to be written to rd
    wire        writeBackEn;   // asserted if data should be written to rd
 
-   reg [63:0] cycle;   
+   reg [63:0] cycle;
    reg [63:0] instret;
 
    always @(posedge clk) begin
       cycle <= !resetn ? 0 : cycle + 1;
    end
-   
-`ifdef BENCH   
+
+`ifdef BENCH
    integer     i;
    initial begin
       cycle = 0;
@@ -116,7 +116,7 @@ module Processor (
 	 RegisterBank[i] = 0;
       end
    end
-`endif   
+`endif
 
    // The ALU
    wire [31:0] aluIn1 = rs1;
@@ -138,27 +138,27 @@ module Processor (
    // left and right shifts, saves silicium !)
    function [31:0] flip32;
       input [31:0] x;
-      flip32 = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7], 
-		x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15], 
+      flip32 = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7],
+		x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15],
 		x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
 		x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
    endfunction
 
    wire [31:0] shifter_in = (funct3 == 3'b001) ? flip32(aluIn1) : aluIn1;
-   
+
    /* verilator lint_off WIDTH */
-   wire [31:0] shifter = 
+   wire [31:0] shifter =
                $signed({instr[30] & aluIn1[31], shifter_in}) >>> aluIn2[4:0];
    /* verilator lint_on WIDTH */
 
    wire [31:0] leftshift = flip32(shifter);
-   
-   // ADD/SUB/ADDI: 
+
+   // ADD/SUB/ADDI:
    // funct7[5] is 1 for SUB and 0 for ADD. We need also to test instr[5]
    // to make the difference with ADDI
    //
-   // SRLI/SRAI/SRL/SRA: 
-   // funct7[5] is 1 for arithmetic shift (SRA/SRAI) and 
+   // SRLI/SRAI/SRL/SRA:
+   // funct7[5] is 1 for arithmetic shift (SRA/SRAI) and
    // 0 for logical shift (SRL/SRLI)
    reg [31:0]  aluOut;
    always @(*) begin
@@ -170,7 +170,7 @@ module Processor (
 	3'b100: aluOut = (aluIn1 ^ aluIn2);
 	3'b101: aluOut = shifter;
 	3'b110: aluOut = (aluIn1 | aluIn2);
-	3'b111: aluOut = (aluIn1 & aluIn2);	
+	3'b111: aluOut = (aluIn1 & aluIn2);
       endcase
    end
 
@@ -187,7 +187,7 @@ module Processor (
 	default: takeBranch = 1'b0;
       endcase
    end
-   
+
 
    // Address computation
 
@@ -195,17 +195,17 @@ module Processor (
    // branch->PC+Bimm    AUIPC->PC+Uimm    JAL->PC+Jimm
    // Equivalent to PCplusImm = PC + (isJAL ? Jimm : isAUIPC ? Uimm : Bimm)
 
-   // Note: doing so with ADDR_WIDTH < 32, AUIPC may fail in 
-   // some RISC-V compliance tests because one can is supposed to use 
+   // Note: doing so with ADDR_WIDTH < 32, AUIPC may fail in
+   // some RISC-V compliance tests because one can is supposed to use
    // it to generate arbitrary 32-bit values (and not only addresses).
-   
+
    wire [31:0] PCplusImm = PC + ( instr[3] ? Jimm[31:0] :
 					    instr[4] ? Uimm[31:0] :
 				            Bimm[31:0] );
    wire [31:0] PCplus4 = PC+4;
-   
 
-   wire [31:0] nextPC = 
+
+   wire [31:0] nextPC =
                ((isBranch && takeBranch) || isJAL) ? PCplusImm            :
 	                                    isJALR ? {aluPlus[31:1],1'b0} :
 	                                             PCplus4;
@@ -220,7 +220,7 @@ module Processor (
 	       (!instr[27] & instr[21]) ? instret[31:0] :
 	             instr[27]          ? cycle[63:32]  :
  	                                  cycle[31:0]   ;
-   
+
    assign writeBackData = (isJAL || isJALR) ? PCplus4   :
 			      isLUI         ? Uimm      :
 			      isAUIPC       ? PCplusImm :
@@ -278,14 +278,14 @@ module Processor (
 	      mem_halfwordAccess ?
 	            (loadstore_addr[1] ? 4'b1100 : 4'b0011) :
               4'b1111;
-   
+
    // The state machine
    localparam FETCH_INSTR = 0;
    localparam WAIT_INSTR  = 1;
    localparam EXECUTE     = 2;
    localparam WAIT_DATA   = 3;
    reg [1:0] state = FETCH_INSTR;
-   
+
    always @(posedge clk) begin
       if(!resetn) begin
 	 PC      <= 32'h00000000;
@@ -298,13 +298,13 @@ module Processor (
 	 case(state)
 	   FETCH_INSTR: begin
 	      state <= WAIT_INSTR;
-	      instr <= PROGROM[PC[15:2]]; 	      
+	      instr <= PROGROM[PC[15:2]];
 `ifdef BENCH
 	      if(PC >= 32'h10000) begin
 		 $display("invalid PC, out of range: %h",PC);
 		 $finish();
 	      end
-`endif	      
+`endif
 	   end
 	   WAIT_INSTR: begin
 	      rs1 <= RegisterBank[instr[19:15]];
@@ -325,12 +325,12 @@ module Processor (
 		 end
 	      end
 	      if(isEBREAK) $finish();
-`endif      
+`endif
 	   end
 	   WAIT_DATA: begin
 	      state <= FETCH_INSTR;
 	   end
-	 endcase 
+	 endcase
       end
    end
 
@@ -342,7 +342,7 @@ endmodule
 
 
 module SOC (
-    input 	     CLK, // system clock 
+    input 	     CLK, // system clock
     input 	     RESET,// reset button
     output reg [4:0] LEDS, // system LEDs
     input 	     RXD, // UART receive
@@ -351,7 +351,7 @@ module SOC (
 
    wire clk;
    wire resetn;
-   
+
    wire [31:0] IO_mem_addr;
    wire [31:0] IO_mem_rdata;
    wire [31:0] IO_mem_wdata;
@@ -367,12 +367,12 @@ module SOC (
    );
 
    wire [13:0] IO_wordaddr = IO_mem_addr[15:2];
-   
-   // Memory-mapped IO in IO page, 1-hot addressing in word address.   
+
+   // Memory-mapped IO in IO page, 1-hot addressing in word address.
    localparam IO_LEDS_bit      = 0;  // W five leds
-   localparam IO_UART_DAT_bit  = 1;  // W data to send (8 bits) 
+   localparam IO_UART_DAT_bit  = 1;  // W data to send (8 bits)
    localparam IO_UART_CNTL_bit = 2;  // R status. bit 9: busy sending
-   
+
    always @(posedge clk) begin
       if(IO_mem_wr & IO_wordaddr[IO_LEDS_bit]) begin
 	 LEDS <= IO_mem_wdata[4:0];
@@ -383,18 +383,17 @@ module SOC (
    wire uart_ready;
 
    corescore_emitter_uart #(
-      .clk_freq_hz(`CPU_FREQ*1000000),
-        .baud_rate(1000000)
+      .clk_freq_hz(`CPU_FREQ*1000000)
    ) UART(
       .i_clk(clk),
       .i_rst(!resetn),
       .i_data(IO_mem_wdata[7:0]),
       .i_valid(uart_valid),
       .o_ready(uart_ready),
-      .o_uart_tx(TXD)      			       
+      .o_uart_tx(TXD)
    );
-   
-   assign IO_mem_rdata = 
+
+   assign IO_mem_rdata =
 		    IO_wordaddr[IO_UART_CNTL_bit] ? { 22'b0, !uart_ready, 9'b0}
 	                                          : 32'b0;
 
@@ -406,8 +405,8 @@ module SOC (
 	 $fflush(32'h8000_0001);
       end
    end
-`endif   
-   
+`endif
+
    // Gearbox and reset circuitry.
    Clockworks CW(
      .CLK(CLK),
@@ -417,6 +416,3 @@ module SOC (
    );
 
 endmodule
-
-
- 
