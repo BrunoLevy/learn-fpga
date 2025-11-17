@@ -23,7 +23,7 @@ development tools. You will need the following components:
 - Debugging tools: icarus/iverilog and verilator
 - FPGA support libraries: IceStorm (Ice40) or Trellis (ECP5)
 - Place and root: NextPNR
-- Tool to send bitstream to FPGA: ujprog 
+- Tool to send bitstream to FPGA: ujprog
 
 Although there exists some precompiled packages, I highly recommend to
 get fresh source versions from the source repositories, because the tools
@@ -32,16 +32,17 @@ instructions to get and install the latest versions of the tools.
 Some steps depend on the type of FPGA installed on your board, refer to
 the following table:
 
-| Board     | FPGA family   |
-|-----------|---------------|
-|IceStick   | Ice40         |
-|IceBreaker | Ice40         |
-|IceFeather | Ice40         |
-|FOMU       | Ice40         |
-|ULX3S      | ECP5          |
-|OrangeCrab | ECP5          |
-|ECP5-EVN   | ECP5          |
-|ARTY       | artix-7 (xc7) |
+| Board       | FPGA family   |
+|-------------|---------------|
+|IceStick     | Ice40         |
+|IceBreaker   | Ice40         |
+|IceFeather   | Ice40         |
+|FOMU         | Ice40         |
+|ULX3S        | ECP5          |
+|OrangeCrab   | ECP5          |
+|ECP5-EVN     | ECP5          |
+|ARTY         | artix-7 (xc7) |
+|tang nano 9k | gowin         |
 
 Step 1: FemtoRV
 ===============
@@ -95,7 +96,7 @@ Step 3: FPGA support libraries
 
 Note that instructions are different, depending on the family of your FPGA:
  - *IceStorm* for Ice40 family (boards: IceStick, IceBreaker, IceFeather, Fomu,...)
- - *Trellis* for ECP5 family (boards: ULX3S, OrangeCrab,...). 
+ - *Trellis* for ECP5 family (boards: ULX3S, OrangeCrab,...).
 
 IceStorm (for Ice40 FPGAs)
 --------------------------
@@ -142,6 +143,14 @@ $ make
 $ sudo make install
 ```
 
+Apycula (for gowin FPGAs)
+-------------------------
+
+```
+$ pip install apycula --break-system-packages
+```
+
+
 Step 4: NextPNR
 ===============
 
@@ -175,6 +184,18 @@ $ make -j 4
 $ sudo make install
 ```
 
+NextPNR compilation and installation for GOWIN FPGAs
+---------------------------------------------------
+Compile and install it:
+```
+git clone --recursive https://github.com/YosysHQ/nextpnr.git
+cd nextpnr
+cmake . -B build -DARCH=himbaechel -DHIMBAECHEL_UARCH=gowin -DHIMBAECHEL_GOWIN_DEVICES=GW1N-9C -DCMAKE_INSTALL_PREFIX=/usr/local
+cd build
+make -j 4
+sudo make install
+```
+
 Step 5: Tool to send bitstream to FPGA
 ======================================
 
@@ -188,7 +209,7 @@ way to go...).
 
 Ice40 FPGAs (iceprog)
 ---------------------
-Create in `/etc/udev/rules.d` a file `53-lattice-ftdi.rules` 
+Create in `/etc/udev/rules.d` a file `53-lattice-ftdi.rules`
 with the following content:
 ```
 ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0660", GROUP="plugdev", TAG+="uaccess"
@@ -200,7 +221,7 @@ OrangeCrab (ECP5)
 Create in `/etc/udev/rules.d` a file `99-orangecrab.rules` with the following content:
 ```
 ATTRS{idVendor}=="1209", ATTRS{idProduct}=="5af0", MODE="0666", GROUP="plugdev", TAG+="uaccess"
-ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", MODE="0666", GROUP="dialout" 
+ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", MODE="0666", GROUP="dialout"
 ATTRS{idVendor}=="1209", ATTRS{idProduct}=="5bf2", MODE="0666", GROUP="dialout"
 
 ```
@@ -220,7 +241,7 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="1209", ATTRS{idProduct}=="5bf0", MODE="0664"
 
 Install dfu-util (FOMU/OrangeCrab):
 ```
-$ sudo apt-get install dfu-util  
+$ sudo apt-get install dfu-util
 ```
 
 Plug the FOMU or the OrangeCrab (with its button pushed) and test it:
@@ -268,7 +289,7 @@ $ apt-get install libftdi1-2 libftdi1-dev libhidapi-libusb0 libhidapi-dev libude
 $ cd openFPGALoader
 $ mkdir build
 $ cd build
-$ cmake ../ 
+$ cmake ../
 $ make
 $ sudo make install
 ```

@@ -61,6 +61,12 @@
  `define SPI_FLASH_CONFIGURED
 `endif
 
+`ifdef TANGNANO9K
+ `define SPI_FLASH_READ
+ `define SPI_FLASH_CONFIGURED
+`endif
+
+
 `ifndef SPI_FLASH_DUMMY_CLOCKS
  `define SPI_FLASH_DUMMY_CLOCKS 8
 `endif
