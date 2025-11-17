@@ -62,7 +62,7 @@
 `endif
 
 `ifdef TANGNANO9K
- `define SPI_FLASH_READ
+ `define SPI_FLASH_FAST_READ_DUAL_IO
  `define SPI_FLASH_CONFIGURED
 `endif
 
