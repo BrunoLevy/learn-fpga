@@ -16,3 +16,6 @@ echo Generating PLL for ULX3S
 
 echo Generating PLL for ECP5 evaluation board
 ./gen_pll.sh ECP5 12 > pll_ecp5_evn.v
+
+echo Generating PLL for tangnano9k
+./gen_pll.sh GOWIN 27 > pll_tangnano9k.v

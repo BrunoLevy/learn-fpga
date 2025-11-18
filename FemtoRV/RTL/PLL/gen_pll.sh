@@ -112,8 +112,55 @@ EOF
 endmodule  
 EOF
       ;;
+   "GOWIN")
+      cat << EOF
+
+ module femtoPLL #(
+    parameter freq = 40
+ ) (
+    input wire pclk,
+    output wire clk
+ );
+ rPLL pll_i(
+    .CLKOUTP(),
+    .CLKOUTD(),
+    .CLKOUTD3(),
+    .RESET(1'b0),
+    .RESET_P(1'b0),
+    .CLKFB(1'b0),
+    .FBDSEL(6'b0),
+    .IDSEL(6'b0),
+    .ODSEL(6'b0),
+    .PSDA(4'b0),
+    .DUTYDA(4'b0),
+    .FDLY(4'b0),
+    .CLKIN(pclk),
+    .CLKOUT(clk)
+ );
+   defparam pll_i.FCLKIN="$INPUTFREQ";
+   generate
+     case(freq)
+EOF
+      for OUTPUTFREQ in `cat frequencies.txt`
+      do
+          echo "     $OUTPUTFREQ: begin"
+	  gowin_pll -i $INPUTFREQ -o $OUTPUTFREQ -f tmp.v > tmp.txt
+          cat tmp.v \
+	      | egrep "IDIV_SEL|FBDIV_SEL|ODIV_SEL" \
+	      | sed -e 's|[),.]| |g' -e 's|(|=|g' \
+	      | awk '{printf("      defparam pll_i.%s;\n",$1);}'
+	  rm -f tmp.v tmp.txt
+        echo "     end"
+      done
+      cat <<EOF
+     default: UNKNOWN_FREQUENCY unknown_frequency();
+     endcase
+   endgenerate
+endmodule  
+EOF
+      ;;
    *)
-      echo FPGA_KIND needs to be one of ICE40,ECP5
+      echo FPGA_KIND needs to be one of ICE40,ECP5,GOWIN
       exit 1
       ;;
 esac
