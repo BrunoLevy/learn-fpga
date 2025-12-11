@@ -101,6 +101,9 @@ module FemtoRV32(
    reg [31:0] registerFile [31:0];
 
    always @(posedge clk) begin
+     if (~reset)
+       registerFile[0] = 0;
+     else
      if (writeBack)
        if (rdId != 0)
          registerFile[rdId] <= writeBackData;
@@ -152,31 +155,36 @@ module FemtoRV32(
    wire funct3IsShift = funct3Is[1] | funct3Is[5];
 
    always @(posedge clk) begin
-      if(aluWr) begin
-         if (funct3IsShift) begin  // SLL, SRA, SRL
-	    aluReg <= aluIn1;
-	    aluShamt <= aluIn2[4:0];
-	 end
+      if (~reset) begin
+         aluShamt <= 0;
       end
+      else begin
+		  if(aluWr) begin
+			 if (funct3IsShift) begin  // SLL, SRA, SRL
+				aluReg <= aluIn1;
+				aluShamt <= aluIn2[4:0];
+			 end
+		  end
 
 `ifdef NRV_TWOLEVEL_SHIFTER
-      else if(|aluShamt[4:2]) begin // Shift by 4
-         aluShamt <= aluShamt - 4;
-	 aluReg <= funct3Is[1] ? aluReg << 4 :
-		   {{4{instr[30] & aluReg[31]}}, aluReg[31:4]};
-      end  else
+		  else if(|aluShamt[4:2]) begin // Shift by 4
+			 aluShamt <= aluShamt - 4;
+			 aluReg <= funct3Is[1] ? aluReg << 4 :
+					   {{4{instr[30] & aluReg[31]}}, aluReg[31:4]};
+		  end else
 `endif
-      // Compact form of:
-      // funct3=001              -> SLL  (aluReg <= aluReg << 1)
-      // funct3=101 &  instr[30] -> SRA  (aluReg <= {aluReg[31], aluReg[31:1]})
-      // funct3=101 & !instr[30] -> SRL  (aluReg <= {1'b0,       aluReg[31:1]})
+		  // Compact form of:
+		  // funct3=001              -> SLL  (aluReg <= aluReg << 1)
+		  // funct3=101 &  instr[30] -> SRA  (aluReg <= {aluReg[31], aluReg[31:1]})
+		  // funct3=101 & !instr[30] -> SRL  (aluReg <= {1'b0,       aluReg[31:1]})
 
-      if (|aluShamt) begin
-         aluShamt <= aluShamt - 1;
-	 aluReg <= funct3Is[1] ? aluReg << 1 :              // SLL
-		   {instr[30] & aluReg[31], aluReg[31:1]};  // SRA,SRL
-      end
-   end
+		  if (|aluShamt) begin
+			 aluShamt <= aluShamt - 1;
+			 aluReg <= funct3Is[1] ? aluReg << 1 :              // SLL
+					   {instr[30] & aluReg[31], aluReg[31:1]};  // SRA,SRL
+		  end
+      end // end if ~reset
+   end // end always
 
    /***************************************************************************/
    // The predicate for conditional branches.
