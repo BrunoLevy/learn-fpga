@@ -1,0 +1,115 @@
+# Taken from https://github.com/tinyvision-ai-inc/UPduino-v3.0/blob/master/RTL/common/upduino.pcf
+# Pinout Layout: https://upduino.readthedocs.io/en/latest/features/specs.html
+# To be used as a reference
+
+# The LED pins are on dedicated pins and cannot be modified!
+# Note that they are negative logic (write a 0 to turn on).
+# These are also brought out to the left side of the board. 
+# Cut the board trace on jumper R28 to disable the onboard 3 color LED.
+#set_io -nowarn led_green 39
+#set_io -nowarn led_red	41
+#set_io -nowarn led_blue	40
+
+# FTDI chip interface
+#set_io -nowarn serial_txd 14 # FPGA transmit to USB
+#set_io -nowarn serial_rxd 15 # FPGA receive from USB
+#set_io -nowarn spi_cs 16 # Connected to SPI flash, drive high unless using SPI flash!
+
+# If using the FTDI MPSSE engine, the following signals apply
+#set_io -nowarn spi_sck 15  # Shared with the flash
+#set_io -nowarn spi_ssn 16  # Connected to SPI flash, drive high unless using SPI flash!
+#set_io -nowarn spi_mosi 17 # Shared with the flash
+#set_io -nowarn spi_miso 14 # Shared with the flash
+
+# Normal GPIO pins, left side
+#set_io -nowarn gpio_23 23
+#set_io -nowarn gpio_25 25
+#set_io -nowarn gpio_26 26
+#set_io -nowarn gpio_27 27
+#set_io -nowarn gpio_32 32
+#set_io -nowarn gpio_35 35
+#set_io -nowarn gpio_31 31
+#set_io -nowarn gpio_37 37
+#set_io -nowarn gpio_34 34
+#set_io -nowarn gpio_43 43
+#set_io -nowarn gpio_36 36
+#set_io -nowarn gpio_42 42
+#set_io -nowarn gpio_38 38
+#set_io -nowarn gpio_28 28
+
+# Normal GPIO pins, right side
+
+# Following pins are added on the v3.0 of the board.
+# SPI pins are brought out to the right side of the board
+
+# Note: On board 12MHz clock can be brought to IOB_25B_G3 (pin 20) which is a global
+# clock input. Short across R16 (labelled OSC on the board) to enable 12MHz clock to
+# pin 20.
+#set_io -nowarn gpio_20 20
+#set_io -nowarn gpio_10 10
+
+# Following are also found on v2.x of the UPduino
+#set_io -nowarn gpio_12 12
+#set_io -nowarn gpio_21 21
+#set_io -nowarn gpio_13 13
+#set_io -nowarn gpio_19 19
+#set_io -nowarn gpio_18 18
+#set_io -nowarn gpio_11 11
+#set_io -nowarn gpio_9 9
+#set_io -nowarn gpio_6 6
+#set_io -nowarn gpio_44 44
+#set_io -nowarn gpio_4 4
+#set_io -nowarn gpio_3 3
+#set_io -nowarn gpio_48 48
+#set_io -nowarn gpio_45 45
+#set_io -nowarn gpio_47 47
+#set_io -nowarn gpio_46 46
+#set_io -nowarn gpio_2 2
+
+
+# FemtoRV Config Starts Here
+# 20 is the 12Mhz input but 35 I guess is the internal PLL?
+#set_io pclk 20
+set_io pclk 		35	# ??
+
+# USB (I think)
+set_io TXD 			14
+set_io RXD 			15
+
+set_io RESET 		38	# ??
+
+# Left Side of Upduino
+set_io D1 			39	# Green LED Physical Pin 5
+set_io D2 			41	# Red LED Physical Pin 6
+set_io D3 			40	# Blue LED Physical Pin 7
+set_io D4 			23	# Physical Pin 11
+set_io D5 			25	# Physical Pin 12
+
+# LED Matrix
+set_io ledmtx_DIN	26	# Physical Pin 13
+set_io ledmtx_CS	27	# Physical Pin 14 
+set_io ledmtx_CLK	32	# Physical Pin 15  
+
+# OLED Display
+set_io oled_DIN		31	# Physical Pin 17
+set_io oled_CLK		37	# Physical Pin 18
+set_io oled_CS		34	# Physical Pin 19
+set_io oled_DC		43	# Physical Pin 20
+set_io oled_RST		36	# Physical Pin 21
+
+# Right Side of Upduino
+set_io spi_io0		2	# Physical Pin 25
+set_io spi_io1		46	# Physical Pin 26
+set_io spi_io2		47	# Physical Pin 27
+set_io spi_io3		45	# Physical Pin 28
+
+set_io spi_clk		44	# Physical Pin 32
+set_io spi_cs_n		6	# Physical Pin 33
+set_io spi_miso		9	# Physical Pin 34, Not sure which is which
+set_io spi_mosi		11	# Physical Pin 35, Not sure which is which
+
+
+
+
+
+
