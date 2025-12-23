@@ -114,14 +114,14 @@ module buart #(
     reg [divwidth:0] send_divcnt;
     wire send_baud_clk  = send_divcnt[divwidth];
 
-    reg [9:0] send_pattern = 1;
+    reg [10:0] send_pattern = 1;
     assign tx = send_pattern[0];
-    assign busy = |send_pattern[9:1];
+    assign busy = |send_pattern[10:1];
 
-    // The transmitter shifts until the stop bit is on the wire, 
+    // The transmitter shifts until the idle state is on the wire,
     // and stops shifting then.
     always @(posedge clk) begin
-       if (wr) send_pattern <= {1'b1, tx_data[7:0], 1'b0};
+       if (wr) send_pattern <= {2'b11, tx_data[7:0], 1'b0};
        else if (send_baud_clk & busy) send_pattern <= send_pattern >> 1;
        /* verilator lint_off WIDTH */		    
        if (wr | send_baud_clk) send_divcnt <= baud_init;
