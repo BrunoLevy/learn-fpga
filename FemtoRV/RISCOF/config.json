@@ -1,0 +1,392 @@
+{
+  "base": {
+    "xlen": 32,
+    "E": false,
+    "writable_misa": true,
+    "writable_fiom": true,
+    "writable_hpm_counters": {
+      "len": 32,
+      "value": "0xFFFF_FFFF"
+    },
+    "xtval_nonzero": {
+      "illegal_instruction": true,
+      "breakpoint": true,
+      "load_address_misaligned": true,
+      "load_access_fault": true,
+      "samo_address_misaligned": true,
+      "samo_access_fault": true,
+      "fetch_address_misaligned": true,
+      "fetch_access_fault": true
+    }
+  },
+  "memory": {
+    "pmp": {
+      "grain": 0,
+      "count": 16,
+      "tor_supported": true,
+      "na4_supported": true,
+      "napot_supported": true
+    },
+    // This controls global support for misaligned access so it is
+    // checked before address translation. "misaligned_fault" in
+    // "regions" is checked after address translation.
+    "misaligned": {
+      "supported": true,
+      "byte_by_byte": false,
+      "order_decreasing": false,
+      "allowed_within_exp": 0
+    },
+    "translation": {
+      "dirty_update": false
+    },
+    // Address to write DTB to (if provided).
+    "dtb_address": {
+      "len": 64,
+      "value": "0x1000"
+    },
+    "regions": [
+      // ROM
+      {
+        "base": {
+          "len": 64,
+          "value": "0x1000"
+        },
+        "size": {
+          "len": 64,
+          "value": "0x1000"
+        },
+        "attributes": {
+          "cacheable": true,
+          "coherent": true,
+          "executable": false,
+          "readable": true,
+          "writable": false,
+          "read_idempotent": true,
+          "write_idempotent": true,
+          "misaligned_fault": "NoFault",
+          "reservability": "RsrvNone",
+          "supports_cbo_zero": false
+        },
+        "include_in_device_tree": false
+      },
+      // MMIO
+      {
+        "base": {
+          "len": 64,
+          "value": "0x2000000"
+        },
+        "size": {
+          "len": 64,
+          "value": "0x2000000"
+        },
+        "attributes": {
+          "cacheable": false,
+          "coherent": true,
+          "executable": false,
+          "readable": true,
+          "writable": true,
+          "read_idempotent": false,
+          "write_idempotent": false,
+          "misaligned_fault": "AlignmentFault",
+          "reservability": "RsrvNone",
+          "supports_cbo_zero": false
+        },
+        "include_in_device_tree": false
+      },
+      // RAM
+      {
+        "base": {
+          "len": 64,
+          "value": "0x80000000"
+        },
+        "size": {
+          "len": 64,
+          "value": "0x80000000"
+        },
+        "attributes": {
+          "cacheable": true,
+          "coherent": true,
+          "executable": true,
+          "readable": true,
+          "writable": true,
+          "read_idempotent": true,
+          "write_idempotent": true,
+          "misaligned_fault": "NoFault",
+          "reservability": "RsrvEventual",
+          "supports_cbo_zero": true
+        },
+        "include_in_device_tree": true
+      }
+    ]
+  },
+  "platform": {
+    "vendorid": 0,
+    "archid": 0,
+    "impid": 0,
+    "hartid": 0,
+    "cache_block_size_exp": 6,
+    "clint": {
+      // This must be in a suitable memory region (see memory.regions).
+      "base": 33554432,
+      "size": 786432
+    },
+    "clock_frequency": 1000000000,
+    "instructions_per_tick": 2,
+    "wfi_is_nop": true
+  },
+  "extensions": {
+    "M": {
+      "supported": true
+    },
+    "A": {
+      "supported": true
+    },
+    "F": {
+      "supported": true
+    },
+    "D": {
+      "supported": true
+    },
+    "V": {
+      // `support_level` should be one of the below strings:
+      // . "Disabled" for no vector extension support
+      // . "Integer" for Zve*x support
+      // . "Float_single" for Zve*f support
+      // . "Float_double" for Zve*d support
+      // . "Full" for the full V extension
+      // Note that `support_level` requires compatible
+      // values for `vlen_exp` and `elen_exp` below.
+      // For e.g. Zve32x and Zve32f require `elen_exp` >= 5,
+      // Zve64x, Zve64f, and Zve64d require `elen_exp` >= 6,
+      // and V requires `elen_exp` >= 6 and `vlen_exp` >= 7.
+      "support_level": "Float_single",
+      "vlen_exp": 8,
+      "elen_exp": 6,
+      "vl_use_ceil": false
+    },
+    "B": {
+      "supported": true
+    },
+    "S": {
+      "supported": true
+    },
+    "U": {
+      "supported": true
+    },
+    "Zicbom": {
+      "supported": true
+    },
+    "Zicbop": {
+      "supported": true
+    },
+    "Zicboz": {
+      "supported": true
+    },
+    "Zicfilp": {
+      "supported": true
+    },
+    "Zicond": {
+      "supported": true
+    },
+    "Zicntr": {
+      "supported": true
+    },
+    "Zicsr": {
+      "supported": true
+    },
+    "Zifencei": {
+      "supported": true
+    },
+    "Zihintntl": {
+      "supported": true
+    },
+    "Zihintpause": {
+      "supported": true
+    },
+    "Zihpm": {
+      "supported": true
+    },
+    "Zimop": {
+      "supported": true
+    },
+    "Zmmul": {
+      "supported": false
+    },
+    "Zaamo": {
+      "supported": false
+    },
+    "Zabha": {
+      "supported": true
+    },
+    "Zacas": {
+      "supported": true
+    },
+    "Zalrsc": {
+      "supported": false
+    },
+    "Zawrs": {
+      "supported": true,
+      "nto": {
+        "is_nop": false
+      },
+      "sto": {
+        "is_nop": false
+      }
+    },
+    "Zfa": {
+      "supported": true
+    },
+    "Zfbfmin": {
+      "supported": true
+    },
+    "Zfh": {
+      "supported": true
+    },
+    "Zfhmin": {
+      "supported": true
+    },
+    "Zfinx": {
+      "supported": false
+    },
+    "Zca": {
+      "supported": true
+    },
+    "Zcf": {
+      "supported": false
+    },
+    "Zcd": {
+      "supported": true
+    },
+    "Zcb": {
+      "supported": true
+    },
+    "Zcmop": {
+      "supported": true
+    },
+    "Zba": {
+      "supported": false
+    },
+    "Zbb": {
+      "supported": false
+    },
+    "Zbs": {
+      "supported": false
+    },
+    "Zbc": {
+      "supported": true
+    },
+    "Zbkb": {
+      "supported": true
+    },
+    "Zbkc": {
+      "supported": true
+    },
+    "Zbkx": {
+      "supported": true
+    },
+    "Zknd": {
+      "supported": true
+    },
+    "Zkne": {
+      "supported": true
+    },
+    "Zknh": {
+      "supported": true
+    },
+    "Zkr": {
+      "supported": true,
+      "sseed_reset_value": false,
+      "useed_reset_value": false,
+      "sseed_read_only_zero": false,
+      "useed_read_only_zero": false
+    },
+    "Zksed": {
+      "supported": true
+    },
+    "Zksh": {
+      "supported": true
+    },
+    "Zkt": {
+      "supported": true
+    },
+    "Zhinx": {
+      "supported": false
+    },
+    "Zhinxmin": {
+      "supported": false
+    },
+    "Zvfbfmin": {
+      "supported": true
+    },
+    "Zvfbfwma": {
+      "supported": true
+    },
+    "Zvfh": {
+      "supported": true
+    },
+    "Zvfhmin": {
+      "supported": true
+    },
+    "Zvbb": {
+      "supported": true
+    },
+    "Zvbc": {
+      "supported": true
+    },
+    "Zvkb": {
+      "supported": false
+    },
+    "Zvkg": {
+      "supported": true
+    },
+    "Zvkned": {
+      "supported": true
+    },
+    "Zvknha": {
+      "supported": true
+    },
+    "Zvknhb": {
+      "supported": true
+    },
+    "Zvksed": {
+      "supported": true
+    },
+    "Zvksh": {
+      "supported": true
+    },
+    "Zvkt": {
+      "supported": true
+    },
+    "Sscofpmf": {
+      "supported": true
+    },
+    "Smcntrpmf": {
+      "supported": true
+    },
+    "Sstc": {
+      "supported": true
+    },
+    "Svinval": {
+      "supported": true
+    },
+    "Svrsw60t59b": {
+      "supported": false
+    },
+    "Svbare": {
+      "supported": true,
+      "sfence_vma_illegal_if_svbare_only": true
+    },
+    "Sv32": {
+      "supported": false
+    },
+    "Sv39": {
+      "supported": true
+    },
+    "Sv48": {
+      "supported": true
+    },
+    "Sv57": {
+      "supported": true
+    }
+  }
+}

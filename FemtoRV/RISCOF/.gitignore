@@ -1,0 +1,8 @@
+__pycache__
+.vent
+obj_dir/
+riscof_work/
+riscv/
+sail-riscv-Linux-x86_64/
+*.tar.gz
+*.tar.xz
