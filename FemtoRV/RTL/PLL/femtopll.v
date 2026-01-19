@@ -30,6 +30,8 @@ endmodule
 `else
  `ifdef ICE_STICK 
   `include "pll_icestick.v"
+ `elsif ICE_ZERO 
+  `include "pll_icezero.v" 
  `elsif ICE_BREAKER 
   `include "pll_icebreaker.v" 
  `elsif ICE_FEATHER
@@ -46,8 +48,8 @@ endmodule
   `include "pll_arty.v"
  `elsif CMODA7
   `include "pll_cmod_a7.v"
- `elsif TANGNANO9K
-  `include "pll_tangnano9k.v"
+ `elsif ICE40HX8K_EVB
+  `include "pll_ice40hx8k_evb.v"
  `endif
 `endif
 

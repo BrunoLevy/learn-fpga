@@ -1,5 +1,7 @@
+#include "link_memory_info.h"
+
 MEMORY {
-   FLASH (RX)  : ORIGIN = 0x00820000, LENGTH = 0x100000 /* 4 MB in flash */
+   FLASH (RX)  : ORIGIN = VIRT_FLASH_MEM_START, LENGTH = VIRT_FLASH_MEM_LEN
 }
 SECTIONS {
     everything : {

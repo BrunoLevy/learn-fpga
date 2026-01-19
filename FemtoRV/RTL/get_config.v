@@ -13,6 +13,9 @@ initial begin
   $display("OPTIMIZE=",`NRV_OPTIMIZE);
   $display("ABI=",`NRV_ABI);
   $display("RAM_SIZE=%d",`NRV_RAM);
+`ifdef NRV_SRAM
+   $write("SRAM=_sram\n"); //for linker
+`endif      
 
 //   Note1: for now we only need FGA here for conditional
 // compilation of OLED->FGA emulation (that pulls too
@@ -24,6 +27,9 @@ initial begin
 // some text substitution, and the assembler needs "=1"
 
    $write("DEVICES=");
+`ifdef NRV_SRAM
+   $write(" -DSRAM=1");
+`endif      
 `ifdef NRV_IO_FGA
    $write(" -DFGA=1");   
 `endif   
@@ -45,12 +51,17 @@ initial begin
 `ifdef ICE_BREAKER
    $write(" -DICE_BREAKER=1");   
 `endif
+`ifdef ICE_ZERO
+   $write(" -DICE_ZERO=1");
+`endif
 `ifdef ICE_SUGAR_NANO
    $write(" -DICE_SUGAR_NANO=1");
 `endif
+`ifdef ICE40HX8K_EVB
+   $write(" -DICE40HX8K_EVB=1");
+`endif
    $write("\n");
-   
-end 
+ end 
 endmodule
 
 
