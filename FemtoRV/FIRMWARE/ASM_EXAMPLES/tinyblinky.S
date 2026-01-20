@@ -8,7 +8,12 @@
 .ifdef ICE_STICK
 .section .fastcode
 .endif
-
+.ifdef ICE_ZERO
+.section .fastcode
+.endif
+.ifdef ICE40HX8K_EVB
+.section .fastcode
+.endif
 main:   
   li x8, 0x400004                # LED register
   li   x10, 1                    # Set up initial x, y for Minsky circle algorithm

@@ -1,0 +1,179 @@
+set_io pclk J3
+
+set_io D1 M12
+set_io D2 E4
+set_io D3 B2
+set_io D4 F5
+set_io D5 R16
+
+#The following note is probably wrong I assume it was being used at
+#too high a baudrate but I don't have the physical hardware to confirm
+
+# UART communication doesn't work when Olimexino 32U4 is used as a bridge
+# which forwards the communication to a PC
+# (https://www.olimex.com/wiki/ICE40HX1K-EVB#Get_started_under_Linux).
+# There might be a bug in Olimexino's firmware, as UART works with a UART-USB
+# converter.
+set_io TXD T16
+set_io RXD L11
+
+set_io spi_cs_n R12
+set_io spi_miso P11
+set_io spi_mosi P12
+set_io spi_clk  R11
+
+set_io RESET B1
+
+
+set_io BUT1	K11
+set_io BUT2	P13
+#set_io LED1	M12
+#set_io LED2	R16
+
+
+
+# GPIO1 ct256
+# 1	+5V
+# 2	GND
+# 3	+3.3V
+# 4	GND
+# 5	E4
+# 6     EXTCLK : J3 # ? or sysclk
+# 7	B2
+# 8	GND
+# 9	F5
+# 10	J2
+# 11	B1
+# 12	H1
+# 13	C1
+# 14	G1
+# 15	C2
+# 16	J5
+# 17	F4
+# 18	H2
+# 19	D2
+# 20	J4
+# 21	G5
+# 22	G2
+# 23	D1
+# 24	H4
+# 25	G4
+# 26	F1
+# 27	E3
+# 28	H6
+# 29	H5
+# 30	F2
+# 31	E2
+# 32	H3
+# 33	G3
+# 34	F3
+ 
+# map of currently assigned pads
+# D1 -> LED1
+# D5 -> LED2
+
+# TXD T16 -> UEXT TX
+# RXD L11 -> UEXT RX
+#
+# BUT1 AND BUT2 not mapped
+
+# GPIO1 PAD	PAD	GPIO1		 . = free
+#  1	5V	GND	 # 2 		 5V	0V
+#  3	3V3	GND	 # 4		3V3	0V
+#  5	E4	J3	 # 6 EXTCLK	 D2	pclk
+#  7	B2	GND	 # 8		 D3	0V
+#  9	F5	J2	 # 10		 D4	.
+# 11	B1	H1	 # 12		  .	.		
+# 13	C1	G1	 # 14		  .	.
+# 15	C2	J5	 # 16		  .	.
+# 17	F4	H2	 # 18		  .	.
+# 19	D2	J4	 # 20		  .	.
+# 21	G5	G2	 # 22		  .	.
+# 23	D1	H4	 # 24		  .	.
+# 25	G4	F1	 # 26		  .	.
+# 27	E3	H6	 # 28		  .	.
+# 29	H5	F2	 # 30		  .	.
+# 31	E2	H3	 # 32		  .	.
+# 33	G3	F3	 # 34		  .	.
+
+
+
+
+# map of currently assigned pads and vga/ps2 board
+# D1 -> LED1
+# D5 -> LED2
+
+# TXD T16 -> UEXT TX
+# RXD L11 -> UEXT RX
+#
+# BUT1 AND BUT2 not mapped
+
+# GPIO1 PAD	PAD	GPIO1        . = free		
+#  1	5V	GND	#  2 		 5V	0V
+#  3	3V3	GND	#  4		3V3	0V
+#  5	E4	J3	#  6 EXTCLK	 D2	pclk
+#  7	B2	GND	#  8		 D3	0V
+#  9	F5	J2	# 10		 D4	.
+# 11	B1	H1	# 12		  .	.		
+# 13	C1	G1	# 14		  .	ps2clk
+# 15	C2	J5	# 16		  .	ps2dat
+# 17	F4	H2	# 18		  .	vsync
+# 19	D2	J4	# 20		  .	hsync
+# 21	G5	G2	# 22		  .	b2
+# 23	D1	H4	# 24		  .	b1
+# 25	G4	F1	# 26		  .	b0
+# 27	E3	H6	# 28		 r0	g2
+# 29	H5	F2	# 30		 r1	g1
+# 31	E2	H3	# 32		  .	g0
+# 33	G3	F3	# 34		  .	r2
+
+ 
+# #######################################
+# taken from xv6-riscv-fpga
+# SRAM chip 512k byte organized as 256k * 16 bit.
+set_io o_sram_a[0] N6
+set_io o_sram_a[1] T1
+set_io o_sram_a[2] P4
+set_io o_sram_a[3] R2
+set_io o_sram_a[4] N5
+set_io o_sram_a[5] T2
+set_io o_sram_a[6] P5
+set_io o_sram_a[7] R3
+set_io o_sram_a[8] R5
+set_io o_sram_a[9] T3
+set_io o_sram_a[10] R4
+set_io o_sram_a[11] M7
+set_io o_sram_a[12] N7
+set_io o_sram_a[13] P6
+set_io o_sram_a[14] M8
+set_io o_sram_a[15] T5
+set_io o_sram_a[16] R6
+set_io o_sram_a[17] P8
+
+set_io io_sram_d[0] T8
+set_io io_sram_d[1] P7
+set_io io_sram_d[2] N9
+set_io io_sram_d[3] T9
+set_io io_sram_d[4] M9
+set_io io_sram_d[5] R9
+set_io io_sram_d[6] K9
+set_io io_sram_d[7] P9
+set_io io_sram_d[8] R10
+set_io io_sram_d[9] L10
+set_io io_sram_d[10] P10
+set_io io_sram_d[11] N10
+set_io io_sram_d[12] T10
+set_io io_sram_d[13] T11
+set_io io_sram_d[14] T15
+set_io io_sram_d[15] T14
+
+set_io o_sram_csn T6		# SRAM chip enabled not
+set_io o_sram_oen L9      # SRAM output enabled not
+set_io o_sram_wen T7      # SRAM write enabled not
+
+# SD CARD connected to JTAG connector
+set_io sd_miso R14      # TDI data in
+set_io sd_mosi P15      # TDO data out
+set_io sd_sck P14       # TCK serial clock
+set_io sd_ss R15        # TMS chip enabled not
+

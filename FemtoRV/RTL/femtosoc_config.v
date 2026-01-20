@@ -8,6 +8,10 @@
 `include "CONFIGS/ulx3s_config.v"
 `endif
 
+`ifdef ICE_ZERO
+`include "CONFIGS/icezero_config.v"
+`endif
+
 `ifdef ICE_STICK
 `include "CONFIGS/icestick_config.v"
 `endif
@@ -32,6 +36,10 @@
 `include "CONFIGS/cmod_a7_config.v"
 `endif
 
+`ifdef ICE40HX8K_EVB
+`include "CONFIGS/ice40hx8k_evb_config.v"
+`endif
+
 `ifdef BENCH_VERILATOR
 `include "CONFIGS/bench_config.v"
 `endif
@@ -47,6 +55,10 @@
  * (wire a push button and a pullup resistor to 
  * pin 47 or change in nanorv.pcf). 
  */
+`ifdef ICE_ZERO
+`define NRV_NEGATIVE_RESET 
+`endif
+
 `ifdef ICE_STICK
 //`define NRV_NEGATIVE_RESET 
 `endif
@@ -73,6 +85,11 @@
 
 // Toggle FPGA defines (ICE40, ECP5) in function of board defines (ICE_STICK, ECP5_EVN)
 // Board defines are set in Makefile.
+
+`ifdef ICE_ZERO
+ `define ICE40
+// `define PASSTHROUGH_PLL
+`endif
 
 `ifdef ICE_STICK
  `define ICE40
@@ -107,16 +124,26 @@
  `define ECP5 
 `endif
 
+`ifdef ICE40HX8K_EVB
+ `define ICE40
+`endif
+
 /******************************************************************************************************************/
 /* Processor */
 
 `define NRV_IS_IO_ADDR(addr) |addr[23:22] // Asserted if address is in IO space (then it needs additional wait states)
+`define NRV_IS_SRAM_ADDR(addr) addr[23:20] == 4'b0001 //claim additional wait states if executing from SRAM
 
 `include "PROCESSOR/utils.v"
 
 `ifdef NRV_FEMTORV32_QUARK
  `include "PROCESSOR/femtorv32_quark.v" // Minimalistic version of the processor for IceStick (RV32I)
 `endif
+
+`ifdef NRV_FEMTORV32_QUARK_SRAM
+ `include "PROCESSOR/femtorv32_quark_sram.v" // Minimalistic version of the processor for icezero and ice40hx8k_evb (RV32I) with SRAM
+`endif
+
 
 `ifdef NRV_FEMTORV32_QUARK_BICYCLE
  `include "PROCESSOR/femtorv32_quark_bicycle.v" // Quark with Matthias's 2 CPI mode and barrel shifter (RV32I)

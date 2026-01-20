@@ -10,10 +10,20 @@
  * (much faster) RAM (but use it wisely, you only got 7kB).
  * Other devices are sufficient RAM to load all the code.
  */
-#if defined(ICE_STICK) || defined(ICE_BREAKER)
+#if defined(ICE_STICK) || defined(ICE_BREAKER) || defined(ICE_ZERO) || defined(ICE40HX8K_EVB)
 #define RV32_FASTCODE __attribute((section(".fastcode")))
 #else
 #define RV32_FASTCODE
+#endif
+
+#if defined(SRAM)
+#define RV32_SRAMCODE           __attribute__((section(".quickcode")))
+#define RV32_SRAMCODE_INLINE    __attribute__((inline,section(".quickcode")))
+#define RV32_SRAMCODE_NOINLINE  __attribute__((noinline,section(".quickcode")))
+#else
+#define RV32_SRAMCODE
+#define RV32_SRAMCODE_INLINE
+#define RV32_SRAMCODE_NOINLINE
 #endif
 
 /* Standard library */

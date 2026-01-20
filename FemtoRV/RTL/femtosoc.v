@@ -29,6 +29,13 @@
 `include "DEVICES/ice40up5k_spram.v"
 `endif
 
+`ifdef NRV_SRAM
+`ifdef ICE_ZERO
+`include "SRAM/trenz-sram.v" //experiment with trenz icezero based on x6v-fpga will need to write better acknowledgement
+`elsif ICE40HX8K_EVB
+`include "SRAM/olimex-sram.v" //i do not have this hardware but this should work unless i got the .pcf wrong
+`endif
+`endif
 /*************************************************************************************/
 
 `ifndef NRV_RESET_ADDR
@@ -42,6 +49,22 @@
 /*************************************************************************************/
 
 module femtosoc(
+   
+`ifdef NRV_SRAM
+ `ifdef ICE_ZERO
+	output [18:0]	o_sram_a,
+   output   o_sram_lb_l,
+   output   o_sram_ub_l,
+ `elsif ICE40HX8K_EVB
+	output [17:0]	o_sram_a,
+ `endif
+	inout  [15:0]	io_sram_d,
+	output	o_sram_csn,
+	output	o_sram_oen,
+	output	o_sram_wen, 
+`endif
+
+
 `ifdef NRV_IO_LEDS
  `ifdef FOMU
    output rgb0,rgb1,rgb2,
@@ -225,10 +248,17 @@ module femtosoc(
    assign      mem_rbusy = io_rbusy
 `ifdef NRV_MAPPED_SPI_FLASH
     | mapped_spi_flash_rbusy			   
-`endif 			   
+`endif 
+`ifdef NRV_SRAM
+    | sram_rbusy
+`endif    			   
     ;
    
-   assign      mem_wbusy = io_wbusy; 
+   assign      mem_wbusy = io_wbusy
+`ifdef NRV_SRAM   
+   | sram_wbusy
+`endif   
+   ; 
 
 `ifdef NRV_IO_FGA
    wire mem_address_is_vram = mem_address[21];
@@ -237,12 +267,76 @@ module femtosoc(
 `endif
 
    wire [19:0] ram_word_address = mem_address[21:2];
+`ifdef NRV_SRAM
+ `ifdef ICE_ZERO
+   wire [17:0] sram_word_address = mem_address[19:2];
+ `elsif ICE40HX8K_EVB
+  //UNTESTED I DONT HAVE THIS BOARD
+   wire [16:0] sram_word_address = mem_address[18:2];  
+ `endif
+   //sram experiment copy the way FGA ram is stiched in to femtosoc
+   // 0x0100000 is start of sram window
+   wire mem_address_is_sram = (mem_address[23:20] == 4'b0001); //mem_address[20];
+  //wire 	sram_wr = mem_address_is_ram && !mem_address_is_vram && mem_address_is_sram;
+  //wire 	sram_wr = mem_address_is_ram &&  mem_address_is_sram; //?????TRY SIMPLIFYING
+
+    wire 	sram_wr = mem_address_is_sram;
+    assign o_sram_csn = 1'b0;
+  `ifdef ICE_ZERO
+    assign o_sram_lb_l = 1'b0;
+    assign o_sram_ub_l = 1'b0;
+  `endif     
+    wire sram_rbusy;
+    wire sram_wbusy;   
+
+    wire [31:0] sram_dat_r;
+
+
+   //IS THIS A SYNTHESIS TOOL PROBLEM?
+   //IM TOO MUCH OF A NOVICE TO KNOW
+   //WILL HAVE TO INSTALL ANOTHER VERSION OF THE TOOLSET
+    //reg [31:0] dummy;  //without this we stutter    
+    //reg dummy; //a single bit is enough not to stutter
+    //LOOKS LIKE IT WAS A SYNTHESIS TOOL ISSUE
+    //works fine with AMD64 UBUNTU 24.04 LTS latest as of 2026JAN18
+    //my problem was on raspberry pi5 bookworm
+    //(yosys 0.23 and nextpnr-ice40 0.4-1+b1) have issue
+    //unless its in icepack which does not report a version
+    //would have to go to packageing list to know
+    //so on raspberry pi bookworm avoid default apt packages for synthesis
+
+   sram  SRAM(
+	.i_clk(clk),
+	.i_rst(reset),
+	.o_sram_a(o_sram_a),  //potentially twice the size of olimex so extra bit for trenz
+	.io_sram_d(io_sram_d),
+	//.o_sram_csn(o_sram_csn),
+	.o_sram_oen(o_sram_oen),
+	.o_sram_wen(o_sram_wen),
+   //.o_sram_lb_l(sram_lb_l),
+	//.o_sram_ub_l(sram_ub_l),
+
+	.i_addr(sram_word_address),  //17bit word address on trenz
+	.i_we({4{sram_wr}} & mem_wmask),
+	.o_dat_r(sram_dat_r),
+	.i_dat_w(mem_wdata),
+   
+	.i_strb_r(mem_rstrb && mem_address_is_sram),
+	.i_strb_w(mem_wstrb && mem_address_is_sram),
+	.o_busy_r(sram_rbusy),
+	.o_busy_w(sram_wbusy)
+   );          
+`endif
+
+
+
 
 // Using the 128 KBytes of SPRAM (single-ported RAM) embedded in the Ice40 UP5K   
 `ifdef ICE40UP5K_SPRAM
 
    wire [31:0]  ram_rdata;
-   wire 	spram_wr = mem_address_is_ram && !mem_address_is_vram;
+//   wire 	spram_wr = mem_address_is_ram && !mem_address_is_vram; //TIDY LATER SRAM EXPT
+   wire 	spram_wr = mem_address_is_ram && !(mem_address_is_vram || mem_address_is_sram);
    ice40up5k_spram RAM(
       .clk(clk),
       .wen({4{spram_wr}} & mem_wmask),
@@ -269,7 +363,11 @@ module femtosoc(
    // masked writes, amazing ...)
    /* verilator lint_off WIDTH */
    always @(posedge clk) begin
-      if(mem_address_is_ram && !mem_address_is_vram) begin
+`ifdef NRV_SRAM
+    if(mem_address_is_ram && !(mem_address_is_vram || mem_address_is_sram)) begin
+ `else
+    if(mem_address_is_ram && !mem_address_is_vram) begin
+`endif
 	 if(mem_wmask[0]) RAM[ram_word_address][ 7:0 ] <= mem_wdata[ 7:0 ];
 	 if(mem_wmask[1]) RAM[ram_word_address][15:8 ] <= mem_wdata[15:8 ];
 	 if(mem_wmask[2]) RAM[ram_word_address][23:16] <= mem_wdata[23:16];
@@ -285,7 +383,7 @@ module femtosoc(
    FGA graphic_adapter(
       .pclk(pclk), // board clock		       
       .clk(clk),   // femtorv32 clock
-		       
+//TODO SRAM might need attention		       
       .sel(mem_address_is_ram && mem_address_is_vram), 
       .mem_wmask(mem_wmask),
       .mem_address(mem_address[16:0]),
@@ -302,11 +400,23 @@ module femtosoc(
 `endif   
    
 `ifdef NRV_MAPPED_SPI_FLASH
-   assign mem_rdata = mem_address_is_io  ? io_rdata  : 
+ `ifdef NRV_SRAM
+   assign mem_rdata = mem_address_is_io  ? io_rdata  :
+            mem_address_is_sram ? sram_dat_r : 
 		      mem_address_is_ram ? ram_rdata : 
 		      mapped_spi_flash_rdata;   
-`else   
+ `else
+   assign mem_rdata = mem_address_is_io  ? io_rdata  :
+		      mem_address_is_ram ? ram_rdata : 
+		      mapped_spi_flash_rdata;  
+ `endif
+`else
+ `ifdef NRV_SRAM   
+   assign mem_rdata = mem_address_is_io ? io_rdata : 
+                      mem_address_is_sram ? sram_dat_r : ram_rdata;
+ `else
    assign mem_rdata = mem_address_is_io ? io_rdata : ram_rdata;
+ `endif                      
 `endif   
    
 /***************************************************************************************************
