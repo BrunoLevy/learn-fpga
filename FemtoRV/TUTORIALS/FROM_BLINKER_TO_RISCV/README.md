@@ -762,7 +762,7 @@ The fourth one (register write-back) is implemented in this block:
 ```verilog
    wire [31:0] writeBackData = ... ;
    wire writeBackEn = ...;
-   always @posedge(clk) begin
+   always @(posedge clk) begin
       if(writeBackEn && rdId != 0) begin
           RegisterBank[rdId] <= writeBackData;
       end
