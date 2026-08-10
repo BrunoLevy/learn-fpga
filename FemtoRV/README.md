@@ -14,6 +14,7 @@ Quick links:
 - [ARTY tutorial](TUTORIALS/arty.md)
 - [LiteX tutorial](https://github.com/BrunoLevy/learn-fpga/tree/master/LiteX)
 - [Ice4Pi tutorial](TUTORIALS/Ice4Pi.md)
+- [IceZero tutorial](TUTORIALS/IceZero.md)
 - [Adding a new board](TUTORIALS/newboard.md)
 - [More documentation...](TUTORIALS/README.md)
 

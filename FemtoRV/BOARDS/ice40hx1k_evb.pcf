@@ -1,0 +1,257 @@
+#mappings for FemtoRV
+set_io pclk 15 # SYSCLK
+
+set_io D1 40   #//LED1
+set_io D2 1    #//GPIO1.5
+set_io D3 2    #//GPIO1.7
+set_io D4 3    #//GPIO1.9
+set_io D5 51   #//LED2
+
+
+#pin out TXD=36 RXD=37 allows DIO.UEXT header to work for uart
+#crossed pair
+#pizero_w icetool1k.local header outside row 4th{tx}=WHT 5th={rx}GRY
+#GPIO1 bottom row 7th=WHT 8th=GRY
+#UEXT.3{TxD}=GRY UEXT.4{RxD}=WHT
+
+set_io TXD 36
+set_io RXD 37
+
+set_io spi_cs_n 49
+set_io spi_miso 46
+set_io spi_mosi 45
+set_io spi_clk  48
+
+set_io RESET      42 #//BUT2 allocate button near xtal as reset
+#set_io BUT1	K11 #//not assigned in FemtoRV yet
+set_io buttons[0] 41 #//BUT1 is to be USER button on fpga pcb
+set_io buttons[1] 24  #//this is temporary to get synthesis to work
+#set_io BUT2	P13 #//have allocated to RESET
+
+#set_io LED1	40
+#set_io LED2	51
+
+
+
+# GPIO1 vq100
+# 1	+5V
+# 2	GND
+# 3	+3.3V
+# 4	GND
+# 5	1	PIO3_1A
+# 6     15	EXTCLK
+# 7	2	PIO3_1B
+# 8	GND
+# 9	3	PIO3_2A
+# 10	40	LED1		GPIO_pin<10>  LED1
+# 11	4	PIO3_2B
+# 12	51	LED2		GPIO_pin<12>  LED2
+# 13	7	PIO3_3A
+# 14	37	PIO2_9/TxD	GPIO_pin<14>  DIO.UEXT_RxD
+# 15	8	PIO3_3B
+# 16	36	PIO2_8/RxD	GPIO_pin<16>  DIO.UEXT_TxD
+# 17	9	PIO3_5A
+# 18	34	PIO2_7		GPIO_pin<18>  DIO.UEXT_SCL
+# 19	10	PIO3_5B
+# 20	33	PIO2_6		GPIO_pin<20>  DIO.UEXT_SDA
+# 21	12	PIO3_6A
+# 22	30	PIO2_5		GPIO_pin<22>  DIO.UEXT_MISO
+# 23	13	PIO3_6B
+# 24	29	PIO2_4		GPIO_pin<24>  DIO.UEXT_MOSI
+# 25	16	PIO3_7B
+# 26	28	PIO2_3		GPIO_pin<26>  DIO.UEXT_SCK
+# 27	18	PIO3_8A
+# 28	27	PIO2_2		GPIO_pin<28>  DIO.UEXT_#SS
+# 29	19	PIO3_8B        
+# 30	26	PIO2_1		GPIO_pin<30>
+# 31	20	PIO3_10A        
+# 32	25	PIO3_12B	GPIO_pin<32>
+# 33	21	PIO3_10B        
+# 34	24	PIO3_12A	button[1] #temporary
+ 
+# map of currently assigned pads
+# D1 -> LED1
+# D5 -> LED2
+
+# RESET -> BUT2
+
+# TXD T16 -> UEXT TX
+# RXD L11 -> UEXT RX
+#
+# BUT1 AND BUT2 mapped, BUT1 is onboard FPGA pcb
+
+
+#//suggest using olimex DIO extension board for peripherals
+#//recommended waveshare oled loom colours follow
+                       #// RED 3V3 DIO.GPIO_out1.3	
+                       #// BLK GND DIO.GPIO_out1.4
+#set_io oled_DIN 4     #// BLU     DIO.GPIO_out1.11
+#set_io oled_CLK 7     #// YEL     DIO.GPIO_out1.13
+#set_io oled_CS  8     #// ORG     DIO.GPIO_out1.15
+#set_io oled_DC  9     #// GRN     DIO.GPIO_out1.17
+#set_io oled_RST 10    #// WHT     DIO.GPIO_out1.19
+
+
+#//recommended led matrix colours from homemade dupont female/female ribbon
+                       #// RED 3V3 DIO.EXT2.3	
+                       #// BRN GND DIO.EXT2.2
+#set_io ledmtx_DIN 12   #// ORG     DIO.GPIO_out1.21
+#set_io ledmtx_CS  13   #// YEL     DIO.GPIO_out1.23
+#set_io ledmtx_CLK 16   #// GRN     DIO.GPIO_out1.25
+
+##compact-gpio bitbang on UEXT
+##next three sucessfully used for bitbang spi bb_max7219
+##pin you have to be careful about pin mapping work from 0 up to n-1 for the number of pins up to 8 allocated
+##minimum is 2 pins
+#currenly will clash with icezero pmod order allocated in software if UEXT order is adpopted and we can't
+#accomodate physical pin numbering of UEXT anyway
+#pinout assignment for UEXT I2C+SPI I/O
+set_io gpio_pin_val[4]   34      # bitbang for SDA
+set_io gpio_pin_val[5]   33      # bitbang for SCL
+set_io gpio_pin_val[2]   30      # bitbang ledmtx_DIN  MOSI  
+set_io gpio_pin_val[3]   29      # bitbang MISO 
+set_io gpio_pin_val[0]   28      # bitbang ledmtx_CLK  SCLK  
+set_io gpio_pin_val[1]   27      # bitbang ledmtx_CS   SS    
+
+
+##i2c plus bitbang led matrix 1283/1280 luts when oled is selected
+##maybe optimise buttons and leds to free up space
+#set_io gpio_pin_val[3]   34      # bitbang for SDA
+#set_io gpio_pin_val[4]   33      # bitbang for SCL
+#set_io gpio_pin_val[2]   30      # bitbang ledmtx_DIN  MOSI  
+##//NO bitbang MISO set_io gpio_pin_val[3]   29      # bitbang MISO 
+#set_io gpio_pin_val[0]   28      # bitbang ledmtx_CLK  SCLK  
+#set_io gpio_pin_val[1]   27      # bitbang ledmtx_CS   SS    
+
+#bitbang SPI I/O
+#move on to testing UEXT5 and max7219 on UEXT
+#set_io gpio_pin_val[2]   30      # bitbang ledmtx_DIN  MOSI  
+#set_io gpio_pin_val[3]   29      # bitbang MISO 
+#set_io gpio_pin_val[0]   28      # bitbang ledmtx_CLK  SCLK  
+#set_io gpio_pin_val[1]   27      # bitbang ledmtx_CS   SS    
+#set_io gpio_pin_val[2]   12      # bitbang ledmtx_DIN  MOSI #//move to GPIO1  
+#set_io gpio_pin_val[3]   28      # bitbang MISO #//leave on UEXT 
+#set_io gpio_pin_val[0]   16      # bitbang ledmtx_CLK  SCLK #//move to GPIO1 
+#set_io gpio_pin_val[1]   13      # bitbang ledmtx_CS   SS   #//move to GPIO1 
+
+#bitbang SPI OUT
+#set_io gpio_pin_val[2]   30      # bitbang ledmtx_DIN  MOSI  
+#set_io gpio_pin_val[0]   28      # bitbang ledmtx_CLK  SCLK  
+#set_io gpio_pin_val[1]   27      # bitbang ledmtx_CS   SS    
+
+
+
+
+##offset would depend on which groups of interfaces are being bitbanged
+##  SUGGESTION
+##   LUTS with oled                1283
+##   UEXT    SPI     I2C    I2C    I2C    LCD    SPI
+##   PIN     I/O            +      +             OUT 
+##   1  2                   SPI    SPI
+##   3  4                   I/O    OUT
+##   5  6            0  1   4  5   3  4   3  4     
+##   7  8     2  3          2  3   2      2       2
+##   9  10    0  1          0  1   0  1   0  1    0  1 
+##
+## but are the savings in latches worth the complication
+
+
+
+
+# GPIO1 PAD	PAD	GPIO1		 	. = free
+#  1	5V	GND	 # 2 		       5V	0V
+#  3	3V3	GND	 # 4		      3V3	0V
+#  5	[1]	[15]	 # 6 EXTCLK            D2	pclk
+#  7	[2]	GND	 # 8		       D3	0V
+#  9	[3]	[40]	 # 10		       D4	.
+# 11	[4]	[51]	 # 12	         oled_DIN	.		
+# 13	[7]	[37]	 # 14		 oled_CLK	DIO.UEXT.rxd  14  3 RXD
+# 15	[8]	[36]	 # 16		  oled_CS	DIO.UEXT.txd  16  4 TXD
+# 17	[9]	[34]	 # 18		  oled_DC	DIO.UEXT.sck  34  5    
+# 19	[10]	[33]	 # 20		 oled_RST	DIO.UEXT.sda  33  6   
+# 21	[12]	[30]	 # 22	       ledmtx_DIN	DIO.UEXT.miso 30  7   
+# 23	[13]	[29] 	 # 24		ledmtx_CS	DIO.UEXT.mosi 29  8   
+# 25	[16]	[28]	 # 26	       ledmtx_CLK	DIO.UEXT.sclk 28  9   
+# 27	[18]	[27]	 # 28		  	.	DIO.UEXT.#ss  27  10   
+# 29	[19]	[26]	 # 30		        .	.
+# 31	[20]	[25]	 # 32		        .	.
+# 33	[21]	[24]	 # 34		        .	buttons[1] //temporary
+
+
+
+
+# map of currently assigned pads and vga/ps2 board
+# D1 -> LED1
+# D5 -> LED2
+
+# TXD T16 -> UEXT TX
+# RXD L11 -> UEXT RX
+#
+# BUT1 not mapped AND BUT2 is RESET
+
+#future map for pcf of ps2/vga
+#button[1] would clash with r2
+# GPIO1 PAD	PAD	GPIO1        . = free		
+#  1	5V	GND	#  2 		 5V	0V
+#  3	3V3	GND	#  4		3V3	0V
+#  5	E4	J3	#  6 EXTCLK	  .	pclk
+#  7	B2	GND	#  8		  .	0V
+#  9	F5	J2	# 10		  .	.
+# 11	B1	H1	# 12	          .	.		
+# 13	C1	G1	# 14		  .	ps2clk
+# 15	C2	J5	# 16		  .	ps2dat
+# 17	F4	H2	# 18		  .	vsync
+# 19	D2	J4	# 20		  .	hsync
+# 21	G5	G2	# 22		  .	b2
+# 23	D1	H4	# 24		  .	b1
+# 25	G4	F1	# 26		  .	b0
+# 27	E3	H6	# 28		 r0	g2
+# 29	H5	F2	# 30		 r1	g1
+# 31	E2	H3	# 32		  .	g0
+# 33	G3	F3	# 34		  .	r2
+
+ 
+# #######################################
+# names taken from xv6-riscv-fpga
+# SRAM chip 512k byte organized as 256k * 16 bit.
+#set_io o_sram_a[0] 79
+#set_io o_sram_a[1] 80
+#set_io o_sram_a[2] 81
+#set_io o_sram_a[3] 82
+#set_io o_sram_a[4] 83
+#set_io o_sram_a[5] 85
+#set_io o_sram_a[6] 86
+#set_io o_sram_a[7] 87
+#set_io o_sram_a[8] 89
+#set_io o_sram_a[9] 90
+#set_io o_sram_a[10] 91
+#set_io o_sram_a[11] 93
+#set_io o_sram_a[12] 94
+#set_io o_sram_a[13] 95
+#set_io o_sram_a[14] 96
+#set_io o_sram_a[15] 97
+#set_io o_sram_a[16] 99
+#set_io o_sram_a[17] 100
+
+#set_io io_sram_d[0] 62
+#set_io io_sram_d[1] 63
+#set_io io_sram_d[2] 64
+#set_io io_sram_d[3] 65
+#set_io io_sram_d[4] 66
+#set_io io_sram_d[5] 68
+#set_io io_sram_d[6] 69
+#set_io io_sram_d[7] 71
+#set_io io_sram_d[8] 72
+#set_io io_sram_d[9] 60
+#set_io io_sram_d[10] 59
+#set_io io_sram_d[11] 57
+#set_io io_sram_d[12] 56
+#set_io io_sram_d[13] 54
+#set_io io_sram_d[14] 53
+#set_io io_sram_d[15] 52
+
+#set_io o_sram_csn 78	  # SRAM chip enabled not
+#set_io o_sram_oen 74      # SRAM output enabled not
+#set_io o_sram_wen 73      # SRAM write enabled not
+
+

@@ -1,0 +1,204 @@
+#set_io p2_d[0]      55  -pullup yes
+#set_io p2_d[1]      56  -pullup yes
+#set_io p2_d[2]      47  -pullup yes
+#set_io p2_d[3]      48  -pullup yes
+#set_io p2_d[4]      44  -pullup yes
+#set_io p2_d[5]      45  -pullup yes
+#set_io p2_d[6]      42  -pullup yes
+#set_io p2_d[7]      43  -pullup yes
+
+
+#set_io gpio_pin_val[0]      55  # GRY sclk            p2_d[0]
+#set_io gpio_pin_val[1]      56  # WHT cs0n            p2_d[1]
+#set_io gpio_pin_val[2]      47  # BLU miso / sio[1]   p2_d[2]
+#set_io gpio_pin_val[3]      48  # IND mosi / sio[0]   p2_d[3]
+#set_io gpio_pin_val[4]      44  # YEL scl             p2_d[4]
+#set_io gpio_pin_val[5]      45  # GRN sda             p2_d[5]
+#set_io gpio_pin_val[6]      42  # RED sio[2]          p2_d[6] 
+#set_io gpio_pin_val[7]      43  # ORG sio[3]          p2_d[7]
+
+#tiny_tapeout psram module
+#set_io qspi_psram_SIO2      141   #  sio[2]           p1_d[0]
+##set_io tt_flash_cs         139# tinytapeout unused   p1_d[1]
+#set_io qspi_psram_SIO3      138   #  sio[3]           p1_d[2]
+#set_io qspi_psram_mosi_SIO0 137   #  mosi / sio[0]    p1_d[3]
+#set_io qspi_psram_cs0n      136   #  cs0n             p1_d[4] csAn
+#set_io qspi_psram_miso_SIO1 135   #  miso / sio[1]    p1_d[5]
+##set_io tt_ramcs_Bn         134# tinytapeout unused   p1_d[6] csBn
+#set_io qspi_psram_sclk      130   #  sclk             p1_d[7]
+
+
+#######################################################
+##assume uext mapping to pmod for qspi psram breadboard
+##have bitbang i2c pins available but only 2 pins allocated
+##set_io qspi_psram_sclk      55  # GRY sclk             p2_d[0]
+##set_io qspi_psram_cs0n      56  # WHT cs0n             p2_d[1]
+##set_io qspi_psram_miso_SIO1 47  # BLU miso / sio[1]    p2_d[2]
+##set_io qspi_psram_mosi_SIO0 48  # IND mosi / sio[0]    p2_d[3]
+###set_io gpio_pin_val[0]      44  # YEL scl              p2_d[4]
+###set_io gpio_pin_val[1]      45  # GRN sda              p2_d[5]
+##set_io qspi_psram_SIO2      42  # RED sio[2]           p2_d[6]
+##set_io qspi_psram_SIO3      43  # ORG sio[3]           p2_d[7]
+##
+###temporary hack keep i2c bitbang wires in the same place on pmod1
+##set_io gpio_pin_val[0]      137  # YEL scl              p1_d[3]
+##set_io gpio_pin_val[1]      135  # GRN sda              p1_d[5]
+#########################################################
+
+#tested with D5 remap, D5 is not available programmatically through RV code it is wired to the verilog error logic
+#had used ice4pi to get familiar with tools before trying to add trenz version of icezero
+#appear to be 3 onboard leds and seems 5 are expected
+#icezero has legended LEDS D2,D3,D4
+#as error is apparently signalled on D5 will probably alias physical D2 for D5 
+#NEGATIVE reset and correct to have RESET on 47
+
+set_io pclk 49
+
+#set_io p1_d[0]      141  -pullup yes
+#set_io p1_d[1]      139  -pullup yes
+#set_io p1_d[2]      138  -pullup yes
+#set_io p1_d[3]      137  -pullup yes
+#set_io p1_d[4]      136  -pullup yes
+#set_io p1_d[5]      135 -pullup yes
+#set_io p1_d[6]      134 -pullup yes
+#set_io p1_d[7]      130 -pullup yes
+#PMOD P1 at opposite end of pcb than with ice4pi, but 3v3 and gnd have same positions relative to 40pin header this way
+set_io oled_DIN      134     #p1d6  BLUE 
+set_io oled_CLK      136     #p1d4  YELLOW
+set_io oled_CS       138     #p1d2  ORANGE
+set_io oled_DC       141     #p1d0  GREEN
+set_io oled_RST      139     #p1d1  WHITE
+#PMOD P1 LED matrix pin out untested
+set_io ledmtx_DIN    130     #p1d7
+set_io ledmtx_CS     135     #p1d5
+set_io ledmtx_CLK    137     #p1d3
+
+##next three sucessfully used for bitbang spi bb_max7219
+#set_io gpio_pin_val[2]    130     #p1d7 bitbang ledmtx_DIN  MOSI  white
+#set_io gpio_pin_val[1]    135     #p1d5 bitbang ledmtx_CS   SS    grey
+#set_io gpio_pin_val[0]    137     #p1d3 bitbang ledmtx_CLK  SCLK  blue
+
+#working on bitbang i2c bb_i2c
+#set_io gpio_pin_val[2]    130     #p1d7  white
+##set_io  gpio_pin_val[2]     130  #being lazy and keeping 3 gpios
+#set_io -pullup yes gpio_pin_val[1]    135     #p1d5  grey  SDA #pullup in pcf did not cause logic hi when not sinking
+#set_io -pullup yes gpio_pin_val[0]    137     #p1d3  blue  SCL #pullup in pcf did not cause logic hi when not sinking
+##set_io  gpio_pin_val[1]    135     #p1d5  grey  SDA 
+##set_io  gpio_pin_val[0]    137     #p1d3  blue  SCL
+
+
+#set_io led_te[0]     93  -pullup yes    #deduced was tbd[8] check
+#set_io led_te[1]     94  -pullup yes    #deduced was tbd[9] check
+#set_io ok_led       110  -pullup yes
+
+#map missing LEDS to p4, could be anywhere really, just need to allocate free pins
+#set_io p4_d[0]        1  -pullup yes
+#set_io p4_d[1]      144  -pullup yes
+
+#substituting D5 for D2 as apparently D5 used for error signalling
+#so right now verilog D2 and D1 can't be seen without adding LEDS + RESISTOR for each
+set_io D5 110 #following PCB legend D2,D3,D4 visible pretend that legend D2 is D5 so that errors can be indicated       
+set_io D4 94 
+set_io D3 93   
+set_io D2 1 
+set_io D1 144
+
+set_io RXD   113
+set_io TXD   112
+
+
+#set_io cfg_so       67  
+#set_io cfg_si       68  
+#set_io cfg_sck      70  
+#set_io cfg_ss       71
+set_io spi_cs_n 71
+set_io spi_miso 68
+set_io spi_mosi 67
+set_io spi_clk  70
+
+#old RESET position was in pmod P2 now using for PSRAM tests in this branch
+#found can use cbse0 for reset and take advantage of physical button with pullup
+#NB was having trouble moving RESET where no hardware pullup was
+#found that 63 has trouble in psram_tinyraytrtacer so where else?
+#set_io RESET      63  #allocated to cbse0 real button on side of board
+#last remaining icezero after blew up multi pmod while trying to investigate 
+#random resets should i put this back to 47? no more special than any other 
+#unpopulated pmod except had kept 47 from icestick pcf 
+#set_io RESET      7  #allocated to breadboard button using pmod4 p4_d[7]
+set_io RESET      63  #resort to this csbe0 button for now not a good reset
+
+#try real reset on p4_d[7] again now that SB_IO for psram behaves better
+#see if reset can work properly, but may n ot be the end of it
+#might have to give SRAM SB_IO as well before getting to bottom of reset
+
+##set_io p4_d[7]       7
+#set_io FLOATING_RESET  7
+
+####NOT PRESENT ON PCB
+####set_io irda_TXD 105
+####set_io irda_RXD 106
+####set_io irda_SD  107
+
+
+set_io o_sram_a[0]    34  #PULLUP #[1]
+set_io o_sram_a[1]    33  #PULLUP #[2]
+set_io o_sram_a[2]    32  #PULLUP #[3]
+set_io o_sram_a[3]    31  #PULLUP #[4]
+set_io o_sram_a[4]    25  #PULLUP #[5]
+set_io o_sram_a[5]    10  #PULLUP #[18]
+set_io o_sram_a[6]     9  #PULLUP #[19]
+set_io o_sram_a[7]     4  #PULLUP #[20]
+set_io o_sram_a[8]     3  #PULLUP #[21]
+set_io o_sram_a[9]     2  #PULLUP #[22]
+set_io o_sram_a[10]   107 #PULLUP #[23]
+set_io o_sram_a[11]   106 #PULLUP #[24]
+set_io o_sram_a[12]   105 #PULLUP #[25]
+set_io o_sram_a[13]   104 #PULLUP #[26]
+set_io o_sram_a[14]   102 #PULLUP #[27]
+set_io o_sram_a[15]   62  #PULLUP #[42]
+set_io o_sram_a[16]   60  #PULLUP #[43]
+set_io o_sram_a[17]   61  #PULLUP #[44]
+set_io o_sram_a[18]   98  #PULLUP #[28] #one more bit than olimexhx8k-evb
+
+set_io io_sram_d[0]    23  #PULLUP #[7]
+set_io io_sram_d[1]    22  #PULLUP #[8]
+set_io io_sram_d[2]    19  #PULLUP #[9]
+set_io io_sram_d[3]    18  #PULLUP #[10]
+set_io io_sram_d[4]    17  #PULLUP #[13]
+set_io io_sram_d[5]    16  #PULLUP #[14]
+set_io io_sram_d[6]    15  #PULLUP #[15]
+set_io io_sram_d[7]    12  #PULLUP #[16]
+set_io io_sram_d[8]    97  #PULLUP #[29]
+set_io io_sram_d[9]    96  #PULLUP #[30]
+set_io io_sram_d[10]   95  #PULLUP #[31]
+set_io io_sram_d[11]   91  #PULLUP #[32]
+set_io io_sram_d[12]   84  #PULLUP #[35]
+set_io io_sram_d[13]   82  #PULLUP #[36]
+set_io io_sram_d[14]   83  #PULLUP #[37]
+set_io io_sram_d[15]   80  #PULLUP #[38]
+
+set_io o_sram_csn     24  #PULLUP #[6]  #was called sram_ce_l
+set_io o_sram_oen     76  #PULLUP #[41] #was called sram_oe_l
+set_io o_sram_wen     11  #PULLUP #[17] #was called sram_we_l
+
+set_io o_sram_lb_l    81 ## PULLUP #[39]
+set_io o_sram_ub_l    75 ## PULLUP #[42]
+
+#set_io p3_d[0]      41  
+#set_io p3_d[1]      26
+#set_io p3_d[2]      39  
+#set_io p3_d[3]      29
+#set_io p3_d[4]      38  
+#set_io p3_d[5]      28
+#set_io p3_d[6]      37  
+#set_io p3_d[7]      52
+
+#NB some aliased leds on pmod p4
+#set_io p4_d[0]       1  
+#set_io p4_d[1]      21 
+#set_io p4_d[2]     144 
+#set_io p4_d[3]      20
+#set_io p4_d[4]     143  
+#set_io p4_d[5]       8
+#set_io p4_d[6]     142 
+#set_io p4_d[7]       7

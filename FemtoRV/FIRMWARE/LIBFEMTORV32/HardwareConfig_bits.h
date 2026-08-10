@@ -13,6 +13,7 @@
 #define IO_BUTTONS_bit 9
 #define IO_FGA_CNTL_bit 10
 #define IO_FGA_DAT_bit 11
+#define IO_GPIOS_bit 12
 #define IO_HW_CONFIG_RAM_bit 17
 #define IO_HW_CONFIG_DEVICES_bit 18
 #define IO_HW_CONFIG_CPUINFO_bit 19

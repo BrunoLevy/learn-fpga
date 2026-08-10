@@ -1,0 +1,248 @@
+#had used ice4pi to get familiar with tools before trying to add trenz version of icezero
+#right now pmod P1 connection order will be wrong need to take mapping from Oyster PMOD
+#appear to be 3 onboard leds and seems 5 are expected
+#icezero has legended LEDS D2,D3,D4
+#as error is apparently signalled on D5 will alias physical D2 for D5 
+#if compile stops because of missing D1 and D2 will bring them out onto P4
+#assuming NEGATIVE reset and correct to have RESET on 47
+#will check before uploading to FPGA
+
+#-pullup yes causes problems for parsing
+
+#set_io pclk 21
+#set_io clk_100m     49  -pullup yes
+set_io pclk 49 -pullup yes
+
+
+#set_io oled_DIN  91
+#set_io oled_CLK  90
+#set_io oled_CS   88
+#set_io oled_DC   87
+#set_io oled_RST  78
+#set_io ledmtx_DIN  81
+#set_io ledmtx_CS   80
+#set_io ledmtx_CLK  79
+#set_io p1_d[0]      141  -pullup yes
+#set_io p1_d[1]      139  -pullup yes
+#set_io p1_d[2]      138  -pullup yes
+#set_io p1_d[3]      137  -pullup yes
+#set_io p1_d[4]      136  -pullup yes
+#set_io p1_d[5]      135 -pullup yes
+#set_io p1_d[6]      134 -pullup yes
+#set_io p1_d[7]      130 -pullup yes
+#assign at random to start with to get it to compile
+#P1 at opposite end of pcb than with ice4pi, but 3v3 and gnd have same possitions this way
+
+#see corrected pmod assignments in icezero.pcf
+#set_io oled_DIN     141
+#set_io oled_CLK     139
+#set_io oled_CS      138
+#set_io oled_DC      137
+#set_io oled_RST     136
+#set_io ledmtx_DIN   135
+#set_io ledmtx_CS    134
+#set_io ledmtx_CLK   130
+
+
+#set_io D1 99
+#set_io D2 98
+#set_io D3 97
+####set_io D4 96
+####set_io D5 95
+#set_io led_te[0]       93  -pullup yes    #deduced was tbd[8] check
+#set_io led_te[1]       94  -pullup yes    #deduced was tbd[9] check
+#set_io ok_led       110 -pullup yes
+
+#see corrected pmod assignments in icezero.pcf
+#set_io D5 93  -pullup yes #these leds will most probably be out of sequence, following PCB legend       
+#set_io D3 94  -pullup yes #correct later
+#set_io D4 110 -pullup yes
+
+#set_io p4_d[0]       1  -pullup yes
+#set_io p4_d[1]      144  -pullup yes
+
+#see corrected pmod assignments in icezero.pcf
+#set_io D2 1 
+#set_io D1 144
+
+#will be substituting D5 for D2 as apparently D5 used for error signalling
+#need to sort out where D2 is so can comment properly 
+
+#set_io TXD 8
+#set_io RXD 9
+#set_io pi_uart_ro   112 -pullup yes
+#set_io pi_uart_wi   113 -pullup yes
+
+#see corrected pmod assignments in icezero.pcf
+#set_io RXD   112 -pullup yes
+#set_io TXD   113 -pullup yes
+
+
+#set_io spi_cs_n 71
+#set_io spi_miso 68
+#set_io spi_mosi 67
+#set_io spi_clk  70
+#set_io cfg_so       67  
+#set_io cfg_si       68  
+#set_io cfg_sck      70  
+#set_io cfg_ss       71
+set_io spi_cs_n 71
+set_io spi_miso 68
+set_io spi_mosi 67
+set_io spi_clk  70
+
+
+set_io RESET    47
+
+####NOT PRESENT ON PCB
+####set_io irda_TXD 105
+####set_io irda_RXD 106
+####set_io irda_SD  107
+
+#TAKE FROM BELOW IF ADDING MAPPED SRAM
+#ALSO HAS OTHER PMODS AND SOME Raspberry Pi GPIO  
+#WILL NEED TO SORT OUT -pullup yes type syntax
+#Also don't know yet what button on trenz icezero is for.
+
+#################################################################
+# iCEcube PCF
+# Version:            2012.09SP1.22498
+# File Generated:     May 1 2013 11:36:30
+# Family & Device:    iCE40HX4K
+# Package:            TQ144
+# #################################################################
+set_io sram_a[9]     2  -pullup yes #[22]
+set_io sram_a[8]     3  -pullup yes #[21]
+set_io sram_a[7]     4  -pullup yes #[20]
+set_io rsvd[0]       7  -pullup yes
+set_io rsvd[1]       8  -pullup yes
+set_io sram_a[6]     9  -pullup yes #[19]
+set_io sram_a[5]    10  -pullup yes #[18]
+set_io sram_we_l    11  -pullup yes #[17]
+set_io sram_d[7]    12  -pullup yes #[16]
+
+set_io sram_d[6]    15  -pullup yes #[15]
+set_io sram_d[5]    16  -pullup yes #[14]
+set_io sram_d[4]    17  -pullup yes #[13]
+
+set_io sram_d[3]    18  -pullup yes #[10]
+set_io sram_d[2]    19  -pullup yes #[9]
+
+set_io sram_d[1]    22  -pullup yes #[8]
+set_io sram_d[0]    23  -pullup yes #[7]
+set_io sram_ce_l    24  -pullup yes #[6]
+set_io sram_a[4]    25  -pullup yes #[5]
+set_io rsvd[2]      26  -pullup yes
+set_io rsvd[3]      28  -pullup yes
+set_io rsvd[4]      29  -pullup yes
+
+set_io sram_a[3]    31  -pullup yes #[4]
+set_io sram_a[2]    32  -pullup yes #[3]
+set_io sram_a[1]    33  -pullup yes #[2]
+set_io sram_a[0]    34  -pullup yes #[1]
+
+set_io tbd[0]       35  -pullup yes
+set_io tbd[1]       36  -pullup yes
+
+#set_io clk_100m     49  -pullup yes
+
+set_io tbd[2]       50  -pullup yes
+set_io tbd[3]       51  -pullup yes
+set_io tbd[4]       52  -pullup yes
+
+
+set_io tbd[5]       58  -pullup yes
+
+set_io sram_a[16]   60  -pullup yes #[43]
+set_io sram_a[17]   61  -pullup yes #[44]
+set_io sram_a[15]   62  -pullup yes #[42]
+
+set_io cbsel[0]     63  -pullup yes
+set_io cbsel[1]     64  -pullup yes
+
+# set_io cfg_done     65  
+# set_io cfg_rst_l    66  
+set_io cfg_so       67  
+set_io cfg_si       68  
+set_io cfg_sck      70  
+set_io cfg_ss       71
+set_io tbd[6]       72  -pullup yes
+
+set_io pi_id[0]     73  -pullup yes
+set_io pi_id[1]     74  -pullup yes
+
+set_io sram_ub_l    75  -pullup yes #[42]
+set_io sram_oe_l    76  -pullup yes #[41]
+set_io tbd[7]       77  -pullup yes
+
+set_io pi_spi_ce[1] 78  -pullup yes
+set_io pi_spi_sck   79  -pullup yes
+set_io sram_d[15]   80  -pullup yes #[38]
+
+set_io sram_lb_l    81  -pullup yes #[39]
+set_io sram_d[13]   82  -pullup yes #[36]
+set_io sram_d[14]   83  -pullup yes #[37]
+set_io sram_d[12]   84  -pullup yes #[35]
+set_io pi_spi_ce[0] 85  -pullup yes
+set_io pi_spi_miso  87  -pullup yes
+set_io pi_gpio[0]   88  -pullup yes
+set_io pi_spi_mosi  90  -pullup yes
+set_io sram_d[11]   91  -pullup yes #[32]
+set_io led_te[0]       93  -pullup yes    #deduced was tbd[8] check
+set_io led_te[1]       94  -pullup yes    #deduced was tbd[9] check
+set_io sram_d[10]   95  -pullup yes #[31]
+set_io sram_d[9]    96  -pullup yes #[30]
+set_io sram_d[8]    97  -pullup yes #[29]
+set_io sram_a[18]   98  -pullup yes #[28]
+set_io pi_gpio[1]   99  -pullup yes
+set_io pi_gpio[2]   101 -pullup yes
+set_io sram_a[14]   102 -pullup yes #[27]
+set_io sram_a[13]   104 -pullup yes #[26]
+set_io sram_a[12]   105 -pullup yes #[25]
+set_io sram_a[11]   106 -pullup yes #[24]
+set_io sram_a[10]   107 -pullup yes #[23]
+set_io ok_led       110 -pullup yes
+set_io pi_uart_ro   112 -pullup yes
+set_io pi_uart_wi   113 -pullup yes
+set_io pi_i2c_scl   114 -pullup yes
+set_io pi_i2c_sda   115 -pullup yes
+
+set_io xtra_a[2]    116 -pullup yes
+set_io xtra_a[3]    117 -pullup yes
+set_io xtra_a[4]    118 -pullup yes
+set_io ftdi_wo      119 -pullup yes
+set_io xtra_a[0]    120 -pullup yes
+set_io xtra_a[1]    121 -pullup yes
+set_io ftdi_wi      122 -pullup yes
+set_io ftdi_ro      124 -pullup yes
+set_io ftdi_ri      125 -pullup yes
+set_io j0_l         128 -pullup yes # Input Only Clock Capable
+set_io j1_l         129 -pullup yes # Input Only Clock Capable
+
+set_io p1_d[0]      141  -pullup yes
+set_io p1_d[1]      139  -pullup yes
+set_io p1_d[2]      138  -pullup yes
+set_io p1_d[3]      137  -pullup yes
+set_io p1_d[4]      136  -pullup yes
+set_io p1_d[5]      135 -pullup yes
+set_io p1_d[6]      134 -pullup yes
+set_io p1_d[7]      130 -pullup yes
+
+set_io p2_d[0]      55  -pullup yes
+set_io p2_d[1]      56  -pullup yes
+set_io p2_d[2]      47  -pullup yes
+set_io p2_d[3]      48  -pullup yes
+set_io p2_d[4]      44  -pullup yes
+set_io p2_d[5]      45  -pullup yes
+set_io p2_d[6]      42  -pullup yes
+set_io p2_d[7]      43  -pullup yes
+
+set_io p3_d[0]      41  -pullup yes
+set_io p3_d[1]      39  -pullup yes
+set_io p3_d[2]      38  -pullup yes
+set_io p3_d[3]      37  -pullup yes
+
+set_io p4_d[0]       1  -pullup yes
+set_io p4_d[1]      144  -pullup yes
+set_io p4_d[2]      143  -pullup yes
+set_io p4_d[3]      142  -pullup yes

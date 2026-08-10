@@ -29,7 +29,23 @@
 `include "DEVICES/ice40up5k_spram.v"
 `endif
 
+`ifdef NRV_IO_GPIOS
+`include "DEVICES/compact_gpio.v"
+`endif
+
+`ifdef NRV_SRAM
+ `ifdef ICE_ZERO
+  `include "SRAM/trenz-sram.v" //experiment with trenz icezero based on x6v-fpga will need to write better acknowledgement
+ `elsif ICE40HX8K_EVB
+  `include "SRAM/olimex-sram.v"
+ `endif
+`endif
 /*************************************************************************************/
+`ifdef NRV_MAPPED_QSPI_PSRAM
+`include "PSRAM/qspi_psram.v"
+//`include "PSRAM/spi_psram.v"
+`endif
+
 
 `ifndef NRV_RESET_ADDR
  `define NRV_RESET_ADDR 0
@@ -42,6 +58,34 @@
 /*************************************************************************************/
 
 module femtosoc(
+   
+`ifdef NRV_SRAM
+ `ifdef ICE_ZERO
+	output [18:0]	o_sram_a,
+   output   o_sram_lb_l,
+   output   o_sram_ub_l,
+ `elsif ICE40HX8K_EVB
+	output [17:0]	o_sram_a,
+ `endif
+	inout  [15:0]	io_sram_d,
+	output	o_sram_csn,
+	output	o_sram_oen,
+	output	o_sram_wen, 
+`endif
+
+`ifdef NRV_MAPPED_QSPI_PSRAM
+        output qspi_psram_sclk,
+        output qspi_psram_cs0n,
+        inout  qspi_psram_mosi_SIO0,
+        inout  qspi_psram_miso_SIO1,
+        inout  qspi_psram_SIO2,
+        inout  qspi_psram_SIO3,
+`endif
+
+`ifdef NRV_IO_GPIOS
+   inout wire [`NRV_IO_GPIOS_WIDTH-1:0] gpio_pin_val,
+`endif
+
 `ifdef NRV_IO_LEDS
  `ifdef FOMU
    output rgb0,rgb1,rgb2,
@@ -71,6 +115,10 @@ module femtosoc(
 `ifdef NRV_IO_BUTTONS
    `ifdef ICE_FEATHER
       input [3:0] buttons, 
+   `elsif ICE40HX8K_EVB
+      input [1:0]buttons, //[0:0] did not work 
+   `elsif ICE40HX1K_EVB
+      input [1:0]buttons, //[0:0] did not work 
    `else
       input [5:0] buttons,
    `endif		
@@ -79,6 +127,7 @@ module femtosoc(
    output wifi_en,		
 `endif		
    input  RESET,
+
 `ifdef FOMU
    output usb_dp, usb_dn, usb_dp_pu, 
 `endif
@@ -172,7 +221,8 @@ module femtosoc(
  *   address[21:2] RAM word address (4 Mb max).
  *   address[23:22]   00: RAM
  *                    01: IO page (1-hot)  (starts at 0x400000)
- *                    10: SPI Flash page   (starts at 0x800000)
+ *                    10: SPI Flash page   (starts at 0x800000) //for trenz only half of flash 
+ *                    11: PSRAM            (starts at 0xC00000) //for trenz only half of psram A
  */ 
 
    // The memory bus.
@@ -191,6 +241,14 @@ module femtosoc(
    wire mem_address_is_ram       = (mem_address[23:22] == 2'b00);   
    wire mem_address_is_io        = (mem_address[23:22] == 2'b01);
    wire mem_address_is_spi_flash = (mem_address[23:22] == 2'b10);
+//only activate qspi_psram if spi_flash has been enabled
+`ifdef NRV_MAPPED_QSPI_PSRAM
+   wire mem_address_is_qspi_psram= (mem_address[23:22] == 2'b11); //access half of the 8MB psram chip
+   wire mapped_qspi_psram_rbusy;
+   wire mapped_qspi_psram_wbusy;
+   wire [31:0] mapped_qspi_psram_rdata;
+`endif
+   
    wire mapped_spi_flash_rbusy;
    wire [31:0] mapped_spi_flash_rdata;
    
@@ -225,10 +283,25 @@ module femtosoc(
    assign      mem_rbusy = io_rbusy
 `ifdef NRV_MAPPED_SPI_FLASH
     | mapped_spi_flash_rbusy			   
-`endif 			   
+`ifdef NRV_MAPPED_QSPI_PSRAM
+    | mapped_qspi_psram_rbusy
+`endif
+`endif 
+`ifdef NRV_SRAM
+    | sram_rbusy
+`endif    			   
     ;
    
-   assign      mem_wbusy = io_wbusy; 
+   assign      mem_wbusy = io_wbusy
+`ifdef NRV_MAPPED_SPI_FLASH
+`ifdef NRV_MAPPED_QSPI_PSRAM
+   | mapped_qspi_psram_wbusy
+`endif
+`endif
+`ifdef NRV_SRAM
+   | sram_wbusy
+`endif   
+   ; 
 
 `ifdef NRV_IO_FGA
    wire mem_address_is_vram = mem_address[21];
@@ -237,12 +310,83 @@ module femtosoc(
 `endif
 
    wire [19:0] ram_word_address = mem_address[21:2];
+`ifdef NRV_SRAM
+ `ifdef ICE_ZERO
+   wire [17:0] sram_word_address = mem_address[19:2];
+ `elsif ICE40HX8K_EVB
+   wire [16:0] sram_word_address = mem_address[18:2];  
+ `endif
+   //sram experiment copy the way FGA ram is stiched in to femtosoc
+   // 0x0100000 is start of sram window
+   wire mem_address_is_sram = (mem_address[23:20] == 4'b0001); //mem_address[20];
+  //wire 	sram_wr = mem_address_is_ram && !mem_address_is_vram && mem_address_is_sram;
+  //wire 	sram_wr = mem_address_is_ram &&  mem_address_is_sram; //?????TRY SIMPLIFYING
+
+    wire	sram_wr = mem_address_is_sram;
+//    assign o_sram_csn = 1'b0;
+//  `ifdef ICE_ZERO
+//    assign o_sram_lb_l = 1'b0;
+//    assign o_sram_ub_l = 1'b0;
+//  `endif     
+    wire sram_rbusy;
+    wire sram_wbusy;   
+
+    wire [31:0] sram_dat_r;
+
+   sram  SRAM(
+	.i_clk(clk),
+	.i_rst(reset),
+	.o_sram_a(o_sram_a),  //potentially twice the size of olimex so extra bit for trenz
+	.io_sram_d(io_sram_d),
+	.o_sram_csn(o_sram_csn),
+	.o_sram_oen(o_sram_oen),
+	.o_sram_wen(o_sram_wen),
+`ifdef ICE_ZERO
+        .o_sram_lb_l(o_sram_lb_l),
+	.o_sram_ub_l(o_sram_ub_l),
+`endif
+	.i_addr(sram_word_address),  //17bit word address on trenz
+	.i_we({4{sram_wr}} & mem_wmask),
+	.o_dat_r(sram_dat_r),
+	.i_dat_w(mem_wdata),
+   
+	.i_strb_r(mem_rstrb && mem_address_is_sram),
+	.i_strb_w(mem_wstrb && mem_address_is_sram),
+	.o_busy_r(sram_rbusy),
+	.o_busy_w(sram_wbusy)
+   );          
+`endif
+
+`ifdef NRV_MAPPED_QSPI_PSRAM
+wire qspiram_wr = mem_address_is_qspi_psram;
+
+    qspiram QSPIRAM(
+       .clk(clk),           //in
+       .resetn(reset),      //in check sense of reset signal
+//       .resetn(reset_cnt[15]),      //in check sense of reset signal
+       .word_addr(mem_address[21:2]),                     //in word address
+       .rdata(mapped_qspi_psram_rdata),                  //out
+       .wdata(mem_wdata),                                //in
+       .i_we({4{qspiram_wr}} & mem_wmask),              //in
+       .busy_w(mapped_qspi_psram_wbusy),                //out 
+       .busy_r(mapped_qspi_psram_rbusy),                //out
+       .stb_wr(mem_wstrb && mem_address_is_qspi_psram), //in
+       .stb_rd(mem_rstrb && mem_address_is_qspi_psram), //in
+       .sclk(qspi_psram_sclk),      //in
+       .ss(qspi_psram_cs0n),        //in
+       .mosi(qspi_psram_mosi_SIO0), //io
+       .miso(qspi_psram_miso_SIO1), //io
+       .sio2(qspi_psram_SIO2),      //io
+       .sio3(qspi_psram_SIO3)       //io
+);
+`endif
 
 // Using the 128 KBytes of SPRAM (single-ported RAM) embedded in the Ice40 UP5K   
 `ifdef ICE40UP5K_SPRAM
 
    wire [31:0]  ram_rdata;
-   wire 	spram_wr = mem_address_is_ram && !mem_address_is_vram;
+//   wire 	spram_wr = mem_address_is_ram && !mem_address_is_vram; //TIDY LATER SRAM EXPT
+   wire 	spram_wr = mem_address_is_ram && !(mem_address_is_vram || mem_address_is_sram);
    ice40up5k_spram RAM(
       .clk(clk),
       .wen({4{spram_wr}} & mem_wmask),
@@ -269,7 +413,11 @@ module femtosoc(
    // masked writes, amazing ...)
    /* verilator lint_off WIDTH */
    always @(posedge clk) begin
-      if(mem_address_is_ram && !mem_address_is_vram) begin
+`ifdef NRV_SRAM
+    if(mem_address_is_ram && !(mem_address_is_vram || mem_address_is_sram)) begin
+ `else
+    if(mem_address_is_ram && !mem_address_is_vram) begin
+`endif
 	 if(mem_wmask[0]) RAM[ram_word_address][ 7:0 ] <= mem_wdata[ 7:0 ];
 	 if(mem_wmask[1]) RAM[ram_word_address][15:8 ] <= mem_wdata[15:8 ];
 	 if(mem_wmask[2]) RAM[ram_word_address][23:16] <= mem_wdata[23:16];
@@ -285,7 +433,7 @@ module femtosoc(
    FGA graphic_adapter(
       .pclk(pclk), // board clock		       
       .clk(clk),   // femtorv32 clock
-		       
+//TODO SRAM might need attention		       
       .sel(mem_address_is_ram && mem_address_is_vram), 
       .mem_wmask(mem_wmask),
       .mem_address(mem_address[16:0]),
@@ -301,13 +449,21 @@ module femtosoc(
    );
 `endif   
    
-`ifdef NRV_MAPPED_SPI_FLASH
-   assign mem_rdata = mem_address_is_io  ? io_rdata  : 
-		      mem_address_is_ram ? ram_rdata : 
-		      mapped_spi_flash_rdata;   
-`else   
-   assign mem_rdata = mem_address_is_io ? io_rdata : ram_rdata;
-`endif   
+
+
+
+
+   assign mem_rdata = mem_address_is_io  ? io_rdata  :
+`ifdef NRV_MAPPED_SPI_FLASH 
+		      mem_address_is_spi_flash ? mapped_spi_flash_rdata :
+`ifdef NRV_MAPPED_QSPI_PSRAM
+		      mem_address_is_qspi_psram ? mapped_qspi_psram_rdata :    
+`endif
+`endif
+`ifdef NRV_SRAM
+                      mem_address_is_sram ? sram_dat_r :
+`endif
+                      ram_rdata;
    
 /***************************************************************************************************
 /*
@@ -343,8 +499,22 @@ module femtosoc(
  *   are ORed at the end of this file to form the 32-bits io_rdata signal.
  * - Finally, of course, each device is plugged to some pins of the FPGA,
  *   the corresponding signals are in capital letters. 
- */   
-
+ */ 
+  
+`ifdef NRV_IO_GPIOS
+wire [31:0] gpio_rdata;
+compact_gpio_controller GPIO(
+    .clk(clk),
+    .rstn(reset),
+    .sel(io_word_address[IO_GPIOS_bit]),
+    .gpio_rd(io_rstrb && io_word_address[IO_GPIOS_bit]),
+    .gpio_wr(io_wstrb && io_word_address[IO_GPIOS_bit]),
+ 
+    .gpio_wdat(io_wdata),
+    .gpio_rdat(gpio_rdata),
+    .gpio_pin_val(gpio_pin_val)
+);
+`endif
 
 /*********************** Hardware configuration ************/
 /*
@@ -540,6 +710,9 @@ always @(posedge clk) begin
 `ifdef NRV_IO_FGA
 	    | FGA_rdata
 `endif
+`ifdef NRV_IO_GPIOS
+       | gpio_rdata
+`endif       
 	    ;
 end
 

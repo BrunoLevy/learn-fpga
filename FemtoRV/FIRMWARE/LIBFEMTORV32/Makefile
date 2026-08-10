@@ -11,7 +11,8 @@ OBJECTS= femtorv32.o max7219.o ssd1351_1331.o ssd1351_1331_init.o uart.o keyboar
          virtual_io.o \
 	 wait_cycles.o microwait.o milliwait.o milliseconds.o\
          spi_sd.o cycles_32.o cycles_64.o \
-	 filesystem.o exec.o femto_elf.o 
+	 filesystem.o exec.o femto_elf.o \
+         compact_gpio.o bb_spi.o bb_max7219.o bb_max7219_text.o
 
 all: $(RVGCC) libfemtorv32.a 
 

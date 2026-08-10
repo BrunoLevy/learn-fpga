@@ -50,8 +50,12 @@ localparam NRV_DEVICES = 0
 `ifdef NRV_IO_FGA
    | (1 << IO_FGA_CNTL_bit) | (1 << IO_FGA_DAT_bit)
 `endif			 
+`ifdef NRV_IO_GPIOS
+   | (1 << IO_GPIOS_bit)
+`endif			 
 ;
    
+//NRV_IO_GPIO assume we will either bitbang MAX7219 as demo and or bitbang I2C instead of MAX7219 as demo for smallest HX1K cases if I can get the no. of LUTS for GPIO to a reasonable size
    assign rdata = sel_memory  ? `NRV_RAM  :
 		  sel_devices ?  NRV_DEVICES :
                   sel_cpuinfo ? (`NRV_FREQ << 16) | counter_width : 32'b0;
