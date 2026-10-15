@@ -386,6 +386,8 @@ module FemtoRV32(
 `endif
 
    always @(posedge clk) begin
+      // Reset to a defined fetch state; clear aluShamt and x0 to prevent
+      // X-propagation into aluBusy and subsequent computations (issue #61).
       if(!reset) begin
          state      <= FETCH_INSTR; // Just waiting for !mem_wbusy
          aluShamt <= 0;
