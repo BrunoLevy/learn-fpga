@@ -58,6 +58,17 @@ openFPGALoader -c dirtyJtag --detect
 Connect pico to carrier board
 -----------------------------
 
+You will need 5 female-female Dupont wires, to connect TDI, TDO, TCK, TMS and GND.
+
+- [ULX5M pins](https://github.com/intergalaktik/ulx4m-documentation/tree/main/ulx4m-ld#pinout) (same as ULX4M)
+- dirtyJtag pins: check dirtyJtagConfig.h
+
+My setup:
+
+![](Images/ULX5M_RPI.png)
+
+(mind the order of the pins! TDI,GND,TDO,TCK,TMS on one side, TDI,TDO,GND,TCK,TMS on the other side, GND and TDO are swapped !!)
+
 
 Notes, links
 ------------
