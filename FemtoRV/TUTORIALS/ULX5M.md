@@ -144,7 +144,7 @@ Load (volatile, lost on power cycle)
 openFPGALoader -r -c dirtyJtag blinky.bit
 ```
 
-... or write to SPI flash (did not try yet)
+... Writing to SPI flash is supposed to be (but did not work for me, maybe switches need to be configured)
 ```
 openFPGALoader -r -c dirtyJtag -f blinky.bit
 ```
@@ -152,6 +152,9 @@ openFPGALoader -r -c dirtyJtag -f blinky.bit
 
 Notes, links
 ------------
+
+- [GateMate A1 documentation](https://colognechip.com/programmable-logic/gatemate/?gad_source=1&gad_campaignid=21400780723&gclid=CjwKCAjwgJHXBhBGEiwAHohJq7Hxv7C5G4sIMu_CT4O8WPEIEyhWe3f2_8iCeonPacCD_2wlHulpAhoCKI0QAvD_BwE#tab-313422)
+
 
 USB <-> DirtyJTAG:
 - https://deepbluembedded.com/openfpgaloader-dirtyjtag-pi-pico-jtag-tutorial-windows/
