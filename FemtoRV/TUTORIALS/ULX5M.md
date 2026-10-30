@@ -3,9 +3,9 @@ ULX5M Tutorial
 
 This tutorial is WIP
 - [x] dirtyJtag on Rpi pico
-- [ ] connect pico to JTAG pins on carrier board
-- [ ] install GateMate toolchain
-- [ ] first blinky
+- [x] connect pico to JTAG pins on carrier board
+- [x] install GateMate toolchain
+- [x] first blinky
 - [ ] FemtoRV
 - [ ] add a tty (through a FTDI rs232-USB adapter)
 
@@ -13,8 +13,8 @@ Material
 --------
 - a ULX5M of course
 - a carrier board for ULX5M (any carrier board for Raspberry CM5 will do)
-- a raspberry pico (to be configured as a JTAG programmer using DirtyJTAG)
-
+- a raspberry pico (to be configured as a JTAG programmer using DirtyJTAG), chose one with pre-soldered headers (if you are lazy like me!)
+- five female-female Dupont wires
 
 DirtyJTag
 ---------
@@ -54,6 +54,7 @@ Now test whether openFPGALoader can detect it:
 ```
 openFPGALoader -c dirtyJtag --detect
 ```
+(it will detect the dirtyJtag on the RPi then complain there is nothing on the other side).
 
 Connect pico to carrier board
 -----------------------------
@@ -68,6 +69,85 @@ My setup:
 ![](Images/ULX5M_RPI.png)
 
 (mind the order of the pins! TDI,GND,TDO,TCK,TMS on one side, TDI,TDO,GND,TCK,TMS on the other side, GND and TDO are swapped !!)
+
+
+Plug both the RPi and the carrier board on USB ports.
+Now test whether openFPGALoader can detect the FPGA:
+```
+openFPGALoader -c dirtyJtag --detect
+```
+
+It should detect the CologneChip GateMate FPGA now.
+
+
+Install CologneChip GateMate toolchain
+--------------------------------------
+
+- get the archive [here](https://github.com/YosysHQ/oss-cad-suite-build/releases/) that corresponds to your OS
+- unpack it (for instance in $HOME/CologneChip/oss-cad-suite)
+
+
+First blinky
+------------
+
+Blinky source: `blinky.v`
+```
+module blinky (
+    input  wire clk,
+    output wire[7:0] led
+);
+
+    reg [27:0] counter = 0;
+    always @(posedge clk) begin
+        counter <= counter + 1;
+    end
+    assign led = counter[27:20];
+
+endmodule
+```
+
+Constraints file: `blinky.ccf`
+```
+Pin_in  "clk" Loc="IO_SB_A8";
+Pin_out "led[0]" Loc="IO_SB_A0";
+Pin_out "led[1]" Loc="IO_SB_B0";
+Pin_out "led[2]" Loc="IO_SB_A1";
+Pin_out "led[3]" Loc="IO_SB_B1";
+Pin_out "led[4]" Loc="IO_SB_B2";
+Pin_out "led[5]" Loc="IO_SB_A2";
+Pin_out "led[6]" Loc="IO_SB_B3";
+Pin_out "led[7]" Loc="IO_SB_A3";
+```
+
+Where to find the information:
+- [link1](https://github.com/pu-cc/tinydfu-bootloader/blob/master/boards/ulx5m/ulx5m.ccf)
+- [link2](https://github.com/YosysHQ/prjpeppercorn-test-cases/tree/ulx5m)
+
+Synthesize:
+```
+yosys -p "read_verilog blinky.v; synth_gatemate -top blinky -luttree -nomx8; write_json blinky.json"
+```
+
+Place and route:
+```
+$TOOLS/nextpnr-himbaechel --device CCGM1A1 --json blinky.json \
+    --vopt ccf=blinky.ccf --vopt out=blinky.txt --router router2
+```
+
+Pack bistream
+```
+gmpack --reset blinky.txt blinky.bit
+```
+
+Load (volatile, lost on power cycle)
+```
+openFPGALoader -r -c dirtyJtag blinky.bit
+```
+
+... or write to SPI flash (did not try yet)
+```
+openFPGALoader -r -c dirtyJtag -f blinky.bit
+```
 
 
 Notes, links
