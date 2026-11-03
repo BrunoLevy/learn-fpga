@@ -8,7 +8,7 @@
 .type	UART_putchar, @function
 UART_putchar:
         sw a0,IO_UART_DAT(gp)
-pcrx:	lw t0,IO_UART_DAT(gp)
+pcrx:	lw t0,IO_UART_CNTL(gp)
 	andi t0,t0,512 # bit 9 = busy
 	bnez t0,pcrx
 	ret
