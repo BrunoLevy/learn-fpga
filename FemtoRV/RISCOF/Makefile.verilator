@@ -1,0 +1,104 @@
+################################################################################
+# HDL source files
+################################################################################
+
+VERILATOR?=verilator
+VERILATOR_COVERAGE?=verilator_coverage
+
+################################################################################
+# HDL source files
+################################################################################
+
+# Verilog/SystemVerilog RTL
+RTL+=../RTL/PROCESSOR/femtorv32_${DUT}.v
+
+# SystemVerilog bench (Test SV)
+TSV+=riscof_tb.sv
+
+# combined HDL sources
+HDL =${RTL}
+HDL+=${TSV}
+
+# top level file
+TOP ?= riscof_tb
+
+# include paths
+INC = -I../RTL/PROCESSOR/
+
+################################################################################
+# Verilator compiler/linker flags
+################################################################################
+
+# specify SystemVerilog LRM version
+#VFLAGS += +1800-2012ext+sv
+# Generate binary executable
+VFLAGS += --binary
+# Optimize
+VFLAGS += -O3
+# Number of CPU threads
+VFLAGS += -j 0
+# optimize for speed or maximize finding X assign issues
+VFLAGS += --x-assign fast
+#VFLAGS += --x-assign 0
+#VFLAGS += --x-assign 1
+#VFLAGS += --x-assign unique
+# Warn about lint issues; may not want this on less solid designs
+#VFLAGS += -Wall
+# Check SystemVerilog assertions
+VFLAGS += --assert
+# Generate coverage analysis
+#VFLAGS += --coverage
+
+# Run Verilator in debug mode
+#VFLAGS += --debug
+# Add this trace to get a backtrace in gdb
+#VFLAGS += --gdbbt
+
+# Make waveforms
+#ifdef TRACE
+VFLAGS += --trace-fst
+VFLAGS += --trace-structs
+#endif
+
+################################################################################
+# Verilog macros
+################################################################################
+
+# set VERILATOR macro (used to handle tool quirks)
+#MCR += -DVERILATOR
+MCR += ${HDL_DEFINES}
+
+################################################################################
+# Verilog toplevel parameter override
+################################################################################
+
+# set XLEN parameter
+#XLEN ?= 32
+#PAR += -GXLEN=${XLEN}
+
+PAR += ${HDL_PARAMETERS}
+
+################################################################################
+# Verilog $plusargs runtime arguments
+################################################################################
+
+ARG += ${HDL_PLUSARGS}
+
+################################################################################
+#
+################################################################################
+
+all: sim
+
+lint: ${HDL}
+	${VERILATOR} --lint-only ${INC} ${HDL} --top ${TOP}
+
+compile: ${HDL}
+	echo "==== compile ===="
+	rm -rf obj_dir/
+	${VERILATOR} ${VFLAGS} ${MCR} ${PAR} --top ${TOP} ${INC} ${HDL}
+
+simulate:
+	echo "==== run ===="
+	obj_dir/V${TOP} ${ARG}
+#	${VERILATOR_COVERAGE} --annotate logs/annotated logs/coverage.dat
