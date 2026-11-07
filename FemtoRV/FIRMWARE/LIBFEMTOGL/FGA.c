@@ -33,7 +33,7 @@ void FGA_fill_rect(
 }
 
 void FGA_clear() {
-    FGA_fill_rect(0,0,WIDTH,HEIGHT,GL_bg);
+    FGA_fill_rect(0,0,WIDTH-1,HEIGHT-1,GL_bg);
 }
 
 void FGA_wait_vbl() {
