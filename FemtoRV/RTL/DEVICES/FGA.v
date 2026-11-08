@@ -9,12 +9,12 @@
 //
 // Write: set register:     value[31:8]                       REG_XXX[7:0]
 //        command (1 arg):  arg24[31:8]                  1[7] CMD_XXX[6:0]
-//        command (2 args): arg12_1[31:20] arg12_2[19:8] 1[7] CMD_XXX[6:0]
+//        command (2 args): arg12_2[31:20] arg12_1[19:8] 1[7] CMD_XXX[6:0]
 //
 // Read:  the value of the register indicated by REG_READREGID
 //
 // Registers:
-// REG_STATUS  (0): vblank[31] hblank[30] drawarea[29] membusy[28] XXXX[27:24] Y[23:12] X[11:0]  
+// REG_STATUS  (0): vblank[31] hblank[30] drawarea[29] membusy[28] XXXX[27:24] X[23:12] Y[11:0]  
 // RESOLUTION  (1): height[23:12] width[11:0]
 // COLORMODE   (2): colormapped[3] bpp[2:0] (0:1bpp 1:2bpp 2:4bpp 3:8bpp 4:16bpp)
 // DISPLAYMODE (3): magnify[0]
