@@ -55,10 +55,6 @@
 `define NRV_NEGATIVE_RESET
 `endif
 
-`ifdef NRV_IO_SPI_FLASH
-`define NRV_SPI_FLASH
-`endif
-
 `ifdef NRV_MAPPED_SPI_FLASH
 `define NRV_SPI_FLASH
 `endif

@@ -555,9 +555,6 @@ end
 `ifdef NRV_IO_MAX7219
 	| max7219_wbusy
 `endif		   
-`ifdef NRV_IO_SPI_FLASH
-        | spi_flash_wbusy
-`endif		   
 ; 
 
 /****************************************************************/

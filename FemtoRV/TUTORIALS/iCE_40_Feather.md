@@ -50,7 +50,7 @@ The ice-feather comes with an SPI Flash and a stock [led wing](https://github.co
 Set up the `femtosoc_config.v` to support the SPI flash by enabling / uncommenting this line.
 
 ```
-//`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash 
+//`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space
 ```
 
 Setup support for the wing based buttons by uncommenting this line
@@ -66,10 +66,9 @@ The full config block looks like this currently, however this may change as more
 `define NRV_IO_UART      // Mapped IO, virtual UART (USB)
 //`define NRV_IO_SSD1351    // Mapped IO, 128x128x64K OLed screen
 //`define NRV_IO_MAX7219      // Mapped IO, 8x8 led matrix
-`define NRV_IO_SPI_FLASH  // Mapped IO, SPI flash  
 //`define NRV_IO_SPI_SDCARD // Mapped IO, SPI SDCARD
 `define NRV_IO_BUTTONS    // Mapped IO, buttons
-//`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. Use with MINIRV32 to run code from SPI flash.
+`define NRV_MAPPED_SPI_FLASH // SPI flash mapped in address space. Use with MINIRV32 to run code from SPI flash.
 //`define NRV_FGA // Femto Graphic Adapter (ULX3S only)
 ```
 

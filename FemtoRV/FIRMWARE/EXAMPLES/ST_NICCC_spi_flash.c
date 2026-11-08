@@ -5,7 +5,7 @@
  *
  * femtosoc options (femtosoc.v):
  *   OLED display (NRV_IO_SSD1351)
- *   SPI flash    (NRV_IO_SPI_FLASH)
+ *   SPI flash    (NRV_MAPPED_SPI_FLASH)
  *   6K ram
  *
  * The polygon stream is a 640K file, that needs

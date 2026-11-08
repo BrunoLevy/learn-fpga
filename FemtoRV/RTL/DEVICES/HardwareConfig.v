@@ -35,9 +35,6 @@ localparam NRV_DEVICES = 0
 `ifdef NRV_IO_MAX7219     
    | (1 << IO_MAX7219_DAT_bit) 
 `endif			    
-`ifdef NRV_IO_SPI_FLASH
-   | (1 << IO_SPI_FLASH_bit) 			 
-`endif			    
 `ifdef NRV_MAPPED_SPI_FLASH
    | (1 << IO_MAPPED_SPI_FLASH_bit) 			 
 `endif			    
