@@ -81,7 +81,6 @@ int sd_writesector(uint32_t sector, uint8_t* buffer, uint32_t sector_count); /* 
 #define IO_UART_CNTL         IO_BIT_TO_OFFSET(IO_UART_CNTL_bit)
 #define IO_UART_DAT          IO_BIT_TO_OFFSET(IO_UART_DAT_bit)
 #define IO_MAX7219           IO_BIT_TO_OFFSET(IO_MAX7219_DAT_bit)
-#define IO_SPI_FLASH         IO_BIT_TO_OFFSET(IO_SPI_FLASH_bit)
 #define IO_SDCARD            IO_BIT_TO_OFFSET(IO_SDCARD_bit)
 #define IO_BUTTONS           IO_BIT_TO_OFFSET(IO_BUTTONS_bit)
 #define IO_FGA_CNTL          IO_BIT_TO_OFFSET(IO_FGA_CNTL_bit)
