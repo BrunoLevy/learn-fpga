@@ -43,7 +43,7 @@ void FGA_setmode(int mode) {
    // Default palette: 0=black, all other colors=white
    // so that text will work.
    FGA_setpalette(0, 0, 0, 0);
-   for(int i=1; i<255; ++i) {
+   for(int i=1; i<256; ++i) {
       FGA_setpalette(i, 255, 255, 255);
    }
 }
