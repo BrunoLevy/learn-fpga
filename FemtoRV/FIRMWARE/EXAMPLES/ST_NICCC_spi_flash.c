@@ -2,12 +2,12 @@
  * Reading the ST-NICCC megademo data stored in
  * the SPI flash and streaming it to polygons,
  * rendered on the OLED display using femtoGL.
- * 
+ *
  * femtosoc options (femtosoc.v):
  *   OLED display (NRV_IO_SSD1351)
  *   SPI flash    (NRV_IO_SPI_FLASH)
- *   6K ram       
- * 
+ *   6K ram
+ *
  * The polygon stream is a 640K file, that needs
  * to be stored in the SPI flash, using:
  * ICEStick: iceprog -o 1M EXAMPLES/DATA/scene1.dat
@@ -20,13 +20,13 @@
  * Demo compiles to 1118 4-bytes words RISC-V assembly
  * code (I'd like to reduce it to 1024, to make it a
  * 4K demo ! Anyway there is 640 Kb of polygon data in
- * the SPI Flash, so that'd be cheating a bit...). 
+ * the SPI Flash, so that'd be cheating a bit...).
  */
 
 #include <femtoGL.h>
 
 /*
- * Starting address of data stream stored in the 
+ * Starting address of data stream stored in the
  * SPI.
  * I put the data stream starting from 1M offset,
  * just to make sure it does not collide with
@@ -75,16 +75,16 @@ uint8_t next_spi_byte() {
 }
 
 uint16_t next_spi_word() {
-   /* In the ST-NICCC file,  
+   /* In the ST-NICCC file,
     * words are stored in big endian format.
     * (see DATA/scene_description.txt).
     */
-   uint16_t hi = (uint16_t)next_spi_byte();    
+   uint16_t hi = (uint16_t)next_spi_byte();
    uint16_t lo = (uint16_t)next_spi_byte();
    return (hi << 8) | lo;
 }
 
-/* 
+/*
  * The colormap, encoded in such a way that it
  * can be directly sent to the OLED display.
  */
@@ -118,7 +118,7 @@ int wireframe = 0;
  * SPI flash and rasterizes the polygons using
  * FemtoGL.
  * returns 0 if last frame.
- *   See DATA/scene_description.txt for the 
+ *   See DATA/scene_description.txt for the
  * ST-NICCC file format.
  *   See DATA/test_ST_NICCC.c for an example
  * program.
@@ -132,12 +132,12 @@ int read_frame() {
 	for(int b=15; b>=0; --b) {
 	    if(colors & (1 << b)) {
 		int rgb = next_spi_word();
-	       
+
 		// Get the three 3-bits per component R,G,B
 	        int b3 = (rgb & 0x007);
 		int g3 = (rgb & 0x070) >> 4;
 		int r3 = (rgb & 0x700) >> 8;
-		
+
 		// Re-encode them as FemtoGL color for the OLED display:
 		// RRRRR GGGGG 0 BBBBB
 		cmap[15-b] = (b3 << 2) | (g3 << 8) | (r3 << 13);
@@ -169,7 +169,7 @@ int read_frame() {
 
 	// Special polygon codes (end of frame,
 	// seek next block, end of stream)
-	
+
 	if(poly_desc == 0xff) {
 	    break; // end of frame
 	}
@@ -179,12 +179,12 @@ int read_frame() {
 	    spi_addr &= ~65535;
 	    spi_addr +=  65536;
 	    spi_addr += ADDR_OFFSET;
-	    return 1; 
+	    return 1;
 	}
 	if(poly_desc == 0xfd) {
 	    return 0; // end of stream
 	}
-	
+
 	uint8_t nvrtx = poly_desc & 15;
 	uint8_t poly_col = poly_desc >> 4;
 	for(int i=0; i<nvrtx; ++i) {
@@ -194,17 +194,17 @@ int read_frame() {
 		poly[2*i+1] = Y[index];
 	    } else {
 		poly[2*i]   = (next_spi_byte() >> 1);
-		poly[2*i+1] = (next_spi_byte() >> 1) + 14;		
+		poly[2*i+1] = (next_spi_byte() >> 1) + 14;
 	    }
 	}
 	GL_fill_poly(nvrtx,poly,cmap[poly_col]);
     }
-    return 1; 
+    return 1;
 }
 
 void print_frame(int frame) {
     GL_tty_goto_xy(0,0);
-    printf("%d",frame);
+    printf("%d    ",frame);
 }
 
 int main() {
@@ -215,12 +215,12 @@ int main() {
     printf("3.2.1.GO!! ");
 
     GL_tty_init(GL_MODE_OLED);
-    
+
     wireframe = 0;
     for(;;) {
         frame=0;
         spi_reset();
-	GL_polygon_mode(wireframe ? GL_POLY_LINES: GL_POLY_FILL);	
+	GL_polygon_mode(wireframe ? GL_POLY_LINES: GL_POLY_FILL);
 	while(read_frame()) {
             print_frame(frame);
             ++frame;
