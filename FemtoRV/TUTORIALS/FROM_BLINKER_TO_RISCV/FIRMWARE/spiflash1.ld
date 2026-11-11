@@ -7,8 +7,11 @@
 /*  initialization data in flash.                 */
 /* AT keyword specifies LMA (Load Memory Address) */
 
+#include "link_memory_info.h"
+
 MEMORY {
-    FLASH (rx)  : ORIGIN = 0x00820000, LENGTH = 0x100000    /* 4 MB in flash */
+//    FLASH (rx)  : ORIGIN = 0x00820000, LENGTH = 0x100000    /* 4 MB in flash */
+    FLASH (RX)  : ORIGIN = VIRT_FLASH_MEM_START, LENGTH = VIRT_FLASH_MEM_LEN
     RAM   (rwx) : ORIGIN = 0x00000000, LENGTH = 0x1800      /* 6 kB in RAM   */ 
 }
 

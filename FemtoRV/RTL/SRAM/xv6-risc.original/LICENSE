@@ -1,0 +1,27 @@
+fpga - implementation of RISC-V system on chip capable of running UNIX xv6
+
+Copyright 2023 Michael Schröder
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+xv6-riscv-fpga/fpga/ contains the following files:
+boot				- bootloader 
+clint.v				- core level interrupt 
+ice40hx8k_evb.pcf	- phsical contraints file for iCE40HX8K-EVB board
+LICENSE				- license file
+plic.v				- platform level interrupt 
+pll.v				- phase locked loop
+rv32.v				- RISC-V CPU rv32ia_ziscr
+soc.v				- system on chip
+spi.v				- SPI controller
+sram.v				- SRAM controller
+top.v				- top level design
+uart.v				- UART controller 
+vma.v				- Virtual Memory Access
+
+The following files are Copyright 2006-2022 Frans Kaashoek, Robert Morris, and Russ Cox.(https://pdos.csail.mit.edu/6.828/2022/xv6.html):
+boot/fs.c, boot/types.h, boot/printf.c, boot/printf.h

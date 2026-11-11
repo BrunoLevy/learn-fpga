@@ -7,17 +7,27 @@
 #####################################################################
 # Base directory of the firmware
 
+#nfs mount for raspberry pi hosting trenz icezero fpga hardware
+
+
 FIRMWARE_DIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+RASPI_REMOTE_DIR=$(abspath $(FIRMWARE_DIR)../../../mnt/)
 
 include $(FIRMWARE_DIR)/config.mk
 DEVICES_ASM=$(subst -D,-defsym ,$(DEVICES))
 
 show_config:
+ifeq ($(BOARD),icezero)
+	@echo "RASPI_REMOTE_DIR=$(RASPI_REMOTE_DIR)/trenz"
+else ifeq ($(BOARD),ice4pi)
+	@echo "RASPI_REMOTE_DIR=$(RASPI_REMOTE_DIR)"
+endif
 	@echo "ARCH=$(ARCH)"
-	@echo "ABI=$(ABI)" 
-	@echo "OPTIMIZE=$(OPTIMIZE)" 
+	@echo "ABI=$(ABI)"
+	@echo "OPTIMIZE=$(OPTIMIZE)"
 	@echo "DEVICES=$(DEVICES)"
-	@echo "DEVICES_ASM=$(DEVICES_ASM)"	
+	@echo "DEVICES_ASM=$(DEVICES_ASM)"
 
 ################################################################################
 
@@ -83,10 +93,24 @@ RVGCC_LIB= $(RVTOOLCHAIN_LIB_DIR)/libc.a \
 # My utility that converts elf executables into a format understood by Verilog
 FIRMWARE_WORDS=$(FIRMWARE_DIR)/TOOLS/firmware_words
 
+#need to link icezero spiflash programs for 192k offset
+
 ifeq ($(BOARD),icesugar_nano)
-    TOOLCHAIN_PROG_CMD=icesprog -o 0x20000 
+    TOOLCHAIN_PROG_CMD=icesprog -o 0x20000 $<
+else ifeq ($(BOARD),ice4pi)
+    TOOLCHAIN_PROG_CMD=cp $< $(RASPI_REMOTE_DIR)/
+else ifeq ($(BOARD),icezero)
+    TOOLCHAIN_PROG_CMD=cp $< $(RASPI_REMOTE_DIR)/trenz/
 else
-    TOOLCHAIN_PROG_CMD=iceprog -o 128k 
+    # iCE40HX8K-EVB needs a special programmer.
+    # The bitstream size is 136,448 bytes, and the flash block size is 64 kB.
+    # Therefore, the executable is placed at the next block-aligned address
+    # in the flash memory.
+    ifeq ($(BOARD),ice40hx8k_evb)
+        TOOLCHAIN_PROG_CMD=iceprogduino -o 0x30000
+    else
+        TOOLCHAIN_PROG_CMD=iceprog -o 128k $<
+    endif
 endif
 
 ################################################################################
@@ -140,7 +164,7 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 
 # Generate a "spi elf", to be loaded from address 0x810000 
 %.spiflash.elf: %.o $(RV_BINARIES) 
-	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/spiflash_$(BOARD).ld $< -o $@ $(FEMTORV32_LIBS) -lsupc++ $(RVGCC_LIB)
+	$(RVLD) $(RVLDFLAGS) -T$(FIRMWARE_DIR)/CRT/spiflash_$(BOARD)$(SRAM).ld $< -o $@ $(FEMTORV32_LIBS) -lsupc++ $(RVGCC_LIB)
 
 # Converts the ELF executable to flat binary form, ready to be sent to SPI flash.
 %.spiflash.bin: %.spiflash.elf
@@ -148,7 +172,7 @@ FEMTORV32_LIBS_SMALL=-L$(RVTOOLCHAIN_LIB_DIR)\
 
 # Sends the generated executable in flat binary form to SPI flash
 %.prog: %.spiflash.bin
-	$(TOOLCHAIN_PROG_CMD) $<
+	$(TOOLCHAIN_PROG_CMD)
 
 # Generate a disassembly (for inspection if need be)
 %.list: %.baremetal.elf

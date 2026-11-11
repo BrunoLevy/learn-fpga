@@ -8,7 +8,12 @@
 .ifdef ICE_STICK
 .section .fastcode
 .endif
-
+.ifdef ICE_ZERO
+.section .fastcode
+.endif
+.ifdef ICE40HX8K_EVB
+.section .fastcode
+.endif
 .globl main
 .type  main, @function
 	

@@ -1,0 +1,403 @@
+/*W A R N I N G
+qspi mode not working on breadboard
+possibly damaged chip not sure
+or could just be verilog i based this on is wrong
+for now use spi_psram.v
+*/
+/*experimenting use startup delay of 2 seconds and don't have SRAM enabled*/
+
+/* QSPI_PSRAM for learn-fpga based on file with following comment block*/
+
+/*
+ * QQSPI
+ * Copyright (c) 2021 Lone Dynamics Corporation. All rights reserved.
+ *
+ * Verilog module for interfacing the LD-QQSPI-PSRAM32 Pmod(tm) compatible
+ * module with ICE40 FPGAs.
+ *
+ */
+
+`default_nettype none // for typo detection
+
+//module qspiram #(
+//	parameter [0:0] QUAD_MODE = 1
+//)(
+module qspiram (
+
+	input [19:0] word_addr,   //19:0 for word_address part [21:2] being fed in
+	output reg [31:0] rdata,
+	input [31:0] wdata,
+         input [3:0] i_we, //femto
+         output reg busy_w, //femto
+         output reg busy_r, //femto
+         input wire  stb_wr, //femto
+         input  wire stb_rd, //femto
+	input clk,
+	input resetn,
+
+	output reg ss,
+	output reg sclk,
+	inout mosi,
+	inout miso,
+	inout sio2,
+	inout sio3
+
+);
+        //adapter registers when trial version on learn-fpga femto
+        reg [4:0] state;
+	reg write;
+
+	reg [3:0] sio_oe;
+	reg [3:0] sio_do;
+	wire [3:0] sio_di;
+
+
+	assign mosi = sio_oe[0] ? sio_do[0] : 1'bz;
+	assign miso = sio_oe[1] ? sio_do[1] : 1'bz;
+	assign sio2 = sio_oe[2] ? sio_do[2] : 1'bz;
+	assign sio3 = sio_oe[3] ? sio_do[3] : 1'bz;
+
+	assign sio_di = {sio3, sio2, miso, mosi};
+
+
+	localparam [5:0]
+                STATE_RST_DLY_WAIT              = 5'd00,
+                STATE_RST_ENA_INIT              = 5'd01,
+                STATE_RST_ENA_SEND              = 5'd02,
+                STATE_RST_ENA_POST              = 5'd03,
+                STATE_RST_RST_INIT              = 5'd04,
+                STATE_RST_RST_SEND              = 5'd05,
+                STATE_RST_RST_POST              = 5'd06,
+                STATE_READ_ID_INIT              = 5'd07,
+                STATE_READ_ID_SEND              = 5'd08,
+                STATE_READ_ID_READ_1            = 5'd09,
+                STATE_READ_ID_READ_2            = 5'd10,
+                STATE_READ_ID_READ_3            = 5'd11,
+                STATE_READ_ID_POST              = 5'd12,
+                STATE_QPI_INIT                  = 5'd13,
+                STATE_QPI_SEND                  = 5'd14,
+                STATE_QPI_POST                  = 5'd15,
+		STATE_IDLE			= 5'd19,
+		STATE_INIT			= 5'd20,
+		STATE_START			= 5'd21,
+		STATE_CMD_AND_ADDRESS		= 5'd22,
+		STATE_WAIT			= 5'd23,
+		STATE_XFER			= 5'd24,
+		STATE_END			= 5'd25,
+                STATE_WARM_RST_ENA_INIT              = 5'd26,
+                STATE_WARM_RST_ENA_SEND              = 5'd27,
+                STATE_WARM_RST_ENA_POST              = 5'd28,
+                STATE_WARM_RST_RST_INIT              = 5'd29,
+                STATE_WARM_RST_RST_SEND              = 5'd30,
+                STATE_WARM_RST_RST_POST              = 5'd31;
+
+
+	reg [31:0] datbuf;
+        reg [1:0]  offset;
+        reg [5:0]  bwid; 
+
+	reg [31:0] buffer;
+	reg [5:0] xfer_bits;
+	reg xfer_quad;
+
+        //minimum delay 150uS
+        reg [19:0] delay_count; //make room for 10ms delay //14 bits room for 200uS worth of count at 45MHz
+        reg [63:0] id;
+
+	always @(posedge clk) begin
+
+		if (!resetn) begin 
+
+			ss <= 1;
+			sclk <= 0;
+			sio_oe = 4'b1111;
+			sio_do = 4'b0000;
+
+			xfer_quad <= 0;
+			xfer_bits <= 0;
+
+                        //busy_r <= 1;
+                        //busy_w <= 1;
+
+                        delay_count <= 0;
+			state <= STATE_WARM_RST_ENA_INIT; //STATE_RST_DLY_WAIT;
+
+
+		end else if (xfer_bits) begin
+
+			if (xfer_quad) begin
+				sio_do[3:0] <= buffer[31:28];
+			end else begin
+				sio_do[0] <= buffer[31];
+			end
+
+			if (sclk) begin
+				sclk <= 0;
+			end else begin
+				sclk <= 1;
+				if (xfer_quad) begin
+					buffer <= {buffer, sio_di[3:0]};
+					xfer_bits <= xfer_bits - 4;
+				end else begin
+					buffer <= {buffer, sio_di[1]};
+					xfer_bits <= xfer_bits - 1;
+				end
+			end
+
+		end else case (state)
+
+                        STATE_WARM_RST_ENA_INIT: begin
+				sio_oe <= 4'b1111;
+                                xfer_quad <= 1;
+
+                                ss <= 0;
+                                state <= STATE_WARM_RST_ENA_SEND;
+                        end
+                        
+                       STATE_WARM_RST_ENA_SEND: begin
+                                buffer[31:24] <= 8'h66;
+                                xfer_bits <= 8;
+                                write <= 1;
+                                state <= STATE_WARM_RST_ENA_POST;
+                       end
+
+                       STATE_WARM_RST_ENA_POST: begin
+                                ss <= 1;
+                                state <= STATE_WARM_RST_RST_INIT;
+                       end
+ 
+                       STATE_WARM_RST_RST_INIT: begin
+                                ss <= 0;
+                                state <= STATE_WARM_RST_RST_SEND;
+                       end
+                       
+                       STATE_WARM_RST_RST_SEND: begin
+                                buffer[31:24] <= 8'h99;
+                                xfer_bits <= 8;
+//                                state <= STATE_WARM_RST_RST_POST;
+                                state <= STATE_RST_ENA_INIT;
+                       end
+
+                       STATE_WARM_RST_RST_POST: begin
+                                ss <= 1;
+                                if (delay_count == 599999) begin          //10ms delay
+                                        delay_count <= 0;
+                                        state <= STATE_RST_DLY_WAIT;
+                                end else
+                                        delay_count = delay_count + 1;
+                       end
+/*
+                        STATE_RST_DLY_WAIT: begin
+                                if (delay_count == 8999) begin
+                                        delay_count <= 0;
+                                        state <= STATE_RST_ENA_INIT;
+                                end else
+                                        delay_count = delay_count + 1;
+                        end
+*/
+                        STATE_RST_ENA_INIT: begin
+				sio_oe <= 4'b0001;
+                                xfer_quad <= 0;
+
+                                ss <= 0;
+                                state <= STATE_RST_ENA_SEND;
+                        end
+                        
+                       STATE_RST_ENA_SEND: begin
+                                buffer[31:24] <= 8'h66;
+                                xfer_bits <= 8;
+                                write <= 1;
+                                state <= STATE_RST_ENA_POST;
+                       end
+
+                       STATE_RST_ENA_POST: begin
+                                ss <= 1;
+                                state <= STATE_RST_RST_INIT;
+                       end
+ 
+                       STATE_RST_RST_INIT: begin
+                                ss <= 0;
+                                state <= STATE_RST_RST_SEND;
+                       end
+                       
+                       STATE_RST_RST_SEND: begin
+                                buffer[31:24] <= 8'h99;
+                                xfer_bits <= 8;
+                                state <= STATE_RST_RST_POST;
+                       end
+
+                       STATE_RST_RST_POST: begin
+                                ss <= 1;
+                                if (delay_count == 599999) begin          //10ms delay
+                                        delay_count <= 0;
+                                        state <= STATE_READ_ID_INIT;
+                                end else
+                                        delay_count = delay_count + 1;
+                       end
+
+                       STATE_READ_ID_INIT: begin
+                                ss <= 0;
+                                state <= STATE_READ_ID_SEND;
+                       end
+
+                       STATE_READ_ID_SEND: begin
+                                buffer <= 32'h9f000000;
+                                xfer_bits <= 32;
+                                state <= STATE_READ_ID_READ_1;
+                       end
+
+                       STATE_READ_ID_READ_1: begin
+                                write <= 0;
+                                xfer_bits <= 32;
+                                state <= STATE_READ_ID_READ_2;
+                       end
+
+                       STATE_READ_ID_READ_2: begin
+                                id[63:32] <= buffer;
+                                xfer_bits <= 32;
+                                state <= STATE_READ_ID_READ_3;
+                       end
+
+                       STATE_READ_ID_READ_3: begin
+                                id[31:0] <= buffer;
+                                ss <= 1;
+                                state <= STATE_READ_ID_POST;
+                       end
+
+                       STATE_READ_ID_POST: begin
+                                if (id[63:48] == 16'h0d5d) begin
+                                        //busy_r <= 0;
+                                        //busy_w <= 0;
+                                        state <= STATE_QPI_INIT;
+                                end
+                                else
+                                        state <= STATE_RST_ENA_INIT;
+                       end
+
+                       STATE_QPI_INIT: begin
+                                ss <= 0;
+                                state <= STATE_QPI_SEND;
+                       end
+                       
+                       STATE_QPI_SEND: begin
+                                buffer[31:24] <= 8'h35;
+                                xfer_bits <= 8;
+                                write <= 1;
+                                state <= STATE_QPI_POST;
+                       end
+
+                       STATE_QPI_POST: begin
+			        xfer_quad <= 1;
+                                ss <= 1;
+                                state <= STATE_IDLE;
+                       end
+
+			STATE_IDLE: begin
+				ss <= 1;
+              if (stb_rd) begin
+                 write <= 0; 
+                 busy_r <= 1;
+                 state <= STATE_INIT;
+                 xfer_bits <= 0;
+                 offset <= 2'b00;
+              end
+              else if (stb_wr) begin
+                 write <= 1; 
+                 busy_w <= 1;
+                 state <= STATE_INIT;
+                 xfer_bits <= 0;
+                case (i_we)
+                4'b1000: begin
+                  offset <= 2'b00;
+                  bwid <= 8;
+                  datbuf <= {wdata[31:24], 24'd0};
+                end
+                4'b0100: begin
+                  offset <= 2'b01;
+                  bwid <= 8;
+                  datbuf <= {wdata[23:16], 24'd0};
+                end
+                4'b0010: begin
+                  offset <= 2'b10;
+                  bwid <= 8;
+                  datbuf <= {wdata[15:8], 24'd0};
+                end
+                4'b0001: begin
+                  offset <= 2'b11;
+                  bwid <= 8;
+                  datbuf <= {wdata[7:0], 24'd0};
+                end
+                4'b1100: begin
+                  offset <= 2'b00;
+                  bwid <= 16;
+                  datbuf <= {wdata[31:16], 16'd0};
+                end
+                4'b0011: begin
+                  offset <= 2'b10;
+                  bwid <= 16;
+                  datbuf <= {wdata[15:0], 16'd0};
+                end
+                4'b1111: begin
+                  offset <= 2'b00;
+                  bwid <= 32;
+                  datbuf <= wdata;
+                end
+               //what about a default? which should never get hit anyway
+                endcase
+              end
+
+			end
+
+			STATE_INIT: begin
+				sio_oe <= 4'b1111;
+				state <= STATE_START;
+			end
+
+			STATE_START: begin
+				ss <= 0;
+				state <= STATE_CMD_AND_ADDRESS;
+			end
+
+			STATE_CMD_AND_ADDRESS: begin
+				if (write) buffer[31:24] <= 8'h38; else buffer[31:24] <= 8'heb;
+                                buffer[23:0] <= { 2'b00, word_addr[19:0], offset };
+				xfer_bits <= 32;
+				if (!write)
+                                        state <= STATE_WAIT;
+				else
+					state <= STATE_XFER;
+			end
+
+			STATE_WAIT: begin
+				sio_oe <= 4'b0000;
+                                xfer_bits <= 24;
+				state <= STATE_XFER;
+			end
+
+			STATE_XFER: begin
+				if (write) begin
+					sio_oe <= 4'b1111;
+					buffer <= datbuf;
+				        xfer_bits <= bwid;
+				end else begin
+					sio_oe <= 4'b0000;
+				        xfer_bits <= 32;
+				end
+				state <= STATE_END;
+			end
+
+			STATE_END: begin
+				if (write)
+					ss <= 1;
+				else
+					rdata <= buffer;
+                                busy_r <= 0; // femto
+                                busy_w <= 0; // femto
+				state <= STATE_IDLE;
+			end
+
+		endcase
+
+	end
+
+endmodule

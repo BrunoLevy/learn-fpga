@@ -42,6 +42,36 @@ loop_init_data:
      blt a1, a2, loop_init_data
 end_init_data:
 
+.ifdef SRAM
+# zero-init bss section:
+# clears from _sbss to _ebss
+# bodge zero out any uninitialised variables first
+     la a0, _sram_start
+     la a1, _sram_end
+     bge a0, a1, sram_end_init_bss
+sram_loop_init_bss:
+     sw zero, 0(a0)
+     addi a0, a0, 4
+     blt a0, a1, sram_loop_init_bss
+sram_end_init_bss:
+
+# copy data section from SPI Flash to BRAM:
+# copies from _sidata (in flash) to _sdata ... _edata (in BRAM)
+# _sidata, _sdata and _edata are defined by linker script (spi_flash.ld)
+     la a0, _sram_data  #quickcode SRAM init data continues from _edata
+     la a1, _sram_start
+     la a2, _sram_end
+     bge a1, a2, sram_end_init_data
+sram_loop_init_data:
+     lw a3, 0(a0)
+     sw a3, 0(a1)
+     addi a0, a0, 4
+     addi a1, a1, 4
+     blt a1, a2, sram_loop_init_data
+sram_end_init_data:
+
+.endif
+
      call main
      tail exit
 
